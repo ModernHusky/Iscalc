@@ -202,10 +202,20 @@ class Goal(StateItem):
 
     def print_entry(self):
         print("prove %s" % self.goal)
+        for n, subgoal in self.subgoals:
+            if subgoal.conds and subgoal.conds.data:
+                print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(cond for cond in subgoal.conds.data)))
+            else:
+                print("subgoal %s: %s" % (n, subgoal.goal))
+            subgoal.print_entry()
         if isinstance(self.proof, CalculationProof):
-            if self.proof.lhs_calc:
+            if self.proof.lhs_calc and self.proof.lhs_calc.steps:
                 print("lhs:")
                 for step in self.proof.lhs_calc.steps:
+                    print("    " + str(step.rule))
+            if self.proof.rhs_calc and self.proof.rhs_calc.steps:
+                print("rhs:")
+                for step in self.proof.rhs_calc.steps:
                     print("    " + str(step.rule))
 
     def __eq__(self, other):
@@ -416,6 +426,11 @@ class Calculation(StateItem):
         for step in self.steps:
             res += self.connection_symbol + " %s\n" % step
         return res
+
+    def print_entry(self):
+        print("calculate %s" % self.start)
+        for step in self.steps:
+            print(str(step.rule))
 
     def export(self):
         res = {

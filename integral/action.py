@@ -77,7 +77,14 @@ class LHSAction(Action):
 
     def __str__(self):
         return "lhs:"
-    
+
+class RHSAction(Action):
+    """Perform a proof by working on the right hand side."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "rhs:"
 
 class RuleAction(Action):
     """Apply rule."""
@@ -157,8 +164,12 @@ class ProveState(State):
             proof = self.goal.proof_by_calculation()
             return CalculateState(self, proof.lhs_calc)
         
+        elif isinstance(action, RHSAction):
+            proof = self.goal.proof_by_calculation()
+            return CalculateState(self, proof.rhs_calc)
+
         # Prove by rewriting goal
-        if isinstance(action, RewriteGoalAction):
+        elif isinstance(action, RewriteGoalAction):
             proof = self.goal.proof_by_rewrite_goal(begin=action.name)
             return CalculateState(self, proof.begin)
         

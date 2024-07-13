@@ -74,6 +74,7 @@ grammar = r"""
     ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
 
     ?lhs_action: "lhs" ":" -> lhs_action
+    ?rhs_action: "rhs" ":" -> rhs_action
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
@@ -92,8 +93,8 @@ grammar = r"""
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
-        | atomic_rule "(" "at" INT ")" -> on_count_rule
-        | atomic_rule "(" "all" ")" -> on_subterms_rule
+        | atomic_rule "(at" INT ")" -> on_count_rule
+        | atomic_rule "(all)" -> on_subterms_rule
 
     ?action: prove_action
         | subgoal_action
@@ -101,6 +102,7 @@ grammar = r"""
         | rewrite_goal_action
         | calculate_action
         | lhs_action
+        | rhs_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -332,7 +334,11 @@ class ExprTransformer(Transformer):
     def lhs_action(self):
         from integral import action
         return action.LHSAction()
-    
+
+    def rhs_action(self):
+        from integral import action
+        return action.RHSAction()
+
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules
         return rules.Substitution(str(var_name), expr)

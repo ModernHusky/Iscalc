@@ -500,6 +500,69 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "easy06", actions)
 
+    def testTrick2a(self):
+        actions = """
+            calculate INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
+            substitute y for pi / 2 - x
+            rewrite sqrt(cos(y)) / (sqrt(cos(y)) + sqrt(sin(y))) to 1 - sqrt(sin(y)) / (sqrt(cos(y)) + sqrt(sin(y)))
+            apply integral identity
+            solve integral INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
+        """
+        self.check_actions("interesting", "Trick2a", actions)
+
+    def testTrick2b(self):
+        actions = """
+            calculate INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
+            substitute y for pi - x
+            expand polynomial
+            simplify
+            solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
+            substitute u for cos(y)
+            apply integral identity
+            simplify
+        """
+        self.check_actions("interesting", "Trick2b", actions)
+
+    def testTrick2c(self):
+        actions = """
+            prove (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = sqrt(2) / 4 * log(3 + 2 * sqrt(2))
+
+            subgoal 1: (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = (INT x:[0,pi / 2]. cos(x) ^ 2 / (sin(x) + cos(x)))
+            lhs:
+                substitute y for pi / 2 - x
+            done
+
+            subgoal 2: (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = 1/2 * (INT x:[0,pi / 2]. 1 / (sin(x) + cos(x)))
+            rhs:
+                simplify
+                rewrite 1 to sin(x) ^ 2 + cos(x) ^ 2
+                expand polynomial
+                simplify
+                rewrite cos(x) + sin(x) to sin(x) + cos(x) (at 1)
+                apply 1 on INT x:[0,pi / 2]. cos(x) ^ 2 / (sin(x) + cos(x))
+                simplify
+            done
+
+            lhs:
+                apply 2 on INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))
+                substitute z for tan(x / 2)
+                simplify
+                rewrite (-(z ^ 2) + 1) / (z ^ 2 + 1) + 2 * z / (z ^ 2 + 1) to (2 - (z - 1) ^ 2) / (z ^ 2 + 1)
+                rewrite (z ^ 2 + 1) * ((2 - (z - 1) ^ 2) / (z ^ 2 + 1)) to 2 - (z - 1) ^ 2
+                rewrite 2 - (z - 1) ^ 2 to (sqrt(2) + (z - 1)) * (sqrt(2) - (z - 1))
+                rewrite 1 / ((sqrt(2) + (z - 1)) * (sqrt(2) - (z - 1))) to sqrt(2) / 4 * (1 / (sqrt(2) + (z - 1)) + 1 / (sqrt(2) - (z - 1)))
+                simplify
+                substitute u for sqrt(2) + 1 - z (at 1)
+                substitute u for sqrt(2) - 1 + z (at 2)
+                apply integral identity
+                simplify
+                rewrite sqrt(2) * (log(sqrt(2) + 1) - log(sqrt(2) - 1)) / 4 to 1/4 * sqrt(2) * (log(sqrt(2) + 1) - log(sqrt(2) - 1))
+                rewrite log(sqrt(2) + 1) - log(sqrt(2) - 1) to log((sqrt(2) + 1) / (sqrt(2) - 1)) using identity
+                rewrite (sqrt(2) + 1) / (sqrt(2) - 1) to 3 + 2 * sqrt(2)
+                simplify
+        """
+        self.check_actions("interesting", "Trick2c", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
