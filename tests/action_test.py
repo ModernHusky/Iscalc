@@ -11,9 +11,7 @@ from integral import parser
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file, current_file, actions, print_state=False):
         file = compstate.CompFile(base_file, current_file)
-        ctx = file.get_context()
-
-        state = action.InitialState(ctx)
+        state = action.InitialState(file)
         for act in actions:
             a = parser.parse_action(act)
             state = state.process_action(a)
@@ -380,14 +378,26 @@ class ActionTest(unittest.TestCase):
 
     def testChapter1Section5(self):
         actions = [
-            "calculate INT x:[0,oo]. log(x) / (x ^ 2 + 1)",
-            "split region at 1",
-            "inverse substitute 1 / u for x creating u",
-            "simplify",
-            "rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1",
-            "simplify"
+            "prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0",
+            "lhs:",
+                "split region at 1",
+                "inverse substitute 1 / u for x creating u",
+                "simplify",
+                "rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1",
+                "simplify"
         ]
         self.check_actions("interesting", "chapter1section5", actions)
+
+    def testChapter1Section7(self):
+        actions = [
+            "prove (INT x:[0,1]. (x^4*(1-x)^4)/(1+x^2)) = 22/7 - pi",
+            "lhs:",
+                "rewrite (x^4*(1-x)^4)/(1+x^2) to (x^6-4*x^5+5*x^4-4*x^2+4)-4/(1+x^2)",
+                "simplify",
+                "apply integral identity",
+                "simplify"
+        ]
+        self.check_actions("interesting", "chapter1section7", actions)
 
 
 if __name__ == "__main__":

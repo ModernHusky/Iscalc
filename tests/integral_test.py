@@ -981,7 +981,6 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.Equation("-pi+22/7", "22/7-pi"))
 
         self.checkAndOutput(file)
 

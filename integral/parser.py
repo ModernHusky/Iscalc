@@ -59,7 +59,11 @@ grammar = r"""
 
     ?expr: compare
 
+    ?prove_action: "prove" expr -> prove_action
+
     ?calculate_action: "calculate" expr -> calculate_action
+
+    ?lhs_action: "lhs" ":" -> lhs_action
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
@@ -75,7 +79,9 @@ grammar = r"""
 
     ?rule: atomic_rule
 
-    ?action: calculate_action
+    ?action: prove_action
+        | calculate_action
+        | lhs_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -273,9 +279,17 @@ class ExprTransformer(Transformer):
     def type_expr(self, name, *args) -> expr.Type:
         return expr.Type(str(name), *args)
     
+    def prove_action(self, expr: Expr):
+        from integral import action
+        return action.ProveAction(expr)
+
     def calculate_action(self, expr: Expr):
         from integral import action
         return action.CalculateAction(expr)
+    
+    def lhs_action(self):
+        from integral import action
+        return action.LHSAction()
     
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules

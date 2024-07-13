@@ -66,18 +66,6 @@
                                     "str": "simplify"
                                 },
                                 "type": "CalculationStep"
-                            },
-                            {
-                                "latex_res": "\\frac{22}{7} - \\pi",
-                                "res": "22/7 - pi",
-                                "rule": {
-                                    "latex_str": "rewrite \\(-\\pi + \\frac{22}{7}\\) to \\(\\frac{22}{7} - \\pi\\)",
-                                    "name": "Equation",
-                                    "new_expr": "22/7 - pi",
-                                    "old_expr": "-pi + 22/7",
-                                    "str": "rewrite -pi + 22/7 to 22/7 - pi"
-                                },
-                                "type": "CalculationStep"
                             }
                         ],
                         "type": "Calculation"

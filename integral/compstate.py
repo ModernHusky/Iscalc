@@ -942,11 +942,13 @@ class CompFile:
             return self.content[-1]
         tmp = fixes
         fixes = self.ctx.get_fixes().update(tmp)
+
         # Parse goal statement
         if isinstance(goal, str):
             goal = parser.parse_expr(goal, fixes=fixes)
         assert isinstance(goal, Expr)
 
+        # Parse conditions
         if conds is not None:
             for i in range(len(conds)):
                 if isinstance(conds[i], str):
