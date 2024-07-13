@@ -887,14 +887,14 @@ class OnSubterm(Rule):
         self.name = 'OnSubterm'
 
     def __str__(self):
-        return "%s on subterms" % self.rule
+        return "%s (all)" % self.rule
 
     def export(self):
         res = self.rule.export()
-        res['str'] += ' on subterms'
+        res['str'] += ' (all)'
         res['loc'] = 'subterms'
         if 'latex_str' in res:
-            res['latex_str'] += ' on subterms'
+            res['latex_str'] += ' (all)'
         return res
 
     def get_substs(self):
@@ -1015,6 +1015,72 @@ class OnLocation(Rule):
 
         return rec(e, self.loc, ctx)
 
+
+class OnCount(Rule):
+    """Perform on the n'th subgoal satisfying some condition."""
+    def __init__(self, rule: Rule, n: int, *, pred = None):
+        self.rule = rule
+        self.n = n
+        if pred is None:
+            if isinstance(rule, Equation):
+                pred = lambda t: t == rule.old_expr
+            else:
+                raise AssertionError("OnCount: unable to derive pred")
+        self.pred = pred
+
+    def __str__(self):
+        return "%s (at %s)" % (self.rule, self.n)
+    
+    def export(self):
+        res = self.rule.export()
+        res['str'] += ' (at %s)' % str(self.n)
+        res['n'] = str(self.n)
+        if 'latex_str' in res:
+            res['latex_str'] += ' (at %s)' + str(self.n)
+        return res
+
+    def get_substs(self):
+        return self.rule.get_substs()
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        count = self.n
+
+        def rec(cur_e, ctx):
+            nonlocal count
+            if self.pred(cur_e):
+                count -= 1
+                if count == 0:
+                    return self.rule.eval(cur_e, ctx)
+                else:
+                    return cur_e
+
+            if expr.is_var(cur_e) or expr.is_const(cur_e):
+                return cur_e
+            elif expr.is_op(cur_e):
+                return Op(cur_e.op, *(rec(arg, ctx) for arg in cur_e.args))
+            elif expr.is_fun(cur_e):
+                return Fun((cur_e.func_name, cur_e.func_type), *(rec(arg, ctx) for arg in cur_e.args))
+            elif expr.is_integral(cur_e):
+                ctx2 = body_conds(cur_e, ctx)
+                return Integral(cur_e.var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx2))
+            elif expr.is_evalat(cur_e):
+                return EvalAt(cur_e.var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx))
+            elif expr.is_deriv(cur_e):
+                return Deriv(cur_e.var, rec(cur_e.body, ctx))
+            elif expr.is_limit(cur_e):
+                return Limit(cur_e.var, rec(cur_e.lim, ctx), rec(cur_e.body, ctx), drt=cur_e.drt, var_type=cur_e.var_type)
+            elif expr.is_indefinite_integral(cur_e):
+                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, ctx), cur_e.skolem_args)
+            elif expr.is_summation(cur_e):
+                ctx2 = body_conds(cur_e, ctx)
+                return Summation(cur_e.index_var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx2))
+            else:
+                raise NotImplementedError
+
+        res = rec(e, ctx)
+        if count > 0:
+            raise AssertionError("OnCount: n is out of range")
+        return res
 
 class Simplify(Rule):
     """Perform simplification by applying the following rules repeatedly:
@@ -2004,14 +2070,13 @@ class DerivIntExchange(Rule):
 class ExpandDefinition(Rule):
     """Expand a definition"""
 
-    def __init__(self, func_name: str, simp=True):
+    def __init__(self, func_name: str):
         self.name = "ExpandDefinition"
         assert isinstance(func_name, str)
-        self.func_name: str = func_name
-        self.simp = simp
+        self.func_name = func_name
 
     def __str__(self):
-        return "expand definition"
+        return "expand definition for %s" % self.func_name
 
     def export(self):
         return {
@@ -2049,10 +2114,7 @@ class ExpandDefinition(Rule):
                     for cond in tmp_conds:
                         flag = flag and ctx.check_condition(cond)
                     if flag:
-                        if self.simp:
-                            return normalize(identity.rhs.inst_pat(inst, func_type), ctx)
-                        else:
-                            return identity.rhs.inst_pat(inst, func_type)
+                        return normalize(identity.rhs.inst_pat(inst, func_type), ctx)
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:

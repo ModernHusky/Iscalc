@@ -200,6 +200,14 @@ class Goal(StateItem):
             res += str(self.proof)
         return res
 
+    def print_entry(self):
+        print("prove %s" % self.goal)
+        if isinstance(self.proof, CalculationProof):
+            if self.proof.lhs_calc:
+                print("lhs:")
+                for step in self.proof.lhs_calc.steps:
+                    print("    " + str(step.rule))
+
     def __eq__(self, other):
         if not isinstance(other, Goal):
             return False

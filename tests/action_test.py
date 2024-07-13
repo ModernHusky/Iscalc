@@ -469,6 +469,37 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "easy04", actions)
 
+    def testEasy05(self):
+        actions = """
+            prove (INT x:[sqrt(2),oo]. 1 / (x + x ^ sqrt(2))) = (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
+            lhs:
+                rewrite 1 / (x + x ^ sqrt(2)) to x ^ -sqrt(2) / (x ^ (1 - sqrt(2)) + 1)
+                substitute u for log(x ^ (1 - sqrt(2)) + 1)
+                apply integral identity
+                simplify
+                rewrite -sqrt(2) + 1 to -1 / (1 + sqrt(2)) (at 2)
+                simplify
+                rewrite sqrt(2) to 2 ^ (1/2) (at 2)
+                rewrite 2 ^ (1/2) ^ (-sqrt(2) + 1) to 2 ^ (1/2 * (-sqrt(2) + 1)) using identity
+                rewrite (sqrt(2) + 1) * log(2 ^ (1/2 * (-sqrt(2) + 1)) + 1) to (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
+        """
+        self.check_actions("interesting", "easy05", actions)
+
+    def testEasy06(self):
+        actions = """
+            prove (INT x:[-oo,oo]. 1 / cosh(x)) = pi
+            lhs:
+                expand definition for cosh (all)
+                substitute t for exp(x)
+                rewrite -log(t) to log(1 / t)
+                simplify
+                rewrite 1 / (t * (1 / t + t)) to 1 / (1 + t ^ 2)
+                simplify
+                apply integral identity
+                simplify
+        """
+        self.check_actions("interesting", "easy06", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

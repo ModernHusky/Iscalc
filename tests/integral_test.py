@@ -1096,21 +1096,20 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Substitution(var_name="u", var_subst="log(x^(1-sqrt(2))+1)"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Equation("-sqrt(2) + 1", "-1/(1+sqrt(2))"), "0.1"))
+        calc.perform_rule(rules.OnCount(rules.Equation("-sqrt(2) + 1", "-1/(1+sqrt(2))"), 2))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Equation("sqrt(2)", "2^(1/2)"), "1.0.0.0"))
+        calc.perform_rule(rules.OnCount(rules.Equation("sqrt(2)", "2^(1/2)"), 2))
         calc.perform_rule(rules.ApplyIdentity("2 ^ (1/2) ^ (-sqrt(2) + 1)", "2^(1/2*(-sqrt(2)+1))"))
         calc.perform_rule(rules.Equation("(sqrt(2) + 1) * log(2 ^ (1/2 * (-sqrt(2) + 1)) + 1)",
                                          "(1+sqrt(2))*log(1+2^(1/2*(1-sqrt(2))))"))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testEasy06(self):
         # Reference:
         # Inside interesting integrals, Section 2.1.f
         file = compstate.CompFile("interesting", "easy06")
-        goal01 = file.add_goal("(INT x:[-oo, oo]. 1/cosh(x)) = pi")
-        proof = goal01.proof_by_calculation()
+        goal = file.add_goal("(INT x:[-oo, oo]. 1/cosh(x)) = pi")
+        proof = goal.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("cosh")))
         calc.perform_rule(rules.Substitution("t", parser.parse_expr("exp(x)")))
@@ -1120,6 +1119,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
+        goal.print_entry()
 
         self.checkAndOutput(file)
 

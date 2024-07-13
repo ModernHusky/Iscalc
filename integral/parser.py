@@ -88,9 +88,12 @@ grammar = r"""
         | "solve" "equation" "for" expr -> solve_equation_rule
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
         | "apply" INT "on" expr -> apply_equation_rule
+        | "expand" "definition" "for" CNAME -> expand_definition_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
+        | atomic_rule "(" "at" INT ")" -> on_count_rule
+        | atomic_rule "(" "all" ")" -> on_subterms_rule
 
     ?action: prove_action
         | subgoal_action
@@ -382,9 +385,21 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.ApplyEquation(str(name), source)
 
+    def expand_definition_rule(self, func_name: Token):
+        from integral import rules
+        return rules.ExpandDefinition(str(func_name))
+
     def full_simplify_rule(self):
         from integral import rules
         return rules.Simplify()
+    
+    def on_count_rule(self, rule, n: Token):
+        from integral import rules
+        return rules.OnCount(rule, int(str(n)))
+    
+    def on_subterms_rule(self, rule):
+        from integral import rules
+        return rules.OnSubterm(rule)
 
     def rule_action(self, rule):
         from integral import action
