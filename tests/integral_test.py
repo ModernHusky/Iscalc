@@ -2080,29 +2080,29 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 2.4
         file = compstate.CompFile("interesting", "euler_log_sin")
 
+        goal = file.add_goal("(INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2)", conds=["a > 0"])
+
         # Define I(a)
-        file.add_definition("I(a) = INT x:[0,pi/2]. log(a * sin(x))", conds=["a > 0"])
+        goal.add_definition("I(a) = INT x:[0,pi/2]. log(a * sin(x))", conds=["a > 0"])
 
         # Define J(a)
-        file.add_definition("J(a) = INT x:[0,pi/2]. log(a * sin(2*x))", conds=["a > 0"])
+        goal.add_definition("J(a) = INT x:[0,pi/2]. log(a * sin(2*x))", conds=["a > 0"])
 
         # Prove J(a) = I(a)
-        goal1 = file.add_goal("J(a) = I(a)", conds=['a>0'])
+        goal1 = goal.add_subgoal("1", "J(a) = I(a)", conds=['a > 0'])
         proof = goal1.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("J"))
         calc.perform_rule(rules.Substitution("t", parser.parse_expr("2*x")))
         calc.perform_rule(rules.SplitRegion(parser.parse_expr('pi/2')))
-        calc.perform_rule(rules.OnLocation(rules.Substitution('x', parser.parse_expr('pi - t')), '1'))
-        calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution('x', parser.parse_expr('t')), '0.1'))
+        calc.perform_rule(rules.OnCount(rules.Substitution('x', parser.parse_expr('pi - t')), 2))
         calc.perform_rule(rules.Simplify())
 
         calc = proof.rhs_calc
         calc.perform_rule(rules.ExpandDefinition("I"))
 
         # Prove J(a) = pi/2 * log(2/a) + 2 * I(a)
-        goal2 = file.add_goal("J(a) = pi/2 * log(2/a) + 2 * I(a)", conds=["a > 0"])
+        goal2 = goal.add_subgoal("2", "J(a) = pi/2 * log(2/a) + 2 * I(a)", conds=["a > 0"])
         proof = goal2.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("J"))
@@ -2127,22 +2127,21 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Finally show I(a) = pi/2 * log(a/2)
-        goal3 = file.add_goal("I(a) = pi/2 * log(a/2)", conds=["a > 0"])
-        proof = goal3.proof_by_calculation()
+        proof = goal.proof_by_calculation()
         calc = proof.lhs_calc
+        calc.perform_rule(rules.OnSubterm(rules.FoldDefinition("I")))
         s = calc.parse_expr("I(a)")
-        calc.perform_rule(rules.ApplyEquation(goal1.goal,s))
+        calc.perform_rule(rules.ApplyEquation("1", s))
         s = calc.parse_expr("J(a)")
-        calc.perform_rule(rules.ApplyEquation(goal2.goal, s))
+        calc.perform_rule(rules.ApplyEquation("2", s))
         calc.perform_rule(rules.IntegrateByEquation(parser.parse_expr("I(a)")))
         calc.perform_rule(rules.ApplyIdentity("log(2 / a)", "log(2) + log(1 / a)"))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
         calc = proof.rhs_calc
         calc.perform_rule(rules.ApplyIdentity("log(a / 2)", "log(a) - log(2)"))
         calc.perform_rule(rules.ExpandPolynomial())
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testEulerLogSineIntegral02(self):
         # Reference:
@@ -2151,19 +2150,18 @@ class IntegralTest(unittest.TestCase):
         goal = file.add_goal("(INT x:[0, pi/2]. log(sin(x) / x)) = pi/2 * (1-log(pi))")
         proof = goal.proof_by_calculation()
         calc = proof.lhs_calc
-        calc.perform_rule(rules.OnLocation(rules.ApplyIdentity("log(sin(x) / x)", "log(sin(x)) - log(x)"), "0"))
+        calc.perform_rule(rules.ApplyIdentity("log(sin(x) / x)", "log(sin(x)) - log(x)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("log(sin(x))", "log(1*sin(x))"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
-        calc.perform_rule(rules.OnLocation(rules.IntegrationByParts("log(x)", "x"), "1"))
+        calc.perform_rule(rules.IntegrationByParts("log(x)", "x"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0.0.0"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
 
         calc = proof.rhs_calc
         calc.perform_rule(rules.ExpandPolynomial())
-
         self.checkAndOutput(file)
 
     def testEulerLogSineIntegral0304(self):
@@ -2172,7 +2170,9 @@ class IntegralTest(unittest.TestCase):
 
         file = compstate.CompFile("interesting", "euler_log_sin0304")
 
-        goal01 = file.add_goal("(INT x:[0, oo]. log(x^2+1)/(x^2+1)) = pi * log(2)")
+        goal = file.add_goal("(INT x:[0, 1]. log(x+1/x)/(x^2+1)) = pi/2 * log(2)")
+
+        goal01 = goal.add_subgoal("1", "(INT x:[0, oo]. log(x^2+1)/(x^2+1)) = pi * log(2)")
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("u", "x", "tan(u)"))
@@ -2186,12 +2186,12 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("(INT x:[0, 1]. log(x+1/x)/(x^2+1)) = pi/2 * log(2)")
-        proof = goal02.proof_by_rewrite_goal(begin = goal01)
+        proof = goal.proof_by_rewrite_goal(begin="1")
         calc = proof.begin
         calc.perform_rule(rules.SplitRegion("1"))
+
         # introduce new variable to void infinite recursion when checking conditions
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="y", var_subst="1/x"), "0.1"))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="y", var_subst="1/x"), 2))
         calc.perform_rule(rules.Equation("y ^ 2 * (1 / y ^ 2 + 1)", "y^2+1"))
         calc.perform_rule(rules.Equation("1 / (y ^ 2 + 1) * log(1 / y ^ 2 + 1)",
                                          "log(1/y^2 + 1)/(y^2+1)"))
@@ -2205,40 +2205,38 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("1 / (y ^ 2 + 1) * log(1 / y + y)", "log(y+1/y)/(y^2+1)"))
         calc.perform_rule(rules.SolveEquation("(INT y:[0, 1]. log(y+1/y)/(y^2+1))"))
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testEulerLogSineIntegral05(self):
         # Reference:
         # Inside interesting integrals, Section 2.4 (2.4.5)
         file = compstate.CompFile("interesting", "euler_log_sin05")
 
-        sub_goal = file.add_goal("x ^ 2 - b * x + 1 != 0", conds=["b > -2", "b < 2"])
+        goal = file.add_goal("(INT x:[0,oo]. log(x) / (x^2-b*x+1)) = 0", conds=["b > -2", "b < 2"])
+
+        sub_goal = goal.add_subgoal("1", "x ^ 2 - b * x + 1 != 0", conds=["b > -2", "b < 2"])
         proof = sub_goal.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("x ^ 2 - b * x + 1", "(x - 1/2 * b) ^ 2 + 1 - 1/4 * b^2"))
 
-        goal01 = file.add_goal("(INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) = \
+        goal01 = goal.add_subgoal("2", "(INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) = \
         (INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) - a * INT x:[0,oo]. log(x) / (x^2-b*x+1)", \
                                conds=["a > 0", "b>-2", "b<2"])
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("u", "x", "1/u"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0.0.1"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.ApplyIdentity("(1/u)^a", "1^a / u^a"))
         calc.perform_rule(rules.Equation("1 ^ a / u ^ a + 1", "(1+u^a) / u^a"))
         calc.perform_rule(rules.Equation("log((1 + u ^ a) / u ^ a)", "log(1+u^a) - log(u^a)"))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0"))
-        calc.perform_rule(rules.Simplify())
-        calc = proof.rhs_calc
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("(INT x:[0,oo]. log(x) / (x^2-b*x+1)) = 0", conds=["b > -2", "b < 2"])
-        proof = goal02.proof_by_rewrite_goal(begin = goal01)
+        proof = goal.proof_by_rewrite_goal(begin="2")
         calc = proof.begin
         calc.perform_rule(rules.SolveEquation("INT x:[0,oo]. log(x) / (x^2-b*x+1)"))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testEulerLogSineIntegral06(self):
         # Reference:
@@ -2251,15 +2249,14 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Substitution("u", "2*(x+1/2)/sqrt(3)"))
         calc.perform_rule(rules.Equation("3 * u ^ 2 / 2 + 3/2", "3/2*(u^2+1)"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "1.0"))
+        calc.perform_rule(rules.Equation("1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2)", "-sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3 / 2 * (1 / (u ^ 2 + 1))"))
+        calc.perform_rule(rules.DefiniteIntegralIdentity())
+        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.Substitution("t", "u^2 + 1"))
+        calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ExpandPolynomial())
-        calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution("t", "u^2+1"), "0.0"))
-        calc.perform_rule(rules.DefiniteIntegralIdentity())
-        calc.perform_rule(rules.Simplify())
-
         self.checkAndOutput(file)
 
     def testDirichletIntegral(self):

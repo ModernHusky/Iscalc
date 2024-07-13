@@ -232,7 +232,7 @@ class ProofObligation:
         for i, b in enumerate(self.branches):
             res += "branch " + str(i) + ":\n"
             res += str(b) + '\n'
-        # "%s" % self.branches
+        res += str(self.conds) + "\n"
         return res
 
     def __repr__(self):

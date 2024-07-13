@@ -755,6 +755,144 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Leibniz02", actions)
 
+    def testEulerLogSineIntegral(self):
+        actions = """
+            prove (INT x:[0,pi / 2]. log(a * sin(x))) = pi / 2 * log(a / 2) for a > 0
+            define I(a) = INT x:[0,pi/2]. log(a * sin(x)) for a > 0
+            define J(a) = INT x:[0,pi/2]. log(a * sin(2*x)) for a > 0
+            subgoal 1: J(a) = I(a) for a > 0
+            lhs:
+                expand definition for J
+                substitute t for 2 * x
+                split region at pi / 2
+                substitute x for pi - t (at 2)
+                simplify
+            rhs:
+                expand definition for I
+            done
+            subgoal 2: J(a) = pi / 2 * log(2 / a) + 2 * I(a) for a > 0
+            lhs:
+                expand definition for J
+                rewrite sin(2 * x) to 2 * sin(x) * cos(x) using identity
+                rewrite a * (2 * sin(x) * cos(x)) to 2 / a * (a * sin(x)) * (a * cos(x))
+                rewrite log(2 / a * (a * sin(x)) * (a * cos(x))) to log(2 / a * (a * sin(x))) + log(a * cos(x)) using identity
+                rewrite log(2 / a * (a * sin(x))) to log(2 / a) + log(a * sin(x)) using identity
+                apply integral identity
+                simplify
+                substitute t for pi / 2 - x
+                substitute x for t
+                simplify
+            rhs:
+                expand definition for I (all)
+                simplify
+            done
+            lhs:
+                fold definition for I (all)
+                apply 1 on I(a)
+                apply 2 on J(a)
+                solve integral I(a)
+                rewrite log(2 / a) to log(2) + log(1 / a) using identity
+                expand polynomial
+                simplify
+            rhs:
+                rewrite log(a / 2) to log(a) - log(2) using identity
+                expand polynomial
+        """
+        self.check_actions("interesting", "euler_log_sin", actions)
+
+    def testEulerLogSineIntegral02(self):
+        actions = """
+            prove (INT x:[0,pi / 2]. log(sin(x) / x)) = pi / 2 * (1 - log(pi))
+            lhs:
+                rewrite log(sin(x) / x) to log(sin(x)) - log(x) using identity
+                simplify
+                rewrite log(sin(x)) to log(1 * sin(x))
+                apply integral identity
+                integrate by parts with u = log(x), v = x
+                apply integral identity
+                simplify
+                expand polynomial
+                simplify
+            rhs:
+                expand polynomial
+        """
+        self.check_actions("interesting", "euler_log_sin02", actions)
+
+    def testEulerLogSineIntegral0304(self):
+        actions = """
+            prove (INT x:[0,1]. log(x + 1 / x) / (x ^ 2 + 1)) = pi / 2 * log(2)
+            subgoal 1: (INT x:[0,oo]. log(x ^ 2 + 1) / (x ^ 2 + 1)) = pi * log(2)
+            lhs:
+                inverse substitute tan(u) for x creating u
+                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1 using identity
+                simplify
+                rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2 using identity
+                rewrite sec(u) to cos(u) ^ (-1) using identity
+                simplify
+                substitute x for pi / 2 - u
+                rewrite sin(x) to 1 * sin(x)
+                apply integral identity
+                simplify
+            done
+
+            from 1:
+                split region at 1
+                substitute y for 1 / x (at 2)
+                rewrite y ^ 2 * (1 / y ^ 2 + 1) to y ^ 2 + 1
+                rewrite 1 / (y ^ 2 + 1) * log(1 / y ^ 2 + 1) to log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+                rewrite (INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1)) + (INT y:[0,1]. log(1 / y ^ 2 + 1) / (y ^ 2 + 1)) to INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+                rewrite log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1) to (log(y ^ 2 + 1) + log(1 / y ^ 2 + 1)) / (y ^ 2 + 1)
+                rewrite log(y ^ 2 + 1) + log(1 / y ^ 2 + 1) to log((y ^ 2 + 1) * (1 / y ^ 2 + 1))
+                rewrite (y ^ 2 + 1) * (1 / y ^ 2 + 1) to (y + 1 / y) ^ 2
+                rewrite log((y + 1 / y) ^ 2) to 2 * log(y + 1 / y) using identity
+                simplify
+                rewrite 1 / (y ^ 2 + 1) * log(1 / y + y) to log(y + 1 / y) / (y ^ 2 + 1)
+                solve equation for INT y:[0,1]. log(y + 1 / y) / (y ^ 2 + 1)
+        """
+        self.check_actions("interesting", "euler_log_sin0304", actions)
+
+    def testEulerLogSineIntegral05(self):
+        actions = """
+            prove (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) = 0 for b > -2, b < 2
+            subgoal 1: x ^ 2 - b * x + 1 != 0 for b > -2, b < 2
+            lhs:
+                rewrite x ^ 2 - b * x + 1 to (x - 1/2 * b) ^ 2 + 1 - 1/4 * b ^ 2
+            done
+            subgoal 2: (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) = (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) - a * (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) for a > 0, b > -2, b < 2
+            lhs:
+                inverse substitute 1 / u for x creating u
+                simplify
+                expand polynomial
+                rewrite (1 / u) ^ a to 1 ^ a / u ^ a using identity
+                rewrite 1 ^ a / u ^ a + 1 to (1 + u ^ a) / u ^ a
+                rewrite log((1 + u ^ a) / u ^ a) to log(1 + u ^ a) - log(u ^ a)
+                expand polynomial
+                simplify
+            done
+            from 2:
+                solve equation for INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)
+        """
+        self.check_actions("interesting", "euler_log_sin05", actions)
+
+    def testEulerLogSineIntegral06(self):
+        actions = """
+            prove (INT x:[0,1]. (1 - x) / (1 + x + x ^ 2)) = sqrt(3) * pi / 6 - log(3) / 2
+            lhs:
+                rewrite 1 + x + x ^ 2 to (x + 1/2) ^ 2 + 3/4
+                substitute u for 2 * (x + 1/2) / sqrt(3)
+                rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
+                simplify
+                rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
+                apply integral identity
+                simplify
+                substitute t for u ^ 2 + 1
+                apply integral identity
+                simplify
+                expand polynomial
+                simplify
+        """
+        self.check_actions("interesting", "euler_log_sin06", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
