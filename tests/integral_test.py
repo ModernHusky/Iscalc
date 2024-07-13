@@ -1513,12 +1513,12 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 3.1, example 1
         file = compstate.CompFile("interesting", "Leibniz01")
 
-        # Basic result: integral of 1 / (x^2 + a^2)
-        goal1 = file.add_goal("(INT x:[0,oo]. 1 / (x^2 + a^2)) = pi / (2 * a)", conds=["a > 0"])
+        goal = file.add_goal("(INT x:[0,oo]. 1 / (x^2 + a^2)^3) = 3*pi / (16 * a^5)", conds=["a > 0"])
 
+        # Basic result: integral of 1 / (x^2 + a^2)
+        goal1 = goal.add_subgoal("1", "(INT x:[0,oo]. 1 / (x^2 + a^2)) = pi / (2 * a)", conds=["a > 0"])
         proof = goal1.proof_by_calculation()
         calc = proof.lhs_calc
-        calc.perform_rule(rules.ElimInfInterval())
         calc.perform_rule(rules.SubstitutionInverse("u", "x", parser.parse_expr("a * u")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("1 / (a ^ 2 * u ^ 2 + a ^ 2)", "1 / ((a ^ 2) * (u^2 + 1))"))
@@ -1527,22 +1527,20 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Derivate to get integral of 1 / (x^2 + a^2)^2
-        goal2 = file.add_goal("(INT x:[0,oo]. 1 / (x^2 + a^2)^2) = pi / (4 * a^3)", conds=["a > 0"])
-        proof = goal2.proof_by_rewrite_goal(begin=goal1)
+        goal2 = goal.add_subgoal("2", "(INT x:[0,oo]. 1 / (x^2 + a^2)^2) = pi / (4 * a^3)", conds=["a > 0"])
+        proof = goal2.proof_by_rewrite_goal(begin="1")
         calc = proof.begin
         calc.perform_rule(rules.DerivEquation('a'))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation(parser.parse_expr("INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 2")))
 
         # Derivate again:
-        goal3 = file.add_goal("(INT x:[0,oo]. 1 / (x^2 + a^2)^3) = 3*pi / (16 * a^5)", conds=["a > 0"])
-        proof = goal3.proof_by_rewrite_goal(begin=goal2)
+        proof = goal.proof_by_rewrite_goal(begin="2")
         calc = proof.begin
         calc.perform_rule(rules.DerivEquation('a'))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation(parser.parse_expr("INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 3")))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testLeibniz02(self):
         # Reference
@@ -1550,11 +1548,12 @@ class IntegralTest(unittest.TestCase):
         file = compstate.CompFile("interesting", 'leibniz02')
 
         # Overall goal: (INT x:[-oo,oo]. exp(-(x^2)/2)) = sqrt(2*pi)
+        goal = file.add_goal("(INT x:[0,1]. 1/sqrt(-log(x))) = sqrt(pi)")
 
         # Make definition
-        file.add_definition("g(t) = (INT x:[0,t].exp(-(x^2)/2))^2")
+        goal.add_definition("g(t) = (INT x:[0,t].exp(-(x^2)/2))^2")
 
-        Eq1 = file.add_goal("(INT x:[-oo,oo]. exp(-x^2/2)) = 2 * LIM {t->oo}. sqrt(g(t))")
+        Eq1 = goal.add_subgoal("1", "(INT x:[-oo,oo]. exp(-x^2/2)) = 2 * LIM {t->oo}. sqrt(g(t))")
         Eq1_proof = Eq1.proof_by_calculation()
         calc = Eq1_proof.lhs_calc
         calc.perform_rule(rules.SplitRegion(expr.Const(0)))
@@ -1565,12 +1564,12 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("g")))
         calc.perform_rule(rules.Simplify())
 
-        Eq2 = file.add_goal("(D t. g(t) + 2 * INT y:[0, 1].exp(-(1+y^2)*t^2/2)/(1+y^2)) = 0", conds=["t > 0"])
+        Eq2 = goal.add_subgoal("2", "(D t. g(t) + 2 * INT y:[0, 1].exp(-(1+y^2)*t^2/2)/(1+y^2)) = 0", conds=["t > 0"])
         Eq2_proof = Eq2.proof_by_calculation()
         calc = Eq2_proof.lhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("g")))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution('y', parser.parse_expr('x/t')), '1.1'))
+        calc.perform_rule(rules.OnCount(rules.Substitution('y', parser.parse_expr('x/t')), 2))
         calc.perform_rule(rules.Equation("exp(t ^ 2 * (-(y ^ 2) - 1) / 2)", "exp(1/2 * t ^ 2 * (-(y ^ 2) - 1))"))
         calc.perform_rule(rules.Equation("1/2 * t ^ 2 * (-(y ^ 2) - 1)", "-1/2 * t ^ 2 * y ^ 2 + 1/2 * t ^ 2 * (-1)"))
         calc.perform_rule(rules.Simplify())
@@ -1581,15 +1580,17 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("(-(y ^ 2) - 1) / (y ^ 2 + 1)", "-1"))
         calc.perform_rule(rules.Simplify())
         assert Eq2.is_finished()
-        Eq3 = file.add_goal("2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) * (y ^ 2 + 1) ^ -1) + g(t) = SKOLEM_CONST(C)", conds=['t>0'])
-        Eq3_proof = Eq3.proof_by_rewrite_goal(begin=Eq2)
+
+        Eq3 = goal.add_subgoal("3", "2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) * (y ^ 2 + 1) ^ -1) + g(t) = SKOLEM_CONST(C)", conds=['t>0'])
+        Eq3_proof = Eq3.proof_by_rewrite_goal(begin="2")
         calc = Eq3_proof.begin
         calc.perform_rule(rules.IntegralEquation())
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         assert Eq3.is_finished()
-        Eq4 = file.add_goal("pi/2 = SKOLEM_CONST(C)")
-        proof_of_Eq4 = Eq4.proof_by_rewrite_goal(begin = Eq3)
+
+        Eq4 = goal.add_subgoal("4", "pi/2 = SKOLEM_CONST(C)")
+        proof_of_Eq4 = Eq4.proof_by_rewrite_goal(begin="3")
         calc = proof_of_Eq4.begin
         calc.perform_rule(rules.LimitEquation('t', expr.Const(0)))
         calc.perform_rule(rules.Simplify())
@@ -1597,67 +1598,69 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         assert Eq4.is_finished()
-        Eq5 = file.add_goal("g(t) = -(2 * (INT y:[0,1]. 1 / (y ^ 2 + 1) * exp(t ^ 2 * (-(y ^ 2) - 1) / 2))) + pi / 2", conds=['t>0'])
+
+        Eq5 = goal.add_subgoal("5", "g(t) = -(2 * (INT y:[0,1]. 1 / (y ^ 2 + 1) * exp(t ^ 2 * (-(y ^ 2) - 1) / 2))) + pi / 2", conds=['t>0'])
         proof_of_Eq5 = Eq5.proof_by_calculation()
         calc = proof_of_Eq5.lhs_calc
         s = calc.parse_expr("g(t)")
-        calc.perform_rule(rules.ApplyEquation(Eq3.goal, s))
+        calc.perform_rule(rules.ApplyEquation("3", s))
         s = calc.parse_expr("SKOLEM_CONST(C)")
-        calc.perform_rule(rules.ApplyEquation(Eq4.goal, s))
+        calc.perform_rule(rules.ApplyEquation("4", s))
         calc.perform_rule(rules.Simplify())
         assert Eq5.is_finished()
-        Eq6 = file.add_goal("(INT x:[-oo,oo]. exp(-x^2/2)) = sqrt(2*pi)")
+
+        Eq6 = goal.add_subgoal("6", "(INT x:[-oo,oo]. exp(-x^2/2)) = sqrt(2*pi)")
         proof_of_Eq6 = Eq6.proof_by_calculation()
         calc = proof_of_Eq6.lhs_calc
         s = calc.parse_expr("INT x:[-oo,oo]. exp(-(x ^ 2) / 2)")
-        calc.perform_rule(rules.ApplyEquation(Eq1.goal, s))
+        calc.perform_rule(rules.ApplyEquation("1", s))
         s = calc.parse_expr("g(t)")
-        calc.perform_rule(rules.ApplyEquation(Eq5.goal, s))
+        calc.perform_rule(rules.ApplyEquation("5", s))
         calc.perform_rule(rules.Simplify())
         calc = proof_of_Eq6.rhs_calc
         calc.perform_rule(rules.Simplify())
         assert Eq6.is_finished()
-        Eq7 = file.add_goal("(INT x:[0,oo]. exp(-x^2/2)) = sqrt(2) * sqrt(pi) / 2")
-        proof_of_Eq7 = Eq7.proof_by_rewrite_goal(begin = Eq6)
+
+        Eq7 = goal.add_subgoal("7", "(INT x:[0,oo]. exp(-x^2/2)) = sqrt(2) * sqrt(pi) / 2")
+        proof_of_Eq7 = Eq7.proof_by_rewrite_goal(begin="6")
         calc = proof_of_Eq7.begin
-        calc.perform_rule(rules.OnLocation(rules.SplitRegion(expr.Const(0)), "0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution('y', parser.parse_expr("-x")), '0'))
-        calc.perform_rule(rules.OnLocation(rules.Substitution('x', parser.parse_expr("y")), '0'))
+        calc.perform_rule(rules.SplitRegion(expr.Const(0)))
+        calc.perform_rule(rules.Substitution('y', parser.parse_expr("-x")))
+        calc.perform_rule(rules.Substitution('x', parser.parse_expr("y")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation(parser.parse_expr("INT x:[0,oo]. exp(-(x ^ 2 / 2))")))
         assert Eq7.is_finished()
-        Eq8 = file.add_goal("(INT x:[-oo,oo]. exp(-(a*x^2))) = sqrt(pi / a)", conds=["a > 0"])
+
+        Eq8 = goal.add_subgoal("8", "(INT x:[-oo,oo]. exp(-(a*x^2))) = sqrt(pi / a)", conds=["a > 0"])
         proof_of_Eq8 = Eq8.proof_by_calculation()
         calc = proof_of_Eq8.lhs_calc
-
         calc.perform_rule(rules.Substitution("u", parser.parse_expr("sqrt(2*a) * x")))
         calc.perform_rule(rules.Simplify())
-
-        # calc.perform_rule(rules.Equation("-(u ^ 2 / 2)", "-u^2 / 2"))
         calc.perform_rule(rules.Substitution('x', parser.parse_expr("u")))
         calc.perform_rule(rules.Equation("-(x ^ 2 / 2)", "-x^2 / 2"))
         s = calc.parse_expr("INT x:[-oo,oo]. exp(-(x ^ 2) / 2)")
-        calc.perform_rule(rules.ApplyEquation(Eq6.goal,s))
+        calc.perform_rule(rules.ApplyEquation("6", s))
         calc.perform_rule(rules.Simplify())
 
         calc = proof_of_Eq8.rhs_calc
         calc.perform_rule(rules.Simplify())
         assert Eq8.is_finished()
-        Eq9 = file.add_goal("(INT x:[0,oo]. exp(-x^2)) = sqrt(pi)/2")
-        proof_of_Eq9 = Eq9.proof_by_rewrite_goal(begin = Eq7)
+
+        Eq9 = goal.add_subgoal("9", "(INT x:[0,oo]. exp(-x^2)) = sqrt(pi)/2")
+        proof_of_Eq9 = Eq9.proof_by_rewrite_goal(begin="7")
         calc = proof_of_Eq9.begin
         calc.perform_rule(rules.Substitution(var_name="x", var_subst="x/sqrt(2)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation("(INT x:[0,oo]. exp(-x^2))"))
         assert Eq9.is_finished()
-        Eq10 = file.add_goal("(INT x:[0,1]. 1/sqrt(-log(x))) = sqrt(pi)")
-        proof_of_Eq10 = Eq10.proof_by_rewrite_goal(begin = Eq9)
+
+        proof_of_Eq10 = goal.proof_by_rewrite_goal(begin="9")
         calc = proof_of_Eq10.begin
         calc.perform_rule(rules.Substitution(var_name="t", var_subst="exp(-x^2)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation("(INT x:[0,1]. 1/sqrt(-log(x)))"))
-
-        self.checkAndOutput(file)
+        goal.print_entry()
+        assert goal.is_finished()
 
     def testLeibniz03(self):
         # Reference:

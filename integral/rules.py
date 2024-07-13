@@ -1858,7 +1858,7 @@ class ElimInfInterval(Rule):
         self.new_var = new_var
 
     def __str__(self):
-        return "eliminate improper integral"
+        return "eliminate improper integral creating %s" % self.new_var
 
     def export(self):
         return {
@@ -2203,7 +2203,7 @@ class IntegralEquation(Rule):
         return Op("=", e.lhs.body, IndefiniteIntegral(var, e.rhs, skolem_args))
 
     def __str__(self):
-        return "integrate both side"
+        return "integrate both sides"
 
     def export(self):
         return {
@@ -2284,12 +2284,11 @@ class LimitEquation(Rule):
 
     def __init__(self, var: str, lim: Expr):
         self.name = "LimitEquation"
-        self.var: str = var
-        self.lim: Expr = lim
+        self.var = var
+        self.lim = lim
 
     def __str__(self):
-        return "apply limit %s -> %s to equation" % (self.var, self.lim)
-
+        return "apply limit %s -> %s both sides" % (self.var, self.lim)
 
     def eval(self, e: Expr, ctx: Context):
         v, lim = self.var, self.lim
@@ -2311,7 +2310,7 @@ class LimitEquation(Rule):
             "str": str(self),
             "var": self.var,
             "lim": str(self.lim),
-            "latex_str": "apply limit \\(%s \\to %s\\) to equation" %
+            "latex_str": "apply limit \\(%s \\to %s\\) both sides" %
                          (self.var, latex.convert_expr(self.lim))
         }
 

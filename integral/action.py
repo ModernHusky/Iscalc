@@ -28,6 +28,19 @@ class ProveAction(Action):
             return "prove %s" % self.expr
 
 
+class DefineAction(Action):
+    """Make a definition."""
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
+        self.expr = expr
+        self.conditions = Conditions(conditions)
+
+    def __str__(self):
+        if self.conditions:
+            return "define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+        else:
+            return "define %s" % self.expr
+
+
 class SubgoalAction(Action):
     """Start a proof."""
     def __init__(self, name: str, expr: Expr, conditions: Optional[Conditions] = None):
@@ -161,12 +174,18 @@ class ProveState(State):
     def process_action(self, action: Action) -> State:
         # Prove by calculating on both sides
         if isinstance(action, LHSAction):
-            proof = self.goal.proof_by_calculation()
-            return CalculateState(self, proof.lhs_calc)
+            if not self.goal.proof:
+                self.goal.proof_by_calculation()
+            if not isinstance(self.goal.proof, compstate.CalculationProof):
+                raise StateException("lhs: not in calculation proof")
+            return CalculateState(self, self.goal.proof.lhs_calc)
         
         elif isinstance(action, RHSAction):
-            proof = self.goal.proof_by_calculation()
-            return CalculateState(self, proof.rhs_calc)
+            if not self.goal.proof:
+                self.goal.proof_by_calculation()
+            if not isinstance(self.goal.proof, compstate.CalculationProof):
+                raise StateException("rhs: not in calculation proof")
+            return CalculateState(self, self.goal.proof.rhs_calc)
 
         # Prove by rewriting goal
         elif isinstance(action, RewriteGoalAction):
@@ -184,6 +203,11 @@ class ProveState(State):
                 raise StateException("Using done when not in a subgoal.")
             else:
                 return self.past
+
+        # Make definition
+        elif isinstance(action, DefineAction):
+            self.goal.add_definition(action.expr, action.conditions)
+            return self
         
         # Other cases are invalid
         else:
@@ -209,7 +233,11 @@ class CalculateState(State):
             return self
         
         # Done with current calculation or proof
-        if isinstance(action, DoneAction):
+        elif isinstance(action, DoneAction):
+            return self.past.process_action(action)
+        
+        # Go to the other branch
+        elif isinstance(action, RHSAction):
             return self.past.process_action(action)
         
         # Other cases are invalid

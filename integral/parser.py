@@ -64,6 +64,9 @@ grammar = r"""
     ?prove_action: "prove" expr -> prove_action
         | "prove" expr "for" conditions -> prove_with_condition_action
 
+    ?define_action: "define" expr -> define_action
+        | "define" expr "for" conditions -> define_with_condition_action
+
     ?calculate_action: "calculate" expr -> calculate_action
 
     ?subgoal_action: "subgoal" INT ":" expr -> subgoal_action
@@ -79,6 +82,7 @@ grammar = r"""
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
         | "apply" "integral" "identity" -> integral_identity_rule
+        | "apply" "indefinite" "integral" -> indefinite_integral_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
         | "rewrite" expr "to" expr -> equation_rule
@@ -89,7 +93,9 @@ grammar = r"""
         | "solve" "integral" expr -> solve_integral_rule
         | "solve" "equation" "for" expr -> solve_equation_rule
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
+        | "integrate" "both" "sides" -> integral_equation_rule
         | "apply" INT "on" expr -> apply_equation_rule
+        | "apply" "limit" CNAME "->" expr "both" "sides" -> apply_limit_rule
         | "expand" "definition" "for" CNAME -> expand_definition_rule
         | "fold" "definition" "for" CNAME -> fold_definition_rule
         | "simplify" -> full_simplify_rule
@@ -102,6 +108,7 @@ grammar = r"""
         | subgoal_action
         | done_action
         | rewrite_goal_action
+        | define_action
         | calculate_action
         | lhs_action
         | rhs_action
@@ -313,6 +320,14 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.ProveAction(expr, conditions)
 
+    def define_action(self, expr: Expr):
+        from integral import action
+        return action.DefineAction(expr)
+    
+    def define_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
+        from integral import action
+        return action.DefineAction(expr, conditions)
+
     def calculate_action(self, expr: Expr):
         from integral import action
         return action.CalculateAction(expr)
@@ -352,6 +367,10 @@ class ExprTransformer(Transformer):
     def integral_identity_rule(self):
         from integral import rules
         return rules.DefiniteIntegralIdentity()
+
+    def indefinite_integral_rule(self):
+        from integral import rules
+        return rules.IndefiniteIntegralIdentity()
     
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
         from integral import rules
@@ -393,9 +412,17 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.DerivEquation(str(var))
     
+    def integral_equation_rule(self):
+        from integral import rules
+        return rules.IntegralEquation()
+    
     def apply_equation_rule(self, name: Token, source: Expr):
         from integral import rules
         return rules.ApplyEquation(str(name), source)
+
+    def apply_limit_rule(self, var_name: Token, limit: Expr):
+        from integral import rules
+        return rules.LimitEquation(str(var_name), limit)
 
     def expand_definition_rule(self, func_name: Token):
         from integral import rules

@@ -641,6 +641,120 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "partialFraction", actions)
 
+    def testLeibniz01(self):
+        actions = """
+            prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 3) = 3 * pi / (16 * a ^ 5) for a > 0
+            subgoal 1: (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a) for a > 0
+            lhs:
+                inverse substitute a * u for x creating u
+                simplify
+                rewrite 1 / (a ^ 2 * u ^ 2 + a ^ 2) to 1 / (a ^ 2 * (u ^ 2 + 1))
+                simplify
+                apply integral identity
+                simplify
+            done
+
+            subgoal 2: (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a > 0
+            from 1:
+                differentiate both sides at a
+                simplify
+                solve equation for INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 2
+            done
+
+            from 2:
+                differentiate both sides at a
+                simplify
+                solve equation for INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 3
+        """
+        self.check_actions("interesting", "Leibniz01", actions)
+
+    def testLeibniz02(self):
+        actions = """
+            prove (INT x:[0,1]. 1 / sqrt(-log(x))) = sqrt(pi)
+            define g(t) = (INT x:[0,t]. exp(-(x ^ 2) / 2)) ^ 2
+            subgoal 1: (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = 2 * (LIM {t -> oo}. sqrt(g(t)))
+            lhs:
+                split region at 0
+                substitute y for -x
+                substitute x for y
+                simplify
+            rhs:
+                expand definition for g (all)
+                simplify
+            done
+            subgoal 2: (D t. g(t) + 2 * (INT y:[0,1]. exp(-(1 + y ^ 2) * t ^ 2 / 2) / (1 + y ^ 2))) = 0 for t > 0
+            lhs:
+                expand definition for g (all)
+                simplify
+                substitute y for x / t (at 2)
+                rewrite exp(t ^ 2 * (-(y ^ 2) - 1) / 2) to exp(1/2 * t ^ 2 * (-(y ^ 2) - 1))
+                rewrite 1/2 * t ^ 2 * (-(y ^ 2) - 1) to -1/2 * t ^ 2 * y ^ 2 + 1/2 * t ^ 2 * -1
+                simplify
+                rewrite exp(-(t ^ 2 * y ^ 2 / 2) - t ^ 2 / 2) to exp(-1/2 * t ^ 2 * y ^ 2) * exp(-1/2 * t ^ 2) using identity
+                simplify
+                rewrite (-(y ^ 2) - 1) / (y ^ 2 + 1) to -1
+                simplify
+            done
+            subgoal 3: 2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) * (y ^ 2 + 1) ^ (-1)) + g(t) = SKOLEM_CONST(C) for t > 0
+            from 2:
+                integrate both sides
+                apply indefinite integral
+                simplify
+            done
+            subgoal 4: pi / 2 = SKOLEM_CONST(C)
+            from 3:
+                apply limit t -> 0 both sides
+                simplify
+                expand definition for g (all)
+                apply integral identity
+                simplify
+            done
+            subgoal 5: g(t) = -(2 * (INT y:[0,1]. 1 / (y ^ 2 + 1) * exp(t ^ 2 * (-(y ^ 2) - 1) / 2))) + pi / 2 for t > 0
+            lhs:
+                apply 3 on g(t)
+                apply 4 on SKOLEM_CONST(C)
+                simplify
+            done
+            subgoal 6: (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = sqrt(2 * pi)
+            lhs:
+                apply 1 on INT x:[-oo,oo]. exp(-(x ^ 2) / 2)
+                apply 5 on g(t)
+                simplify
+            rhs:
+                simplify
+            done
+            subgoal 7: (INT x:[0,oo]. exp(-(x ^ 2) / 2)) = sqrt(2) * sqrt(pi) / 2
+            from 6:
+                split region at 0
+                substitute y for -x
+                substitute x for y
+                simplify
+                solve equation for INT x:[0,oo]. exp(-(x ^ 2 / 2))
+            done
+            subgoal 8: (INT x:[-oo,oo]. exp(-(a * x ^ 2))) = sqrt(pi / a) for a > 0
+            lhs:
+                substitute u for sqrt(2 * a) * x
+                simplify
+                substitute x for u
+                rewrite -(x ^ 2 / 2) to -(x ^ 2) / 2
+                apply 6 on INT x:[-oo,oo]. exp(-(x ^ 2) / 2)
+                simplify
+            rhs:
+                simplify
+            done
+            subgoal 9: (INT x:[0,oo]. exp(-(x ^ 2))) = sqrt(pi) / 2
+            from 7:
+                substitute x for x / sqrt(2)
+                simplify
+                solve equation for INT x:[0,oo]. exp(-(x ^ 2))
+            done
+            from 9:
+                substitute t for exp(-(x ^ 2))
+                simplify
+                solve equation for INT x:[0,1]. 1 / sqrt(-log(x))
+        """
+        self.check_actions("interesting", "Leibniz02", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

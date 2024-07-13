@@ -187,6 +187,9 @@ class Goal(StateItem):
         # List of subgoals
         self.subgoals: List[Tuple[str, Goal]] = list()
 
+        # List of temporary definitions
+        self.definitions: List[FuncDef] = list()
+
     def __str__(self):
         if self.is_finished():
             res = "Goal (finished)\n"
@@ -303,16 +306,29 @@ class Goal(StateItem):
         ctx = Context(self.ctx)
         for n, subgoal in self.subgoals:
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
         goal = Goal(self, ctx, expr, conds=Conditions(conds))
         self.subgoals.append((name, goal))
         return self.subgoals[-1][1]
 
-    def proof_by_rewrite_goal(self, *, begin: str):
+    def add_definition(self, expr: Union[str, Expr],
+                       conds: Optional[List[Union[str, Expr]]] = None) -> FuncDef:
+        if isinstance(expr, str):
+            expr = parser.parse_expr(expr)
+        self.definitions.append(FuncDef(self, self.ctx, expr, conds=Conditions(conds)))
+        return self.definitions[-1]
+
+    def proof_by_rewrite_goal(self, *, begin):
+        if not isinstance(begin, str):
+            raise AssertionError("RewriteGoalProof: begin should be a string")
         ctx = Context(self.ctx)
         for n, subgoal in self.subgoals:
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
         self.proof = RewriteGoalProof(self, ctx, self.goal, start=begin)
         return self.proof
 
@@ -320,6 +336,8 @@ class Goal(StateItem):
         ctx = Context(self.ctx)
         for n, subgoal in self.subgoals:
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
         self.proof = CalculationProof(self, ctx, self.goal)
         return self.proof
 
