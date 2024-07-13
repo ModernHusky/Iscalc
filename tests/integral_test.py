@@ -2406,10 +2406,12 @@ class IntegralTest(unittest.TestCase):
         file = compstate.CompFile("interesting", "flipside03")
 
         # introduce definition
-        file.add_definition("I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x)", conds=["a > -1"])
+        goal = file.add_goal("(INT x:[0, 1]. (x ^ a - 1) / log(x)) = log(a + 1)", conds=["a > -1"])
+
+        goal.add_definition("I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x)", conds=["a > -1"])
 
         # verify the following equation: D a. I(a) = 1/(a+1)
-        goal1 = file.add_goal("(D a. I(a)) = 1/(a+1)", conds=["a > -1"])
+        goal1 = goal.add_subgoal("1", "(D a. I(a)) = 1/(a+1)", conds=["a > -1"])
         proof_of_goal1 = goal1.proof_by_calculation()
         calc = proof_of_goal1.lhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
@@ -2418,30 +2420,33 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        goal3 = file.add_goal("I(a) = log(a+1) + SKOLEM_CONST(C)", conds=["a > -1"])
-        proof_of_goal3 = goal3.proof_by_rewrite_goal(begin = goal1)
+        goal3 = goal.add_subgoal("2", "I(a) = log(a+1) + SKOLEM_CONST(C)", conds=["a > -1"])
+        proof_of_goal3 = goal3.proof_by_rewrite_goal(begin="1")
         calc = proof_of_goal3.begin
         calc.perform_rule(rules.IntegralEquation())
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         assert goal3.is_finished()
-        goal4 = file.add_goal("SKOLEM_CONST(C) = 0")
-        proof_of_goal4 = goal4.proof_by_rewrite_goal(begin = goal3)
+
+        goal4 = goal.add_subgoal("3", "SKOLEM_CONST(C) = 0")
+        proof_of_goal4 = goal4.proof_by_rewrite_goal(begin="2")
         calc = proof_of_goal4.begin
         calc.perform_rule(rules.VarSubsOfEquation([{'var': 'a', 'expr': "0"}]))
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SolveEquation(parser.parse_expr("SKOLEM_CONST(C)")))
         assert goal4.is_finished()
-        goal5 = file.add_goal("I(a) = log(a+1)", conds=["a > -1"])
-        proof_of_goal5 = goal5.proof_by_calculation()
+
+        proof_of_goal5 = goal.proof_by_calculation()
         calc = proof_of_goal5.lhs_calc
+        calc.perform_rule(rules.OnSubterm(rules.FoldDefinition("I")))
         s = calc.parse_expr("I(a)")
-        calc.perform_rule(rules.ApplyEquation(goal3.goal, s))
+        calc.perform_rule(rules.ApplyEquation("2", s))
         s = calc.parse_expr("SKOLEM_CONST(C)")
-        calc.perform_rule(rules.ApplyEquation(goal4.goal, s))
+        calc.perform_rule(rules.ApplyEquation("3", s))
         calc.perform_rule(rules.Simplify())
-        self.checkAndOutput(file)
+
+        assert goal.is_finished()
 
     def testFlipside04(self):
         # Reference:
@@ -2463,19 +2468,18 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 3.4, example #7
         file = compstate.CompFile("interesting", "flipside07")
 
-        goal01 = file.add_goal("(D a.(D a. (INT x:[0,1]. x^a))) = 2/(a+1)^3", conds=["a>-1"])
+        goal = file.add_goal("(INT x:[0,1]. x^a * (log(x))^2) = 2/(a+1)^3", conds=["a > -1"])
+
+        goal01 = goal.add_subgoal("1", "(D a. (D a. (INT x:[0,1]. x^a))) = 2/(a+1)^3", conds=["a>-1"])
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
-        calc.perform_rule(rules.OnSubterm(rules.DefiniteIntegralIdentity()))
-        calc.perform_rule(rules.OnSubterm(rules.Simplify()))
-
-
-        goal02 = file.add_goal("(INT x:[0,1]. x^a*(log(x))^2) = 2/(a+1)^3", conds=["a>-1"])
-        proof = goal02.proof_by_rewrite_goal(begin = goal01)
-        calc = proof.begin
+        calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        self.checkAndOutput(file)
+        proof = goal.proof_by_rewrite_goal(begin="1")
+        calc = proof.begin
+        calc.perform_rule(rules.Simplify())
+        assert goal.is_finished()
 
     # TODO: Solve LIM {z -> oo}. atan(z * sqrt(a - b) / sqrt(a + b))
     # def testFlipSide08(self):
@@ -2512,11 +2516,14 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 3.3
         file = compstate.CompFile("interesting", "FrullaniIntegral01")
 
+        goal = file.add_goal("(INT x:[0,oo]. (atan(a*x) - atan(b*x)) / x) = pi * log(a) / 2 - pi * log(b) / 2",
+                             conds=["a > 0", "b > 0"])
+
         # Define I(a, b)
-        file.add_definition("I(a, b) = INT x:[0,oo]. (atan(a*x) - atan(b*x))/x", conds=["a > 0", "b > 0"])
+        goal.add_definition("I(a, b) = INT x:[0,oo]. (atan(a*x) - atan(b*x)) / x", conds=["a > 0", "b > 0"])
 
         # Evalute D a. I(a, b) for a > 0
-        goal2 = file.add_goal("(D a. I(a,b)) = pi / (2*a)", conds=["a > 0", "b > 0"])
+        goal2 = goal.add_subgoal("1", "(D a. I(a,b)) = pi / (2*a)", conds=["a > 0", "b > 0"])
         proof_of_goal2 = goal2.proof_by_calculation()
         calc = proof_of_goal2.lhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
@@ -2527,8 +2534,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Integrate the previous result to get formula for I(a,b)
-        goal3 = file.add_goal("I(a,b) = pi * log(a) / 2 + SKOLEM_FUNC(C(b))", conds=["a > 0", "b > 0"])
-        proof_of_goal3 = goal3.proof_by_rewrite_goal(begin = goal2)
+        goal3 = goal.add_subgoal("2", "I(a,b) = pi * log(a) / 2 + SKOLEM_FUNC(C(b))", conds=["a > 0", "b > 0"])
+        proof_of_goal3 = goal3.proof_by_rewrite_goal(begin="1")
         calc = proof_of_goal3.begin
         calc.perform_rule(rules.IntegralEquation())
         calc.perform_rule(rules.Simplify())
@@ -2536,8 +2543,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Obtain value of Skolem function
-        goal4 = file.add_goal("SKOLEM_FUNC(C(a)) = -(pi * log(a) / 2)", conds=["a > 0"])
-        proof_of_goal4 = goal4.proof_by_rewrite_goal(begin = goal3)
+        goal4 = goal.add_subgoal("3", "SKOLEM_FUNC(C(a)) = -(pi * log(a) / 2)", conds=["a > 0"])
+        proof_of_goal4 = goal4.proof_by_rewrite_goal(begin="2")
         calc = proof_of_goal4.begin
         calc.perform_rule(rules.VarSubsOfEquation([{'var': "b", 'expr': "a"}]))
         calc.perform_rule(rules.SolveEquation(parser.parse_expr("SKOLEM_FUNC(C(a))")))
@@ -2545,16 +2552,16 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Final result
-        goal6 = file.add_goal("I(a, b) = pi * log(a) / 2 - pi * log(b) / 2", conds=["a > 0", "b > 0"])
-        proof_of_goal6 = goal6.proof_by_calculation()
+        proof_of_goal6 = goal.proof_by_calculation()
         calc = proof_of_goal6.lhs_calc
+        calc.perform_rule(rules.OnSubterm(rules.FoldDefinition("I")))
         s = calc.parse_expr("I(a,b)")
-        calc.perform_rule(rules.ApplyEquation(goal3.goal, s))
+        calc.perform_rule(rules.ApplyEquation("2", s))
         s = calc.parse_expr("SKOLEM_FUNC(C(b))")
-        calc.perform_rule(rules.ApplyEquation(goal4.goal,s))
+        calc.perform_rule(rules.ApplyEquation("3", s))
         calc.perform_rule(rules.Simplify())
-
-        self.checkAndOutput(file)
+        goal.print_entry()
+        assert goal.is_finished()
 
     # TODO: Calculating the limit lim{x->oo}. exp(-a*x) = 0
     # def testFrullaniIntegral02(self):

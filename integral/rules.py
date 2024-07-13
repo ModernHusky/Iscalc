@@ -1155,7 +1155,7 @@ class ApplyEquation(Rule):
         if self.source is not None and self.source != e:
             find_res = e.find_subexpr(self.source)
             if len(find_res) == 0:
-                raise AssertionError("ApplyEquation: source expression not found")
+                raise RuleException("ApplyEquation", "source expression %s not found" % self.source)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
         assert self.source == e or self.source is None
@@ -1188,7 +1188,7 @@ class ApplyEquation(Rule):
                     if self.source == item.rhs:
                         return item.lhs
                 found = True
-                fouon_eq = self.eq
+                found_eq = self.eq
                 conds = []
         assert found, "ApplyEquation: lemma %s not found" % self.eq
 

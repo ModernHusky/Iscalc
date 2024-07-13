@@ -893,6 +893,87 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "euler_log_sin06", actions)
 
+    def testFlipside03(self):
+        actions = """
+            prove (INT x:[0,1]. (x ^ a - 1) / log(x)) = log(a + 1) for a > -1
+            define I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x) for a > -1
+            subgoal 1: (D a. I(a)) = 1 / (a + 1) for a > -1
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                apply integral identity
+                simplify
+            done
+            subgoal 2: I(a) = log(a + 1) + SKOLEM_CONST(C) for a > -1
+            from 1:
+                integrate both sides
+                apply indefinite integral
+                simplify
+            done
+            subgoal 3: SKOLEM_CONST(C) = 0
+            from 2:
+                substitute a for 0 in equation
+                expand definition for I (all)
+                simplify
+                solve equation for SKOLEM_CONST(C)
+            done
+            lhs:
+                fold definition for I (all)
+                apply 2 on I(a)
+                apply 3 on SKOLEM_CONST(C)
+                simplify
+        """
+        self.check_actions("interesting", "flipside03", actions)
+
+    def testFlipside04(self):
+        actions = """
+            prove (INT x:[0,1]. (x ^ a - x ^ b) / log(x)) = log((a + 1) / (b + 1)) for a > -1, b > -1
+            lhs:
+                rewrite x ^ a - x ^ b to x ^ a - 1 - (x ^ b - 1)
+                rewrite (x ^ a - 1 - (x ^ b - 1)) / log(x) to (x ^ a - 1) / log(x) - (x ^ b - 1) / log(x)
+                simplify
+                apply integral identity
+                rewrite log(a + 1) - log(b + 1) to log((a + 1) / (b + 1)) using identity
+        """
+        self.check_actions("interesting", "flipside04", actions)
+
+    def testFrullaniIntegral01(self):
+        actions = """
+            prove (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
+            define I(a,b) = (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) for a > 0, b > 0
+            subgoal 1: (D a. I(a,b)) = pi / (2 * a) for a > 0, b > 0
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                substitute u for a * x
+                apply integral identity
+                simplify
+            done
+            subgoal 2: I(a,b) = pi * log(a) / 2 + SKOLEM_FUNC(C(b)) for a > 0, b > 0
+            from 1:
+                integrate both sides
+                simplify
+                apply indefinite integral
+                simplify
+            done
+            subgoal 3: SKOLEM_FUNC(C(a)) = -(pi * log(a) / 2) for a > 0
+            from 2:
+                substitute b for a in equation
+                solve equation for SKOLEM_FUNC(C(a))
+                expand definition for I (all)
+                simplify
+            done
+            lhs:
+                fold definition for I (all)
+                apply 2 on I(a,b)
+                apply 3 on SKOLEM_FUNC(C(b))
+                simplify
+        """
+        self.check_actions("interesting", "FrullaniIntegral01", actions)
+
+
 
 if __name__ == "__main__":
     unittest.main()

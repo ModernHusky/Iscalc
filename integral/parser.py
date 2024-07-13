@@ -79,6 +79,8 @@ grammar = r"""
     ?lhs_action: "lhs" ":" -> lhs_action
     ?rhs_action: "rhs" ":" -> rhs_action
 
+    ?inst_equation: CNAME "for" expr -> inst_equation
+
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
         | "apply" "integral" "identity" -> integral_identity_rule
@@ -98,6 +100,8 @@ grammar = r"""
         | "apply" "limit" CNAME "->" expr "both" "sides" -> apply_limit_rule
         | "expand" "definition" "for" CNAME -> expand_definition_rule
         | "fold" "definition" "for" CNAME -> fold_definition_rule
+        | "exchange" "derivative" "and" "integral" -> exchange_deriv_int_rule
+        | "substitute" inst_equation ("," inst_equation)* "in" "equation" -> inst_equation_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -431,6 +435,17 @@ class ExprTransformer(Transformer):
     def fold_definition_rule(self, func_name):
         from integral import rules
         return rules.FoldDefinition(str(func_name))
+
+    def exchange_deriv_int_rule(self):
+        from integral import rules
+        return rules.DerivIntExchange()
+    
+    def inst_equation(self, var_name: Token, expr: Expr):
+        return {'var': str(var_name), 'expr': expr}
+    
+    def inst_equation_rule(self, *insts):
+        from integral import rules
+        return rules.VarSubsOfEquation(list(insts))
 
     def full_simplify_rule(self):
         from integral import rules

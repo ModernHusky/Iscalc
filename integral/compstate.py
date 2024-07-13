@@ -217,6 +217,11 @@ class Goal(StateItem):
             print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
         else:
             print("prove %s" % self.goal)
+        for func_def in self.definitions:
+            if func_def.conds and func_def.conds.data:
+                print("define %s for %s" % (func_def.eq, ', '.join(str(cond) for cond in func_def.conds.data)))
+            else:
+                print("define %s" % func_def.eq)
         for n, subgoal in self.subgoals:
             if subgoal.conds and subgoal.conds.data:
                 print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
