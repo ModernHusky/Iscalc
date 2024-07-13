@@ -52,6 +52,19 @@ class Identity:
     def __repr__(self):
         return str(self)
 
+    # TODO: here oblig is of type ProofObligation
+    def covers_obligation(self, oblig):
+        # List of conditions is a subset of conditions on obligation
+        for cond in self.conds.data:
+            if cond not in oblig.conds.data:
+                return False
+
+        # Satisfies the goal in one branch
+        for branch in oblig.branches:
+            if len(branch.exprs) == 1 and self.expr == branch.exprs[0]:
+                return True
+            
+        return False
 
 class Context:
     """Maintains the current context of calculation.

@@ -181,7 +181,16 @@ class Goal(StateItem):
         self.ctx.extend_fixes(self.fixes)
 
         # Check well-formedness of the goal
-        self.proof_obligations = check_wellformed(goal, self.ctx)
+        proof_obligations_raw = check_wellformed(goal, self.ctx)
+        self.proof_obligations = []
+        for oblig in proof_obligations_raw:
+            found = False
+            for _, subgoal in self.ctx.subgoals.items():
+                if subgoal.covers_obligation(oblig):
+                    found = True
+                    break
+            if not found:
+                self.proof_obligations.append(oblig)
         self.wellformed = (len(self.proof_obligations) == 0)
 
         # List of subgoals
@@ -236,6 +245,9 @@ class Goal(StateItem):
     def is_finished(self):
         # all conds are satisfied under context of proof
         if self.proof == None:
+            return False
+        if not self.wellformed:
+            print("%s, %s" % (self.goal, self.wellformed))
             return False
         for n, subgoal in self.subgoals:
             if not subgoal.is_finished():
@@ -301,6 +313,19 @@ class Goal(StateItem):
             res["fixes"] = self.fixes.export()
         return res
     
+    def covers_obligation(self, oblig: rules.ProofObligation) -> bool:
+        # List of conditions is a subset of conditions on obligation
+        for cond in self.conds.data:
+            if cond not in oblig.conds.data:
+                return False
+
+        # Satisfies the goal in one branch
+        for branch in oblig.branches:
+            if len(branch.exprs) == 1 and self.goal == branch.exprs[0]:
+                return True
+            
+        return False
+
     def add_subgoal(self, name: str, expr: Union[str, Expr],
                     conds: Optional[List[Union[str, Expr]]] = None) -> "Goal":
         ctx = Context(self.ctx)
@@ -312,6 +337,22 @@ class Goal(StateItem):
             expr = parser.parse_expr(expr)
         goal = Goal(self, ctx, expr, conds=Conditions(conds))
         self.subgoals.append((name, goal))
+
+        # Recheck wellformedness conditions
+        ctx = Context(ctx)
+        ctx.subgoals[name] = Identity(expr, conds=Conditions(conds))
+        proof_obligations_raw = check_wellformed(self.goal, ctx)
+        self.proof_obligations = []
+        for oblig in proof_obligations_raw:
+            found = False
+            for _, subgoal in self.subgoals:
+                if subgoal.covers_obligation(oblig):
+                    found = True
+                    break
+            if not found:
+                self.proof_obligations.append(oblig)
+        self.wellformed = (len(self.proof_obligations) == 0)
+
         return self.subgoals[-1][1]
 
     def add_definition(self, expr: Union[str, Expr],
