@@ -4,7 +4,7 @@ Progress on the textbook *Inside Interesting Integrals* is summarized [here](Int
 
 ### Installation and usage:
 
-This project requires Python 3.9 or greater and npm:
+This project requires Python 3.10 or greater and npm:
 
 https://www.python.org/download/releases/3.0/:
 
