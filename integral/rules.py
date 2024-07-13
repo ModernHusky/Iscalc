@@ -1058,17 +1058,15 @@ class ApplyEquation(Rule):
 
     def __init__(self, eq: Union[Expr, str], source: Expr, eq_fixes: Fixes = None):
         self.name = "ApplyEquation"
-        if isinstance(eq, str):
-            eq = parser.parse_expr(eq)
         self.eq = eq
         self.source = source
         self.eq_fixes = eq_fixes if eq_fixes is not None else Fixes()
 
     def __str__(self):
-        return "apply equation: " + str(self.eq)
+        return "apply %s on %s" % (self.eq, self.source)
 
     def latex_str(self):
-        return "apply equation \\(%s\\)" % latex.convert_expr(self.eq)
+        return "apply %s on \\(%s\\)" % (self.eq, latex.convert_expr(self.source))
 
     def export(self):
         res = {
@@ -1093,6 +1091,7 @@ class ApplyEquation(Rule):
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
         assert self.source == e or self.source is None
+
         # Find lemma
         found = False
         conds = None
@@ -1100,6 +1099,12 @@ class ApplyEquation(Rule):
             if self.eq == identity.expr:
                 found = True
                 conds = identity.conds.data
+        if isinstance(self.eq, str):
+            res = ctx.get_subgoal(self.eq)
+            if res:
+                found = True
+                self.eq = res.expr
+                conds = res.conds.data
         for item in ctx.get_eq_conds().data:
             if self.eq == item:
                 if self.source is None:
@@ -2509,16 +2514,17 @@ class DerivEquation(Rule):
 
     def __init__(self, var: str):
         self.name = "DerivEquation"
-        self.var: str = var
+        self.var = var
 
     def __str__(self):
-        return "derivate both sides"
+        return "differentiate both sides at %s" % self.var
 
     def export(self):
         return {
             "name": self.name,
             "str": str(self),
-            "var": self.var
+            "var": self.var,
+            "latex_str": "differentiate both sides at \\(%s\\)" % self.var
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:

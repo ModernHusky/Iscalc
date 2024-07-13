@@ -15,6 +15,8 @@ class ActionTest(unittest.TestCase):
         for act in actions:
             a = parser.parse_action(act)
             state = state.process_action(a)
+        while not isinstance(state.past, action.InitialState):
+            state = state.past
         if print_state:
             print(state)
         self.assertTrue(state.is_finished())
@@ -438,6 +440,33 @@ class ActionTest(unittest.TestCase):
                 "simplify"
         ]
         self.check_actions("interesting", "easy03", actions)
+
+    def testEasy04(self):
+        actions = [
+            "prove (INT x:[1,oo]. log(x) / (x+1)^2) = log(2)",
+            "subgoal 1: (INT x:[0,oo]. 1 / (1 + exp(a*x))) = log(2) / a for a > 0",
+            "lhs:",
+                "substitute u for exp(a * x)",
+                "simplify",
+                "rewrite 1 / (u * (u+1)) to 1/u - 1/(u+1)",
+                "simplify",
+                "substitute y for u + 1",
+                "apply integral identity",
+                "simplify",
+            "done",
+            "subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a > 0",
+            "from 1:",
+                "differentiate both sides at a",
+                "simplify",
+                "substitute y for exp(a * x)",
+                "solve equation for INT y:[1,oo]. log(y) / (a ^ 2 * (y + 1) ^ 2)",
+            "done",
+            "lhs:",
+                "rewrite (x+1) ^ 2 to 1^2 * (x+1)^2",
+                "apply 2 on INT x:[1,oo]. log(x) / (1 ^ 2 * (x + 1) ^ 2)",
+                "simplify"
+        ]
+        self.check_actions("interesting", "easy04", actions)
 
 
 if __name__ == "__main__":

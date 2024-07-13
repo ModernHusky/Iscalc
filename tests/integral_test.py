@@ -1055,7 +1055,9 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 2.1.d
         file = compstate.CompFile("interesting", "easy04")
 
-        goal01 = file.add_goal("(INT x:[0, oo]. 1/(1 + exp(a*x))) = (log(2)/a)", conds=["a > 0"])
+        goal = file.add_goal("(INT x:[1, oo]. log(x)/(x+1)^2) = log(2)")
+
+        goal01 = goal.add_subgoal("1", "(INT x:[0, oo]. 1/(1 + exp(a*x))) = (log(2)/a)", conds=["a > 0"])
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Substitution(var_name="u", var_subst=parser.parse_expr("exp(a*x)")))
@@ -1066,23 +1068,21 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("(INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2))=log(2)/a^2", conds=["a > 0"])
-        proof = goal02.proof_by_rewrite_goal(begin=goal01)
+        goal02 = goal.add_subgoal("2", "(INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2))=log(2)/a^2", conds=["a > 0"])
+        proof = goal02.proof_by_rewrite_goal(begin="1")
         calc = proof.begin
         calc.perform_rule(rules.DerivEquation("a"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="x", var_subst="exp(a*x)"), "0.0"))
-        calc.perform_rule(rules.SolveEquation("INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)"))
-        assert goal02.is_finished()
+        calc.perform_rule(rules.Substitution(var_name="y", var_subst="exp(a*x)"))
+        calc.perform_rule(rules.SolveEquation("INT y:[1,oo]. log(y) / (a ^ 2 * (y + 1) ^ 2)"))
 
-        goal03 = file.add_goal("(INT x:[1, oo]. log(x)/(x+1)^2) = log(2)")
-        proof = goal03.proof_by_calculation()
+        proof = goal.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("(x+1)^2", "1^2 * (x+1)^2"))
         s = calc.parse_expr("INT x:[1,oo]. log(x) / (1 ^ 2 * (x + 1) ^ 2)")
-        calc.perform_rule(rules.ApplyEquation(goal02.goal, s))
+        calc.perform_rule(rules.ApplyEquation("2", s))
         calc.perform_rule(rules.Simplify())
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testEasy05(self):
         # Reference:
@@ -1104,6 +1104,7 @@ class IntegralTest(unittest.TestCase):
                                          "(1+sqrt(2))*log(1+2^(1/2*(1-sqrt(2))))"))
 
         self.checkAndOutput(file)
+
     def testEasy06(self):
         # Reference:
         # Inside interesting integrals, Section 2.1.f

@@ -1,12 +1,12 @@
 """State of computation"""
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from integral.expr import Expr, Var, Const, Type
 from integral import rules, expr
 from integral.fixes import Fixes, Info
 from integral.rules import Rule, check_wellformed
 from integral.conditions import Conditions
-from integral.context import Context
+from integral.context import Context, Identity
 from integral import latex
 from integral import parser
 from integral.poly import normalize
@@ -180,8 +180,12 @@ class Goal(StateItem):
         self.ctx.extend_condition(self.conds)
         self.ctx.extend_fixes(self.fixes)
 
+        # Check well-formedness of the goal
         self.proof_obligations = check_wellformed(goal, self.ctx)
         self.wellformed = (len(self.proof_obligations) == 0)
+
+        # List of subgoals
+        self.subgoals: List[Tuple[str, Goal]] = list()
 
     def __str__(self):
         if self.is_finished():
@@ -189,6 +193,9 @@ class Goal(StateItem):
         else:
             res = "Goal\n"
         res += "  %s\n" % self.goal
+        for n, subgoal in self.subgoals:
+            res += "subgoal %s\n" % n
+            res += str(subgoal)
         if self.proof is not None:
             res += str(self.proof)
         return res
@@ -202,6 +209,9 @@ class Goal(StateItem):
         # all conds are satisfied under context of proof
         if self.proof == None:
             return False
+        for n, subgoal in self.subgoals:
+            if not subgoal.is_finished():
+                return False
         if isinstance(self.proof, RewriteGoalProof):
             proof_has_conds = len(self.proof.begin.ctx.get_conds().data) > 0
             goal_has_conds = len(self.ctx.get_conds().data) > 0
@@ -236,6 +246,9 @@ class Goal(StateItem):
             res['proof'] = self.proof.export()
         if self.conds.data:
             res['conds'] = self.conds.export()
+        if self.subgoals:
+            res['subgoals'] = [{'name': name, 'goal': goal.export()}
+                               for name, goal in self.subgoals]
         if not self.wellformed:
             res['wellformed'] = False
             res['obligations'] = [p.export() for p in self.proof_obligations]
@@ -259,13 +272,30 @@ class Goal(StateItem):
         if not self.fixes.empty():
             res["fixes"] = self.fixes.export()
         return res
+    
+    def add_subgoal(self, name: str, expr: Union[str, Expr],
+                    conds: Optional[List[Union[str, Expr]]] = None) -> "Goal":
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        if isinstance(expr, str):
+            expr = parser.parse_expr(expr)
+        goal = Goal(self, ctx, expr, conds=Conditions(conds))
+        self.subgoals.append((name, goal))
+        return self.subgoals[-1][1]
 
-    def proof_by_rewrite_goal(self, *, begin: "Goal"):
-        self.proof = RewriteGoalProof(self, self.goal, begin=begin)
+    def proof_by_rewrite_goal(self, *, begin: str):
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        self.proof = RewriteGoalProof(self, ctx, self.goal, start=begin)
         return self.proof
 
     def proof_by_calculation(self):
-        self.proof = CalculationProof(self, self.goal)
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        self.proof = CalculationProof(self, ctx, self.goal)
         return self.proof
 
     def proof_by_induction(self, induct_var: str, start: int = 0):
@@ -465,17 +495,17 @@ class CalculationProof(StateItem):
 
     """
 
-    def __init__(self, parent, goal: Expr):
+    def __init__(self, parent, ctx: Context, goal: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = parent.ctx
+        self.ctx = ctx
         self.calcs = []
         if goal.is_compare():
             self.predicate = goal.op
             file = get_comp_file(parent)
             if isinstance(parent, Goal):
-                left_ctx = file.get_context(len(file.content) - 1)
-                right_ctx = file.get_context(len(file.content) - 1)
+                left_ctx = self.ctx
+                right_ctx = self.ctx
                 if len(parent.ctx.induct_hyps) > 0:
                     ih = parent.ctx.induct_hyps[0].expr
                     left_ctx.add_induct_hyp(ih)
@@ -780,22 +810,23 @@ class RewriteGoalProof(StateItem):
     """Prove an equation by transforming an initial equation.
     """
 
-    def __init__(self, parent: StateItem, goal: Expr, *, begin: Goal):
+    def __init__(self, parent: StateItem, ctx: Context, goal: Expr, *, start: str):
         if not goal.is_equals():
             raise AssertionError("RewriteGoalProof: goal is not an equality.")
         self.parent = parent
         self.goal = goal
-        self.ctx = parent.ctx
-        file = get_comp_file(parent)
-        self.begin_label = file.get_item_label(begin)
-        ctx = file.get_context(len(file.content) - 1)
-        self.begin = Calculation(self, ctx, begin.goal, connection_symbol='==>', conds=begin.conds, fixes=begin.fixes)
+        self.ctx = ctx
+        self.start = start
+        start_goal = ctx.get_subgoal(start)
+        if not start_goal:
+            raise AssertionError("RewriteGoalProof: start %s not found" % start)
+        self.begin = Calculation(self, ctx, start_goal.expr, connection_symbol='==>',
+                                 conds=start_goal.conds)
 
     def __eq__(self, other):
         if not isinstance(other, RewriteGoalProof):
             return False
-        return self.goal == other.goal and self.begin_label == other.begin_label and \
-               self.begin == other.begin
+        return self.goal == other.goal and self.begin == other.begin
 
     def is_finished(self):
         f1 = normalize(self.begin.last_expr.lhs, self.ctx) == normalize(self.goal.lhs, self.ctx)
@@ -807,9 +838,8 @@ class RewriteGoalProof(StateItem):
             "type": "RewriteGoalProof",
             "goal": str(self.goal),
             "latex_goal": latex.convert_expr(self.goal),
-            "start": self.begin.export(),
-            "finished": self.is_finished(),
-            "begin_label": str(self.begin_label)
+            "start": self.start,
+            "finished": self.is_finished()
         }
         return res
 
@@ -991,6 +1021,8 @@ class CompFile:
                 for idx, st in enumerate(self.content):
                     rec(st, loc.append(idx))
             elif isinstance(root, Goal):
+                for n, subgoal in root.subgoals:
+                    rec(subgoal, loc.append(int(n)))
                 rec(root.proof, loc.append(0))
             elif isinstance(root, RewriteGoalProof):
                 rec(root.begin, loc.append(0))
@@ -1219,9 +1251,9 @@ def parse_calculatioin(parent, item) -> Calculation:
         ctx = file.get_context(cur_id)
         begin_calc_fixes = parser.parse_fixes(item)
         fixes = ctx.get_fixes().update(begin_calc_fixes)
-        begin_goal = parser.parse_expr(item['start'], fixes=fixes)
+        start = item['start']
         conds = parse_conds(item, fixes=fixes)
-        res = Calculation(parent, ctx, begin_goal, conds=conds, fixes=begin_calc_fixes)
+        res = Calculation(parent, ctx, start, conds=conds, fixes=begin_calc_fixes)
     else:
         raise NotImplementedError
     for i, step in enumerate(item['steps']):
@@ -1244,6 +1276,10 @@ def parse_goal(parent, item, ih=None) -> Goal:
     goal = parser.parse_expr(item['goal'], fixes=fixes)
     conds = parse_conds(item, fixes=fixes)
     res = Goal(parent, ctx, goal, conds=conds, fixes=goal_fixes)
+    if 'subgoals' in item:
+        res.subgoals = []
+        for subgoal in item['subgoals']:
+            res.subgoals.append((subgoal['name'], parse_goal(res, subgoal['goal'])))
     if 'proof' in item:
         res.proof = parse_item(res, item['proof'])
     if 'wellformed' in item:
@@ -1273,7 +1309,7 @@ def parse_item(parent, item) -> StateItem:
     elif item['type'] == 'CalculationProof':
         fixes = parent.ctx.get_fixes()
         goal = parser.parse_expr(item['goal'], fixes=fixes)
-        res = CalculationProof(parent, goal)
+        res = CalculationProof(parent, parent.ctx, goal)
         for i, calc_item in enumerate(item['calcs']):
             res.calcs[i] = parse_calculatioin(res, calc_item)
         return res
@@ -1306,12 +1342,6 @@ def parse_item(parent, item) -> StateItem:
     elif item['type'] == 'RewriteGoalProof':
         fixes = parent.ctx.get_fixes()
         goal = parser.parse_expr(item['goal'], fixes=fixes)
-        file = parent
-        while not isinstance(file, CompFile):
-            file = file.parent
-        label = Label(item['begin_label'])
-        begin_goal = file.get_by_label(label)
-        assert isinstance(begin_goal, Goal)
         res = RewriteGoalProof(parent, goal, begin=begin_goal)
         res.begin = parse_calculatioin(res, item['start'])
         return res

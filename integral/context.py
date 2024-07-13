@@ -115,6 +115,9 @@ class Context:
         # List of fixes
         self.fixes: Fixes = Fixes()
 
+        # List of subgoals
+        self.subgoals: Dict[str, Identity] = dict()
+
         # List of identities of summation split
         self.summation_split_identities: List[Identity] = list()
 
@@ -268,6 +271,14 @@ class Context:
                         return [(func_name, t_pat.inst_pat(inst))] + list(args)
         return [(func_name, expr.FunType(*[expr.RealType for i in range(len(args) + 1)]))] + list(args)
 
+    def get_subgoal(self, name: str) -> Optional[Identity]:
+        res = self.parent.get_subgoal(name) if self.parent is not None else None
+        if res:
+            return res
+        if name in self.subgoals:
+            return self.subgoals[name]
+        else:
+            return None
 
     def get_eq_conds(self) -> Conditions:
         parent_conds = self.parent.get_conds() if self.parent is not None else Conditions()

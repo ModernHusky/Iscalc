@@ -66,6 +66,13 @@ grammar = r"""
 
     ?calculate_action: "calculate" expr -> calculate_action
 
+    ?subgoal_action: "subgoal" INT ":" expr -> subgoal_action
+        | "subgoal" INT ":" expr "for" conditions -> subgoal_with_condition_action
+
+    ?done_action: "done" -> done_action
+
+    ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
+
     ?lhs_action: "lhs" ":" -> lhs_action
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
@@ -78,11 +85,17 @@ grammar = r"""
         | "partial" "fraction" "decomposition" -> partial_fraction_decomposition_rule
         | "rewrite" expr "to" expr "using" "identity" -> apply_identity_rule
         | "solve" "integral" expr -> solve_integral_rule
+        | "solve" "equation" "for" expr -> solve_equation_rule
+        | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
+        | "apply" INT "on" expr -> apply_equation_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
 
     ?action: prove_action
+        | subgoal_action
+        | done_action
+        | rewrite_goal_action
         | calculate_action
         | lhs_action
         | rule -> rule_action
@@ -297,6 +310,22 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.CalculateAction(expr)
     
+    def subgoal_action(self, name: Token, expr: Expr):
+        from integral import action
+        return action.SubgoalAction(str(name), expr)
+    
+    def subgoal_with_condition_action(self, name: Token, expr: Expr, conditions: Tuple[Expr]):
+        from integral import action
+        return action.SubgoalAction(str(name), expr, conditions)
+    
+    def done_action(self):
+        from integral import action
+        return action.DoneAction()
+    
+    def rewrite_goal_action(self, name: Token):
+        from integral import action
+        return action.RewriteGoalAction(str(name))
+
     def lhs_action(self):
         from integral import action
         return action.LHSAction()
@@ -340,6 +369,18 @@ class ExprTransformer(Transformer):
     def solve_integral_rule(self, expr: Expr):
         from integral import rules
         return rules.IntegrateByEquation(expr)
+
+    def solve_equation_rule(self, expr: Expr):
+        from integral import rules
+        return rules.SolveEquation(expr)
+
+    def deriv_equation_rule(self, var: Token):
+        from integral import rules
+        return rules.DerivEquation(str(var))
+    
+    def apply_equation_rule(self, name: Token, source: Expr):
+        from integral import rules
+        return rules.ApplyEquation(str(name), source)
 
     def full_simplify_rule(self):
         from integral import rules
