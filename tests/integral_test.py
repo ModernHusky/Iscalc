@@ -1217,19 +1217,21 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 2.2, example 4
         file = compstate.CompFile("interesting", "Trick2d")
 
-        goal01 = file.add_goal("(INT x:[0,1]. log(x+1) / (x^2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))")
+        goal = file.add_goal("(INT x:[0,1]. log(x+1) / (x^2 + 1)) = pi / 8 * log(2)")
+
+        goal01 = goal.add_subgoal("1", "(INT x:[0,1]. log(x+1) / (x^2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))")
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("u", "x", "tan(u)"))
         calc.perform_rule(rules.ApplyIdentity("sec(u) ^ 2" , "tan(u)^2 + 1"))
         calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("(INT x:[0,1]. log(x+1) / (x^2 + 1)) "\
-                                +"= (pi / 4 * log(2) - (INT x:[0,1]. log(x+1) / (x^2 + 1)))")
+        goal02 = goal.add_subgoal("2", "(INT x:[0,1]. log(x+1) / (x^2 + 1)) "\
+                                       +"= (pi / 4 * log(2) - (INT x:[0,1]. log(x+1) / (x^2 + 1)))")
         proof = goal02.proof_by_calculation()
         calc = proof.lhs_calc
         s = calc.parse_expr("INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)")
-        calc.perform_rule(rules.ApplyEquation(goal01.goal, s))
+        calc.perform_rule(rules.ApplyEquation("1", s))
         calc.perform_rule(rules.SubstitutionInverse("y", "x", "pi/4 - y"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ApplyIdentity("tan(pi / 4 - y)",\
@@ -1242,23 +1244,23 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         s = calc.parse_expr("INT x:[0,pi / 4]. log(tan(x) + 1)")
-        calc.perform_rule(rules.ApplyEquation(goal01.goal, s))
-        calc = proof.rhs_calc
-        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.ApplyEquation("1", s))
 
-        goal03 = file.add_goal("(INT x:[0,1]. log(x+1) / (x^2 + 1)) = pi / 8 * log(2)")
-        proof = goal03.proof_by_rewrite_goal(begin=goal02)
+        proof = goal.proof_by_rewrite_goal(begin="2")
         calc = proof.begin
         calc.perform_rule(rules.SolveEquation("(INT x:[0,1]. log(x+1) / (x^2 + 1))"))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testTrick2e(self):
         # Reference:
         # Inside interesting integrals, Section 2.2, example 5
         file = compstate.CompFile("interesting", "Trick2e")
-        goal01 = file.add_goal("(INT x:[0,1]. log(x+1) / (x^2+1)) = (a * INT t:[0,a]. log(t+a) / (t^2 + a^2)) - pi / 4 * log(a)",
+
+        goal = file.add_goal("(INT t:[0,a]. log(t+a) / (t^2 + a^2)) = pi /(8*a) * log(2*a^2)",
                                conds=["a > 0"])
+
+        goal01 = goal.add_subgoal("1", "(INT x:[0,1]. log(x+1) / (x^2+1)) = (a * INT t:[0,a]. log(t+a) / (t^2 + a^2)) - pi / 4 * log(a)",
+                                  conds=["a > 0"])
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("t", "x", "t/a"))
@@ -1274,20 +1276,16 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ExpandPolynomial())
-        calc = proof.rhs_calc
-        calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("((a * INT t:[0,a]. log(t+a) / (t^2 + a^2)) - pi / 4 * log(a)) = pi * log(2) / 8",
+        goal02 = goal.add_subgoal("2", "((a * INT t:[0,a]. log(t+a) / (t^2 + a^2)) - pi / 4 * log(a)) = pi * log(2) / 8",
                                conds=["a > 0"])
         proof = goal02.proof_by_calculation()
         calc = proof.lhs_calc
         s = calc.parse_expr("(a * INT t:[0,a]. log(t+a) / (t^2 + a^2)) - pi / 4 * log(a)")
-        calc.perform_rule(rules.ApplyEquation(goal01.goal, s))
+        calc.perform_rule(rules.ApplyEquation("1", s))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
 
-        goal03 = file.add_goal("(INT t:[0,a]. log(t+a) / (t^2 + a^2)) = pi /(8*a) * log(2*a^2)",
-                               conds=["a > 0"])
-        proof = goal03.proof_by_rewrite_goal(begin=goal02)
+        proof = goal.proof_by_rewrite_goal(begin="2")
         calc = proof.begin
         calc.perform_rule(rules.SolveEquation("INT t:[0,a]. log(t+a) / (t^2 + a^2)"))
         calc.perform_rule(rules.Equation("pi * log(a) / 4", "1/8 * pi * (2 * log(a))"))
@@ -1295,8 +1293,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("1/8 * pi * log(a ^ 2) + pi * log(2) / 8", "1/8 * pi * (log(2) + log(a^2))"))
         calc.perform_rule(rules.Equation("(log(2) + log(a ^ 2))", "log(2 * a^2)"))
         calc.perform_rule(rules.Equation("1 / a * (1/8 * pi * log(2 * a ^ 2))", "pi / (8 * a) * log(2 * a ^ 2)"))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testPartialFraction(self):
         # Reference

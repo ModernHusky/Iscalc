@@ -563,6 +563,84 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Trick2c", actions)
 
+    def testTrick2d(self):
+        actions = """
+            prove (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 8 * log(2)
+            subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))
+            lhs:
+                inverse substitute tan(u) for x creating u
+                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1 using identity
+                simplify
+            done
+            subgoal 2: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) - (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1))
+            lhs:
+                apply 1 on INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)
+                inverse substitute pi / 4 - y for x creating y
+                simplify
+                rewrite tan(pi / 4 - y) to (tan(pi / 4) - tan(y)) / (1 + tan(pi / 4) * tan(y)) using identity
+                simplify
+                rewrite (-tan(y) + 1) / (tan(y) + 1) + 1 to 2 / (1 + tan(y))
+                rewrite log(2 / (1 + tan(y))) to log(2) - log(1 + tan(y)) using identity
+                apply integral identity
+                simplify
+                apply 1 on INT x:[0,pi / 4]. log(tan(x) + 1)
+            done
+            from 2:
+                solve equation for INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)
+        """
+        self.check_actions("interesting", "Trick2d", actions)
+
+    def testTrick2e(self):
+        actions = """
+            prove (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) = pi / (8 * a) * log(2 * a ^ 2) for a > 0
+            subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) for a > 0
+            lhs:
+                inverse substitute t / a for x creating t
+                simplify
+                rewrite 1 / (t ^ 2 / a ^ 2 + 1) * log(t / a + 1) to log(t / a + 1) * a ^ 2 / (t ^ 2 + a ^ 2)
+                rewrite t / a + 1 to (t + a) / a
+                simplify
+                rewrite log((a + t) / a) to log(a + t) - log(a) using identity
+                rewrite 1 / (a ^ 2 + t ^ 2) * (log(a + t) - log(a)) to log(a + t) / (a ^ 2 + t ^ 2) - log(a) / (a ^ 2 + t ^ 2)
+                simplify
+                apply integral identity
+                simplify
+                expand polynomial
+            done
+            subgoal 2: a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) = pi * log(2) / 8 for a > 0
+            lhs:
+                apply 1 on a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a)
+                apply integral identity
+            done
+            from 2:
+                solve equation for INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)
+                rewrite pi * log(a) / 4 to 1/8 * pi * (2 * log(a))
+                rewrite 2 * log(a) to log(a ^ 2)
+                rewrite 1/8 * pi * log(a ^ 2) + pi * log(2) / 8 to 1/8 * pi * (log(2) + log(a ^ 2))
+                rewrite log(2) + log(a ^ 2) to log(2 * a ^ 2)
+                rewrite 1 / a * (1/8 * pi * log(2 * a ^ 2)) to pi / (8 * a) * log(2 * a ^ 2)
+        """
+        self.check_actions("interesting", "Trick2e", actions)
+
+    def testPartialFraction(self):
+        actions = """
+            prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
+            lhs:
+                expand definition for cosh (all)
+                rewrite x ^ 4 + 2 * x ^ 2 * ((exp(-(2 * a)) + exp(2 * a)) / 2) + 1 to (x ^ 2 + exp(2 * a)) * (x ^ 2 + exp(-(2 * a)))
+                rewrite 1 / ((x ^ 2 + exp(2 * a)) * (x ^ 2 + exp(-(2 * a)))) to 1 / (exp(2 * a) - exp(-(2 * a))) * (1 / (x ^ 2 + exp(-(2 * a))) - 1 / (x ^ 2 + exp(2 * a)))
+                simplify
+                rewrite exp(-(2 * a)) to exp(-a) ^ 2
+                rewrite exp(-(2 * a)) to exp(-a) ^ 2
+                rewrite exp(2 * a) to exp(a) ^ 2
+                rewrite exp(2 * a) to exp(a) ^ 2
+                apply integral identity
+                simplify
+                rewrite to pi / (4 * ((exp(a) + exp(-a)) / 2))
+                fold definition for cosh (all)
+        """
+        self.check_actions("interesting", "partialFraction", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

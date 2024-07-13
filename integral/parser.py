@@ -82,6 +82,7 @@ grammar = r"""
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
         | "rewrite" expr "to" expr -> equation_rule
+        | "rewrite" "to" expr -> equation_none_rule
         | "expand" "polynomial" -> expand_polynomial_rule
         | "partial" "fraction" "decomposition" -> partial_fraction_decomposition_rule
         | "rewrite" expr "to" expr "using" "identity" -> apply_identity_rule
@@ -90,6 +91,7 @@ grammar = r"""
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
         | "apply" INT "on" expr -> apply_equation_rule
         | "expand" "definition" "for" CNAME -> expand_definition_rule
+        | "fold" "definition" "for" CNAME -> fold_definition_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -363,6 +365,10 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.Equation(old_expr, new_expr)
 
+    def equation_none_rule(self, new_expr: Expr):
+        from integral import rules
+        return rules.Equation(old_expr=None, new_expr=new_expr)
+
     def expand_polynomial_rule(self):
         from integral import rules
         return rules.ExpandPolynomial()
@@ -394,6 +400,10 @@ class ExprTransformer(Transformer):
     def expand_definition_rule(self, func_name: Token):
         from integral import rules
         return rules.ExpandDefinition(str(func_name))
+
+    def fold_definition_rule(self, func_name):
+        from integral import rules
+        return rules.FoldDefinition(str(func_name))
 
     def full_simplify_rule(self):
         from integral import rules

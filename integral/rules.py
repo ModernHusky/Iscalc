@@ -1163,15 +1163,17 @@ class ApplyEquation(Rule):
         # Find lemma
         found = False
         conds = None
+        found_eq = None
         for identity in ctx.get_lemmas():
             if self.eq == identity.expr:
                 found = True
+                found_eq = self.eq
                 conds = identity.conds.data
         if isinstance(self.eq, str):
             res = ctx.get_subgoal(self.eq)
             if res:
                 found = True
-                self.eq = res.expr
+                found_eq = res.expr
                 conds = res.conds.data
         for item in ctx.get_eq_conds().data:
             if self.eq == item:
@@ -1186,11 +1188,12 @@ class ApplyEquation(Rule):
                     if self.source == item.rhs:
                         return item.lhs
                 found = True
+                fouon_eq = self.eq
                 conds = []
         assert found, "ApplyEquation: lemma %s not found" % self.eq
 
         # First try to match the current term with left or right side.
-        pat = expr.expr_to_pattern(self.eq)
+        pat = expr.expr_to_pattern(found_eq)
         conds_pattern = [expr.expr_to_pattern(cond) for cond in conds]
         inst_lhs = expr.match(e, pat.lhs)
         inst_rhs = expr.match(e, pat.rhs)
@@ -1223,7 +1226,7 @@ class ApplyEquation(Rule):
                     return tmp
         # print("solve equation %s for %s"%(self.eq, e))
         # Finally, try to solve for e in the equation.
-        res = solve_for_term(self.eq, e, ctx)
+        res = solve_for_term(found_eq, e, ctx)
         if res is not None:
             flag = True
             for cond in conds:
@@ -2132,10 +2135,10 @@ class FoldDefinition(Rule):
     def __init__(self, func_name: str):
         self.name = "FoldDefinition"
         assert isinstance(func_name, str)
-        self.func_name: str = func_name
+        self.func_name = func_name
 
     def __str__(self):
-        return "fold definition"
+        return "fold definition for %s" % self.func_name
 
     def export(self):
         return {

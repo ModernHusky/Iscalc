@@ -201,10 +201,13 @@ class Goal(StateItem):
         return res
 
     def print_entry(self):
-        print("prove %s" % self.goal)
+        if self.conds and self.conds.data:
+            print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
+        else:
+            print("prove %s" % self.goal)
         for n, subgoal in self.subgoals:
             if subgoal.conds and subgoal.conds.data:
-                print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(cond for cond in subgoal.conds.data)))
+                print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
             else:
                 print("subgoal %s: %s" % (n, subgoal.goal))
             subgoal.print_entry()
@@ -217,6 +220,10 @@ class Goal(StateItem):
                 print("rhs:")
                 for step in self.proof.rhs_calc.steps:
                     print("    " + str(step.rule))
+        elif isinstance(self.proof, RewriteGoalProof):
+            print("from %s:" % self.proof.start)
+            for step in self.proof.begin.steps:
+                print("    " + str(step.rule))
 
     def __eq__(self, other):
         if not isinstance(other, Goal):
