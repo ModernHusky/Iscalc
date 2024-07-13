@@ -12,6 +12,7 @@ class ActionTest(unittest.TestCase):
     def check_actions(self, base_file, current_file, actions, print_state=False):
         file = compstate.CompFile(base_file, current_file)
         state = action.InitialState(file)
+        actions = [s for s in actions.split('\n') if s.strip()]
         for act in actions:
             a = parser.parse_action(act)
             state = state.process_action(a)
@@ -22,450 +23,450 @@ class ActionTest(unittest.TestCase):
         self.assertTrue(state.is_finished())
 
     def testTongji(self):
-        actions = [
-            "calculate INT x:[2,3]. 2 * x + x ^ 2",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[2,3]. 2 * x + x ^ 2
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0,1]. (3 * x + 1) ^ (-2)",
-            "substitute u for 3 * x + 1",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0,1]. (3 * x + 1) ^ (-2)
+            substitute u for 3 * x + 1
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0,1]. exp(6 * x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0,1]. exp(6 * x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-1,2]. x * exp(x)",
-            "integrate by parts with u = x, v = exp(x)",
-            "apply integral identity",
-            "simplify",
-        ]
+        actions = """
+            calculate INT x:[-1,2]. x * exp(x)
+            integrate by parts with u = x, v = exp(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0,pi/4]. sin(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0,pi/4]. sin(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0,1]. 3*x^2 - x + 1",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0,1]. 3*x^2 - x + 1
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1,2]. x^2 + 1/x^4",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1,2]. x^2 + 1/x^4
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[pi/3, pi]. sin(2*x + pi/3)",
-            "substitute u for 2*x + pi/3",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[pi/3, pi]. sin(2*x + pi/3)
+            substitute u for 2*x + pi/3
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[4, 9]. x ^ (1 / 3) * (x ^ (1 / 2) + 1)",
-            "expand polynomial",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[4, 9]. x ^ (1 / 3) * (x ^ (1 / 2) + 1)
+            expand polynomial
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-1, 0]. (3 * x ^ 4 + 3 * x ^ 2 + 1) / (x ^ 2 + 1)",
-            "partial fraction decomposition",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[-1, 0]. (3 * x ^ 4 + 3 * x ^ 2 + 1) / (x ^ 2 + 1)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[4, exp(1) + 3]. (x ^ 3 - 12 * x ^ 2 - 42) / (x - 3)",
-            "partial fraction decomposition",
-            "apply integral identity",
-            "simplify",
-            "substitute u for x - 3",
-            "apply integral identity",
-            "expand polynomial",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[4, exp(1) + 3]. (x ^ 3 - 12 * x ^ 2 - 42) / (x - 3)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+            substitute u for x - 3
+            apply integral identity
+            expand polynomial
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, pi / 2]. sin(x) * cos(x) ^ 3",
-            "substitute u for cos(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, pi / 2]. sin(x) * cos(x) ^ 3
+            substitute u for cos(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, pi]. 1 - sin(x) ^ 3",
-            "simplify",
-            "rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2",
-            "rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity",
-            "substitute u for cos(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, pi]. 1 - sin(x) ^ 3
+            simplify
+            rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
+            rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
+            substitute u for cos(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[pi/6, pi/2]. cos(x) ^ 2",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[pi/6, pi/2]. cos(x) ^ 2
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)",
-            "inverse substitute sin(u) for x creating u",
-            "rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2 using identity",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
+            inverse substitute sin(u) for x creating u
+            rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2 using identity
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)",
-            "inverse substitute sqrt(2) * sin(u) for x creating u",
-            "simplify",
-            "rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
+            inverse substitute sqrt(2) * sin(u) for x creating u
+            simplify
+            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)",
-            "inverse substitute 2 * sin(u) for y creating u",
-            "simplify",
-            "rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity",
-            "simplify",
-            "apply integral identity",
-            "expand polynomial"
-        ]
+        actions = """
+            calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
+            inverse substitute 2 * sin(u) for y creating u
+            simplify
+            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+            simplify
+            apply integral identity
+            expand polynomial
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1/sqrt(2), 1]. sqrt(1 - x^2) / x ^ 2",
-            "inverse substitute sin(u) for x creating u",
-            "simplify",
-            "rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity",
-            "simplify",
-            "rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2 using identity",
-            "expand polynomial",
-            "simplify",
-            "rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2 using identity",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1/sqrt(2), 1]. sqrt(1 - x^2) / x ^ 2
+            inverse substitute sin(u) for x creating u
+            simplify
+            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+            simplify
+            rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2 using identity
+            expand polynomial
+            simplify
+            rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2 using identity
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-1, 1]. x / sqrt(5 - 4 * x)",
-            "substitute u for 5 - 4 * x",
-            "expand polynomial",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[-1, 1]. x / sqrt(5 - 4 * x)
+            substitute u for 5 - 4 * x
+            expand polynomial
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1,4]. 1 / (1 + sqrt(x))",
-            "substitute u for sqrt(x)",
-            "substitute v for u + 1",
-            "expand polynomial",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1,4]. 1 / (1 + sqrt(x))
+            substitute u for sqrt(x)
+            substitute v for u + 1
+            expand polynomial
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[3/4, 1]. 1 / (sqrt(1-x) - 1)",
-            "substitute u for sqrt(1 - x)",
-            "substitute v for u - 1",
-            "expand polynomial",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[3/4, 1]. 1 / (sqrt(1-x) - 1)
+            substitute u for sqrt(1 - x)
+            substitute v for u - 1
+            expand polynomial
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT t:[0, 1]. t * exp(-t ^ 2 / 2)",
-            "substitute u for t ^ 2 / 2",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT t:[0, 1]. t * exp(-t ^ 2 / 2)
+            substitute u for t ^ 2 / 2
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1, exp(2)]. 1 / (x * sqrt(1 + log(x)))",
-            "substitute u for 1 + log(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1, exp(2)]. 1 / (x * sqrt(1 + log(x)))
+            substitute u for 1 + log(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-2, 0]. (x + 2) / (x^2 + 2*x + 2)",
-            "rewrite x^2 + 2*x + 2 to (x + 1) ^ 2 + 1",
-            "substitute u for x + 1",
-            "expand polynomial",
-            "simplify",
-            "split region at 0",
-            "substitute v for u ^ 2 + 1",
-            "apply integral identity",
-            "substitute v for u ^ 2 + 1",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[-2, 0]. (x + 2) / (x^2 + 2*x + 2)
+            rewrite x^2 + 2*x + 2 to (x + 1) ^ 2 + 1
+            substitute u for x + 1
+            expand polynomial
+            simplify
+            split region at 0
+            substitute v for u ^ 2 + 1
+            apply integral identity
+            substitute v for u ^ 2 + 1
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4",
-            "rewrite cos(x) ^ 4 to (cos(x) ^ 2) ^ 2",
-            "rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2 using identity",
-            "expand polynomial",
-            "substitute u for 2 * x",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4
+            rewrite cos(x) ^ 4 to (cos(x) ^ 2) ^ 2
+            rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2 using identity
+            expand polynomial
+            substitute u for 2 * x
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[-pi/2, pi/2]. sqrt(cos(x) - cos(x)^3)",
-            "rewrite cos(x) - cos(x)^3 to cos(x) * (1 - cos(x)^2)",
-            "rewrite 1 - cos(x)^2 to sin(x)^2 using identity",
-            "simplify",
-            "split region at 0",
-            "simplify",
-            "substitute u for cos(x)",
-            "apply integral identity",
-            "substitute u for cos(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[-pi/2, pi/2]. sqrt(cos(x) - cos(x)^3)
+            rewrite cos(x) - cos(x)^3 to cos(x) * (1 - cos(x)^2)
+            rewrite 1 - cos(x)^2 to sin(x)^2 using identity
+            simplify
+            split region at 0
+            simplify
+            substitute u for cos(x)
+            apply integral identity
+            substitute u for cos(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, pi]. sqrt(1 + cos(2*x))",
-            "rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1 using identity",
-            "simplify",
-            "split region at pi / 2",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, pi]. sqrt(1 + cos(2*x))
+            rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1 using identity
+            simplify
+            split region at pi / 2
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, 1]. x * exp(-x)",
-            "integrate by parts with u = x, v = -exp(-x)",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, 1]. x * exp(-x)
+            integrate by parts with u = x, v = -exp(-x)
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1, exp(1)]. x * log(x)",
-            "integrate by parts with u = log(x) / 2, v = x ^ 2",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1, exp(1)]. x * log(x)
+            integrate by parts with u = log(x) / 2, v = x ^ 2
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[pi/4, pi/3]. x / sin(x)^2",
-            "rewrite sin(x) ^ 2 to csc(x) ^ -2 using identity",
-            "integrate by parts with u = x, v = -cot(x)",
-            "simplify",
-            "rewrite cot(x) to cos(x) / sin(x) using identity",
-            "substitute u for sin(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[pi/4, pi/3]. x / sin(x)^2
+            rewrite sin(x) ^ 2 to csc(x) ^ -2 using identity
+            integrate by parts with u = x, v = -cot(x)
+            simplify
+            rewrite cot(x) to cos(x) / sin(x) using identity
+            substitute u for sin(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1, 4]. log(x) / sqrt(x)",
-            "integrate by parts with u = 2 * log(x), v = sqrt(x)",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1, 4]. log(x) / sqrt(x)
+            integrate by parts with u = 2 * log(x), v = sqrt(x)
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, 1]. x * atan(x)",
-            "integrate by parts with u = atan(x) / 2, v = x ^ 2",
-            "simplify",
-            "rewrite x^2 / (2 * x^2 + 2) to (1 - 1 / (x^2 + 1)) / 2",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0, 1]. x * atan(x)
+            integrate by parts with u = atan(x) / 2, v = x ^ 2
+            simplify
+            rewrite x^2 / (2 * x^2 + 2) to (1 - 1 / (x^2 + 1)) / 2
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0, pi/2]. exp(2*x) * cos(x)",
-            "integrate by parts with u = exp(2*x), v = sin(x)",
-            "simplify",
-            "integrate by parts with u = exp(2*x), v = -cos(x)",
-            "simplify",
-            "solve integral INT x:[0, pi/2]. exp(2*x)*cos(x)"
-        ]
+        actions = """
+            calculate INT x:[0, pi/2]. exp(2*x) * cos(x)
+            integrate by parts with u = exp(2*x), v = sin(x)
+            simplify
+            integrate by parts with u = exp(2*x), v = -cos(x)
+            simplify
+            solve integral INT x:[0, pi/2]. exp(2*x)*cos(x)
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[0,pi]. (x * sin(x)) ^ 2",
-            "simplify",
-            "rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity",
-            "expand polynomial",
-            "simplify",
-            "integrate by parts with u = x^2 / 2, v = sin(2*x)",
-            "simplify",
-            "integrate by parts with u = x / 2, v = -cos(2*x)",
-            "simplify",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[0,pi]. (x * sin(x)) ^ 2
+            simplify
+            rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity
+            expand polynomial
+            simplify
+            integrate by parts with u = x^2 / 2, v = sin(2*x)
+            simplify
+            integrate by parts with u = x / 2, v = -cos(2*x)
+            simplify
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1, exp(1)]. sin(log(x))",
-            "substitute u for log(x)",
-            "integrate by parts with u = -exp(u), v = cos(u)",
-            "simplify",
-            "integrate by parts with u = exp(u), v = sin(u)",
-            "simplify",
-            "solve integral INT u:[0,1]. exp(u) * sin(u)"
-        ]
+        actions = """
+            calculate INT x:[1, exp(1)]. sin(log(x))
+            substitute u for log(x)
+            integrate by parts with u = -exp(u), v = cos(u)
+            simplify
+            integrate by parts with u = exp(u), v = sin(u)
+            simplify
+            solve integral INT u:[0,1]. exp(u) * sin(u)
+        """
         self.check_actions("base", "tongji", actions)
 
-        actions = [
-            "calculate INT x:[1/exp(1), exp(1)]. abs(log(x))",
-            "split region at 1",
-            "simplify",
-            "integrate by parts with u = log(x), v = x",
-            "simplify",
-            "integrate by parts with u = log(x), v = x",
-            "apply integral identity",
-            "simplify"
-        ]
+        actions = """
+            calculate INT x:[1/exp(1), exp(1)]. abs(log(x))
+            split region at 1
+            simplify
+            integrate by parts with u = log(x), v = x
+            simplify
+            integrate by parts with u = log(x), v = x
+            apply integral identity
+            simplify
+        """
         self.check_actions("base", "tongji", actions)
 
     def testChapter1Section5(self):
-        actions = [
-            "prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0",
-            "lhs:",
-                "split region at 1",
-                "inverse substitute 1 / u for x creating u",
-                "simplify",
-                "rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
+            lhs:
+                split region at 1
+                inverse substitute 1 / u for x creating u
+                simplify
+                rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1
+                simplify
+        """
         self.check_actions("interesting", "chapter1section5", actions)
 
     def testChapter1Section7(self):
-        actions = [
-            "prove (INT x:[0,1]. (x^4*(1-x)^4)/(1+x^2)) = 22/7 - pi",
-            "lhs:",
-                "rewrite (x^4*(1-x)^4)/(1+x^2) to (x^6-4*x^5+5*x^4-4*x^2+4)-4/(1+x^2)",
-                "simplify",
-                "apply integral identity",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[0,1]. (x^4*(1-x)^4)/(1+x^2)) = 22/7 - pi
+            lhs:
+                rewrite (x^4*(1-x)^4)/(1+x^2) to (x^6-4*x^5+5*x^4-4*x^2+4)-4/(1+x^2)
+                simplify
+                apply integral identity
+                simplify
+        """
         self.check_actions("interesting", "chapter1section7", actions)
 
     def testEasy01(self):
-        actions = [
-            "prove (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1) for a > -1",
-            "lhs:",
-                "substitute t for sqrt(x - 1)",
-                "simplify",
-                "substitute y for t / sqrt(a + 1)",
-                "rewrite y ^ 2 * (a + 1) + a + 1 to (a + 1) * (y^2 + 1)",
-                "apply integral identity",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1) for a > -1
+            lhs:
+                substitute t for sqrt(x - 1)
+                simplify
+                substitute y for t / sqrt(a + 1)
+                rewrite y ^ 2 * (a + 1) + a + 1 to (a + 1) * (y^2 + 1)
+                apply integral identity
+                simplify
+        """
         self.check_actions("interesting", "easy01", actions)
 
     def testEasy02(self):
-        actions = [
-            "prove (INT x:[0, oo]. log(1 + a^2 / x^2)) = a * pi for a > 0",
-            "lhs:",
-                "integrate by parts with u = log(1+a^2/x^2), v = x",
-                "simplify",
-                "rewrite x^2 * (a^2 / x^2 + 1) to a^2 + x^2",
-                "apply integral identity",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[0, oo]. log(1 + a^2 / x^2)) = a * pi for a > 0
+            lhs:
+                integrate by parts with u = log(1+a^2/x^2), v = x
+                simplify
+                rewrite x^2 * (a^2 / x^2 + 1) to a^2 + x^2
+                apply integral identity
+                simplify
+        """
         self.check_actions("interesting", "easy02", actions)
 
     def testEasy03(self):
-        actions = [
-            "prove (INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b) for b > 0",
-            "lhs:",
-                "inverse substitute 1/t for x creating t",
-                "rewrite log(1/t) to -log(t)",
-                "rewrite -log(t) / ((1/t)^2 + b^2) * -(1/t^2) to log(t) / (1 + b^2*t^2)",
-                "inverse substitute s/b for t creating s",
-                "rewrite log(s/b) to log(s) - log(b)",
-                "expand polynomial",
-                "apply integral identity",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b) for b > 0
+            lhs:
+                inverse substitute 1/t for x creating t
+                rewrite log(1/t) to -log(t)
+                rewrite -log(t) / ((1/t)^2 + b^2) * -(1/t^2) to log(t) / (1 + b^2*t^2)
+                inverse substitute s/b for t creating s
+                rewrite log(s/b) to log(s) - log(b)
+                expand polynomial
+                apply integral identity
+                simplify
+        """
         self.check_actions("interesting", "easy03", actions)
 
     def testEasy04(self):
-        actions = [
-            "prove (INT x:[1,oo]. log(x) / (x+1)^2) = log(2)",
-            "subgoal 1: (INT x:[0,oo]. 1 / (1 + exp(a*x))) = log(2) / a for a > 0",
-            "lhs:",
-                "substitute u for exp(a * x)",
-                "simplify",
-                "rewrite 1 / (u * (u+1)) to 1/u - 1/(u+1)",
-                "simplify",
-                "substitute y for u + 1",
-                "apply integral identity",
-                "simplify",
-            "done",
-            "subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a > 0",
-            "from 1:",
-                "differentiate both sides at a",
-                "simplify",
-                "substitute y for exp(a * x)",
-                "solve equation for INT y:[1,oo]. log(y) / (a ^ 2 * (y + 1) ^ 2)",
-            "done",
-            "lhs:",
-                "rewrite (x+1) ^ 2 to 1^2 * (x+1)^2",
-                "apply 2 on INT x:[1,oo]. log(x) / (1 ^ 2 * (x + 1) ^ 2)",
-                "simplify"
-        ]
+        actions = """
+            prove (INT x:[1,oo]. log(x) / (x+1)^2) = log(2)
+            subgoal 1: (INT x:[0,oo]. 1 / (1 + exp(a*x))) = log(2) / a for a > 0
+            lhs:
+                substitute u for exp(a * x)
+                simplify
+                rewrite 1 / (u * (u+1)) to 1/u - 1/(u+1)
+                simplify
+                substitute y for u + 1
+                apply integral identity
+                simplify
+            done
+            subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a > 0
+            from 1:
+                differentiate both sides at a
+                simplify
+                substitute y for exp(a * x)
+                solve equation for INT y:[1,oo]. log(y) / (a ^ 2 * (y + 1) ^ 2)
+            done
+            lhs:
+                rewrite (x+1) ^ 2 to 1^2 * (x+1)^2
+                apply 2 on INT x:[1,oo]. log(x) / (1 ^ 2 * (x + 1) ^ 2)
+                simplify
+        """
         self.check_actions("interesting", "easy04", actions)
 
 
