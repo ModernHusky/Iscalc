@@ -399,6 +399,46 @@ class ActionTest(unittest.TestCase):
         ]
         self.check_actions("interesting", "chapter1section7", actions)
 
+    def testEasy01(self):
+        actions = [
+            "prove (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1) for a > -1",
+            "lhs:",
+                "substitute t for sqrt(x - 1)",
+                "simplify",
+                "substitute y for t / sqrt(a + 1)",
+                "rewrite y ^ 2 * (a + 1) + a + 1 to (a + 1) * (y^2 + 1)",
+                "apply integral identity",
+                "simplify"
+        ]
+        self.check_actions("interesting", "easy01", actions)
+
+    def testEasy02(self):
+        actions = [
+            "prove (INT x:[0, oo]. log(1 + a^2 / x^2)) = a * pi for a > 0",
+            "lhs:",
+                "integrate by parts with u = log(1+a^2/x^2), v = x",
+                "simplify",
+                "rewrite x^2 * (a^2 / x^2 + 1) to a^2 + x^2",
+                "apply integral identity",
+                "simplify"
+        ]
+        self.check_actions("interesting", "easy02", actions)
+
+    def testEasy03(self):
+        actions = [
+            "prove (INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b) for b > 0",
+            "lhs:",
+                "inverse substitute 1/t for x creating t",
+                "rewrite log(1/t) to -log(t)",
+                "rewrite -log(t) / ((1/t)^2 + b^2) * -(1/t^2) to log(t) / (1 + b^2*t^2)",
+                "inverse substitute s/b for t creating s",
+                "rewrite log(s/b) to log(s) - log(b)",
+                "expand polynomial",
+                "apply integral identity",
+                "simplify"
+        ]
+        self.check_actions("interesting", "easy03", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,13 @@
 """Definition of internal language for actions."""
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from integral.expr import Expr
 from integral.rules import Rule
 from integral.context import Context
 from integral import compstate
 from integral.compstate import Calculation, StateItem, Goal, CompFile
+from integral.conditions import Conditions
 from integral import poly
 
 class Action:
@@ -16,11 +17,15 @@ class Action:
 
 class ProveAction(Action):
     """Start a proof."""
-    def __init__(self, expr: Expr):
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
         self.expr = expr
+        self.conditions = Conditions(conditions)
 
     def __str__(self):
-        return "prove %s" % self.expr
+        if self.conditions:
+            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+        else:
+            return "prove %s" % self.expr
 
 
 class CalculateAction(Action):
@@ -90,7 +95,8 @@ class InitialState(State):
             return CalculateState(self, calc)
         
         elif isinstance(action, ProveAction):
-            goal = compstate.Goal(self.comp_file, self.comp_file.ctx, action.expr)
+            goal = compstate.Goal(self.comp_file, self.comp_file.ctx, action.expr,
+                                  conds=action.conditions)
             return ProveState(self, goal)
         
         # Other actions are invalid
@@ -141,11 +147,14 @@ class CalculateState(State):
             raise StateException("Unknown action type %s" % type(action))
 
     def is_finished(self) -> bool:
-        if not self.calc.steps:
-            return False
+        if isinstance(self.past, InitialState):
+            if not self.calc.steps:
+                return False
 
-        res = self.calc.steps[-1].res
-        return res.is_evaluable() and poly.normalize(res, self.calc.ctx) == res
+            res = self.calc.steps[-1].res
+            return res.is_evaluable() and poly.normalize(res, self.calc.ctx) == res
+        else:
+            return self.past.is_finished()
 
     def __str__(self):
         return "(calculate)\n%s" % self.calc

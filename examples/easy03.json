@@ -136,14 +136,11 @@
                                         "$real"
                                     ]
                                 ],
-                                "latex_res": "-\\frac{1}{b} (\\int_{0}^{\\infty} \\frac{\\log{s}}{s ^ {2} + 1} - \\frac{\\log{b}}{s ^ {2} + 1} \\,ds)",
-                                "res": "-(1 / b * (INT s:[0,oo]. log(s) / (s ^ 2 + 1) - log(b) / (s ^ 2 + 1)))",
+                                "latex_res": "-\\frac{1}{b} (\\int_{0}^{\\infty} -\\frac{\\log{b}}{s ^ {2} + 1} + \\frac{\\log{s}}{s ^ {2} + 1} \\,ds)",
+                                "res": "-(1 / b * (INT s:[0,oo]. -(log(b) / (s ^ 2 + 1)) + log(s) / (s ^ 2 + 1)))",
                                 "rule": {
-                                    "latex_str": "rewrite \\(\\frac{1}{s ^ {2} + 1} (\\log{s} - \\log{b})\\) to \\(\\frac{\\log{s}}{s ^ {2} + 1} - \\frac{\\log{b}}{s ^ {2} + 1}\\)",
-                                    "name": "Equation",
-                                    "new_expr": "log(s) / (s ^ 2 + 1) - log(b) / (s ^ 2 + 1)",
-                                    "old_expr": "1 / (s ^ 2 + 1) * (log(s) - log(b))",
-                                    "str": "rewrite 1 / (s ^ 2 + 1) * (log(s) - log(b)) to log(s) / (s ^ 2 + 1) - log(b) / (s ^ 2 + 1)"
+                                    "name": "ExpandPolynomial",
+                                    "str": "expand polynomial"
                                 },
                                 "type": "CalculationStep"
                             },
@@ -154,8 +151,8 @@
                                         "$real"
                                     ]
                                 ],
-                                "latex_res": "-\\frac{1}{b} (0 - \\log{b} (\\left. \\tan^{-1}{s} \\right\\vert_{s=0}^{\\infty}))",
-                                "res": "-(1 / b * (0 - log(b) * ([atan(s)]_s=0,oo)))",
+                                "latex_res": "-\\frac{1}{b} (-\\log{b} (\\left. \\tan^{-1}{s} \\right\\vert_{s=0}^{\\infty}) + 0)",
+                                "res": "-(1 / b * (-(log(b) * ([atan(s)]_s=0,oo)) + 0))",
                                 "rule": {
                                     "name": "DefiniteIntegralIdentity",
                                     "str": "apply integral identity"

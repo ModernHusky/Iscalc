@@ -1015,7 +1015,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IntegrationByParts(u = u, v = v))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("x ^ 2 * (a ^ 2 / x ^ 2 + 1)", "(a^2 + x^2)"))
-        calc.perform_rule(rules.OnSubterm(rules.DefiniteIntegralIdentity()))
+        calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
         self.checkAndOutput(file)
@@ -1044,7 +1044,7 @@ class IntegralTest(unittest.TestCase):
         new_expr = parser.parse_expr("log(s) - log(b)")
         calc.perform_rule(rules.Equation(old_expr=old_expr, new_expr=new_expr))
 
-        calc.perform_rule(rules.Equation("1 / (s ^ 2 + 1) * (log(s) - log(b))", "log(s) / (s ^ 2 + 1) - log(b) / (s ^ 2 + 1)"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
