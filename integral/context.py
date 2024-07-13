@@ -292,6 +292,12 @@ class Context:
             return self.subgoals[name]
         else:
             return None
+        
+    def get_all_subgoals(self) -> Dict[str, Identity]:
+        res = self.parent.get_all_subgoals() if self.parent is not None else dict()
+        for name, identity in self.subgoals.items():
+            res[name] = identity
+        return res
 
     def get_eq_conds(self) -> Conditions:
         parent_conds = self.parent.get_conds() if self.parent is not None else Conditions()

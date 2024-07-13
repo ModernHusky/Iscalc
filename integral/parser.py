@@ -78,6 +78,7 @@ grammar = r"""
 
     ?lhs_action: "lhs" ":" -> lhs_action
     ?rhs_action: "rhs" ":" -> rhs_action
+    ?arg_action: "arg" ":" -> arg_action
 
     ?inst_equation: CNAME "for" expr -> inst_equation
 
@@ -102,6 +103,8 @@ grammar = r"""
         | "fold" "definition" "for" CNAME -> fold_definition_rule
         | "exchange" "derivative" "and" "integral" -> exchange_deriv_int_rule
         | "substitute" inst_equation ("," inst_equation)* "in" "equation" -> inst_equation_rule
+        | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_rule
+        | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -116,6 +119,7 @@ grammar = r"""
         | calculate_action
         | lhs_action
         | rhs_action
+        | arg_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -360,6 +364,10 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.RHSAction()
 
+    def arg_action(self):
+        from integral import action
+        return action.ArgAction()
+
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules
         return rules.Substitution(str(var_name), expr)
@@ -446,6 +454,14 @@ class ExprTransformer(Transformer):
     def inst_equation_rule(self, *insts):
         from integral import rules
         return rules.VarSubsOfEquation(list(insts))
+
+    def apply_series_rule(self, old_expr: Expr, index_var: Token):
+        from integral import rules
+        return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
+
+    def exchange_integral_sum_rule(self):
+        from integral import rules
+        return rules.IntSumExchange()
 
     def full_simplify_rule(self):
         from integral import rules

@@ -711,7 +711,7 @@ class SeriesExpansionIdentity(Rule):
         self.index_var = index_var
 
     def __str__(self):
-        return "apply series expansion"
+        return "apply series expansion on %s index %s" % (self.old_expr, self.index_var)
 
     def export(self):
         res = {
@@ -1585,7 +1585,8 @@ class Equation(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                raise AssertionError("Equation: old expression not found")
+                print(e)
+                raise RuleException("Equation", "old expression %s not found" % self.old_expr)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -2331,14 +2332,22 @@ class IntSumExchange(Rule):
             return True
         if su != expr.POS_INF:
             return True
+
         abs_body = normalize(Fun("abs", body), ctx)
         goal1 = Fun("converges", Summation(svar, sl, su, Integral(ivar, il, iu, abs_body)))
 
         abs_int = normalize(Fun("abs", Integral(ivar, il, iu, body)), ctx)
         goal2 = Fun("converges", Summation(svar, sl, su, abs_int))
+
         for lemma in ctx.get_lemmas():
-            if normalize(lemma.expr, ctx) == normalize(goal1, ctx) or \
-                    normalize(lemma.expr, ctx) == normalize(goal2, ctx):
+            if normalize(lemma.expr, ctx) == normalize(goal1, ctx):
+                return True
+            if normalize(lemma.expr, ctx) == normalize(goal2, ctx):
+                return True
+        for _, subgoal in ctx.get_all_subgoals().items():
+            if normalize(subgoal.expr, ctx) == normalize(goal1, ctx):
+                return True
+            if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
                 return True
         return False
 

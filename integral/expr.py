@@ -1320,10 +1320,10 @@ class Var(Expr):
             self.type = type
 
     def __hash__(self):
-        return hash((VAR, self.name, self.type))
+        return hash((VAR, self.name))
 
     def __eq__(self, other):
-        return isinstance(other, Var) and self.name == other.name and self.type == other.type
+        return isinstance(other, Var) and self.name == other.name
 
     def __str__(self):
         return self.name

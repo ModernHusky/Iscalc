@@ -229,14 +229,19 @@ class Goal(StateItem):
                 print("subgoal %s: %s" % (n, subgoal.goal))
             subgoal.print_entry()
         if isinstance(self.proof, CalculationProof):
-            if self.proof.lhs_calc and self.proof.lhs_calc.steps:
-                print("lhs:")
-                for step in self.proof.lhs_calc.steps:
+            if expr.is_fun(self.goal) and self.goal.func_name == "converges":
+                print("arg:")
+                for step in self.proof.arg_calc.steps:
                     print("    " + str(step.rule))
-            if self.proof.rhs_calc and self.proof.rhs_calc.steps:
-                print("rhs:")
-                for step in self.proof.rhs_calc.steps:
-                    print("    " + str(step.rule))
+            else:
+                if self.proof.lhs_calc and self.proof.lhs_calc.steps:
+                    print("lhs:")
+                    for step in self.proof.lhs_calc.steps:
+                        print("    " + str(step.rule))
+                if self.proof.rhs_calc and self.proof.rhs_calc.steps:
+                    print("rhs:")
+                    for step in self.proof.rhs_calc.steps:
+                        print("    " + str(step.rule))
         elif isinstance(self.proof, RewriteGoalProof):
             print("from %s:" % self.proof.start)
             for step in self.proof.begin.steps:
@@ -1014,9 +1019,12 @@ class CompFile:
         tmp = fixes
         fixes = self.ctx.get_fixes().update(tmp)
         if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i], fixes=fixes)
+            if isinstance(conds, Conditions):
+                pass
+            else:
+                for i in range(len(conds)):
+                    if isinstance(conds[i], str):
+                        conds[i] = parser.parse_expr(conds[i], fixes=fixes)
         else:
             conds = []
         if isinstance(funcdef, str):

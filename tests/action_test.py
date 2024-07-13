@@ -973,6 +973,27 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "FrullaniIntegral01", actions)
 
+    def testCatalanConstant01(self):
+        actions = """
+            prove (INT x:[0,1]. atan(x) / x) = G
+            define G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)
+            subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))
+            arg:
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                apply series expansion on atan(x) index n
+                rewrite x ^ (2 * n + 1) to x ^ (2 * n) * x
+                simplify
+                exchange integral and sum
+                apply integral identity
+                simplify
+            rhs:
+                expand definition for G
+        """
+        self.check_actions("interesting", "CatalanConstant01", actions, print_state=True)
 
 
 if __name__ == "__main__":

@@ -2681,8 +2681,10 @@ class IntegralTest(unittest.TestCase):
         # Define Catalan's constant
         file.add_definition("G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)")
 
-        goal = file.add_goal("converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))")
-        proof = goal.proof_by_calculation()
+        goal = file.add_goal("(INT x:[0, 1]. atan(x) / x) = G")
+
+        goal1 = goal.add_subgoal("1", "converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))")
+        proof = goal1.proof_by_calculation()
         calc = proof.arg_calc
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
@@ -2690,10 +2692,9 @@ class IntegralTest(unittest.TestCase):
         self.assertTrue(proof.is_finished())
 
         # Evaluate integral of atan(x) / x
-        goal = file.add_goal("(INT x:[0, 1]. atan(x) / x) = G")
         proof_of_goal = goal.proof_by_calculation()
         calc = proof_of_goal.lhs_calc
-        calc.perform_rule(rules.SeriesExpansionIdentity(old_expr="atan(x)"))
+        calc.perform_rule(rules.SeriesExpansionIdentity(old_expr="atan(x)", index_var="n"))
         s1 = calc.parse_expr("x ^ (2 * n + 1)")
         s2 = calc.parse_expr("x^ (2*n) * x")
         calc.perform_rule(rules.Equation(s1, s2))
@@ -2703,8 +2704,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc = proof_of_goal.rhs_calc
         calc.perform_rule(rules.ExpandDefinition("G"))
-
-        self.checkAndOutput(file)
+        goal.print_entry()
+        assert goal.is_finished()
 
     def testCatalanConstant02(self):
         # Reference:

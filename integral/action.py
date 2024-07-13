@@ -99,6 +99,15 @@ class RHSAction(Action):
     def __str__(self):
         return "rhs:"
 
+class ArgAction(Action):
+    """Perform a proof by working on the argument."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "arg:"
+
+
 class RuleAction(Action):
     """Apply rule."""
     def __init__(self, rule: Rule):
@@ -153,6 +162,11 @@ class InitialState(State):
                                   conds=action.conditions)
             return ProveState(self, goal)
         
+        # Add a definition
+        elif isinstance(action, DefineAction):
+            self.comp_file.add_definition(action.expr, conds=action.conditions)
+            return self
+        
         # Other actions are invalid
         elif isinstance(action, RuleAction):
             raise StateException("Cannot apply rule when at initial state.")
@@ -186,6 +200,13 @@ class ProveState(State):
             if not isinstance(self.goal.proof, compstate.CalculationProof):
                 raise StateException("rhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.rhs_calc)
+        
+        elif isinstance(action, ArgAction):
+            if not self.goal.proof:
+                self.goal.proof_by_calculation()
+            if not isinstance(self.goal.proof, compstate.CalculationProof):
+                raise StateException("arg: not in calculation proof")
+            return CalculateState(self, self.goal.proof.arg_calc)
 
         # Prove by rewriting goal
         elif isinstance(action, RewriteGoalAction):
