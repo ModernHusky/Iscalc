@@ -9,11 +9,14 @@ from integral import parser
 
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, base_file, current_file, actions, print_state=False):
+    def check_actions(self, base_file, current_file, actions,
+                      *, print_lines=False, print_state=False):
         file = compstate.CompFile(base_file, current_file)
         state = action.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
         for act in actions:
+            if print_lines:
+                print(act)
             a = parser.parse_action(act)
             state = state.process_action(a)
         while not isinstance(state.past, action.InitialState):
@@ -423,6 +426,45 @@ class ActionTest(unittest.TestCase):
                 apply 2 on I(m,b)
         """
         self.check_actions("base", "wallis", actions)
+
+    def testGammaFunction(self):
+        actions = """
+            define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n > 0
+            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n > 1
+            lhs:
+                expand definition for Gamma
+                integrate by parts with u = x ^ (n - 1), v = -exp(-x)
+                simplify
+            rhs:
+                expand definition for Gamma (all)
+            done
+
+            prove Gamma(n) = factorial(n - 1) for n >= 1
+            induction on n starting from 1
+                base:
+                lhs:
+                    expand definition for Gamma
+                    apply integral identity
+                    simplify
+                done
+                induct:
+                lhs:
+                    apply Gamma(n) = (n - 1) * Gamma(n - 1) on Gamma(n + 1)
+                    simplify
+                    apply induction hypothesis (all)
+                    rewrite n * factorial(n - 1) to factorial(n) using identity
+                done
+            done
+
+            calculate INT x:[0,oo]. exp(-(x ^ 3))
+            substitute y for x ^ 3
+            simplify
+            rewrite exp(-y) / y ^ (2/3) to exp(-y) * y ^ (1/3 - 1)
+            fold definition for Gamma (all)
+            rewrite to (4/3 - 1) * Gamma(4/3 - 1)
+            apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
+        """
+        self.check_actions("interesting", "GammaFunction", actions)
 
     def testChapter1Section5(self):
         actions = """

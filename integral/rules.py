@@ -1669,17 +1669,17 @@ class Equation(Rule):
                     return self.new_expr
 
         # rewrite limit expression
-        r = LimRewrite(self.old_expr, self.new_expr)
-        if r.eval(e, ctx) == self.new_expr:
-            return self.new_expr
-        if normalize(norm.normalize_exp(e), ctx) == normalize(self.new_expr, ctx):
-            return self.new_expr
-        t = e.type
-        if expr.is_matrix_type(t):
-            if expr.is_vector_type(t):
-                if ctx.check_condition(Op('=', Fun('norm', e), Const(0))) and \
-                        normalize(self.new_expr, ctx) == Fun(*ctx.get_func_type('zero_matrix', t.args[1], t.args[2])):
-                    return self.new_expr
+        # r = LimRewrite(self.old_expr, self.new_expr)
+        # if r.eval(e, ctx) == self.new_expr:
+        #     return self.new_expr
+        # if normalize(norm.normalize_exp(e), ctx) == normalize(self.new_expr, ctx):
+        #     return self.new_expr
+        # t = e.type
+        # if expr.is_matrix_type(t):
+        #     if expr.is_vector_type(t):
+        #         if ctx.check_condition(Op('=', Fun('norm', e), Const(0))) and \
+        #                 normalize(self.new_expr, ctx) == Fun(*ctx.get_func_type('zero_matrix', t.args[1], t.args[2])):
+        #             return self.new_expr
 
         raise RuleException("Equation", "rewriting %s to %s failed" % (e, self.new_expr))
 

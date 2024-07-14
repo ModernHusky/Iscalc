@@ -79,11 +79,18 @@ grammar = r"""
     ?induction_action: "induction" "on" CNAME -> induction_action
         | "induction" "on" CNAME "starting" "from" expr -> induction_starting_action
 
+    ?case_analysis_action: "case" "analysis" "on" expr -> case_analysis_action
+
     ?lhs_action: "lhs" ":" -> lhs_action
     ?rhs_action: "rhs" ":" -> rhs_action
     ?arg_action: "arg" ":" -> arg_action
     ?base_case_action: "base" ":" -> base_case_action
     ?induct_case_action: "induct" ":" -> induct_case_action
+    ?case_action: "case" "true" ":" -> case_true
+        | "case" "false" ":" -> case_false
+        | "case" "negative" ":" -> case_negative
+        | "case" "zero" ":" -> case_zero
+        | "case" "positive" ":" -> case_positive
 
     ?inst_equation: CNAME "for" expr -> inst_equation
 
@@ -103,6 +110,7 @@ grammar = r"""
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
         | "integrate" "both" "sides" -> integral_equation_rule
         | "apply" INT "on" expr -> apply_equation_rule
+        | "apply" expr "on" expr -> apply_equation_expr_rule
         | "apply" "limit" CNAME "->" expr "both" "sides" -> apply_limit_rule
         | "expand" "definition" "for" CNAME -> expand_definition_rule
         | "fold" "definition" "for" CNAME -> fold_definition_rule
@@ -123,6 +131,7 @@ grammar = r"""
         | done_action
         | rewrite_goal_action
         | induction_action
+        | case_analysis_action
         | define_action
         | calculate_action
         | lhs_action
@@ -130,6 +139,7 @@ grammar = r"""
         | arg_action
         | base_case_action
         | induct_case_action
+        | case_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -374,6 +384,10 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.InductionAction(str(var_name), start)
 
+    def case_analysis_action(self, split_cond: Expr):
+        from integral import action
+        return action.CaseAnalysisAction(split_cond)
+
     def lhs_action(self):
         from integral import action
         return action.LHSAction()
@@ -393,6 +407,26 @@ class ExprTransformer(Transformer):
     def induct_case_action(self):
         from integral import action
         return action.InductCaseAction()
+
+    def case_true(self):
+        from integral import action
+        return action.CaseAction("true")
+
+    def case_false(self):
+        from integral import action
+        return action.CaseAction("false")
+
+    def case_negative(self):
+        from integral import action
+        return action.CaseAction("negative")
+
+    def case_zero(self):
+        from integral import action
+        return action.CaseAction("zero")
+
+    def case_positive(self):
+        from integral import action
+        return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules
@@ -457,6 +491,10 @@ class ExprTransformer(Transformer):
     def apply_equation_rule(self, name: Token, source: Expr):
         from integral import rules
         return rules.ApplyEquation(str(name), source)
+    
+    def apply_equation_expr_rule(self, eq: Expr, source: Expr):
+        from integral import rules
+        return rules.ApplyEquation(eq, source)
 
     def apply_limit_rule(self, var_name: Token, limit: Expr):
         from integral import rules

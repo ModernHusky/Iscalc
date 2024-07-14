@@ -212,7 +212,7 @@ class Goal(StateItem):
             res += str(self.proof)
         return res
 
-    def print_entry(self, is_toplevel=False):
+    def print_entry(self, is_toplevel=True):
         if is_toplevel:
             if self.conds and self.conds.data:
                 print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
@@ -228,12 +228,14 @@ class Goal(StateItem):
                 print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
             else:
                 print("subgoal %s: %s" % (n, subgoal.goal))
-            subgoal.print_entry()
+            subgoal.print_entry(is_toplevel=False)
         if isinstance(self.proof, CalculationProof):
             self.proof.print_entry()
         elif isinstance(self.proof, RewriteGoalProof):
             self.proof.print_entry()
         elif isinstance(self.proof, InductionProof):
+            self.proof.print_entry()
+        elif isinstance(self.proof, CaseProof):
             self.proof.print_entry()
 
     def __eq__(self, other):
@@ -792,10 +794,10 @@ class InductionProof(StateItem):
             print("induction on %s starting from %s" % (self.induct_var, self.start))
         if self.base_case.proof:
             print("base:")
-            self.base_case.print_entry()
+            self.base_case.print_entry(is_toplevel=False)
         if self.induct_case.proof:
             print("induct:")
-            self.induct_case.print_entry()
+            self.induct_case.print_entry(is_toplevel=False)
         print("done")
 
     def is_finished(self):
@@ -892,6 +894,31 @@ class CaseProof(StateItem):
             return False
         return self.goal == other.goal and self.split_type == other.split_type and \
                self.split_cond == other.split_cond and self.cases == other.cases
+
+    def print_entry(self):
+        if self.split_type == "two-way":
+            print("case analysis on %s" % self.split_cond)
+            if self.cases[0].proof:
+                print("case true:")
+                self.cases[0].print_entry(is_toplevel=False)
+            if self.cases[1].proof:
+                print("case false:")
+                self.cases[1].print_entry(is_toplevel=False)
+            print("done")
+        elif self.split_type == "three-way":
+            print("case analysis on %s" % self.split_cond)
+            if self.cases[0].proof:
+                print("case negative:")
+                self.cases[0].print_entry(is_toplevel=False)
+            if self.cases[1].proof:
+                print("case zero:")
+                self.cases[1].print_entry(is_toplevel=False)
+            if self.cases[2].proof:
+                print("case positive:")
+                self.cases[2].print_entry(is_toplevel=False)
+            print("done")
+        else:
+            raise AssertionError
 
     def __str__(self):
         if self.is_finished():

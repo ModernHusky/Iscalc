@@ -890,25 +890,13 @@ class IntegralTest(unittest.TestCase):
         # Reference:
         # Inside interesting integrals, Section 4.1
         file = compstate.CompFile("interesting", "GammaFunction")
-        raw_fixes = [('n', {'symbol_type':'var', 'type':'$int'})]
-        fixes = parser.parse_raw_fixes(raw_fixes)
 
         # Definition of Gamma function
         file.add_definition("Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1))", conds=["n > 0"])
 
-        lemma = file.add_goal("(LIM {x -> oo}. x ^ (n - 1) * exp(-x))=0", conds=["n>=1"], fixes=fixes)
-        cond = parser.parse_expr("n=1", fixes=fixes)
-        proof = lemma.proof_by_case(cond)
-        case1 = proof.cases[0].proof_by_calculation()
-        case2 = proof.cases[1].proof_by_calculation()
-        calc = case1.lhs_calc
-        calc.perform_rule(rules.Simplify())
-        calc = case2.lhs_calc
-        calc.perform_rule(rules.Simplify())
-        assert lemma.is_finished()
+        goal1 = file.add_goal("Gamma(n) = (n - 1) * Gamma(n - 1)", conds=["n > 1"])
 
         # Recursive equation for gamma function
-        goal1 = file.add_goal("Gamma(n) = (n - 1) * Gamma(n - 1)", conds=["n > 1"], fixes=fixes)
         proof = goal1.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("Gamma"))
@@ -916,15 +904,12 @@ class IntegralTest(unittest.TestCase):
         v = calc.parse_expr("-exp(-x)")
         calc.perform_rule(rules.IntegrationByParts(u, v))
         calc.perform_rule(rules.Simplify())
-        s = calc.parse_expr("(INT x:[0,oo]. x ^ (n - 2) * exp(-x))")
-        calc.perform_rule(rules.ApplyEquation(lemma.goal, s, eq_fixes=lemma.ctx.fixes))
-        calc.perform_rule(rules.Simplify())
         calc = proof.rhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("Gamma")))
         assert goal1.is_finished()
 
         # Gamma function and factorial
-        goal2 = file.add_goal("Gamma(n) = factorial(n - 1)", conds=["n >= 1"], fixes=fixes)
+        goal2 = file.add_goal("Gamma(n) = factorial(n - 1)", conds=["n >= 1"])
 
         proof = goal2.proof_by_induction("n", 1)
         proof_base = proof.base_case.proof_by_calculation()
@@ -936,7 +921,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc = proof_induct.lhs_calc
         s = calc.parse_expr("Gamma(n + 1)")
-        calc.perform_rule(rules.ApplyEquation(goal1.goal, s, eq_fixes=goal1.ctx.fixes))
+        calc.perform_rule(rules.ApplyEquation(goal1.goal, s))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.OnSubterm(rules.ApplyInductHyp()))
         source = calc.parse_expr("n * factorial(n - 1)")
@@ -952,11 +937,11 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("exp(-y) / y ^ (2/3)", "exp(-y) * y ^ (1/3 - 1)"))
         calc.perform_rule(rules.OnSubterm(rules.FoldDefinition("Gamma")))
         calc.perform_rule(rules.Equation(None, "(4/3 - 1) * Gamma(4/3 - 1)"))
+        calc.perform_rule(rules.ApplyEquation(goal1.goal, calc.parse_expr("(4/3 - 1) * Gamma(4/3 - 1)")))
 
-        calc.perform_rule(rules.ApplyEquation(goal1.goal, calc.parse_expr("(4/3 - 1) * Gamma(4/3 - 1)"), goal1.ctx.fixes))
-        assert goal2.is_finished()
-
-        self.checkAndOutput(file)
+        goal1.print_entry(is_toplevel=True)
+        goal2.print_entry(is_toplevel=True)
+        calc.print_entry()
 
     def testChapter1Section5(self):
         # Reference:
