@@ -181,7 +181,16 @@ class Goal(StateItem):
         self.ctx.extend_fixes(self.fixes)
 
         # Check well-formedness of the goal
-        self.proof_obligations = check_wellformed(goal, self.ctx)
+        proof_obligations_raw = check_wellformed(goal, self.ctx)
+        self.proof_obligations = []
+        for oblig in proof_obligations_raw:
+            found = False
+            for _, subgoal in self.ctx.subgoals.items():
+                if subgoal.covers_obligation(oblig):
+                    found = True
+                    break
+            if not found:
+                self.proof_obligations.append(oblig)
         self.wellformed = (len(self.proof_obligations) == 0)
 
         # List of subgoals
@@ -203,30 +212,31 @@ class Goal(StateItem):
             res += str(self.proof)
         return res
 
-    def print_entry(self):
-        if self.conds and self.conds.data:
-            print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
-        else:
-            print("prove %s" % self.goal)
+    def print_entry(self, is_toplevel=True):
+        if is_toplevel:
+            if self.conds and self.conds.data:
+                print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
+            else:
+                print("prove %s" % self.goal)
+        for func_def in self.definitions:
+            if func_def.conds and func_def.conds.data:
+                print("define %s for %s" % (func_def.eq, ', '.join(str(cond) for cond in func_def.conds.data)))
+            else:
+                print("define %s" % func_def.eq)
         for n, subgoal in self.subgoals:
             if subgoal.conds and subgoal.conds.data:
                 print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
             else:
                 print("subgoal %s: %s" % (n, subgoal.goal))
-            subgoal.print_entry()
+            subgoal.print_entry(is_toplevel=False)
         if isinstance(self.proof, CalculationProof):
-            if self.proof.lhs_calc and self.proof.lhs_calc.steps:
-                print("lhs:")
-                for step in self.proof.lhs_calc.steps:
-                    print("    " + str(step.rule))
-            if self.proof.rhs_calc and self.proof.rhs_calc.steps:
-                print("rhs:")
-                for step in self.proof.rhs_calc.steps:
-                    print("    " + str(step.rule))
+            self.proof.print_entry()
         elif isinstance(self.proof, RewriteGoalProof):
-            print("from %s:" % self.proof.start)
-            for step in self.proof.begin.steps:
-                print("    " + str(step.rule))
+            self.proof.print_entry()
+        elif isinstance(self.proof, InductionProof):
+            self.proof.print_entry()
+        elif isinstance(self.proof, CaseProof):
+            self.proof.print_entry()
 
     def __eq__(self, other):
         if not isinstance(other, Goal):
@@ -236,6 +246,9 @@ class Goal(StateItem):
     def is_finished(self):
         # all conds are satisfied under context of proof
         if self.proof == None:
+            return False
+        if not self.wellformed:
+            print("%s, %s" % (self.goal, self.wellformed))
             return False
         for n, subgoal in self.subgoals:
             if not subgoal.is_finished():
@@ -301,6 +314,19 @@ class Goal(StateItem):
             res["fixes"] = self.fixes.export()
         return res
     
+    def covers_obligation(self, oblig: rules.ProofObligation) -> bool:
+        # List of conditions is a subset of conditions on obligation
+        for cond in self.conds.data:
+            if cond not in oblig.conds.data:
+                return False
+
+        # Satisfies the goal in one branch
+        for branch in oblig.branches:
+            if len(branch.exprs) == 1 and self.goal == branch.exprs[0]:
+                return True
+            
+        return False
+
     def add_subgoal(self, name: str, expr: Union[str, Expr],
                     conds: Optional[List[Union[str, Expr]]] = None) -> "Goal":
         ctx = Context(self.ctx)
@@ -312,6 +338,22 @@ class Goal(StateItem):
             expr = parser.parse_expr(expr)
         goal = Goal(self, ctx, expr, conds=Conditions(conds))
         self.subgoals.append((name, goal))
+
+        # Recheck wellformedness conditions
+        ctx = Context(ctx)
+        ctx.subgoals[name] = Identity(expr, conds=Conditions(conds))
+        proof_obligations_raw = check_wellformed(self.goal, ctx)
+        self.proof_obligations = []
+        for oblig in proof_obligations_raw:
+            found = False
+            for _, subgoal in self.subgoals:
+                if subgoal.covers_obligation(oblig):
+                    found = True
+                    break
+            if not found:
+                self.proof_obligations.append(oblig)
+        self.wellformed = (len(self.proof_obligations) == 0)
+
         return self.subgoals[-1][1]
 
     def add_definition(self, expr: Union[str, Expr],
@@ -342,11 +384,21 @@ class Goal(StateItem):
         return self.proof
 
     def proof_by_induction(self, induct_var: str, start: int = 0):
-        self.proof = InductionProof(self, self.goal, induct_var, start=start)
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
+        self.proof = InductionProof(self, ctx, self.goal, induct_var, start=start)
         return self.proof
 
     def proof_by_case(self, split_cond: Expr):
-        self.proof = CaseProof(self, self.goal, split_cond=split_cond)
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
+        self.proof = CaseProof(self, ctx, self.goal, split_cond=split_cond)
         return self.proof
 
     def get_by_label(self, label: Label):
@@ -586,6 +638,22 @@ class CalculationProof(StateItem):
             if calc.steps:
                 res += str(calc)
         return res
+    
+    def print_entry(self):
+        if expr.is_fun(self.goal) and self.goal.func_name == "converges":
+            print("arg:")
+            for step in self.arg_calc.steps:
+                print("    " + str(step.rule))
+        else:
+            if self.lhs_calc and self.lhs_calc.steps:
+                print("lhs:")
+                for step in self.lhs_calc.steps:
+                    print("    " + str(step.rule))
+            if self.rhs_calc and self.rhs_calc.steps:
+                print("rhs:")
+                for step in self.rhs_calc.steps:
+                    print("    " + str(step.rule))
+        print("done")
 
     @property
     def lhs_calc(self) -> Calculation:
@@ -663,14 +731,15 @@ class InductionProof(StateItem):
 
     """
 
-    def __init__(self, parent: Goal, goal: Expr, induct_var: str, *, start: Union[int, Expr] = 0):
+    def __init__(self, parent: Goal, ctx: Context, goal: Expr, induct_var: str,
+                 *, start: Union[int, Expr] = 0):
         if not goal.is_equals():
             raise AssertionError("InductionProof: currently only support equation goals.")
 
         self.parent = parent
         self.goal = goal
         self.induct_var = induct_var
-        self.ctx = parent.ctx
+        self.ctx = ctx
 
         if isinstance(start, int):
             self.start = Const(start, type=expr.IntType)
@@ -679,8 +748,7 @@ class InductionProof(StateItem):
         else:
             raise NotImplementedError
         # Base case: n = start
-        file = get_comp_file(parent)
-        base_goal_ctx = file.get_context(len(file.content) - 1)
+        base_goal_ctx = self.ctx
         base_goal_fixes = parent.fixes.subst(induct_var, self.start)
         fixes = base_goal_fixes.update(base_goal_ctx.get_fixes())
         eq0 = normalize(parser.parse_expr(str(goal.subst(induct_var, self.start)), \
@@ -690,7 +758,7 @@ class InductionProof(StateItem):
                               fixes=base_goal_fixes, conds=base_goal_conds)
 
         n1 = Var(induct_var, type=expr.IntType) + Const(1)
-        induct_goal_ctx = file.get_context(len(file.content) - 1)
+        induct_goal_ctx = self.ctx
         induct_goal_fixes = parent.fixes.subst(induct_var, n1)
         fixes = induct_goal_fixes.update(induct_goal_ctx.get_fixes())
         eqI = normalize(parser.parse_expr(str(goal.subst(induct_var, n1)), fixes=fixes), induct_goal_ctx)
@@ -718,6 +786,19 @@ class InductionProof(StateItem):
         res += "Induct case: %s\n" % self.induct_case.goal
         res += str(self.induct_case)
         return res
+    
+    def print_entry(self):
+        if self.start == Const(0):
+            print("induction on %s" % self.induct_var)
+        else:
+            print("induction on %s starting from %s" % (self.induct_var, self.start))
+        if self.base_case.proof:
+            print("base:")
+            self.base_case.print_entry(is_toplevel=False)
+        if self.induct_case.proof:
+            print("induct:")
+            self.induct_case.print_entry(is_toplevel=False)
+        print("done")
 
     def is_finished(self):
         return self.base_case.is_finished() and self.induct_case.is_finished()
@@ -760,27 +841,27 @@ class CaseProof(StateItem):
 
     """
 
-    def __init__(self, parent, goal: Expr, *, split_cond: Expr):
+    def __init__(self, parent, ctx, goal: Expr, *, split_cond: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = parent.ctx
+        self.ctx = ctx
         self.split_cond = split_cond
         self.split_type = ""
         self.cases: List[Goal] = []
         assert isinstance(parent, Goal)
-        file = get_comp_file(parent)
+
         if split_cond.is_compare():
             self.split_type = "two-way"
             # Case 1:
             conds1 = Conditions()
-            case1_ctx = file.get_context(len(file.content) - 1)
+            case1_ctx = self.ctx
             conds1.add_condition(split_cond)
             conds1.update(parent.conds)
             self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = file.get_context(len(file.content) - 1)
+            case2_ctx = self.ctx
             conds2.add_condition(expr.neg_expr(split_cond))
             conds2.update(parent.conds)
             self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
@@ -790,20 +871,20 @@ class CaseProof(StateItem):
             # Case 1:
             conds1 = Conditions()
             conds1.add_condition(expr.Op("<", split_cond, Const(0)))
-            case1_ctx = file.get_context(len(file.content) - 1)
+            case1_ctx = self.ctx
             conds1.update(parent.conds)
             self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = file.get_context(len(file.content) - 1)
+            case2_ctx = self.ctx
             conds2.add_condition(expr.Op("=", split_cond, Const(0)))
             conds2.update(parent.conds)
             self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
 
             # Case 3:
             conds3 = Conditions()
-            case3_ctx = file.get_context(len(file.content) - 1)
+            case3_ctx = self.ctx
             conds3.add_condition(expr.Op(">", split_cond, Const(0)))
             conds3.update(parent.conds)
             self.cases.append(Goal(self, case3_ctx, goal, conds=conds3, fixes=parent.fixes))
@@ -813,6 +894,31 @@ class CaseProof(StateItem):
             return False
         return self.goal == other.goal and self.split_type == other.split_type and \
                self.split_cond == other.split_cond and self.cases == other.cases
+
+    def print_entry(self):
+        if self.split_type == "two-way":
+            print("case analysis on %s" % self.split_cond)
+            if self.cases[0].proof:
+                print("case true:")
+                self.cases[0].print_entry(is_toplevel=False)
+            if self.cases[1].proof:
+                print("case false:")
+                self.cases[1].print_entry(is_toplevel=False)
+            print("done")
+        elif self.split_type == "three-way":
+            print("case analysis on %s" % self.split_cond)
+            if self.cases[0].proof:
+                print("case negative:")
+                self.cases[0].print_entry(is_toplevel=False)
+            if self.cases[1].proof:
+                print("case zero:")
+                self.cases[1].print_entry(is_toplevel=False)
+            if self.cases[2].proof:
+                print("case positive:")
+                self.cases[2].print_entry(is_toplevel=False)
+            print("done")
+        else:
+            raise AssertionError
 
     def __str__(self):
         if self.is_finished():
@@ -875,6 +981,12 @@ class RewriteGoalProof(StateItem):
         if not isinstance(other, RewriteGoalProof):
             return False
         return self.goal == other.goal and self.begin == other.begin
+
+    def print_entry(self):
+        print("from %s:" % self.start)
+        for step in self.begin.steps:
+            print("    " + str(step.rule))
+        print("done")
 
     def is_finished(self):
         f1 = normalize(self.begin.last_expr.lhs, self.ctx) == normalize(self.goal.lhs, self.ctx)
@@ -968,9 +1080,12 @@ class CompFile:
         tmp = fixes
         fixes = self.ctx.get_fixes().update(tmp)
         if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i], fixes=fixes)
+            if isinstance(conds, Conditions):
+                pass
+            else:
+                for i in range(len(conds)):
+                    if isinstance(conds[i], str):
+                        conds[i] = parser.parse_expr(conds[i], fixes=fixes)
         else:
             conds = []
         if isinstance(funcdef, str):

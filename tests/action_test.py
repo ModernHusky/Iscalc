@@ -9,11 +9,14 @@ from integral import parser
 
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, base_file, current_file, actions, print_state=False):
+    def check_actions(self, base_file, current_file, actions,
+                      *, print_lines=False, print_state=False):
         file = compstate.CompFile(base_file, current_file)
         state = action.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
         for act in actions:
+            if print_lines:
+                print(act)
             a = parser.parse_action(act)
             state = state.process_action(a)
         while not isinstance(state.past, action.InitialState):
@@ -378,6 +381,90 @@ class ActionTest(unittest.TestCase):
             simplify
         """
         self.check_actions("base", "tongji", actions)
+
+    def testWallis(self):
+        actions = """
+            prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
+            define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
+            subgoal 1: (D b. I(m,b)) = -(m + 1) * I(m + 1,b) for b > 0, m >= 0
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+            rhs:
+                expand definition for I (all)
+                simplify
+            done
+
+            subgoal 2: I(m,b) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
+            induction on m
+                base:
+                    lhs:
+                        expand definition for I
+                        inverse substitute sqrt(b) * u for x creating u
+                        simplify
+                        rewrite 1 / (b * u ^ 2 + b) to 1 / b * (1 / (1 ^ 2 + u ^ 2))
+                        apply integral identity
+                        simplify
+                done
+                induct:
+                    lhs:
+                        apply 1 on I(m + 1,b)
+                        apply induction hypothesis (all)
+                        simplify
+                        rewrite -((2 * m + 1) / 2) - 1 to -m - 3/2
+                        rewrite to b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)
+                    rhs:
+                        rewrite binom(2 * m + 2,m + 1) to 2 * binom(2 * m,m) * ((2 * m + 1) / (m + 1)) using identity
+                        rewrite -((2 * m + 3) / 2) to -m - 3/2
+                        simplify
+                done
+            done
+
+            lhs:
+                fold definition for I (all)
+                apply 2 on I(m,b)
+        """
+        self.check_actions("base", "wallis", actions)
+
+    def testGammaFunction(self):
+        actions = """
+            define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n > 0
+            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n > 1
+            lhs:
+                expand definition for Gamma
+                integrate by parts with u = x ^ (n - 1), v = -exp(-x)
+                simplify
+            rhs:
+                expand definition for Gamma (all)
+            done
+
+            prove Gamma(n) = factorial(n - 1) for n >= 1
+            induction on n starting from 1
+                base:
+                lhs:
+                    expand definition for Gamma
+                    apply integral identity
+                    simplify
+                done
+                induct:
+                lhs:
+                    apply Gamma(n) = (n - 1) * Gamma(n - 1) on Gamma(n + 1)
+                    simplify
+                    apply induction hypothesis (all)
+                    rewrite n * factorial(n - 1) to factorial(n) using identity
+                done
+            done
+
+            calculate INT x:[0,oo]. exp(-(x ^ 3))
+            substitute y for x ^ 3
+            simplify
+            rewrite exp(-y) / y ^ (2/3) to exp(-y) * y ^ (1/3 - 1)
+            fold definition for Gamma (all)
+            rewrite to (4/3 - 1) * Gamma(4/3 - 1)
+            apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
+        """
+        self.check_actions("interesting", "GammaFunction", actions)
 
     def testChapter1Section5(self):
         actions = """
@@ -754,6 +841,348 @@ class ActionTest(unittest.TestCase):
                 solve equation for INT x:[0,1]. 1 / sqrt(-log(x))
         """
         self.check_actions("interesting", "Leibniz02", actions)
+
+    def testEulerLogSineIntegral(self):
+        actions = """
+            prove (INT x:[0,pi / 2]. log(a * sin(x))) = pi / 2 * log(a / 2) for a > 0
+            define I(a) = INT x:[0,pi/2]. log(a * sin(x)) for a > 0
+            define J(a) = INT x:[0,pi/2]. log(a * sin(2*x)) for a > 0
+            subgoal 1: J(a) = I(a) for a > 0
+            lhs:
+                expand definition for J
+                substitute t for 2 * x
+                split region at pi / 2
+                substitute x for pi - t (at 2)
+                simplify
+            rhs:
+                expand definition for I
+            done
+            subgoal 2: J(a) = pi / 2 * log(2 / a) + 2 * I(a) for a > 0
+            lhs:
+                expand definition for J
+                rewrite sin(2 * x) to 2 * sin(x) * cos(x) using identity
+                rewrite a * (2 * sin(x) * cos(x)) to 2 / a * (a * sin(x)) * (a * cos(x))
+                rewrite log(2 / a * (a * sin(x)) * (a * cos(x))) to log(2 / a * (a * sin(x))) + log(a * cos(x)) using identity
+                rewrite log(2 / a * (a * sin(x))) to log(2 / a) + log(a * sin(x)) using identity
+                apply integral identity
+                simplify
+                substitute t for pi / 2 - x
+                substitute x for t
+                simplify
+            rhs:
+                expand definition for I (all)
+                simplify
+            done
+            lhs:
+                fold definition for I (all)
+                apply 1 on I(a)
+                apply 2 on J(a)
+                solve integral I(a)
+                rewrite log(2 / a) to log(2) + log(1 / a) using identity
+                expand polynomial
+                simplify
+            rhs:
+                rewrite log(a / 2) to log(a) - log(2) using identity
+                expand polynomial
+        """
+        self.check_actions("interesting", "euler_log_sin", actions)
+
+    def testEulerLogSineIntegral02(self):
+        actions = """
+            prove (INT x:[0,pi / 2]. log(sin(x) / x)) = pi / 2 * (1 - log(pi))
+            lhs:
+                rewrite log(sin(x) / x) to log(sin(x)) - log(x) using identity
+                simplify
+                rewrite log(sin(x)) to log(1 * sin(x))
+                apply integral identity
+                integrate by parts with u = log(x), v = x
+                apply integral identity
+                simplify
+                expand polynomial
+                simplify
+            rhs:
+                expand polynomial
+        """
+        self.check_actions("interesting", "euler_log_sin02", actions)
+
+    def testEulerLogSineIntegral0304(self):
+        actions = """
+            prove (INT x:[0,1]. log(x + 1 / x) / (x ^ 2 + 1)) = pi / 2 * log(2)
+            subgoal 1: (INT x:[0,oo]. log(x ^ 2 + 1) / (x ^ 2 + 1)) = pi * log(2)
+            lhs:
+                inverse substitute tan(u) for x creating u
+                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1 using identity
+                simplify
+                rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2 using identity
+                rewrite sec(u) to cos(u) ^ (-1) using identity
+                simplify
+                substitute x for pi / 2 - u
+                rewrite sin(x) to 1 * sin(x)
+                apply integral identity
+                simplify
+            done
+
+            from 1:
+                split region at 1
+                substitute y for 1 / x (at 2)
+                rewrite y ^ 2 * (1 / y ^ 2 + 1) to y ^ 2 + 1
+                rewrite 1 / (y ^ 2 + 1) * log(1 / y ^ 2 + 1) to log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+                rewrite (INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1)) + (INT y:[0,1]. log(1 / y ^ 2 + 1) / (y ^ 2 + 1)) to INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+                rewrite log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1) to (log(y ^ 2 + 1) + log(1 / y ^ 2 + 1)) / (y ^ 2 + 1)
+                rewrite log(y ^ 2 + 1) + log(1 / y ^ 2 + 1) to log((y ^ 2 + 1) * (1 / y ^ 2 + 1))
+                rewrite (y ^ 2 + 1) * (1 / y ^ 2 + 1) to (y + 1 / y) ^ 2
+                rewrite log((y + 1 / y) ^ 2) to 2 * log(y + 1 / y) using identity
+                simplify
+                rewrite 1 / (y ^ 2 + 1) * log(1 / y + y) to log(y + 1 / y) / (y ^ 2 + 1)
+                solve equation for INT y:[0,1]. log(y + 1 / y) / (y ^ 2 + 1)
+        """
+        self.check_actions("interesting", "euler_log_sin0304", actions)
+
+    def testEulerLogSineIntegral05(self):
+        actions = """
+            prove (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) = 0 for b > -2, b < 2
+            subgoal 1: x ^ 2 - b * x + 1 != 0 for b > -2, b < 2
+            lhs:
+                rewrite x ^ 2 - b * x + 1 to (x - 1/2 * b) ^ 2 + 1 - 1/4 * b ^ 2
+            done
+            subgoal 2: (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) = (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) - a * (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) for a > 0, b > -2, b < 2
+            lhs:
+                inverse substitute 1 / u for x creating u
+                simplify
+                expand polynomial
+                rewrite (1 / u) ^ a to 1 ^ a / u ^ a using identity
+                rewrite 1 ^ a / u ^ a + 1 to (1 + u ^ a) / u ^ a
+                rewrite log((1 + u ^ a) / u ^ a) to log(1 + u ^ a) - log(u ^ a)
+                expand polynomial
+                simplify
+            done
+            from 2:
+                solve equation for INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)
+        """
+        self.check_actions("interesting", "euler_log_sin05", actions)
+
+    def testEulerLogSineIntegral06(self):
+        actions = """
+            prove (INT x:[0,1]. (1 - x) / (1 + x + x ^ 2)) = sqrt(3) * pi / 6 - log(3) / 2
+            lhs:
+                rewrite 1 + x + x ^ 2 to (x + 1/2) ^ 2 + 3/4
+                substitute u for 2 * (x + 1/2) / sqrt(3)
+                rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
+                simplify
+                rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
+                apply integral identity
+                simplify
+                substitute t for u ^ 2 + 1
+                apply integral identity
+                simplify
+                expand polynomial
+                simplify
+        """
+        self.check_actions("interesting", "euler_log_sin06", actions)
+
+    def testFlipside03(self):
+        actions = """
+            prove (INT x:[0,1]. (x ^ a - 1) / log(x)) = log(a + 1) for a > -1
+            define I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x) for a > -1
+            subgoal 1: (D a. I(a)) = 1 / (a + 1) for a > -1
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                apply integral identity
+                simplify
+            done
+            subgoal 2: I(a) = log(a + 1) + SKOLEM_CONST(C) for a > -1
+            from 1:
+                integrate both sides
+                apply indefinite integral
+                simplify
+            done
+            subgoal 3: SKOLEM_CONST(C) = 0
+            from 2:
+                substitute a for 0 in equation
+                expand definition for I (all)
+                simplify
+                solve equation for SKOLEM_CONST(C)
+            done
+            lhs:
+                fold definition for I (all)
+                apply 2 on I(a)
+                apply 3 on SKOLEM_CONST(C)
+                simplify
+        """
+        self.check_actions("interesting", "flipside03", actions)
+
+    def testFlipside04(self):
+        actions = """
+            prove (INT x:[0,1]. (x ^ a - x ^ b) / log(x)) = log((a + 1) / (b + 1)) for a > -1, b > -1
+            lhs:
+                rewrite x ^ a - x ^ b to x ^ a - 1 - (x ^ b - 1)
+                rewrite (x ^ a - 1 - (x ^ b - 1)) / log(x) to (x ^ a - 1) / log(x) - (x ^ b - 1) / log(x)
+                simplify
+                apply integral identity
+                rewrite log(a + 1) - log(b + 1) to log((a + 1) / (b + 1)) using identity
+        """
+        self.check_actions("interesting", "flipside04", actions)
+
+    def testFrullaniIntegral01(self):
+        actions = """
+            prove (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
+            define I(a,b) = (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) for a > 0, b > 0
+            subgoal 1: (D a. I(a,b)) = pi / (2 * a) for a > 0, b > 0
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                substitute u for a * x
+                apply integral identity
+                simplify
+            done
+            subgoal 2: I(a,b) = pi * log(a) / 2 + SKOLEM_FUNC(C(b)) for a > 0, b > 0
+            from 1:
+                integrate both sides
+                simplify
+                apply indefinite integral
+                simplify
+            done
+            subgoal 3: SKOLEM_FUNC(C(a)) = -(pi * log(a) / 2) for a > 0
+            from 2:
+                substitute b for a in equation
+                solve equation for SKOLEM_FUNC(C(a))
+                expand definition for I (all)
+                simplify
+            done
+            lhs:
+                fold definition for I (all)
+                apply 2 on I(a,b)
+                apply 3 on SKOLEM_FUNC(C(b))
+                simplify
+        """
+        self.check_actions("interesting", "FrullaniIntegral01", actions)
+
+    def testCatalanConstant01(self):
+        actions = """
+            define G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)
+            prove (INT x:[0,1]. atan(x) / x) = G
+            subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))
+            arg:
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                apply series expansion on atan(x) index n
+                rewrite x ^ (2 * n + 1) to x ^ (2 * n) * x
+                simplify
+                exchange integral and sum
+                apply integral identity
+                simplify
+            rhs:
+                expand definition for G
+        """
+        self.check_actions("interesting", "CatalanConstant01", actions)
+
+    def testCatalanConstant03(self):
+        actions = """
+            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * atan(sqrt(b / a)) for a > 0, b > 0
+            define I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
+            subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
+            lhs:
+                expand definition for I
+                substitute x for pi - x
+                rewrite sin(x) * (-x + pi) / (b * cos(x) ^ 2 + a) to (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
+            done
+            lhs:
+                fold definition for I (all)
+                rewrite I(a,b) to 1/2 * (I(a,b) + I(a,b))
+                expand definition for I (at 1)
+                apply 1 on I(a,b)
+                rewrite (INT x:[0,pi]. x * sin(x) / (b * cos(x) ^ 2 + a)) + (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) to INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
+                rewrite x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2) to pi * sin(x) / (a + b * cos(x) ^ 2)
+                substitute u for cos(x)
+                substitute x for sqrt(b / a) * u
+                rewrite a * x ^ 2 + a to a * (x ^ 2 + 1)
+                simplify
+                apply integral identity
+                simplify
+                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a)) using identity
+                simplify
+                rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
+                rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
+        """
+        self.check_actions("interesting", "CatalanConstant03", actions)
+
+    def testLogFunction01(self):
+        actions = """
+            prove (INT x:[0,1]. log(1 + x) / x) = pi ^ 2 / 12
+            subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ n / (n + 1)))
+            arg:
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                apply series expansion on log(1 + x) index n
+                rewrite SUM(n, 0, oo, (-1) ^ n * x ^ (n + 1) / (n + 1)) / x to SUM(n, 0, oo, (-1) ^ n * x ^ (n + 1) / (n + 1) * (1 / x))
+                exchange integral and sum
+                simplify
+                apply integral identity
+                simplify
+                apply series evaluation
+        """
+        self.check_actions("interesting", "LogFunction01", actions)
+
+    def testBernoulliIntegral(self):
+        actions = """
+            prove (INT x:[0,1]. x ^ (c * x ^ a)) = SUM(k, 0, oo, (-c) ^ k / (k * a + 1) ^ (k + 1)) for a > 0, c != 0
+            subgoal 1: converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k)))) for a > 0, c != 0
+            arg:
+                simplify
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                rewrite x ^ (c * x ^ a) to exp(log(x ^ (c * x ^ a)))
+                apply series expansion on exp(log(x ^ (c * x ^ a))) index k
+                exchange integral and sum
+                rewrite log(x ^ (c * x ^ a)) to c * x ^ a * log(x) using identity
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                simplify
+                apply integral identity
+                simplify
+                rewrite c ^ k * (-1) ^ k to (-c) ^ k using identity
+            done
+            prove (INT x:[0,1]. x ^ x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ x to x ^ (1 * x ^ 1)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ -x) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ -x to x ^ (-1 * x ^ 1)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ (x ^ 2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ (x ^ 2) to x ^ (1 * x ^ 2)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ sqrt(x)) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k + 1))
+            lhs:
+                rewrite x ^ sqrt(x) to x ^ (1 * x ^ (1/2))
+                apply integral identity
+                simplify
+                rewrite k / 2 + 1 to (2 / (k + 2)) ^ (-1)
+                rewrite (2 / (k + 2)) ^ (-1) ^ (-k - 1) to (2 / (k + 2)) ^ (k + 1) using identity
+        """
+        self.check_actions("interesting", "BernoulliIntegral", actions)
 
 
 if __name__ == "__main__":

@@ -232,7 +232,7 @@ class ProofObligation:
         for i, b in enumerate(self.branches):
             res += "branch " + str(i) + ":\n"
             res += str(b) + '\n'
-        # "%s" % self.branches
+        res += str(self.conds) + "\n"
         return res
 
     def __repr__(self):
@@ -711,7 +711,7 @@ class SeriesExpansionIdentity(Rule):
         self.index_var = index_var
 
     def __str__(self):
-        return "apply series expansion"
+        return "apply series expansion on %s index %s" % (self.old_expr, self.index_var)
 
     def export(self):
         res = {
@@ -1026,6 +1026,8 @@ class OnCount(Rule):
                 pred = lambda t: t == rule.old_expr
             elif isinstance(rule, Substitution):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
+            elif isinstance(rule, ExpandDefinition):
+                pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
             else:
                 raise AssertionError("OnCount: unable to derive pred")
         self.pred = pred
@@ -1155,7 +1157,7 @@ class ApplyEquation(Rule):
         if self.source is not None and self.source != e:
             find_res = e.find_subexpr(self.source)
             if len(find_res) == 0:
-                raise AssertionError("ApplyEquation: source expression not found")
+                raise RuleException("ApplyEquation", "source expression %s not found" % self.source)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
         assert self.source == e or self.source is None
@@ -1188,7 +1190,7 @@ class ApplyEquation(Rule):
                     if self.source == item.rhs:
                         return item.lhs
                 found = True
-                fouon_eq = self.eq
+                found_eq = self.eq
                 conds = []
         assert found, "ApplyEquation: lemma %s not found" % self.eq
 
@@ -1585,7 +1587,8 @@ class Equation(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                raise AssertionError("Equation: old expression not found")
+                print(e)
+                raise RuleException("Equation", "old expression %s not found" % self.old_expr)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -1666,17 +1669,17 @@ class Equation(Rule):
                     return self.new_expr
 
         # rewrite limit expression
-        r = LimRewrite(self.old_expr, self.new_expr)
-        if r.eval(e, ctx) == self.new_expr:
-            return self.new_expr
-        if normalize(norm.normalize_exp(e), ctx) == normalize(self.new_expr, ctx):
-            return self.new_expr
-        t = e.type
-        if expr.is_matrix_type(t):
-            if expr.is_vector_type(t):
-                if ctx.check_condition(Op('=', Fun('norm', e), Const(0))) and \
-                        normalize(self.new_expr, ctx) == Fun(*ctx.get_func_type('zero_matrix', t.args[1], t.args[2])):
-                    return self.new_expr
+        # r = LimRewrite(self.old_expr, self.new_expr)
+        # if r.eval(e, ctx) == self.new_expr:
+        #     return self.new_expr
+        # if normalize(norm.normalize_exp(e), ctx) == normalize(self.new_expr, ctx):
+        #     return self.new_expr
+        # t = e.type
+        # if expr.is_matrix_type(t):
+        #     if expr.is_vector_type(t):
+        #         if ctx.check_condition(Op('=', Fun('norm', e), Const(0))) and \
+        #                 normalize(self.new_expr, ctx) == Fun(*ctx.get_func_type('zero_matrix', t.args[1], t.args[2])):
+        #             return self.new_expr
 
         raise RuleException("Equation", "rewriting %s to %s failed" % (e, self.new_expr))
 
@@ -2331,14 +2334,22 @@ class IntSumExchange(Rule):
             return True
         if su != expr.POS_INF:
             return True
+
         abs_body = normalize(Fun("abs", body), ctx)
         goal1 = Fun("converges", Summation(svar, sl, su, Integral(ivar, il, iu, abs_body)))
 
         abs_int = normalize(Fun("abs", Integral(ivar, il, iu, body)), ctx)
         goal2 = Fun("converges", Summation(svar, sl, su, abs_int))
+
         for lemma in ctx.get_lemmas():
-            if normalize(lemma.expr, ctx) == normalize(goal1, ctx) or \
-                    normalize(lemma.expr, ctx) == normalize(goal2, ctx):
+            if normalize(lemma.expr, ctx) == normalize(goal1, ctx):
+                return True
+            if normalize(lemma.expr, ctx) == normalize(goal2, ctx):
+                return True
+        for _, subgoal in ctx.get_all_subgoals().items():
+            if normalize(subgoal.expr, ctx) == normalize(goal1, ctx):
+                return True
+            if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
                 return True
         return False
 

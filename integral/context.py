@@ -52,6 +52,19 @@ class Identity:
     def __repr__(self):
         return str(self)
 
+    # TODO: here oblig is of type ProofObligation
+    def covers_obligation(self, oblig):
+        # List of conditions is a subset of conditions on obligation
+        for cond in self.conds.data:
+            if cond not in oblig.conds.data:
+                return False
+
+        # Satisfies the goal in one branch
+        for branch in oblig.branches:
+            if len(branch.exprs) == 1 and self.expr == branch.exprs[0]:
+                return True
+            
+        return False
 
 class Context:
     """Maintains the current context of calculation.
@@ -279,6 +292,12 @@ class Context:
             return self.subgoals[name]
         else:
             return None
+        
+    def get_all_subgoals(self) -> Dict[str, Identity]:
+        res = self.parent.get_all_subgoals() if self.parent is not None else dict()
+        for name, identity in self.subgoals.items():
+            res[name] = identity
+        return res
 
     def get_eq_conds(self) -> Conditions:
         parent_conds = self.parent.get_conds() if self.parent is not None else Conditions()

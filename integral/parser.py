@@ -76,8 +76,23 @@ grammar = r"""
 
     ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
 
+    ?induction_action: "induction" "on" CNAME -> induction_action
+        | "induction" "on" CNAME "starting" "from" expr -> induction_starting_action
+
+    ?case_analysis_action: "case" "analysis" "on" expr -> case_analysis_action
+
     ?lhs_action: "lhs" ":" -> lhs_action
     ?rhs_action: "rhs" ":" -> rhs_action
+    ?arg_action: "arg" ":" -> arg_action
+    ?base_case_action: "base" ":" -> base_case_action
+    ?induct_case_action: "induct" ":" -> induct_case_action
+    ?case_action: "case" "true" ":" -> case_true
+        | "case" "false" ":" -> case_false
+        | "case" "negative" ":" -> case_negative
+        | "case" "zero" ":" -> case_zero
+        | "case" "positive" ":" -> case_positive
+
+    ?inst_equation: CNAME "for" expr -> inst_equation
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
@@ -95,9 +110,16 @@ grammar = r"""
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
         | "integrate" "both" "sides" -> integral_equation_rule
         | "apply" INT "on" expr -> apply_equation_rule
+        | "apply" expr "on" expr -> apply_equation_expr_rule
         | "apply" "limit" CNAME "->" expr "both" "sides" -> apply_limit_rule
         | "expand" "definition" "for" CNAME -> expand_definition_rule
         | "fold" "definition" "for" CNAME -> fold_definition_rule
+        | "exchange" "derivative" "and" "integral" -> exchange_deriv_int_rule
+        | "substitute" inst_equation ("," inst_equation)* "in" "equation" -> inst_equation_rule
+        | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_expansion_rule
+        | "apply" "series" "evaluation" -> apply_series_evaluation_rule
+        | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
+        | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -108,10 +130,16 @@ grammar = r"""
         | subgoal_action
         | done_action
         | rewrite_goal_action
+        | induction_action
+        | case_analysis_action
         | define_action
         | calculate_action
         | lhs_action
         | rhs_action
+        | arg_action
+        | base_case_action
+        | induct_case_action
+        | case_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -347,6 +375,18 @@ class ExprTransformer(Transformer):
     def rewrite_goal_action(self, name: Token):
         from integral import action
         return action.RewriteGoalAction(str(name))
+    
+    def induction_action(self, var_name: Token):
+        from integral import action
+        return action.InductionAction(str(var_name), expr.Const(0))
+
+    def induction_starting_action(self, var_name: Token, start: Expr):
+        from integral import action
+        return action.InductionAction(str(var_name), start)
+
+    def case_analysis_action(self, split_cond: Expr):
+        from integral import action
+        return action.CaseAnalysisAction(split_cond)
 
     def lhs_action(self):
         from integral import action
@@ -355,6 +395,38 @@ class ExprTransformer(Transformer):
     def rhs_action(self):
         from integral import action
         return action.RHSAction()
+
+    def arg_action(self):
+        from integral import action
+        return action.ArgAction()
+
+    def base_case_action(self):
+        from integral import action
+        return action.BaseCaseAction()
+    
+    def induct_case_action(self):
+        from integral import action
+        return action.InductCaseAction()
+
+    def case_true(self):
+        from integral import action
+        return action.CaseAction("true")
+
+    def case_false(self):
+        from integral import action
+        return action.CaseAction("false")
+
+    def case_negative(self):
+        from integral import action
+        return action.CaseAction("negative")
+
+    def case_zero(self):
+        from integral import action
+        return action.CaseAction("zero")
+
+    def case_positive(self):
+        from integral import action
+        return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules
@@ -419,6 +491,10 @@ class ExprTransformer(Transformer):
     def apply_equation_rule(self, name: Token, source: Expr):
         from integral import rules
         return rules.ApplyEquation(str(name), source)
+    
+    def apply_equation_expr_rule(self, eq: Expr, source: Expr):
+        from integral import rules
+        return rules.ApplyEquation(eq, source)
 
     def apply_limit_rule(self, var_name: Token, limit: Expr):
         from integral import rules
@@ -431,6 +507,33 @@ class ExprTransformer(Transformer):
     def fold_definition_rule(self, func_name):
         from integral import rules
         return rules.FoldDefinition(str(func_name))
+
+    def exchange_deriv_int_rule(self):
+        from integral import rules
+        return rules.DerivIntExchange()
+    
+    def inst_equation(self, var_name: Token, expr: Expr):
+        return {'var': str(var_name), 'expr': expr}
+    
+    def inst_equation_rule(self, *insts):
+        from integral import rules
+        return rules.VarSubsOfEquation(list(insts))
+
+    def apply_series_expansion_rule(self, old_expr: Expr, index_var: Token):
+        from integral import rules
+        return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
+    
+    def apply_series_evaluation_rule(self):
+        from integral import rules
+        return rules.SeriesEvaluationIdentity()
+
+    def exchange_integral_sum_rule(self):
+        from integral import rules
+        return rules.IntSumExchange()
+
+    def apply_induction_hypothesis_rule(self):
+        from integral import rules
+        return rules.ApplyInductHyp()
 
     def full_simplify_rule(self):
         from integral import rules

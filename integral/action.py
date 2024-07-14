@@ -1,12 +1,12 @@
 """Definition of internal language for actions."""
 
-from typing import Optional, Tuple
+from typing import Optional
 
+from integral import expr
 from integral.expr import Expr
 from integral.rules import Rule
-from integral.context import Context
 from integral import compstate
-from integral.compstate import Calculation, StateItem, Goal, CompFile
+from integral.compstate import Calculation, Goal, CompFile
 from integral.conditions import Conditions
 from integral import poly
 
@@ -83,6 +83,28 @@ class CalculateAction(Action):
         return "calculate %s" % self.expr
     
 
+class InductionAction(Action):
+    """Start an induction."""
+    def __init__(self, var_name: str, start: Expr):
+        self.var_name = var_name
+        self.start = start
+
+    def __str__(self):
+        if self.start == expr.Const(0):
+            return "induction on %s" % self.var_name
+        else:
+            return "induction on %s starting from %s" % (self.var_name, self.expr)
+
+
+class CaseAnalysisAction(Action):
+    """Start a case analysis."""
+    def __init__(self, split_cond: Expr):
+        self.split_cond = split_cond
+
+    def __str__(self):
+        return "case analysis on %s" % self.split_cond
+
+
 class LHSAction(Action):
     """Perform a proof by working on the left hand side."""
     def __init__(self):
@@ -98,6 +120,38 @@ class RHSAction(Action):
 
     def __str__(self):
         return "rhs:"
+
+class ArgAction(Action):
+    """Perform a proof by working on the argument."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "arg:"
+
+class BaseCaseAction(Action):
+    """Base case of an induction."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "base:"
+    
+class InductCaseAction(Action):
+    """Induct case of an induction."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "induct:"
+
+class CaseAction(Action):
+    """Case in case analysis."""
+    def __init__(self, mark: str):
+        self.mark = mark
+
+    def __str__(self):
+        return "case %s" % self.mark
 
 class RuleAction(Action):
     """Apply rule."""
@@ -153,6 +207,11 @@ class InitialState(State):
                                   conds=action.conditions)
             return ProveState(self, goal)
         
+        # Add a definition
+        elif isinstance(action, DefineAction):
+            self.comp_file.ctx.add_definition(action.expr, conds=action.conditions)
+            return self
+        
         # Other actions are invalid
         elif isinstance(action, RuleAction):
             raise StateException("Cannot apply rule when at initial state.")
@@ -186,12 +245,29 @@ class ProveState(State):
             if not isinstance(self.goal.proof, compstate.CalculationProof):
                 raise StateException("rhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.rhs_calc)
+        
+        elif isinstance(action, ArgAction):
+            if not self.goal.proof:
+                self.goal.proof_by_calculation()
+            if not isinstance(self.goal.proof, compstate.CalculationProof):
+                raise StateException("arg: not in calculation proof")
+            return CalculateState(self, self.goal.proof.arg_calc)
 
         # Prove by rewriting goal
         elif isinstance(action, RewriteGoalAction):
             proof = self.goal.proof_by_rewrite_goal(begin=action.name)
             return CalculateState(self, proof.begin)
         
+        # Prove by induction
+        elif isinstance(action, InductionAction):
+            proof = self.goal.proof_by_induction(action.var_name, start=action.start)
+            return InductionState(self, proof)
+        
+        # Prove by case analysis
+        elif isinstance(action, CaseAnalysisAction):
+            proof = self.goal.proof_by_case(action.split_cond)
+            return CaseAnalysisState(self, proof)
+
         # Start a subgoal
         elif isinstance(action, SubgoalAction):
             subgoal = self.goal.add_subgoal(action.name, action.expr, action.conditions)
@@ -199,10 +275,12 @@ class ProveState(State):
         
         # Done with current subgoal
         elif isinstance(action, DoneAction):
-            if not isinstance(self.past, ProveState):
-                raise StateException("Using done when not in a subgoal.")
-            else:
-                return self.past
+            if isinstance(self.past, InitialState):
+                if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
+                    self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
+                else:
+                    self.past.comp_file.ctx.add_lemma(self.goal.goal, self.goal.conds)
+            return self.past
 
         # Make definition
         elif isinstance(action, DefineAction):
@@ -258,3 +336,62 @@ class CalculateState(State):
 
     def __str__(self):
         return "(calculate)\n%s" % self.calc
+
+
+class InductionState(State):
+    """State when performing an induction."""
+    def __init__(self, past: State, induct_proof: compstate.InductionProof):
+        self.past = past
+        self.induct_proof = induct_proof
+    
+    def process_action(self, action: Action) -> State:
+        if isinstance(action, BaseCaseAction):
+            return ProveState(self, self.induct_proof.base_case)
+        elif isinstance(action, InductCaseAction):
+            return ProveState(self, self.induct_proof.induct_case)
+        elif isinstance(action, DoneAction):
+            return self.past.process_action(action)
+        else:
+            raise StateException("Unknown action type %s" % type(action))
+    
+    def is_finished(self) -> bool:
+        return self.induct_proof.is_finished()
+
+
+class CaseAnalysisState(State):
+    """State when performing case analysis."""
+    def __init__(self, past: State, case_proof: compstate.CaseProof):
+        self.past = past
+        self.case_proof = case_proof
+
+    def process_action(self, action: Action) -> State:
+        if isinstance(action, CaseAction):
+            if action.mark == "true":
+                if self.case_proof.split_type != "two-way":
+                    raise StateException("case true when not in two-way analysis.")
+                return ProveState(self, self.case_proof.cases[0])
+            elif action.mark == "false":
+                if self.case_proof.split_type != "two-way":
+                    raise StateException("case false when not in two-way analysis.")
+                return ProveState(self, self.case_proof.cases[1])
+            elif action.mark == "negative":
+                if self.case_proof.split_type != "three-way":
+                    raise StateException("case negative when not in three-way analysis.")
+                return ProveState(self, self.case_proof.cases[0])
+            elif action.mark == "zero":
+                if self.case_proof.split_type != "three-way":
+                    raise StateException("case zero when not in three-way analysis.")
+                return ProveState(self, self.case_proof.cases[1])
+            elif action.mark == "positive":
+                if self.case_proof.split_type != "three-way":
+                    raise StateException("case positive when not in three-way analysis.")
+                return ProveState(self, self.case_proof.cases[2])
+            else:
+                raise StateException("Unknown case %s" % action.mark)
+        elif isinstance(action, DoneAction):
+            return self.past.process_action(action)
+        else:
+            raise StateException("Unknown action type %s" % type(action))
+    
+    def is_finished(self) -> bool:
+        return self.case_proof.is_finished()
