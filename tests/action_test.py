@@ -1184,6 +1184,64 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "BernoulliIntegral", actions)
 
+    def testAhmedIntegral(self):
+        actions = """
+            prove (INT x:[0,1]. atan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
+            define I(u) = (INT x:[0,1]. atan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
+            subgoal 1: I(1) = (INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
+            lhs:
+                expand definition for I
+            done
+            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * atan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                rewrite 1 / ((x ^ 2 + 1) * (u ^ 2 * (x ^ 2 + 2) + 1)) to 1 / (u ^ 2 + 1) * (1 / (1 + x ^ 2) - u ^ 2 / (1 + 2 * u ^ 2 + u ^ 2 * x ^ 2))
+                simplify
+                rewrite 1 / (u ^ 2 * x ^ 2 + 2 * u ^ 2 + 1) to u ^ (-2) * (x ^ 2 + (2 * u ^ 2 + 1) / u ^ 2) ^ (-1)
+                simplify
+                inverse substitute y * sqrt(u ^ (-2) * (2 * u ^ 2 + 1)) for x creating y
+                simplify
+                rewrite 1 / (y ^ 2 * (2 * u ^ 2 + 1) / u ^ 2 + (2 * u ^ 2 + 1) / u ^ 2) to 1 / (y ^ 2 + 1) * (u ^ 2 / (2 * u ^ 2 + 1))
+                apply integral identity
+                simplify
+            done
+            subgoal 3: (INT u:[1,oo]. D u. I(u)) = pi ^ 2 / 12 - I(1)
+            lhs:
+                simplify
+                expand definition for I (at 1)
+                simplify
+                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2)) / 2
+                simplify
+            done
+            subgoal 4: (INT u:[1,oo]. D u. I(u)) = -(pi ^ 2 / 48) + I(1)
+            lhs:
+                apply 2 on D u. I(u)
+                expand polynomial
+                simplify
+                inverse substitute 1 / x for u creating x
+                simplify
+                rewrite x ^ 3 * (1 / x ^ 2 + 1) * sqrt(2 / x ^ 2 + 1) to sqrt((1 + x ^ 2) ^ 2 * (2 + x ^ 2))
+                rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)
+                simplify
+                rewrite 1 / sqrt(x ^ 2 + 2) to sqrt(x ^ 2 + 2) ^ (-1)
+                rewrite atan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - atan(sqrt(x ^ 2 + 2)) using identity
+                expand polynomial
+                simplify
+                rewrite atan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                apply 1 on INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2))
+                apply integral identity
+                simplify
+            done
+            from 3:
+                apply 4 on INT u:[1,oo]. D u. I(u)
+                solve equation for I(1)
+                expand definition for I (all)
+        """
+        self.check_actions("interesting", "AhmedIntegral", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

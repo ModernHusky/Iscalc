@@ -3025,26 +3025,23 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.OnLocation(rules.ApplyIdentity(s1, s2), "0.1"))
         assert goal4.is_finished()
 
-        goal.print_entry()
-        goal1.print_entry()
-        goal2.print_entry()
-        goal3.print_entry()
-        goal4.print_entry()
-
     def testAhmedIntegral(self):
         # Reference:
         # Inside interesting integrals, Section 6.2
         file = compstate.CompFile("interesting", "AhmedIntegral")
 
-        # Define I
-        file.add_definition("I(u) = (INT x:[0,1]. atan(u * sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2)))", conds=["u > 0"])
+        goal = file.add_goal("(INT x:[0,1]. atan(sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2))) = 5*pi^2/96")
 
-        goal001 = file.add_goal("I(1) = INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))")
-        proof = goal001.proof_by_calculation()
+        # Define I
+        goal.add_definition("I(u) = (INT x:[0,1]. atan(u * sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2)))", conds=["u > 0"])
+
+        goal01 = goal.add_subgoal("1", "I(1) = INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))")
+        proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("I"))
+        assert goal01.is_finished()
 
-        goal02 = file.add_goal("(D u. I(u)) = \
+        goal02 = goal.add_subgoal("2", "(D u. I(u)) = \
                 1 / (1 + u^2) * (pi/4 - u / sqrt(1+2*u^2) * atan(u/sqrt(1+2*u^2)))", conds=["u > 0"])
         proof = goal02.proof_by_calculation()
         calc = proof.lhs_calc
@@ -3060,38 +3057,35 @@ class IntegralTest(unittest.TestCase):
             "u^(-2) * (x ^ 2 + (2 * u ^ 2 + 1)/u^2) ^ (-1)"))
         calc.perform_rule(rules.Simplify())
         e = parser.parse_expr("y * sqrt(u ^ (-2) * (2 * u ^ 2 + 1))")
-
-        calc.perform_rule(rules.OnLocation(rules.SubstitutionInverse('y', 'x', e), "1.0.0"))
+        calc.perform_rule(rules.SubstitutionInverse('y', 'x', e))
         calc.perform_rule(rules.Simplify())
-
         calc.perform_rule(rules.Equation(
             "1 / (y ^ 2 * (2 * u ^ 2 + 1) / u ^ 2 + (2 * u ^ 2 + 1) / u ^ 2)",
             "(1 / (y ^ 2 + 1)) * (u ^ 2 / (2 * u ^ 2 + 1))"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc = proof.rhs_calc
-        calc.perform_rule(rules.Simplify())
+        assert goal02.is_finished()
 
-        goal03 = file.add_goal("(INT u:[1, oo]. D u. I(u)) = pi^2/12 - I(1)")
+        goal03 = goal.add_subgoal("3", "(INT u:[1, oo]. D u. I(u)) = pi^2/12 - I(1)")
         proof = goal03.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.ExpandDefinition("I"), "0.0"))
+        calc.perform_rule(rules.OnCount(rules.ExpandDefinition("I"), 1))
         calc.perform_rule(rules.Simplify())
         u = expr.Const(1)
         v = parser.parse_expr("atan(x/sqrt(2+x^2)) / 2")
         calc.perform_rule(rules.IntegrationByParts(u=u, v=v))
         calc.perform_rule(rules.Simplify())
+        assert goal03.is_finished()
 
-        goal04 = file.add_goal("(INT u:[1,oo]. D u. I(u)) = - (pi^2 / 48) + I(1)")
+        goal04 = goal.add_subgoal("4", "(INT u:[1,oo]. D u. I(u)) = - (pi^2 / 48) + I(1)")
         proof_of_goal04 = goal04.proof_by_calculation()
         calc = proof_of_goal04.lhs_calc
         source = calc.parse_expr("D u. I(u)")
-        calc.perform_rule(rules.ApplyEquation(goal02.goal, source))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(),'0'))
+        calc.perform_rule(rules.ApplyEquation("2", source))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
         e = parser.parse_expr("1/x")
-
         calc.perform_rule(rules.SubstitutionInverse('x', 'u', e))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("x ^ 3 * (1 / x ^ 2 + 1) * sqrt(2 / x ^ 2 + 1)",
@@ -3101,26 +3095,29 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("1 / sqrt(x ^ 2 + 2)", "sqrt(x^2+2) ^ (-1)"))
         calc.perform_rule(rules.ApplyIdentity("atan((sqrt(x^2 + 2))^(-1))", "pi/2 - atan(sqrt(x^2 + 2))"))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0.0"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("atan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2))",\
                                          "atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))"))
         source = calc.parse_expr("INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))")
-        calc.perform_rule(rules.ApplyEquation(goal001.goal, source))
+        calc.perform_rule(rules.ApplyEquation("1", source))
         u = expr.Const(1)
         v = parser.parse_expr("atan(x/sqrt(2+x^2))")
         calc.perform_rule(rules.IntegrationByParts(u=u, v=v))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
+        assert goal04.is_finished()
 
-        goal05 = file.add_goal("I(1) = 5*pi^2/96")
-        proof_of_goal05 = goal05.proof_by_rewrite_goal(begin = goal03)
+        proof_of_goal05 = goal.proof_by_rewrite_goal(begin="3")
         calc = proof_of_goal05.begin
         source = calc.parse_expr("(INT u:[1, oo]. D u. I(u))")
-        calc.perform_rule(rules.ApplyEquation(goal04.goal, source))
+        calc.perform_rule(rules.ApplyEquation("4", source))
         calc.perform_rule(rules.SolveEquation(calc.parse_expr("I(1)")))
+        calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
 
-        self.checkAndOutput(file)
+        goal.print_entry()
+
+        assert goal.is_finished()
 
     def testEulerConstant01(self):
         # Reference:

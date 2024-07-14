@@ -1058,7 +1058,7 @@ class OnCount(Rule):
                 else:
                     return cur_e
 
-            if expr.is_var(cur_e) or expr.is_const(cur_e):
+            if expr.is_var(cur_e) or expr.is_const(cur_e) or expr.is_inf(cur_e):
                 return cur_e
             elif expr.is_op(cur_e):
                 return Op(cur_e.op, *(rec(arg, ctx) for arg in cur_e.args))
@@ -1072,14 +1072,15 @@ class OnCount(Rule):
             elif expr.is_deriv(cur_e):
                 return Deriv(cur_e.var, rec(cur_e.body, ctx))
             elif expr.is_limit(cur_e):
-                return Limit(cur_e.var, rec(cur_e.lim, ctx), rec(cur_e.body, ctx), drt=cur_e.drt, var_type=cur_e.var_type)
+                ctx2 = body_conds(cur_e, ctx)
+                return Limit(cur_e.var, rec(cur_e.lim, ctx), rec(cur_e.body, ctx2), drt=cur_e.drt, var_type=cur_e.var_type)
             elif expr.is_indefinite_integral(cur_e):
                 return IndefiniteIntegral(cur_e.var, rec(cur_e.body, ctx), cur_e.skolem_args)
             elif expr.is_summation(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 return Summation(cur_e.index_var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx2))
             else:
-                raise NotImplementedError
+                raise NotImplementedError(type(cur_e))
 
         res = rec(e, ctx)
         if count > 0:
