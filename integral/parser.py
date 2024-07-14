@@ -103,7 +103,8 @@ grammar = r"""
         | "fold" "definition" "for" CNAME -> fold_definition_rule
         | "exchange" "derivative" "and" "integral" -> exchange_deriv_int_rule
         | "substitute" inst_equation ("," inst_equation)* "in" "equation" -> inst_equation_rule
-        | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_rule
+        | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_expansion_rule
+        | "apply" "series" "evaluation" -> apply_series_evaluation_rule
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "simplify" -> full_simplify_rule
 
@@ -455,9 +456,13 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.VarSubsOfEquation(list(insts))
 
-    def apply_series_rule(self, old_expr: Expr, index_var: Token):
+    def apply_series_expansion_rule(self, old_expr: Expr, index_var: Token):
         from integral import rules
         return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
+    
+    def apply_series_evaluation_rule(self):
+        from integral import rules
+        return rules.SeriesEvaluationIdentity()
 
     def exchange_integral_sum_rule(self):
         from integral import rules

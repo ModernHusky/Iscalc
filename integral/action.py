@@ -2,6 +2,7 @@
 
 from typing import Optional, Tuple
 
+from integral import expr
 from integral.expr import Expr
 from integral.rules import Rule
 from integral.context import Context
@@ -220,10 +221,10 @@ class ProveState(State):
         
         # Done with current subgoal
         elif isinstance(action, DoneAction):
-            if not isinstance(self.past, ProveState):
-                raise StateException("Using done when not in a subgoal.")
-            else:
-                return self.past
+            if isinstance(self.past, InitialState):
+                if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
+                    self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
+            return self.past
 
         # Make definition
         elif isinstance(action, DefineAction):

@@ -993,7 +993,109 @@ class ActionTest(unittest.TestCase):
             rhs:
                 expand definition for G
         """
-        self.check_actions("interesting", "CatalanConstant01", actions, print_state=True)
+        self.check_actions("interesting", "CatalanConstant01", actions)
+
+    def testCatalanConstant03(self):
+        actions = """
+            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * atan(sqrt(b / a)) for a > 0, b > 0
+            define I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
+            subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
+            lhs:
+                expand definition for I
+                substitute x for pi - x
+                rewrite sin(x) * (-x + pi) / (b * cos(x) ^ 2 + a) to (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
+            done
+            lhs:
+                fold definition for I (all)
+                rewrite I(a,b) to 1/2 * (I(a,b) + I(a,b))
+                expand definition for I (at 1)
+                apply 1 on I(a,b)
+                rewrite (INT x:[0,pi]. x * sin(x) / (b * cos(x) ^ 2 + a)) + (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) to INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
+                rewrite x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2) to pi * sin(x) / (a + b * cos(x) ^ 2)
+                substitute u for cos(x)
+                substitute x for sqrt(b / a) * u
+                rewrite a * x ^ 2 + a to a * (x ^ 2 + 1)
+                simplify
+                apply integral identity
+                simplify
+                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a)) using identity
+                simplify
+                rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
+                rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
+        """
+        self.check_actions("interesting", "CatalanConstant03", actions)
+
+    def testLogFunction01(self):
+        actions = """
+            prove (INT x:[0,1]. log(1 + x) / x) = pi ^ 2 / 12
+            subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ n / (n + 1)))
+            arg:
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                apply series expansion on log(1 + x) index n
+                rewrite SUM(n, 0, oo, (-1) ^ n * x ^ (n + 1) / (n + 1)) / x to SUM(n, 0, oo, (-1) ^ n * x ^ (n + 1) / (n + 1) * (1 / x))
+                exchange integral and sum
+                simplify
+                apply integral identity
+                simplify
+                apply series evaluation
+        """
+        self.check_actions("interesting", "LogFunction01", actions)
+
+    def testBernoulliIntegral(self):
+        actions = """
+            prove (INT x:[0,1]. x ^ (c * x ^ a)) = SUM(k, 0, oo, (-c) ^ k / (k * a + 1) ^ (k + 1)) for a > 0, c != 0
+            subgoal 1: converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k)))) for a > 0, c != 0
+            arg:
+                simplify
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                simplify
+                apply integral identity
+                simplify
+            done
+            lhs:
+                rewrite x ^ (c * x ^ a) to exp(log(x ^ (c * x ^ a)))
+                apply series expansion on exp(log(x ^ (c * x ^ a))) index k
+                exchange integral and sum
+                rewrite log(x ^ (c * x ^ a)) to c * x ^ a * log(x) using identity
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                simplify
+                apply integral identity
+                simplify
+                rewrite c ^ k * (-1) ^ k to (-c) ^ k using identity
+            done
+            prove (INT x:[0,1]. x ^ x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ x to x ^ (1 * x ^ 1)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ -x) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ -x to x ^ (-1 * x ^ 1)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ (x ^ 2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))
+            lhs:
+                rewrite x ^ (x ^ 2) to x ^ (1 * x ^ 2)
+                apply integral identity
+                simplify
+            done
+            prove (INT x:[0,1]. x ^ sqrt(x)) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k + 1))
+            lhs:
+                rewrite x ^ sqrt(x) to x ^ (1 * x ^ (1/2))
+                apply integral identity
+                simplify
+                rewrite k / 2 + 1 to (2 / (k + 2)) ^ (-1)
+                rewrite (2 / (k + 2)) ^ (-1) ^ (-k - 1) to (2 / (k + 2)) ^ (k + 1) using identity
+        """
+        self.check_actions("interesting", "BernoulliIntegral", actions)
 
 
 if __name__ == "__main__":

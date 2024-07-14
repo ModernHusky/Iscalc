@@ -1026,6 +1026,8 @@ class OnCount(Rule):
                 pred = lambda t: t == rule.old_expr
             elif isinstance(rule, Substitution):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
+            elif isinstance(rule, ExpandDefinition):
+                pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
             else:
                 raise AssertionError("OnCount: unable to derive pred")
         self.pred = pred
