@@ -193,7 +193,7 @@ class InitialState(State):
         
         # Add a definition
         elif isinstance(action, DefineAction):
-            self.comp_file.add_definition(action.expr, conds=action.conditions)
+            self.comp_file.ctx.add_definition(action.expr, conds=action.conditions)
             return self
         
         # Other actions are invalid

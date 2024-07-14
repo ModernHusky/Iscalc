@@ -1020,8 +1020,8 @@ class ActionTest(unittest.TestCase):
 
     def testCatalanConstant01(self):
         actions = """
-            prove (INT x:[0,1]. atan(x) / x) = G
             define G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)
+            prove (INT x:[0,1]. atan(x) / x) = G
             subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))
             arg:
                 simplify

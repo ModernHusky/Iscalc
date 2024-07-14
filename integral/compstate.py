@@ -391,7 +391,12 @@ class Goal(StateItem):
         return self.proof
 
     def proof_by_case(self, split_cond: Expr):
-        self.proof = CaseProof(self, self.goal, split_cond=split_cond)
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
+        self.proof = CaseProof(self, ctx, self.goal, split_cond=split_cond)
         return self.proof
 
     def get_by_label(self, label: Label):
@@ -834,27 +839,27 @@ class CaseProof(StateItem):
 
     """
 
-    def __init__(self, parent, goal: Expr, *, split_cond: Expr):
+    def __init__(self, parent, ctx, goal: Expr, *, split_cond: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = parent.ctx
+        self.ctx = ctx
         self.split_cond = split_cond
         self.split_type = ""
         self.cases: List[Goal] = []
         assert isinstance(parent, Goal)
-        file = get_comp_file(parent)
+
         if split_cond.is_compare():
             self.split_type = "two-way"
             # Case 1:
             conds1 = Conditions()
-            case1_ctx = file.get_context(len(file.content) - 1)
+            case1_ctx = self.ctx
             conds1.add_condition(split_cond)
             conds1.update(parent.conds)
             self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = file.get_context(len(file.content) - 1)
+            case2_ctx = self.ctx
             conds2.add_condition(expr.neg_expr(split_cond))
             conds2.update(parent.conds)
             self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
@@ -864,20 +869,20 @@ class CaseProof(StateItem):
             # Case 1:
             conds1 = Conditions()
             conds1.add_condition(expr.Op("<", split_cond, Const(0)))
-            case1_ctx = file.get_context(len(file.content) - 1)
+            case1_ctx = self.ctx
             conds1.update(parent.conds)
             self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = file.get_context(len(file.content) - 1)
+            case2_ctx = self.ctx
             conds2.add_condition(expr.Op("=", split_cond, Const(0)))
             conds2.update(parent.conds)
             self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
 
             # Case 3:
             conds3 = Conditions()
-            case3_ctx = file.get_context(len(file.content) - 1)
+            case3_ctx = self.ctx
             conds3.add_condition(expr.Op(">", split_cond, Const(0)))
             conds3.update(parent.conds)
             self.cases.append(Goal(self, case3_ctx, goal, conds=conds3, fixes=parent.fixes))
