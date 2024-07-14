@@ -820,13 +820,14 @@ class IntegralTest(unittest.TestCase):
         # Reference:
         # Irresistable Integrals, Section 2.3
         file = compstate.CompFile("base", 'wallis')
-        raw_fixes = [('m', {'symbol_type':'var', 'type':'$int'})]
-        fixes = parser.parse_raw_fixes(raw_fixes)
+
+        goal = file.add_goal("(INT x:[0,oo]. 1/(x^2+b)^(m+1)) = pi / 2^(2*m+1) * binom(2*m, m) * (1/(b^((2*m+1)/2)))", conds=["b > 0", "m >= 0"])
+
         # Make definition
-        file.add_definition("I(m,b) = (INT x:[0,oo]. 1/(x^2+b)^(m+1))", conds=["b > 0", "m >= 0"])
+        goal.add_definition("I(m,b) = (INT x:[0,oo]. 1/(x^2+b)^(m+1))", conds=["b > 0", "m >= 0"])
 
         # Prove the following equality
-        Eq1 = file.add_goal("(D b. I(m,b)) = -(m+1) * I(m+1, b)", conds=["b > 0", "m >= 0"], fixes=fixes)
+        Eq1 = goal.add_subgoal("1", "(D b. I(m,b)) = -(m+1) * I(m+1, b)", conds=["b > 0", "m >= 0"])
         proof = Eq1.proof_by_calculation()
 
         calc = proof.lhs_calc
@@ -839,7 +840,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         # Prove the following by induction
-        Eq2 = file.add_goal("I(m,b) = pi / 2^(2*m+1) * binom(2*m, m) * (1/(b^((2*m+1)/2)))", conds=["b > 0", "m >= 0"], fixes=fixes)
+        Eq2 = goal.add_subgoal("2", "I(m, b) = pi / 2^(2*m+1) * binom(2*m, m) * (1/(b^((2*m+1)/2)))", conds=["b > 0", "m >= 0"])
         proof = Eq2.proof_by_induction("m")
         proof_base = proof.base_case.proof_by_calculation()
         proof_induct = proof.induct_case.proof_by_calculation()
@@ -847,11 +848,10 @@ class IntegralTest(unittest.TestCase):
         # Base case
         calc = proof_base.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("I"))
-        calc.perform_rule(rules.ElimInfInterval())
         calc.perform_rule(rules.SubstitutionInverse("u", "x", parser.parse_expr("sqrt(b) * u")))
         calc.perform_rule(rules.Simplify())
-        s1 = parser.parse_expr("1 / (b * u^2 + b)", fixes=fixes)
-        s2 = parser.parse_expr("(1/b) * (1 / (1^2 + u^2))", fixes=fixes)
+        s1 = parser.parse_expr("1 / (b * u^2 + b)")
+        s2 = parser.parse_expr("(1/b) * (1 / (1^2 + u^2))")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
@@ -859,27 +859,32 @@ class IntegralTest(unittest.TestCase):
         # Induction case, LHS
         calc = proof_induct.lhs_calc
         s = calc.parse_expr("I(m + 1,b)")
-        calc.perform_rule(rules.ApplyEquation(Eq1.goal, s))
+        calc.perform_rule(rules.ApplyEquation("1", s))
         calc.perform_rule(rules.OnSubterm(rules.ApplyInductHyp()))
         calc.perform_rule(rules.Simplify())
-        s1 = parser.parse_expr("-((2 * m + 1) / 2) - 1", fixes = fixes)
-        s2 = parser.parse_expr("-m - 3/2", fixes = fixes)
+        s1 = parser.parse_expr("-((2 * m + 1) / 2) - 1")
+        s2 = parser.parse_expr("-m - 3/2")
         calc.perform_rule(rules.Equation(s1, s2))
-        s = parser.parse_expr("b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)" , fixes=fixes)
+        s = parser.parse_expr("b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)")
         calc.perform_rule(rules.Equation(None, s))
 
         # Induction step, RHS
         calc = proof_induct.rhs_calc
-        # calc.perform_rule(rules.Simplify())
-        s1 = parser.parse_expr("binom(2*m+2, m+1)", fixes=fixes)
-        s2 = parser.parse_expr("2 * binom(2*m, m) * ((2*m+1) / (m+1))", fixes=fixes)
+
+        s1 = parser.parse_expr("binom(2*m+2, m+1)")
+        s2 = parser.parse_expr("2 * binom(2*m, m) * ((2*m+1) / (m+1))")
         calc.perform_rule(rules.ApplyIdentity(s1, s2))
-        s1 = parser.parse_expr("-((2 * m + 3) / 2)", fixes = fixes)
-        s2 = parser.parse_expr("-m - 3/2", fixes = fixes)
+        s1 = parser.parse_expr("-((2 * m + 3) / 2)")
+        s2 = parser.parse_expr("-m - 3/2")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.Simplify())
 
-        self.checkAndOutput(file)
+        proof = goal.proof_by_calculation()
+        calc = proof.lhs_calc
+        calc.perform_rule(rules.OnSubterm(rules.FoldDefinition("I")))
+        calc.perform_rule(rules.ApplyEquation("2", calc.parse_expr("I(m, b)")))
+        goal.print_entry(is_toplevel=True)
+        assert goal.is_finished()
 
     def testGammaFunction(self):
         # Reference:

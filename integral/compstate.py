@@ -212,11 +212,12 @@ class Goal(StateItem):
             res += str(self.proof)
         return res
 
-    def print_entry(self):
-        if self.conds and self.conds.data:
-            print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
-        else:
-            print("prove %s" % self.goal)
+    def print_entry(self, is_toplevel=False):
+        if is_toplevel:
+            if self.conds and self.conds.data:
+                print("prove %s for %s" % (self.goal, ', '.join(str(cond) for cond in self.conds.data)))
+            else:
+                print("prove %s" % self.goal)
         for func_def in self.definitions:
             if func_def.conds and func_def.conds.data:
                 print("define %s for %s" % (func_def.eq, ', '.join(str(cond) for cond in func_def.conds.data)))
@@ -229,23 +230,11 @@ class Goal(StateItem):
                 print("subgoal %s: %s" % (n, subgoal.goal))
             subgoal.print_entry()
         if isinstance(self.proof, CalculationProof):
-            if expr.is_fun(self.goal) and self.goal.func_name == "converges":
-                print("arg:")
-                for step in self.proof.arg_calc.steps:
-                    print("    " + str(step.rule))
-            else:
-                if self.proof.lhs_calc and self.proof.lhs_calc.steps:
-                    print("lhs:")
-                    for step in self.proof.lhs_calc.steps:
-                        print("    " + str(step.rule))
-                if self.proof.rhs_calc and self.proof.rhs_calc.steps:
-                    print("rhs:")
-                    for step in self.proof.rhs_calc.steps:
-                        print("    " + str(step.rule))
+            self.proof.print_entry()
         elif isinstance(self.proof, RewriteGoalProof):
-            print("from %s:" % self.proof.start)
-            for step in self.proof.begin.steps:
-                print("    " + str(step.rule))
+            self.proof.print_entry()
+        elif isinstance(self.proof, InductionProof):
+            self.proof.print_entry()
 
     def __eq__(self, other):
         if not isinstance(other, Goal):
@@ -393,7 +382,12 @@ class Goal(StateItem):
         return self.proof
 
     def proof_by_induction(self, induct_var: str, start: int = 0):
-        self.proof = InductionProof(self, self.goal, induct_var, start=start)
+        ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
+        for funcdef in self.definitions:
+            ctx.add_definition(funcdef.eq, funcdef.conds)
+        self.proof = InductionProof(self, ctx, self.goal, induct_var, start=start)
         return self.proof
 
     def proof_by_case(self, split_cond: Expr):
@@ -637,6 +631,22 @@ class CalculationProof(StateItem):
             if calc.steps:
                 res += str(calc)
         return res
+    
+    def print_entry(self):
+        if expr.is_fun(self.goal) and self.goal.func_name == "converges":
+            print("arg:")
+            for step in self.arg_calc.steps:
+                print("    " + str(step.rule))
+        else:
+            if self.lhs_calc and self.lhs_calc.steps:
+                print("lhs:")
+                for step in self.lhs_calc.steps:
+                    print("    " + str(step.rule))
+            if self.rhs_calc and self.rhs_calc.steps:
+                print("rhs:")
+                for step in self.rhs_calc.steps:
+                    print("    " + str(step.rule))
+        print("done")
 
     @property
     def lhs_calc(self) -> Calculation:
@@ -714,14 +724,15 @@ class InductionProof(StateItem):
 
     """
 
-    def __init__(self, parent: Goal, goal: Expr, induct_var: str, *, start: Union[int, Expr] = 0):
+    def __init__(self, parent: Goal, ctx: Context, goal: Expr, induct_var: str,
+                 *, start: Union[int, Expr] = 0):
         if not goal.is_equals():
             raise AssertionError("InductionProof: currently only support equation goals.")
 
         self.parent = parent
         self.goal = goal
         self.induct_var = induct_var
-        self.ctx = parent.ctx
+        self.ctx = ctx
 
         if isinstance(start, int):
             self.start = Const(start, type=expr.IntType)
@@ -730,8 +741,7 @@ class InductionProof(StateItem):
         else:
             raise NotImplementedError
         # Base case: n = start
-        file = get_comp_file(parent)
-        base_goal_ctx = file.get_context(len(file.content) - 1)
+        base_goal_ctx = self.ctx
         base_goal_fixes = parent.fixes.subst(induct_var, self.start)
         fixes = base_goal_fixes.update(base_goal_ctx.get_fixes())
         eq0 = normalize(parser.parse_expr(str(goal.subst(induct_var, self.start)), \
@@ -741,7 +751,7 @@ class InductionProof(StateItem):
                               fixes=base_goal_fixes, conds=base_goal_conds)
 
         n1 = Var(induct_var, type=expr.IntType) + Const(1)
-        induct_goal_ctx = file.get_context(len(file.content) - 1)
+        induct_goal_ctx = self.ctx
         induct_goal_fixes = parent.fixes.subst(induct_var, n1)
         fixes = induct_goal_fixes.update(induct_goal_ctx.get_fixes())
         eqI = normalize(parser.parse_expr(str(goal.subst(induct_var, n1)), fixes=fixes), induct_goal_ctx)
@@ -769,6 +779,19 @@ class InductionProof(StateItem):
         res += "Induct case: %s\n" % self.induct_case.goal
         res += str(self.induct_case)
         return res
+    
+    def print_entry(self):
+        if self.start == Const(0):
+            print("induction on %s" % self.induct_var)
+        else:
+            print("induction on %s starting from %s" % (self.induct_var, self.start))
+        if self.base_case.proof:
+            print("base:")
+            self.base_case.print_entry()
+        if self.induct_case.proof:
+            print("induct:")
+            self.induct_case.print_entry()
+        print("done")
 
     def is_finished(self):
         return self.base_case.is_finished() and self.induct_case.is_finished()
@@ -926,6 +949,12 @@ class RewriteGoalProof(StateItem):
         if not isinstance(other, RewriteGoalProof):
             return False
         return self.goal == other.goal and self.begin == other.begin
+
+    def print_entry(self):
+        print("from %s:" % self.start)
+        for step in self.begin.steps:
+            print("    " + str(step.rule))
+        print("done")
 
     def is_finished(self):
         f1 = normalize(self.begin.last_expr.lhs, self.ctx) == normalize(self.goal.lhs, self.ctx)

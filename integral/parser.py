@@ -76,9 +76,14 @@ grammar = r"""
 
     ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
 
+    ?induction_action: "induction" "on" CNAME -> induction_action
+        | "induction" "on" CNAME "starting" "from" expr -> induction_starting_action
+
     ?lhs_action: "lhs" ":" -> lhs_action
     ?rhs_action: "rhs" ":" -> rhs_action
     ?arg_action: "arg" ":" -> arg_action
+    ?base_case_action: "base" ":" -> base_case_action
+    ?induct_case_action: "induct" ":" -> induct_case_action
 
     ?inst_equation: CNAME "for" expr -> inst_equation
 
@@ -106,6 +111,7 @@ grammar = r"""
         | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_expansion_rule
         | "apply" "series" "evaluation" -> apply_series_evaluation_rule
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
+        | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -116,11 +122,14 @@ grammar = r"""
         | subgoal_action
         | done_action
         | rewrite_goal_action
+        | induction_action
         | define_action
         | calculate_action
         | lhs_action
         | rhs_action
         | arg_action
+        | base_case_action
+        | induct_case_action
         | rule -> rule_action
 
     %import common.CNAME
@@ -356,6 +365,14 @@ class ExprTransformer(Transformer):
     def rewrite_goal_action(self, name: Token):
         from integral import action
         return action.RewriteGoalAction(str(name))
+    
+    def induction_action(self, var_name: Token):
+        from integral import action
+        return action.InductionAction(str(var_name), expr.Const(0))
+
+    def induction_starting_action(self, var_name: Token, start: Expr):
+        from integral import action
+        return action.InductionAction(str(var_name), start)
 
     def lhs_action(self):
         from integral import action
@@ -368,6 +385,14 @@ class ExprTransformer(Transformer):
     def arg_action(self):
         from integral import action
         return action.ArgAction()
+
+    def base_case_action(self):
+        from integral import action
+        return action.BaseCaseAction()
+    
+    def induct_case_action(self):
+        from integral import action
+        return action.InductCaseAction()
 
     def substitute_rule(self, var_name: Token, expr: Expr):
         from integral import rules
@@ -467,6 +492,10 @@ class ExprTransformer(Transformer):
     def exchange_integral_sum_rule(self):
         from integral import rules
         return rules.IntSumExchange()
+
+    def apply_induction_hypothesis_rule(self):
+        from integral import rules
+        return rules.ApplyInductHyp()
 
     def full_simplify_rule(self):
         from integral import rules
