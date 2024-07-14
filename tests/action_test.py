@@ -1082,6 +1082,54 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "CatalanConstant01", actions)
 
+    def testCatalanConstant02(self):
+        actions = """
+            prove (INT x:[0,oo]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) + G
+            subgoal 1: (INT x:[1,oo]. log(x) / x ^ k) = 1 / (k - 1) ^ 2 for k > 1
+            lhs:
+                improper integral to limit creating t
+                integrate by parts with u = log(x), v = x ^ (1 - k) / (1 - k)
+                simplify
+                apply integral identity
+                simplify
+            rhs:
+                rewrite 1 / (k - 1) ^ 2 to 1 / (-k + 1) ^ 2
+            done
+            subgoal 2: converges(SUM(n, 0, oo, INT x:[1,oo]. x ^ (-(2 * n) - 2) * log(x)))
+            arg:
+                rewrite x ^ (-(2 * n) - 2) * log(x) to log(x) / x ^ (2 * n + 2)
+                apply 1 on INT x:[1,oo]. log(x) / x ^ (2 * n + 2)
+                simplify
+            done
+            subgoal 3: (INT x:[1,oo]. log(x) / (x ^ 2 + 1)) = G
+            lhs:
+                rewrite log(x) / (x ^ 2 + 1) to log(x) * x ^ (-2) * (1 + 1 / x ^ 2) ^ (-1)
+                apply series expansion on (1 + 1 / x ^ 2) ^ (-1) index n
+                rewrite log(x) * x ^ (-2) * SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n) to SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n * log(x) * x ^ (-2))
+                exchange integral and sum
+                simplify
+                rewrite x ^ (-(2 * n) - 2) * log(x) to log(x) / x ^ (2 * n + 2)
+                apply 1 on INT x:[1,oo]. log(x) / x ^ (2 * n + 2)
+                simplify
+            rhs:
+                expand definition for G
+            done
+            lhs:
+                split region at 1
+                apply integral identity
+                rewrite x + 1 to x * (1 + 1 / x)
+                rewrite log(x * (1 + 1 / x)) to log(x) + log(1 + 1 / x) using identity
+                rewrite (log(x) + log(1 + 1 / x)) / (x ^ 2 + 1) to log(x) / (x ^ 2 + 1) + log(1 + 1 / x) / (x ^ 2 + 1)
+                simplify
+                apply 3 on INT x:[1,oo]. log(x) / (x ^ 2 + 1)
+                substitute u for 1 / x
+                rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1
+                apply integral identity
+                simplify
+                rewrite pi * log(2) / 4 to pi / 4 * log(2)
+        """
+        self.check_actions("interesting", "CatalanConstant02", actions)
+
     def testCatalanConstant03(self):
         actions = """
             prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * atan(sqrt(b / a)) for a > 0, b > 0
@@ -1241,6 +1289,21 @@ class ActionTest(unittest.TestCase):
                 expand definition for I (all)
         """
         self.check_actions("interesting", "AhmedIntegral", actions)
+
+    def testEulerConstant01(self):
+        actions = """
+            define EulerConstant = -(INT x:[0, oo]. exp(-x) * log(x))
+            prove (INT x:[0,1]. (-exp(-x) + 1) / x) - (INT x:[1,oo]. exp(-x) / x) = EulerConstant
+            lhs:
+                integrate by parts with u = exp(-x), v = log(x) (at 2)
+                integrate by parts with u = 1 - exp(-x), v = log(x)
+                simplify
+            rhs:
+                expand definition for EulerConstant
+                split region at 1
+                simplify
+        """
+        self.check_actions("interesting", "EulerConstant01", actions)
 
 
 if __name__ == "__main__":

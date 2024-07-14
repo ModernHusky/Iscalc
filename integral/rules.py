@@ -1024,7 +1024,7 @@ class OnCount(Rule):
         if pred is None:
             if isinstance(rule, Equation):
                 pred = lambda t: t == rule.old_expr
-            elif isinstance(rule, Substitution):
+            elif isinstance(rule, (Substitution, SubstitutionInverse, IntegrationByParts)):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
             elif isinstance(rule, ExpandDefinition):
                 pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
@@ -1862,7 +1862,7 @@ class ElimInfInterval(Rule):
         self.new_var = new_var
 
     def __str__(self):
-        return "eliminate improper integral creating %s" % self.new_var
+        return "improper integral to limit creating %s" % self.new_var
 
     def export(self):
         return {
