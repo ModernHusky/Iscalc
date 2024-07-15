@@ -544,12 +544,9 @@ class CalculationProof(StateItem):
         self.calcs = []
         if goal.is_compare():
             self.predicate = goal.op
-            file = get_comp_file(parent)
             if isinstance(parent, Goal):
-                self.calcs.append(Calculation(self, parent.ctx, \
-                                              self.goal.args[0]))
-                self.calcs.append(Calculation(self, parent.ctx, \
-                                              self.goal.args[1]))
+                self.calcs.append(Calculation(self, self.ctx, self.goal.args[0]))
+                self.calcs.append(Calculation(self, self.ctx, self.goal.args[1]))
             else:
                 raise NotImplementedError
         elif expr.is_fun(goal) and goal.func_name == "converges":
