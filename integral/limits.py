@@ -135,7 +135,7 @@ def asymp_add_inv(a: Asymptote, b: Asymptote) -> Asymptote:
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
 
-    cmp = asymp_compare(a, b, ctx)
+    cmp = asymp_compare(a, b)
     if cmp == GREATER:
         return b
     elif cmp == LESS or cmp == EQUAL:
@@ -703,12 +703,6 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
     the expression LIM {x->oo}. e.
 
     """
-    fixes = ctx.get_fixes()
-    var_type = expr.RealType
-    if var_name in fixes:
-        for info in fixes[var_name]:
-            if info.is_binding_var():
-                var_type = info.get_type()
     l = limit_of_expr(e, var_name, ctx)
     if l.e is not None:
         return l.e
@@ -718,28 +712,28 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 + l2, ctx)
         else:
-            return expr.Limit(var_name, POS_INF, e, var_type=var_type)
+            return expr.Limit(var_name, POS_INF, e)
     elif e.is_minus():
         l1 = reduce_inf_limit(e.args[0], var_name, ctx)
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 - l2, ctx)
         else:
-            return expr.Limit(var_name, POS_INF, e, var_type=var_type)
+            return expr.Limit(var_name, POS_INF, e)
     elif e.is_times():
         if not e.args[0].contains_var(var_name):
             return normalize(e.args[0] * reduce_inf_limit(e.args[1], var_name, ctx), ctx)
         elif not e.args[1].contains_var(var_name):
             return normalize(e.args[1] * reduce_inf_limit(e.args[0], var_name, ctx), ctx)
         else:
-            return expr.Limit(var_name, POS_INF, e, var_type=var_type)
+            return expr.Limit(var_name, POS_INF, e)
     elif expr.is_integral(e):
         ctx2 = Context(ctx)
         ctx2.add_condition(expr.Op('>', expr.Var(e.var), e.lower))
         ctx2.add_condition(expr.Op('<', expr.Var(e.var), e.upper))
-        return expr.Integral(e.var, e.lower, e.upper, expr.Limit(var_name, POS_INF, e.body, var_type=var_type))
+        return expr.Integral(e.var, e.lower, e.upper, expr.Limit(var_name, POS_INF, e.body))
     else:
-        return expr.Limit(var_name, POS_INF, e, var_type=var_type)
+        return expr.Limit(var_name, POS_INF, e)
 
 def reduce_neg_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
     return reduce_inf_limit(e.subst(var_name, -expr.Var(var_name)), var_name, ctx)

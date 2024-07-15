@@ -6,13 +6,12 @@ from typing import Optional, Dict, Tuple, Union, List, Set
 import functools
 import operator
 
-from integral import expr, matrix, context
+from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
-    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, Matrix, INTEGRAL, MATRIX, INF, \
+    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
     Product, SYMBOL
 from integral import parser
-from integral.fixes import Fixes, fixes_from_expr
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
 from integral import limits
@@ -43,21 +42,15 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
         return normalize(x, ctx)
 
     def rec(e):
-        if var not in e.get_vars() and e.type == expr.RealType:
+        if var not in e.get_vars():
             return Const(0)
         elif expr.is_var(e):
-            if not expr.is_matrix_type(e.type):
-                if e.name == var:
-                    # dx. x = 1
-                    return Const(1)
-                else:
-                    # dx. y = 0
-                    return Const(0)
+            if e.name == var:
+                # dx. x = 1
+                return Const(1)
             else:
-                if e.name != var:
-                    return Fun(*ctx.get_func_type('zero_matrix', e.type.args[1], e.type.args[2]))
-                else:
-                    raise NotImplementedError
+                # dx. y = 0
+                return Const(0)
         elif expr.is_const(e):
             # dx. c = 0
             return Const(0)
@@ -92,15 +85,13 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal((rec(x) * y - x * rec(y)) / (y ^ Const(2)))
             elif e.op == "^":
                 x, y = e.args
-                if not expr.is_matrix_type(x.type):
-                    if y.ty == CONST:
-                        return normal(y * (x ^ Const(y.val - 1)) * rec(x))
-                    elif var not in y.get_vars():
-                        return normal(y * (x ^ (y - 1)) * rec(x))
-                    else:
-                        return normal(rec(expr.exp(y * expr.log(x))))
+                if y.ty == CONST:
+                    return normal(y * (x ^ Const(y.val - 1)) * rec(x))
+                elif var not in y.get_vars():
+                    return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
-                    raise NotImplementedError
+                    return normal(rec(expr.exp(y * expr.log(x))))
+
             else:
                 raise NotImplementedError
         elif expr.is_fun(e):
@@ -130,10 +121,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return normal(rec(x) / x)
             elif e.func_name == "exp":
                 x, = e.args
-                if not expr.is_matrix_type(x.type):
-                    return normal(expr.exp(x) * rec(x))
-                else:
-                    return Deriv(var, e)
+                return normal(expr.exp(x) * rec(x))
             elif e.func_name == "pi":
                 return Const(0)
             elif e.func_name == "sqrt":
@@ -157,10 +145,6 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 # Arguments should be integers
                 assert not e.contains_var(var), "deriv: binom applied to real variables"
                 return Const(0)
-            elif e.func_name == 'unit_matrix':
-                return Fun(*ctx.get_func_type('zero_matrix', e.args[0], e.args[0]))
-            elif e.func_name == 'zero_matrix':
-                return Fun(*ctx.get_func_type('zero_matrix', e.args[0], e.args[1]))
             else:
                 return Deriv(var, e)
         elif expr.is_integral(e):
@@ -171,14 +155,11 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                           + e.body.subst(e.var, e.upper) * rec(e.upper)
                           - e.body.subst(e.var, e.lower) * rec(e.lower))
         elif expr.is_limit(e):
-            return Limit(e.var, e.lim, rec(e.body), var_type=e.var_type)
+            return Limit(e.var, e.lim, rec(e.body))
         elif expr.is_summation(e):
             return Summation(e.index_var, e.lower, e.upper, rec(e.body))
         elif expr.is_inf(e):
             return Const(0)
-        elif expr.is_matrix(e):
-            e: Matrix
-            return Matrix([[rec(item) for item in row] for row in e.data], e.type)
         else:
             print(e, type(e))
             raise NotImplementedError
@@ -500,7 +481,7 @@ class Linearity(Rule):
                     return e
             elif expr.is_limit(e):
                 if expr.is_uminus(e.body):
-                    return -Limit(e.var, e.lim, e.body.args[0], var_type=e.var_type)
+                    return -Limit(e.var, e.lim, e.body.args[0])
                 elif e.body.is_times() or e.body.is_divides():
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b, c = Const(1), Const(1)
@@ -514,7 +495,7 @@ class Linearity(Rule):
                             c = c / f
                         else:
                             b = b / f
-                    return c * Limit(e.var, e.lim, b, var_type=e.var_type)
+                    return c * Limit(e.var, e.lim, b)
                 else:
                     return e
             elif expr.is_summation(e):
@@ -605,17 +586,16 @@ class ApplyIdentity(Rule):
     @staticmethod
     def search(e: Expr, ctx: Context) -> List[Expr]:
         res = []
-        func_type = ctx.get_fixes()
         for identity in ctx.get_other_identities():
             inst = expr.match(e, identity.lhs)
             if inst is not None:
                 # check identity's condition
                 flag = True
-                tmp_conds = [cond.inst_pat(inst, func_type) for cond in identity.conds.data]
+                tmp_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
                 for cond in tmp_conds:
                     flag = flag and ctx.check_condition(cond)
                 if flag:
-                    expected_rhs = identity.rhs.inst_pat(inst, func_type)
+                    expected_rhs = identity.rhs.inst_pat(inst)
                     res.append(normalize(expected_rhs, ctx))
         return res
 
@@ -950,7 +930,7 @@ class OnLocation(Rule):
                 assert loc.head < len(cur_e.args), "OnLocation: invalid location"
                 new_args = list(cur_e.args)
                 new_args[loc.head] = rec(cur_e.args[loc.head], loc.rest, ctx)
-                return Fun((cur_e.func_name, cur_e.func_type), *tuple(new_args))
+                return Fun(cur_e.func_name, *tuple(new_args))
             elif expr.is_integral(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 if loc.head == 0:
@@ -977,16 +957,16 @@ class OnLocation(Rule):
                 if loc.head == 0:
                     if cur_e.lim.is_evaluable():
                         v = expr.eval_expr(cur_e.lim)
-                        var = Var(cur_e.var, type=cur_e.var_type)
+                        var = Var(cur_e.var)
                         if v == float('inf'):
                             cond = Op('>', var, Const(0))
                             ctx.add_condition(cond)
                         elif v == float('-inf'):
                             cond = Op('<', var, Const(0))
                             ctx.add_condition(cond)
-                    return Limit(cur_e.var, cur_e.lim, rec(cur_e.body, loc.rest, ctx), drt=cur_e.drt, var_type=cur_e.var_type)
+                    return Limit(cur_e.var, cur_e.lim, rec(cur_e.body, loc.rest, ctx), drt=cur_e.drt)
                 elif loc.head == 1:
-                    return Limit(cur_e.var, rec(cur_e.lim, loc.rest, ctx), cur_e.body, drt=cur_e.drt, var_type=cur_e.var_type)
+                    return Limit(cur_e.var, rec(cur_e.lim, loc.rest, ctx), cur_e.body, drt=cur_e.drt)
                 else:
                     raise AssertionError("OnLocation: invalid location")
             elif expr.is_indefinite_integral(cur_e):
@@ -1002,14 +982,6 @@ class OnLocation(Rule):
                     return Summation(cur_e.index_var, cur_e.lower, rec(cur_e.upper, loc.rest, ctx), cur_e.body)
                 else:
                     raise AssertionError("OnLocation: invalid location")
-            elif expr.is_matrix(cur_e):
-                a, b = loc.top2
-                n = len(cur_e.data)
-                m = len(cur_e.data[0])
-                assert a >= 0 and a < n and b >= 0 and b < m
-                res_data = [list(rv) for rv in cur_e.data]
-                res_data[a][b] = rec(res_data[a][b], loc.rest2, ctx)
-                return Matrix(res_data, cur_e.type)
             else:
                 raise NotImplementedError
 
@@ -1063,7 +1035,7 @@ class OnCount(Rule):
             elif expr.is_op(cur_e):
                 return Op(cur_e.op, *(rec(arg, ctx) for arg in cur_e.args))
             elif expr.is_fun(cur_e):
-                return Fun((cur_e.func_name, cur_e.func_type), *(rec(arg, ctx) for arg in cur_e.args))
+                return Fun(cur_e.func_name, *(rec(arg, ctx) for arg in cur_e.args))
             elif expr.is_integral(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 return Integral(cur_e.var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx2))
@@ -1072,7 +1044,7 @@ class OnCount(Rule):
             elif expr.is_deriv(cur_e):
                 return Deriv(cur_e.var, rec(cur_e.body, ctx))
             elif expr.is_limit(cur_e):
-                return Limit(cur_e.var, rec(cur_e.lim, ctx), rec(cur_e.body, ctx), drt=cur_e.drt, var_type=cur_e.var_type)
+                return Limit(cur_e.var, rec(cur_e.lim, ctx), rec(cur_e.body, ctx), drt=cur_e.drt)
             elif expr.is_indefinite_integral(cur_e):
                 return IndefiniteIntegral(cur_e.var, rec(cur_e.body, ctx), cur_e.skolem_args)
             elif expr.is_summation(cur_e):
@@ -1126,11 +1098,10 @@ class Simplify(Rule):
 class ApplyEquation(Rule):
     """Apply the given equation for rewriting."""
 
-    def __init__(self, eq: Union[Expr, str], source: Expr, eq_fixes: Fixes = None):
+    def __init__(self, eq: Union[Expr, str], source: Expr):
         self.name = "ApplyEquation"
         self.eq = eq
         self.source = source
-        self.eq_fixes = eq_fixes if eq_fixes is not None else Fixes()
 
     def __str__(self):
         return "apply %s on %s" % (self.eq, self.source)
@@ -1147,8 +1118,6 @@ class ApplyEquation(Rule):
         }
         if self.source:
             res['source'] = str(self.source)
-        if not self.eq_fixes.empty():
-            res['eq_fixes'] = self.eq_fixes.export()
 
         return res
 
@@ -1199,11 +1168,10 @@ class ApplyEquation(Rule):
         conds_pattern = [expr.expr_to_pattern(cond) for cond in conds]
         inst_lhs = expr.match(e, pat.lhs)
         inst_rhs = expr.match(e, pat.rhs)
-        func_type = ctx.get_fixes()
         if inst_lhs is not None:
-            tmp = pat.rhs.inst_pat(inst_lhs, func_type)
-            tmp_conds = [cond_pattern.inst_pat(inst_lhs, func_type) for cond_pattern in conds_pattern]
-            left = pat.lhs.inst_pat(inst_lhs, func_type)
+            tmp = pat.rhs.inst_pat(inst_lhs)
+            tmp_conds = [cond_pattern.inst_pat(inst_lhs) for cond_pattern in conds_pattern]
+            left = pat.lhs.inst_pat(inst_lhs)
             if tmp is not None and normalize(left, ctx) == normalize(e, ctx):
                 if not tmp_conds:
                     return tmp
@@ -1214,9 +1182,9 @@ class ApplyEquation(Rule):
                 if flag:
                     return tmp
         if inst_rhs is not None:
-            tmp = pat.lhs.inst_pat(inst_rhs, func_type)
-            tmp_conds = [cond_pattern.inst_pat(inst_rhs, func_type) for cond_pattern in conds_pattern]
-            right = pat.rhs.inst_pat(inst_rhs, func_type)
+            tmp = pat.lhs.inst_pat(inst_rhs)
+            tmp_conds = [cond_pattern.inst_pat(inst_rhs) for cond_pattern in conds_pattern]
+            right = pat.rhs.inst_pat(inst_rhs)
             if tmp is not None and normalize(right, ctx) == normalize(e, ctx):
                 if not tmp_conds:
                     return tmp
@@ -1254,9 +1222,7 @@ class ApplyInductHyp(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        e = poly.simp_type(e, ctx)
         for eq in ctx.get_induct_hyps():
-            eq = poly.simp_type(eq.expr, ctx)
             if e == eq.lhs:
                 return eq.rhs
             if e == eq.rhs:
@@ -1548,7 +1514,7 @@ class ExpandPolynomial(Rule):
 class Equation(Rule):
     """Apply substitution for equal expressions"""
 
-    def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr], new_expr_fixes = Fixes()):
+    def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
         self.name = "Equation"
         if isinstance(old_expr, str):
             old_expr = parser.parse_expr(old_expr)
@@ -1556,7 +1522,6 @@ class Equation(Rule):
             new_expr = parser.parse_expr(new_expr)
         self.old_expr = old_expr
         self.new_expr = new_expr
-        self.new_expr_fixes = new_expr_fixes
 
     def __str__(self):
         if self.old_expr is None:
@@ -1578,8 +1543,6 @@ class Equation(Rule):
         }
         if self.old_expr:
             res['old_expr'] = str(self.old_expr)
-        if not self.new_expr_fixes.empty():
-            res['new_expr_fixes'] = self.new_expr_fixes.export()
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
@@ -1601,7 +1564,7 @@ class Equation(Rule):
             return self.new_expr
 
         # Rewriting 1 to sin(x)^2 + cos(x)^2
-        x = Symbol("x", [VAR, CONST, OP, FUN], type=expr.RealType)
+        x = Symbol("x", [VAR, CONST, OP, FUN])
         p = expr.sin(x) ** 2 + expr.cos(x) ** 2
         if e == Const(1) and expr.match(self.new_expr, p):
             return self.new_expr
@@ -1612,7 +1575,7 @@ class Equation(Rule):
         if norm.eq_power(e, self.new_expr, ctx):
             return self.new_expr
 
-        if not expr.is_matrix_type(e.type) and norm.eq_log(e, self.new_expr, ctx):
+        if norm.eq_log(e, self.new_expr, ctx):
             return self.new_expr
 
         if norm.eq_definite_integral(e, self.new_expr, ctx):
@@ -1634,8 +1597,8 @@ class Equation(Rule):
                 e = Summation(idx, sum.lower, sum.upper, out * sum.body)
 
         # sum(k, l, u, body1) + sum(i, l, u, body2) => sum(k, l, u, body1+body2)
-        x = Symbol('x', [SUMMATION], type=expr.RealType)
-        y = Symbol('y', [SUMMATION], type=expr.RealType)
+        x = Symbol('x', [SUMMATION])
+        y = Symbol('y', [SUMMATION])
         p = x + y
         mapping = expr.match(e, p)
         if mapping is not None:
@@ -1654,7 +1617,7 @@ class Equation(Rule):
                 flag = False
                 for v in all_index_vars:
                     if v not in vars:
-                        tmp = Limit(v, expr.POS_INF, Summation(e.index_var, e.lower, Var(v), e.body), var_type=expr.IntType)
+                        tmp = Limit(v, expr.POS_INF, Summation(e.index_var, e.lower, Var(v), e.body))
                         flag = True
                         break
                 if not flag:
@@ -1667,20 +1630,6 @@ class Equation(Rule):
                 tmp = Op(e.body.op, Summation(v, l, u, e.body.args[0]), Summation(v, l, u, e.body.args[1]))
                 if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
                     return self.new_expr
-
-        # rewrite limit expression
-        # r = LimRewrite(self.old_expr, self.new_expr)
-        # if r.eval(e, ctx) == self.new_expr:
-        #     return self.new_expr
-        # if normalize(norm.normalize_exp(e), ctx) == normalize(self.new_expr, ctx):
-        #     return self.new_expr
-        # t = e.type
-        # if expr.is_matrix_type(t):
-        #     if expr.is_vector_type(t):
-        #         if ctx.check_condition(Op('=', Fun('norm', e), Const(0))) and \
-        #                 normalize(self.new_expr, ctx) == Fun(*ctx.get_func_type('zero_matrix', t.args[1], t.args[2])):
-        #             return self.new_expr
-
         raise RuleException("Equation", "rewriting %s to %s failed" % (e, self.new_expr))
 
 
@@ -1872,7 +1821,7 @@ class ElimInfInterval(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         def gen_lim_expr(new_var, lim, lower, upper, drt=None):
-            return expr.Limit(new_var, lim, expr.Integral(e.var, lower, upper, e.body), drt, var_type=e.var_type)
+            return expr.Limit(new_var, lim, expr.Integral(e.var, lower, upper, e.body), drt)
 
         if not expr.is_integral(e):
             sep_ints = e.separate_integral()
@@ -1940,9 +1889,7 @@ class LHopital(Rule):
 
         numerator, denominator = e.body.args
         rule = DerivativeSimplify()
-        return expr.Limit(e.var, e.lim, Op('/', rule.eval(Deriv(e.var, numerator), ctx),
-                                           rule.eval(Deriv(e.var, denominator), ctx)), e.drt,
-                                            var_type = e.var_type)
+        return expr.Limit(e.var, e.lim, Op('/', rule.eval(Deriv(e.var, numerator), ctx),rule.eval(Deriv(e.var, denominator), ctx)), e.drt)
 
 
 def check_item(item, target=None, *, debug=False):
@@ -2109,20 +2056,18 @@ class ExpandDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        e = poly.simp_type(e, ctx)
-        func_type = ctx.get_fixes()
         if expr.is_fun(e) and e.func_name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
                     inst = expr.match(e, identity.lhs)
                     if inst == None:
                         continue
-                    tmp_conds = [cond.inst_pat(inst, func_type) for cond in identity.conds.data]
+                    tmp_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
                     flag = True
                     for cond in tmp_conds:
                         flag = flag and ctx.check_condition(cond)
                     if flag:
-                        return normalize(identity.rhs.inst_pat(inst, func_type), ctx)
+                        return normalize(identity.rhs.inst_pat(inst), ctx)
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:
@@ -2165,13 +2110,11 @@ class FoldDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        e = poly.simp_type(e, ctx)
-        func_type = ctx.get_fixes()
         for identity in ctx.get_definitions():
             if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
                 inst = expr.match(e, identity.rhs)
                 if inst:
-                    return normalize(identity.lhs.inst_pat(inst, func_type), ctx)
+                    return normalize(identity.lhs.inst_pat(inst), ctx)
 
             if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:
                 if e == identity.rhs:
@@ -2261,11 +2204,11 @@ class ChangeSummationIndex(Rule):
     def eval(self, e: Expr, ctx: Context):
         if not expr.is_summation(e):
             return e
-        tmp = normalize(Var(e.index_var, type=e.index_var_type) + e.lower - self.new_lower, ctx)
+        tmp = normalize(Var(e.index_var) + e.lower - self.new_lower, ctx)
         new_upper = normalize(e.upper + self.new_lower - e.lower, ctx) \
             if e.upper != POS_INF else POS_INF
         return Summation(e.index_var, self.new_lower, new_upper,
-                         e.body.replace(Var(e.index_var, type=e.index_var_type), tmp))
+                         e.body.replace(Var(e.index_var), tmp))
 
     def __str__(self):
         return "change summation index"
@@ -2295,16 +2238,8 @@ class LimitEquation(Rule):
 
     def eval(self, e: Expr, ctx: Context):
         v, lim = self.var, self.lim
-        fixes = e.lhs.get_bounded_vars()
-        fixes.update(e.rhs.get_bounded_vars())
-        fixes.update(ctx.get_fixes())
-        vt = expr.RealType
-        if v in fixes:
-            for info in fixes[v]:
-                if info.is_binding_var():
-                    vt = info.get_type()
-        lim1 = Limit(v, lim, e.lhs, var_type=vt)
-        lim2 = Limit(v, lim, e.rhs, var_type=vt)
+        lim1 = Limit(v, lim, e.lhs)
+        lim2 = Limit(v, lim, e.rhs)
         return Op('=', lim1, lim2)
 
     def export(self):
@@ -2441,151 +2376,6 @@ class MergeSummation(Rule):
         return Summation(a.index_var, a.lower, a.upper, Op(e.op, a.body, b.body))
 
 
-class SplitItem(Rule):
-    """
-    Split a summation into several summations.
-    input: SUM(i, 1, 7, i / (i + 1)), cond: i <= 4
-    output: SUM(i, 1, 4, i / (i + 1)) + SUM(i, 5, 7, i / (i + 1))
-    Currently, the cond only supports two kinds of input forms: i % k and i < k,
-    where i is a variable and k is an integer.
-    ('<' can be replaced with other comparison operators, such as '!=')
-    The lower and upper of summation should be an integer or inf.
-    """
-
-    def __init__(self, cond: Expr):
-        self.name = "SplitItem"
-        if isinstance(cond, str):
-            cond = parser.parse_expr(cond)
-        self.cond = cond
-
-    def __str__(self):
-        return "split item on %s" % self.cond
-
-    def export(self):
-        return {
-            "name": self.name,
-            "str": str(self),
-            "cond": str(self.cond),
-            "latex_str": "split item on \\(%s\\)" % latex.convert_expr(self.cond)
-        }
-
-    def preprocessing(self, pair:Tuple, exclude_vars:Set, subst:Dict):
-        v, t = pair
-        if v not in exclude_vars:
-            subst[v] = {"new_name":v, "type":t}
-            exclude_vars.add(v)
-            return
-        if v in subst:
-            return
-        var = None
-        alphabet = "ijkmnabcdefuvwxyz"
-        for c in alphabet:
-            if c not in exclude_vars:
-                var = c
-                break
-        if var is None:
-            var = "pattern_v"+str(len(exclude_vars))
-        subst[v] = {'type':t, 'new_name':var}
-        exclude_vars.add(var)
-
-
-    def update(self, e: Expr, subst: Dict):
-        for name in subst:
-            e = self.change_name(e, name, subst[name])
-        return e
-
-    def change_name(self, e, old_name, item):
-        new_name, type = item['new_name'], item['type']
-        if expr.is_symbol(e):
-            if e.name == old_name:
-                return Symbol(new_name, e.pat, type)
-        elif expr.is_op(e):
-            return Op(e.op, *[self.change_name(arg, old_name, item) for arg in e.args])
-        elif expr.is_fun(e):
-            func_name = e.func_name
-            func_type = e.func_type
-            if e.func_name == old_name:
-                func_name = new_name
-                func_type = type
-            return Fun((func_name, func_type), \
-                       *[self.change_name(arg, old_name, item) for arg in e.args])
-        elif expr.is_summation(e):
-            res = e
-            if e.index_var == old_name:
-                res = res.alpha_convert(new_name)
-            return Summation(res.index_var, \
-                             self.change_name(res.lower, old_name, item), \
-                             self.change_name(res.upper, old_name, item), \
-                             self.change_name(res.body, old_name, item))
-        elif expr.is_product(e):
-            res = e
-            if e.index_var == old_name:
-                res = res.alpha_convert(new_name)
-            return Product(res.index_var, \
-                             self.change_name(res.lower, old_name, item), \
-                             self.change_name(res.upper, old_name, item), \
-                             self.change_name(res.body, old_name, item))
-        return e
-
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        if not expr.is_summation(e) and not expr.is_product(e):
-            return e
-        fixes = ctx.get_fixes()
-        for id in ctx.get_summation_split_identities():
-            excluded_name = e.get_vars(with_bd=True).union(e.get_all_func_name())
-            subst = dict()
-            if expr.is_symbol(id.split_cond.args[0]):
-                n = id.split_cond.args[0].name
-                self.preprocessing((n, e.index_var_type), excluded_name, subst)
-            if expr.is_symbol(id.split_cond.args[1]):
-                a = id.split_cond.args[1].name
-                self.preprocessing((a, self.cond.args[1].type), excluded_name, subst)
-            split_cond = self.update(id.split_cond, subst)
-            inst_split_cond = expr.match(self.cond, split_cond)
-            if inst_split_cond is not None:
-                lhs = id.expr.lhs
-                self.preprocessing((lhs.index_var, e.index_var_type), excluded_name, subst)
-                if expr.is_symbol(lhs.lower):
-                    l = lhs.lower.name
-                    self.preprocessing((l, e.lower.type), excluded_name, subst)
-                if expr.is_symbol(lhs.upper):
-                    u = lhs.upper.name
-                    self.preprocessing((u, e.upper.type), excluded_name, subst)
-                if expr.is_fun(lhs.body):
-                    func_name = lhs.body.func_name
-                    self.preprocessing((func_name, expr.FunType(expr.IntType, e.body.type)),\
-                                       excluded_name, subst)
-                new_expr = self.update(id.expr, subst)
-                ft = expr.FunType(expr.IntType, e.body.type)
-                if lhs.body.func_name in subst:
-                    func_name = subst[func_name]['new_name']
-                fn = Fun((func_name, ft), Var(e.index_var, type=expr.IntType))
-                eq = expr.Eq(fn, e.body)
-                eq_pat = eq.subst(e.index_var,
-                                  Symbol(e.index_var, pat=[VAR, CONST, OP, FUN, INTEGRAL, MATRIX, INF, SYMBOL], type=expr.IntType))
-                r = OnSubterm(ExpandDefinition(func_name, simp=False))
-                tmp_ctx = Context(ctx)
-                tmp_ctx.definitions.append(context.Identity(eq_pat))
-                new_expr = r.eval(new_expr, tmp_ctx)
-                inst_lhs = expr.match(e, new_expr.lhs)
-
-                if inst_lhs is not None:
-                    inst_split_cond.update(inst_lhs)
-                    tmp_conds = [self.update(cond, subst) for cond in id.conds.data]
-                    tmp_conds = [c.inst_pat(inst_split_cond, fixes) for c in tmp_conds]
-                    flag = True
-                    for c in tmp_conds:
-                        if not ctx.check_condition(c):
-                            flag = False
-                            break
-                    if flag:
-                        res = self.update(new_expr.rhs, subst).inst_pat(inst_split_cond, fixes)
-                        res = r.eval(res, tmp_ctx)
-                        return res
-        return e
-
-
 class DerivEquation(Rule):
     """Differentiate both sides with respect to some variable."""
 
@@ -2666,45 +2456,6 @@ class FunEquation(Rule):
         # return e
 
 
-class ExpandMatFunc(Rule):
-    """Expand functions on matrices."""
-
-    def __init__(self):
-        self.name = "ExpandMatFunc"
-
-    def __str__(self):
-        return "expand functions of matrices"
-
-    def export(self):
-        return {
-            "name": self.name,
-            "str": str(self)
-        }
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        if expr.is_var(e):
-            if expr.is_matrix_type(e.type):
-                r, c = expr.num_row(e.type), expr.num_col(e.type)
-                if expr.is_const(r) and expr.is_const(c):
-                    # Expand into matrix form
-                    return matrix.unfold_matrix(e, r.val, c.val, ctx)
-            # All other cases: leave unchanged
-            return e
-        elif e.is_power() and expr.is_matrix(e.args[0]) and e.args[1] == Const(2):
-            return matrix.multiply(e.args[0], e.args[0], ctx)
-        elif expr.is_fun(e):
-            if e.func_name == 'hat' and len(e.args) == 1 and expr.is_matrix_type(e.args[0].type):
-                return matrix.hat(e.args[0], ctx)
-            elif e.func_name == 'unit_matrix' and len(e.args) == 1 and expr.is_const(e.args[0]):
-                return matrix.unit_matrix(e.args[0].val)
-            elif e.func_name == 'T' and len(e.args) == 1:
-                return matrix.transpose(e.args[0])
-            elif e.func_name == "zero_matrix" and len(e.args) == 2 and all(expr.is_const(arg) for arg in e.args):
-                return matrix.zero_matrix(e.args[0].val, e.args[1].val)
-            elif e.func_name == "norm" and len(e.args) == 1 and expr.is_matrix_type(e.args[0].type):
-                return matrix.norm(e.args[0])
-        return e
-
 
 class LimRewrite(Rule):
     """Expand functions on matrices."""
@@ -2739,108 +2490,14 @@ class LimRewrite(Rule):
             if expr.is_op(b):
                 if len(b.args) == 2:
                     if b.op in "+-*/":
-                        res = Op(b.op, Limit(e.var, e.lim, b.args[0], e.drt, var_type=e.var_type),
-                                 Limit(e.var, e.lim, b.args[1], e.drt, var_type=e.var_type))
+                        res = Op(b.op, Limit(e.var, e.lim, b.args[0], e.drt),
+                                 Limit(e.var, e.lim, b.args[1], e.drt))
                     if b.op == '^':
                         if not b.args[1].contains_var(e.var):
-                            res = Op(b.op, Limit(e.var, e.lim, b.args[0], e.drt, var_type=e.var_type), b.args[1])
+                            res = Op(b.op, Limit(e.var, e.lim, b.args[0], e.drt), b.args[1])
                 elif len(b.args) == 1:
                     if b.op == '-':
-                        res = -Limit(e.var, e.lim, b.args[0], e.drt, var_type=e.var_type)
+                        res = -Limit(e.var, e.lim, b.args[0], e.drt)
             if res != None and normalize(res, ctx) == normalize(self.target, ctx):
-                return self.target
-        return e
-
-
-class RewriteMatrixMul(Rule):
-    """rewrite matrix product expresssion"""
-
-    def __init__(self, source: Expr, target: Expr):
-        self.name = "RewriteMatrixMul"
-        self.source = source
-        self.target = target
-
-    def __str__(self):
-        return "rewrite product of matrix"
-
-    def export(self):
-        res = {
-            "name": self.name,
-            "str": str(self),
-            "source": str(self.source),
-            "target": str(self.target)
-        }
-        return res
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        if self.source != e:
-            find_res = e.find_subexpr(self.source)
-            if len(find_res) == 0:
-                raise AssertionError("RewriteMatrixMul: source expression not found")
-            loc = find_res[0]
-            return OnLocation(self, loc).eval(e, ctx)
-        assert self.source == e
-
-        def rec(exp: Expr, idx_var: Var, l: Expr, u: Expr):
-            if expr.is_var(exp) or expr.is_const(exp):
-                return exp
-            elif expr.is_op(exp):
-                return Op(exp.op, *[rec(arg, idx_var, l, u) for arg in exp.args])
-            elif expr.is_fun(exp):
-                if exp.func_name == 'nth':
-                    v, r, c = exp.args
-                    v = rec(v, idx_var, l, u)
-                    if expr.is_matrix_type(v.type):
-                        if expr.is_const(c):
-                            if r == normalize(idx_var, ctx):
-                                return Fun('nth', Fun('choose_row', v, l, u), idx_var, c)
-                            else:
-                                x = Symbol("_x", pat=[VAR, CONST, OP, FUN], type=expr.IntType)
-                                pat = Op('+', -idx_var, x)
-                                inst = expr.match(r, pat)
-                                if inst != None:
-                                    x = x.inst_pat(inst)
-                                    start, end = normalize(x - u, ctx), normalize(x - l, ctx)
-                                    return Fun('nth', Fun('choose_row', v, start, end), u - l - idx_var, c)
-                elif exp.func_name == 'nthc':
-                    v, c = exp.args
-                    v = rec(v, idx_var, l, u)
-                    if expr.is_matrix_type(v.type):
-                        if c == normalize(idx_var, ctx):
-                            return Fun('nthc', Fun('choose_col', v, l, u), idx_var)
-                        else:
-                            x = Symbol("_x", pat=[VAR, CONST, OP, FUN], type=expr.IntType)
-                            pat = Op('+', -idx_var, x)
-                            inst = expr.match(c, pat)
-                            if inst != None:
-                                x = x.inst_pat(inst)
-                                start, end = normalize(x - u, ctx), normalize(x - l, ctx)
-                                return Fun('nthc', Fun('choose_col', v, start, end), u - l - idx_var)
-                elif exp.func_name == 'nthr':
-                    v, r = exp.args
-                    v = rec(v, idx_var, l, u)
-                    if expr.is_matrix_type(v.type):
-                        if r == normalize(idx_var, ctx):
-                            return Fun('nthr', Fun('choose_col', v, l, u), idx_var)
-                        else:
-                            x = Symbol("_x", pat=[VAR, CONST, OP, FUN], type=expr.IntType)
-                            # pat = Op('-', x, idx_var)
-                            pat = Op('+', -idx_var, x)
-                            inst = expr.match(r, pat)
-                            if inst != None:
-                                x = x.inst_pat(inst)
-                                start, end = normalize(x - u, ctx), normalize(x - l, ctx)
-                                return Fun('nthr', Fun('choose_col', v, start, end), u - l - idx_var)
-                else:
-                    return Fun((exp.func_name, exp.func_type), *[rec(arg, idx_var, l, u) for arg in exp.args])
-            print('rec on', str(exp))
-            raise NotImplementedError
-
-        if expr.is_product(e):
-            l = Const(0)
-            u = normalize(e.upper - e.lower, ctx)
-            res = expr.Product(e.index_var, l, u,
-                               rec(e.body, Var(e.index_var, type=e.index_var_type), e.lower, e.upper))
-            # return res
-            if normalize(res, ctx) == normalize(self.target, ctx):
                 return self.target
         return e

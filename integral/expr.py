@@ -6,162 +6,12 @@ from fractions import Fraction
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
-
-class Type:
-    """Types of expressions.
-    
-    Each type consists of name and a list of arguments. Each argument
-    may be types or expressions.
-    
-    """
-    def __init__(self, name: str, *args):
-        self.name = name
-        self.args = tuple(args)
-
-    def __eq__(self, other):
-        return isinstance(other, Type) and self.name == other.name and self.args == other.args
-
-    def __repr__(self):
-        return "Type(%s, %s)" % (self.name, ", ".join(str(arg) for arg in self.args))
-
-    def __str__(self):
-        if len(self.args) == 0:
-            return "$%s" % self.name
-        else:
-            return "$%s(%s)" % (self.name, ", ".join(str(arg) for arg in self.args))
-        if self.name == "fun":
-            assert len(self.args) >= 2
-            if len(self.args) == 2:
-                return "%s => %s" % (self.args[0], self.args[1])
-            else:
-                return "(%s) => %s" % (', '.join(str(arg) for arg in self.args[:-1]), self.args[-1])
-        elif len(self.args) == 0:
-            return "$%s" % self.name
-        else:
-            return "$%s(%s)" % (self.name, ", ".join(str(arg) for arg in self.args))
-        
-    def __hash__(self):
-        return hash(("Type", self.name, self.args))
-
-    @property
-    def eleType(self):
-        assert self.name == 'tensor'
-        return self.args[0]
-
-    @property
-    def row(self):
-        assert is_matrix_type(self), str(self)
-        return self.args[1]
-
-    @property
-    def col(self):
-        assert is_matrix_type(self)
-        return self.args[2]
-
-    @property
-    def args_num(self):
-        assert is_fun_type(self)
-        return len(self.args) - 1
-
-    def get_args_type(self) -> List['Type']:
-        assert is_fun_type(self)
-        return list(self.args[:-1])
-
-    def get_return_type(self):
-        assert is_fun_type(self)
-        return self.args[-1]
-
-    def subst(self, var:str, e:"Expr"):
-        if self in (RealType, IntType, BoolType, Unknown):
-            return self
-        elif self.name == 'tensor':
-            eleType = self.eleType.subst(var,e)
-            row = self.row.subst(var, e)
-            col = self.col.subst(var,e)
-            return TensorType(eleType, row, col)
-        elif self.name == 'fun':
-            args = [arg.subst(var, e) for arg in self.args]
-            return FunType(*args)
-        raise NotImplementedError("type is %s"%(str(self)))
-
-    def inst_pat(self, mapping:Dict):
-        if self in (RealType, IntType, BoolType, Unknown):
-            return self
-        elif self.name in ("tensor", "fun"):
-            return Type(self.name, *[arg.inst_pat(mapping) for arg in self.args])
-        else:
-            raise NotImplementedError
-
-def FunType(*args) -> Type:
-    """Type of functions. The first n-1 arguments are the input types
-    of the function. The last argument is the return type.
-    
-    """
-    return Type("fun", *args)
-
-# Type of real numbers
-RealType = Type("real")
-
-# Type of integers
-IntType = Type("int")
-BoolType = Type("bool")
-Unknown = Type("unknown")
-RealInfType = Type("inf", "$real")
-IntInfType = Type("inf", "$int")
-InfType = Type("inf")
-
-
-def TensorType(eleType: Type, *dims) -> Type:
-    """Types of tensors, including vectors and matrices.
-    
-    The first argument is the type of elements in the tensor. The remaining
-    arguments are the dimensions (expressions that should evaluate to integer).
-
-    """
-    return Type("tensor", eleType, *dims)
-
-# Type of vectors (1-dimensional tensor)
-def RowVectorType(eleType: Type, len) -> Type:
-    return TensorType(eleType, len)
-
-# Type of matrices (2-dimensional tensor)
-def MatrixType(eleType: Type, row, col) -> Type:
-    return TensorType(eleType, row, col)
-
-def is_vector_type(type: Type) -> bool:
-    return type.name == "tensor" and len(type.args) == 3 and eval_expr(type.args[2]) == 1
-
-def is_row_type(type: Type) -> bool:
-    return type.name == "tensor" and len(type.args) == 2
-
-def is_matrix_type(type: Type) -> bool:
-    return isinstance(type, Type) and type.name == "tensor" and len(type.args) == 3
-
-def is_fun_type(type:Type) -> bool:
-    return isinstance(type, Type) and type.name == 'fun'
-
-def num_row(type: Type) -> "Expr":
-    if not is_matrix_type(type):
-        raise AssertionError("num_row: input must be a matrix type, got %s" % type)
-    return type.args[1]
-        
-def num_col(type: Type) -> "Expr":
-    if not is_matrix_type(type):
-        raise AssertionError("num_col: input must be a matrix type, got %s" % type)
-    return type.args[2]
-
 VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
-SKOLEMFUNC, SUMMATION, LAZYSERIES, VECTOR, MATRIX, PRODUCT = range(17)
+SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
 op_priority = {
     "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
 }
-# matrix addition, multiplication, concatenation
-type_mapping = {(RealType, RealType):RealType,
-                    (RealType, IntType):RealType,
-                    (IntType, RealType):RealType,
-                    (IntType, IntType):IntType,
-                (Unknown, Unknown):Unknown}
 
 class Location:
     """Location within an expression."""
@@ -210,9 +60,7 @@ class Location:
 class Expr:
     """Expressions."""
     def __init__(self):
-        # Type of the expression. None indicates that type is currently
-        # not inferred.
-        self.type: Optional[Type] = None
+        pass
 
     def __add__(self, other):
         if isinstance(other, (int, Fraction)):
@@ -299,8 +147,6 @@ class Expr:
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
         elif is_product(self):
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
-        elif is_matrix(self):
-            return 1 + sum([sum([item.size() for item in row]) for row in self.data])
         else:
             raise NotImplementedError
 
@@ -414,8 +260,6 @@ class Expr:
             return (self.name, self.dependent_vars) <= (other.name, other.dependent_vars)
         elif is_limit(self):
             return (self.var, self.lim, self.body, self.drt) <= (other.var, other.lim, other.body, other.drt)
-        elif is_matrix(self):
-            return ([[item for item in r] for r in self.data]) <= ([[item for item in r] for r in other.data])
         else:
             print(type(self))
             raise NotImplementedError
@@ -430,7 +274,7 @@ class Expr:
         return not self < other
 
     def priority(self):
-        if self.ty in (VAR, SYMBOL, INF, SKOLEMFUNC, LAZYSERIES, VECTOR, MATRIX):
+        if self.ty in (VAR, SYMBOL, INF, SKOLEMFUNC):
             return 100
         elif self.ty == CONST:
             if isinstance(self.val, Fraction) and self.val.denominator != 1:
@@ -537,7 +381,7 @@ class Expr:
             return Deriv(self.var, self.body.replace_expr(loc.rest, new_expr))
         elif is_limit(self):
             assert loc.head == 0, "replace_expr: invalid location"
-            return Limit(self.var, self.limit, self.body.replace_expr(loc.rest, new_expr), self.drt, self.var_type)
+            return Limit(self.var, self.limit, self.body.replace_expr(loc.rest, new_expr), self.drt)
         else:
             raise NotImplementedError
 
@@ -587,10 +431,6 @@ class Expr:
                 find(e.body, loc.append(0))
                 find(e.lower, loc.append(1))
                 find(e.upper, loc.append(2))
-            elif is_matrix(e):
-                for i, rv in enumerate(e.data):
-                    for j, item in enumerate(rv):
-                        find(item, loc.append(i).append(j))
         find(self, Location(""))
         return locations
 
@@ -643,12 +483,11 @@ class Expr:
         elif is_op(self):
             return Op(self.op, *[arg.subst(var, e) for arg in self.args])
         elif is_fun(self):
-            func_type = self.func_type.subst(var, e)
-            return Fun((self.func_name, func_type), *[arg.subst(var, e) for arg in self.args])
+            return Fun(self.func_name, *[arg.subst(var, e) for arg in self.args])
         elif is_deriv(self):
             return Deriv(self.var, self.body.subst(var, e))
         elif is_limit(self):
-            return Limit(self.var, self.lim.subst(var, e), self.body.subst(var, e), var_type=self.var_type)
+            return Limit(self.var, self.lim.subst(var, e), self.body.subst(var, e))
         elif is_inf(self):
             return self
         elif is_integral(self):
@@ -663,8 +502,6 @@ class Expr:
         elif is_product(self):
             return Product(self.index_var, self.lower.subst(var, e), self.upper.subst(var, e),
                              self.body.subst(var, e))
-        elif is_matrix(self):
-            return Matrix([[item.subst(var,e) for item in rv] for rv in self.data])
         else:
             print('subst on', self)
             raise NotImplementedError
@@ -690,119 +527,40 @@ class Expr:
     def is_evaluable(self):
         return self.is_constant() or is_inf(self)
 
-    def get_bounded_vars(self) -> dict[str, Type]:
-        """Obtain the set of variables in self."""
-        def rec(t, bd_vars):
-            if is_var(t):
-                return
-            elif t.ty in (CONST, INF, SYMBOL):
-                return
-            elif is_op(t) or is_fun(t):
-                for arg in t.args:
-                    rec(arg, bd_vars)
-            elif is_deriv(t):
-                bd_vars[t.var] = t.var_type
-                rec(t.body, bd_vars)
-            elif is_limit(t):
-                bd_vars[t.var] = t.var_type
-                if t.var_type is None:
-                    raise NotImplementedError
-                rec(t.lim, bd_vars)
-                rec(t.body, bd_vars)
-            elif is_integral(t) or is_evalat(t):
-                bd_vars[t.var] = t.var_type
-                rec(t.lower, bd_vars)
-                rec(t.upper, bd_vars)
-                rec(t.body, bd_vars)
-            elif is_indefinite_integral(t):
-                bd_vars[t.var] = t.var_type
-                rec(t.body, bd_vars)
-            elif is_summation(t):
-                bd_vars[t.index_var] = t.index_var_type
-                rec(t.lower, bd_vars)
-                rec(t.upper, bd_vars)
-                rec(t.body, bd_vars)
-            elif is_product(t):
-                bd_vars[t.index_var] = t.index_var_type
-                rec(t.lower, bd_vars)
-                rec(t.upper, bd_vars)
-                rec(t.body, bd_vars)
-            elif t.is_equals():
-                rec(t.lhs, bd_vars)
-                rec(t.rhs, bd_vars)
-            elif is_matrix(t):
-                for rv in t.data:
-                    for d in rv:
-                        rec(d, bd_vars)
-            elif is_skolem_func(t):
-                t: SkolemFunc
-                for var in t.dependent_vars:
-                    rec(var, bd_vars)
-            else:
-                print(t, type(t))
-                raise NotImplementedError
-
-        bd = dict()
-        rec(self, bd)
-        return bd
-
-    def get_vars(self, with_bd = False, with_type = False) -> Set[str]:
+    def get_vars(self) -> Set[str]:
         """Obtain the set of variables in self."""
         res = set()
-
-        def add(res, with_bd, with_type, name, type=None):
-            if with_bd:
-                if with_type:
-                    res.add((name, type))
-                else:
-                    res.add(name)
-
         def rec(t, bd_vars):
-            nonlocal with_bd, with_type
             if is_var(t):
-                if with_type:
-                    if t.name not in bd_vars:
-                        res.add((t.name, t.type))
-                else:
-                    if t.name not in bd_vars:
-                        res.add(t.name)
+                if t.name not in bd_vars:
+                    res.add(t.name)
             elif t.ty in (CONST, INF, SYMBOL):
                 return
             elif is_op(t) or is_fun(t):
                 for arg in t.args:
                     rec(arg, bd_vars)
             elif is_deriv(t):
-                add(res, with_bd, with_type, t.var, RealType)
                 rec(t.body, bd_vars + [t.var])
             elif is_limit(t):
-                add(res, with_bd, with_type, t.var, RealType)
                 rec(t.lim, bd_vars + [t.var])
                 rec(t.body, bd_vars + [t.var])
             elif is_integral(t) or is_evalat(t):
-                add(res, with_bd, with_type, t.var, RealType)
                 rec(t.lower, bd_vars + [t.var])
                 rec(t.upper, bd_vars + [t.var])
                 rec(t.body, bd_vars + [t.var])
             elif is_indefinite_integral(t):
-                add(res, with_bd, with_type, t.var, RealType)
                 rec(t.body, bd_vars + [t.var])
             elif is_summation(t):
-                add(res, with_bd, with_type, t.index_var, IntType)
                 rec(t.lower, bd_vars + [t.index_var])
                 rec(t.upper, bd_vars + [t.index_var])
                 rec(t.body, bd_vars + [t.index_var])
             elif is_product(t):
-                add(res, with_bd, with_type, t.index_var, IntType)
                 rec(t.lower, bd_vars + [t.index_var])
                 rec(t.upper, bd_vars + [t.index_var])
                 rec(t.body, bd_vars + [t.index_var])
             elif t.is_equals():
                 rec(t.lhs, bd_vars)
                 rec(t.rhs, bd_vars)
-            elif is_matrix(t):
-                for rv in t.data:
-                    for d in rv:
-                        rec(d, bd_vars)
             elif is_skolem_func(t):
                 t:SkolemFunc
                 for var in t.dependent_vars:
@@ -829,7 +587,7 @@ class Expr:
         elif is_op(self):
             return Op(self.op, *[arg.replace(e, repl_e) for arg in self.args])
         elif is_fun(self):
-            return Fun((self.func_name, self.func_type), *[arg.replace(e, repl_e) for arg in self.args])
+            return Fun(self.func_name, *[arg.replace(e, repl_e) for arg in self.args])
         elif is_deriv(self):
             return Deriv(self.var, self.body.replace(e, repl_e))
         elif is_integral(self):
@@ -851,9 +609,7 @@ class Expr:
             nbody = self.body.replace(e, repl_e)
             return Product(self.index_var, nl, nu, nbody)
         elif is_limit(self):
-            return Limit(self.var, self.lim.replace(e, repl_e), self.body.replace(e, repl_e), self.drt, var_type=self.var_type)
-        elif is_matrix(self):
-            return Matrix([[item.replace(e, repl_e) for item in rv] for rv in self.data])
+            return Limit(self.var, self.lim.replace(e, repl_e), self.body.replace(e, repl_e), self.drt)
         else:
             print(self, e, repl_e)
             raise NotImplementedError
@@ -934,44 +690,39 @@ class Expr:
             subs.remove(self)
         return tuple(subs)
 
-    def inst_pat(self, mapping: Dict, func_type:Dict=None) -> "Expr":
+    def inst_pat(self, mapping: Dict) -> "Expr":
         """Instantiate by replacing symbols in term with mapping."""
         if is_var(self) or is_const(self) or is_inf(self):
             return self
         elif is_symbol(self):
             if self.name in mapping:
                 res = mapping[self.name]
-                res.type.inst_pat(mapping)
                 return res
             else:
                 return self
         elif is_op(self):
-            return Op(self.op, *(arg.inst_pat(mapping, func_type) for arg in self.args))
+            return Op(self.op, *(arg.inst_pat(mapping) for arg in self.args))
         elif is_fun(self):
-            return Fun((self.func_name, self.func_type.inst_pat(mapping)),
-                       *(arg.inst_pat(mapping, func_type) for arg in self.args))
+            return Fun(self.func_name, *(arg.inst_pat(mapping) for arg in self.args))
         elif is_skolem_func(self):
-            return SkolemFunc(self.name, tuple(arg.inst_pat(mapping, func_type) for arg in self.dependent_vars))
+            return SkolemFunc(self.name, tuple(arg.inst_pat(mapping) for arg in self.dependent_vars))
         elif is_integral(self):
-            return Integral(self.var, self.lower.inst_pat(mapping, func_type), self.upper.inst_pat(mapping, func_type),
-                            self.body.inst_pat(mapping, func_type))
+            return Integral(self.var, self.lower.inst_pat(mapping), self.upper.inst_pat(mapping),self.body.inst_pat(mapping))
         elif is_evalat(self):
-            return EvalAt(self.var, self.lower.inst_pat(mapping, func_type), self.upper.inst_pat(mapping, func_type),
-                          self.body.inst_pat(mapping, func_type))
+            return EvalAt(self.var, self.lower.inst_pat(mapping), self.upper.inst_pat(mapping),
+                          self.body.inst_pat(mapping))
         elif is_deriv(self):
             if self.var in mapping and is_var(mapping[self.var]):
-                return Deriv(mapping[self.var].name, self.body.inst_pat(mapping, func_type))
-            return Deriv(self.var, self.body.inst_pat(mapping, func_type))
+                return Deriv(mapping[self.var].name, self.body.inst_pat(mapping))
+            return Deriv(self.var, self.body.inst_pat(mapping))
         elif is_summation(self):
-            return Summation(self.index_var, self.lower.inst_pat(mapping, func_type), self.upper.inst_pat(mapping, func_type), \
-                             self.body.inst_pat(mapping, func_type))
+            return Summation(self.index_var, self.lower.inst_pat(mapping), self.upper.inst_pat(mapping), \
+                             self.body.inst_pat(mapping))
         elif is_product(self):
-            return Product(self.index_var, self.lower.inst_pat(mapping, func_type), self.upper.inst_pat(mapping, func_type), \
-                             self.body.inst_pat(mapping, func_type))
+            return Product(self.index_var, self.lower.inst_pat(mapping), self.upper.inst_pat(mapping), \
+                             self.body.inst_pat(mapping))
         elif is_limit(self):
-            return Limit(self.var, self.lim.inst_pat(mapping, func_type), self.body.inst_pat(mapping, func_type), self.drt, var_type=self.var_type)
-        elif is_matrix(self):
-            return Matrix([[item.inst_pat(mapping, func_type) for item in rv] for rv in self.data])
+            return Limit(self.var, self.lim.inst_pat(mapping), self.body.inst_pat(mapping), self.drt)
         else:
             print(type(self))
             raise NotImplementedError
@@ -1046,41 +797,8 @@ def is_pos_inf(e: Expr) -> TypeGuard["Inf"]:
 def is_neg_inf(e: Expr) -> TypeGuard["Inf"]:
     return e.ty == INF and e.t == Decimal("-inf")
 
-def is_matrix(e: Expr) -> TypeGuard["Matrix"]:
-    return e.ty == MATRIX
-
 def is_uminus(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '-' and len(e.args) == 1
-
-def type_match(t: Type, pat:Type) -> Dict:
-    if not isinstance(t, Type) or not isinstance(pat, Type):
-        return None
-    if pat in (RealType, IntType, BoolType, Unknown):
-        if t == pat:
-            return dict()
-        elif pat == RealType and t == IntType:
-            return dict()
-        return None
-    elif t.name in ("tensor","fun") and pat.name == t.name:
-        res = dict()
-        for t, p in zip(t.args, pat.args):
-            if isinstance(t, Type) and isinstance(p, Type):
-                inst = type_match(t, p)
-                if inst is None:
-                    return None
-                else:
-                    res.update(inst)
-            elif isinstance(t, Expr) and isinstance(p, Expr):
-                inst = match(t, p)
-                if inst is None:
-                    return None
-                else:
-                    res.update(inst)
-            else:
-                return None
-        return res
-    else:
-        return None
 
 def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     """Match expr with given pattern.
@@ -1101,15 +819,7 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
                     return False
             if exp.ty in pattern.pat:
                 d[pattern.name] = exp
-                type_inst = type_match(exp.type, pattern.type)
-                if type_inst is None:
-                    return False
-                else:
-                    for k in type_inst:
-                        if k in d and type_inst[k] != d[k]:
-                            return False
-                    d.update(type_inst)
-                    return True
+                return True
             else:
                 return False
         if exp.ty != pattern.ty:
@@ -1132,13 +842,6 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
             for i in range(len(exp.args)):
                 if not rec(exp.args[i], pattern.args[i], bd_vars):
                     return False
-            func_type_inst = type_match(exp.func_type, pattern.func_type)
-            if func_type_inst is None:
-                return False
-            for k in func_type_inst:
-                if k in d and func_type_inst[k] != d[k]:
-                    return False
-            d.update(func_type_inst)
             return True
         elif is_skolem_func(exp):
             if exp.name != pattern.name or len(exp.dependent_vars) != len(pattern.dependent_vars):
@@ -1187,14 +890,6 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
             res1 = pattern.var == exp.var
             res2 = rec(exp.body, pattern.body, bd_vars)
             return res1 and res2
-        elif is_matrix(exp):
-            if len(exp.data) == len(pattern.data) and \
-                    all(len(exp.data[i]) == len(pattern.data[i]) for i in range(len(exp.data))):
-                return all([all([rec(item, pattern.data[i][j], bd_vars)\
-                            for (j, item) in enumerate(rv)])\
-                            for (i, rv) in enumerate(exp.data)])
-            else:
-                return False
         else:
             # Currently not implemented
             print("Match Failed for type:", type(exp))
@@ -1206,29 +901,16 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     else:
         return None
 
-
-def type_to_pattern(t:Type) -> Type:
-    if t in (RealType, IntType, BoolType, Unknown):
-        return t
-    elif t.name == "tensor":
-        eleType = type_to_pattern(t.args[0])
-        args = [expr_to_pattern(arg) for arg in t.args[1:]]
-        return TensorType(eleType, *args)
-    elif t.name == 'fun':
-        return FunType(*[type_to_pattern(arg) for arg in t.args])
-    raise NotImplementedError(str(t))
-
 def expr_to_pattern(e: Expr) -> Expr:
     """Convert an expression to pattern."""
-    vars = e.get_vars(with_type=True)
+    vars = e.get_vars()
     def rec(_e:Expr):
         if _e.ty in (CONST, SYMBOL, VAR, INF, SKOLEMFUNC):
             return _e
         elif _e.ty == OP:
             return Op(_e.op, *[rec(arg) for arg in _e.args])
         elif _e.ty == FUN:
-            func_type = type_to_pattern(_e.func_type)
-            return Fun((_e.func_name, func_type), *[rec(arg) for arg in _e.args])
+            return Fun(_e.func_name, *[rec(arg) for arg in _e.args])
         elif _e.ty == SUMMATION:
             return Summation(_e.index_var, rec(_e.lower), rec(_e.upper), rec(_e.body))
         elif _e.ty == PRODUCT:
@@ -1240,15 +922,14 @@ def expr_to_pattern(e: Expr) -> Expr:
         elif _e.ty == INDEFINITEINTEGRAL:
             return IndefiniteIntegral(_e.var, rec(_e.body), e.skolem_args)
         elif _e.ty == LIMIT:
-            return Limit(_e.var, rec(_e.lim), rec(_e.body), _e.drt, _e.var_type)
+            return Limit(_e.var, rec(_e.lim), rec(_e.body), _e.drt)
         elif _e.ty == DERIV:
             return Deriv(_e.var, rec(_e.body))
         else:
             raise NotImplementedError(str(_e))
     e = rec(e)
     for var in vars:
-        type = type_to_pattern(var[1])
-        sym = Symbol(var[0], [VAR, CONST, OP, FUN, INTEGRAL, MATRIX, INF, SYMBOL], type)
+        sym = Symbol(var[0], [VAR, CONST, OP, FUN, INTEGRAL, INF, SYMBOL])
         e = e.subst(var[0], sym)
     return e
 
@@ -1309,15 +990,10 @@ def decompose_expr_factor(e):
 
 class Var(Expr):
     """Variable."""
-    def __init__(self, name: str, *, type: Optional[Type] = None):
+    def __init__(self, name: str):
         assert isinstance(name, str)
         self.ty = VAR
         self.name = name
-        assert isinstance(type, Type) or type is None, str(type)
-        if type is None:
-            self.type = RealType  # default
-        else:
-            self.type = type
 
     def __hash__(self):
         return hash((VAR, self.name))
@@ -1329,26 +1005,18 @@ class Var(Expr):
         return self.name
 
     def __repr__(self):
-        if self.type == RealType:
-            return "Var(%s)" % self.name
-        else:
-            return "Var(%s,%s)" % (self.name, self.type)
+        return "Var(%s)" % self.name
 
 class Const(Expr):
     """Constants."""
 
-    def __init__(self, val: Union[int, Fraction], type:Type=None):
+    def __init__(self, val: Union[int, Fraction]):
         assert isinstance(val, (int, Fraction))
         self.ty = CONST
         if isinstance(val, Fraction) and val.denominator == 1:
             self.val = val.numerator
         else:
             self.val = val
-
-        if type == IntType or self.val == int(self.val):
-            self.type = IntType
-        else:
-            self.type = RealType
 
     def __hash__(self):
         return hash((CONST, self.val))
@@ -1360,10 +1028,7 @@ class Const(Expr):
         return str(self.val)
 
     def __repr__(self):
-        if self.type == RealType:
-            return "Const(%s)" % str(self.val)
-        else:
-            return "Const(%s, %s)" % (str(self.val), str(self.type))
+        return "Const(%s)" % str(self.val)
 
 
 class Op(Expr):
@@ -1380,40 +1045,6 @@ class Op(Expr):
         self.ty = OP
         self.op = op
         self.args: Tuple[Expr] = tuple(args)
-        self.type = RealType
-        if len(args) == 2:
-            t1, t2 = args[0].type, args[1].type
-            if op in ['+', '-']:
-                if t1 in (IntType, RealType) and t2 in (IntType, RealType):
-                    self.type = type_mapping[(t1,t2)]
-                elif is_matrix_type(t1) and is_matrix_type(t2):
-                    self.type = MatrixType(type_mapping[(t1.eleType, t2.eleType)], t1.row, t1.col)
-            elif op == '*':
-                if t1 in (IntType, RealType) and t2 in (RealType, IntType):
-                    self.type = type_mapping[(t1, t2)]
-                elif is_matrix_type(t1) and is_matrix_type(t2):
-                    self.type = MatrixType(type_mapping[(t1.eleType, t2.eleType)], t1.row, t2.col)
-                elif t1 in (IntType, RealType) and is_matrix_type(t2):
-                    self.type = MatrixType(type_mapping[(t1, t2.eleType)], t2.row, t2.col)
-                elif t2 in (IntType, RealType) and is_matrix_type(t1):
-                    self.type = MatrixType(type_mapping[(t2, t1.eleType)], t1.row, t1.col)
-            elif op == '/':
-                if is_matrix_type(t1) and t2 in (RealType, IntType):
-                    self.type = MatrixType(type_mapping[(t1.eleType, t2)], t1.row, t1.col)
-            elif op == '^':
-                if is_matrix_type(t1) and t2 == IntType:
-                    self.type = t1
-                elif t1 in (RealType, IntType) and t2 in (RealType, IntType):
-                    self.type = type_mapping[(t1, t2)]
-            elif op in (">=", "<=", "=", "!=", ">", "<"):
-                self.type = BoolType
-        elif len(self.args) == 1:
-            t = args[0].type
-            if op == '-':
-                if is_matrix_type(t):
-                    self.type = t
-                elif t in (RealType, IntType):
-                    self.type = t
 
     def __hash__(self):
         return hash((OP, self.op, tuple(self.args)))
@@ -1451,25 +1082,13 @@ class Op(Expr):
 class Fun(Expr):
     """Functions."""
 
-    def __init__(self, func_name: Union[str, Tuple[str, Type]], *args):
-        assert (isinstance(func_name, str) or isinstance(func_name,tuple)) and \
+    def __init__(self, func_name: str, *args):
+        assert isinstance(func_name, str) and \
                all(isinstance(arg, Expr) for arg in args), func_name
 
         self.ty = FUN
         self.args: Tuple[Expr] = tuple(args)
-        if isinstance(func_name, str):
-            self.func_name = func_name
-            self.type = RealType
-            self.func_type = FunType(*[RealType for i in range(len(args) + 1)])
-            args_type = [arg.type for arg in self.args]
-            # TODO: add more type inference
-        elif func_name[1] is None:
-            self.func_name = func_name[0]
-            self.func_type = FunType(*[RealType for i in range(len(args) + 1)])
-            self.type = RealType
-        else:
-            self.func_name, self.func_type = func_name
-            self.type = self.func_type.args[-1]
+        self.func_name = func_name
 
     def __hash__(self):
         return hash((FUN, self.func_name, self.args))
@@ -1500,21 +1119,19 @@ class Limit(Expr):
 
     """
 
-    def __init__(self, var: str, lim: Expr, body: Expr, drt=None, var_type:Type = RealType):
+    def __init__(self, var: str, lim: Expr, body: Expr, drt=None):
         assert isinstance(var, str) and isinstance(lim, Expr) and isinstance(body, Expr), \
             "Illegal expression: %s %s %s" % (type(var), type(lim), type(body))
         self.ty = LIMIT
         self.var = var
         self.lim = lim
-        self.body = body.subst(var, Var(var, type=var_type))
+        self.body = body.subst(var, Var(var))
         self.drt = drt
-        self.type = RealType
-        self.var_type = var_type
 
     def alpha_convert(self, new_name: str):
         """Change the variable of limit expression to new_name."""
         assert isinstance(new_name, str), "alpha_convert"
-        return Limit(new_name, self.lim, self.body.subst(self.var, Var(new_name)), self.drt, var_type=self.var_type)
+        return Limit(new_name, self.lim, self.body.subst(self.var, Var(new_name)), self.drt)
 
     def __eq__(self, other):
 
@@ -1548,11 +1165,10 @@ class Limit(Expr):
 class Inf(Expr):
     """The infinity."""
 
-    def __init__(self, t, type=RealType):
+    def __init__(self, t):
         assert t in (Decimal("inf"), Decimal("-inf"))
         self.ty = INF
         self.t = t
-        self.type = type
 
     def __str__(self):
         if self.t == Decimal("inf"):
@@ -1582,7 +1198,6 @@ class SkolemFunc(Expr):
         self.ty = SKOLEMFUNC
         self.name = name
         self.dependent_vars: Tuple[Expr] = tuple(dep_vars)
-        self.type = RealType
 
     def __eq__(self, other):
         return isinstance(other, SkolemFunc) and \
@@ -1598,73 +1213,8 @@ class SkolemFunc(Expr):
         return hash((self.name, tuple(self.dependent_vars), self.ty))
 
 
-class Matrix(Expr):
-    """Matrix expressions.
-    
-    Data is a list/matrix/etc of expressions.
-
-    """
-    def __init__(self, data: Union[List[Expr], List[List[Expr]]], type:Type=None):
-        self.ty = MATRIX
-
-        # Check validity of input and derive type
-        if len(data) == 0:
-            raise AssertionError("Matrix: input is empty")
-
-        if isinstance(data[0], Expr):
-            # Vector case
-            self.data = tuple(data)
-            self.type = RowVectorType(data[0].type, Const(len(data)))
-        else:
-            if type == None:
-                # Matrix case
-                self.data = tuple(tuple(row) for row in data)
-                if data[0][0].type in (RealType, IntType):
-                    self.type = MatrixType(data[0][0].type, Const(len(data)), Const(len(data[0])))
-                elif is_matrix_type(data[0][0].type):
-                    if not all(all(is_matrix_type(ele.type) for ele in rv) for rv in data):
-                        raise NotImplementedError
-                    for idx, item in enumerate(data[0]):
-                        col = num_col(data[0][idx].type) if idx == 0 \
-                            else col + num_col(data[0][idx].type)
-                    for idx, item in enumerate(data):
-                        row = num_row(data[idx][0].type) if idx == 0 \
-                            else row + num_row(data[idx][0].type)
-                    self.type = MatrixType(RealType, row, col)
-            else:
-                self.data = tuple(tuple(row) for row in data)
-                self.type = type
-
-    def __hash__(self):
-        return hash(("Matrix", self.data))
-
-    def concatenate(self, other: Union["Matrix", "Matrix"], col_concatenate=True):
-        if isinstance(other, Matrix):
-            if col_concatenate:
-                assert self.shape[0] == other.shape[0]
-                arr = Matrix.vectors2arr(self.cols + other.cols, is_row_vectors=False)
-                return Matrix((self.shape[0], self.shape[1] + other.shape[1]), arr)
-            else:
-                assert self.shape[1] == other.shape[1]
-                arr = Matrix.vectors2arr(self.rows + other.rows, is_row_vectors=True)
-                return Matrix((self.shape[0] + other.shape[0], self.shape[1]), arr)
-        else:
-            raise TypeError
-
-    def __eq__(self, other: 'Matrix'):
-        return isinstance(other, Matrix) and self.ty == other.ty and self.data == other.data
-
-    def __str__(self):
-        if is_matrix_type(self.type):
-            return "[" + ", ".join("[" + ", ".join(str(val) for val in row) + "]" for row in self.data) + "]"
-        elif is_row_type(self.type):
-            return "[" + ", ".join(str(val) for val in self.data) + "]"
-        else:
-            raise NotImplementedError
-
-
-NEG_INF = Inf(Decimal('-inf'), RealInfType)
-POS_INF = Inf(Decimal('inf'), RealInfType)
+NEG_INF = Inf(Decimal('-inf'))
+POS_INF = Inf(Decimal('inf'))
 ZERO = Const(0)
 
 def inf():
@@ -1736,11 +1286,7 @@ class Deriv(Expr):
         assert isinstance(var, str) and isinstance(body, Expr)
         self.ty = DERIV
         self.var: str = var
-        self.body: Expr = body.subst(var, Var(var, type=RealType))
-        self.type = RealType
-        self.var_type = RealType
-        if is_matrix_type(body.type):
-            self.type = body.type
+        self.body: Expr = body.subst(var, Var(var))
 
     def __hash__(self):
         return hash((DERIV, self.var, self.body))
@@ -1762,10 +1308,8 @@ class IndefiniteIntegral(Expr):
         assert isinstance(var, str) and isinstance(body, Expr)
         self.ty = INDEFINITEINTEGRAL
         self.var = var
-        self.body = body.subst(var, Var(var, type=RealType))
+        self.body = body.subst(var, Var(var))
         self.skolem_args = tuple(skolem_args)
-        self.type = RealType
-        self.var_type = RealType
 
     def __hash__(self):
         return hash((INDEFINITEINTEGRAL, self.var, self.body, self.skolem_args))
@@ -1803,9 +1347,7 @@ class Integral(Expr):
         self.var = var
         self.lower = lower
         self.upper = upper
-        self.body = body.subst(var, Var(var, type=RealType))
-        self.type = RealType
-        self.var_type = RealType
+        self.body = body.subst(var, Var(var))
 
     def __hash__(self):
         # Convert to standard bound variable
@@ -1837,9 +1379,7 @@ class EvalAt(Expr):
         self.var = var
         self.lower = lower
         self.upper = upper
-        self.body = body.subst(var, Var(var, type=RealType))
-        self.type = RealType
-        self.var_type = RealType
+        self.body = body.subst(var, Var(var))
 
     def __hash__(self):
         return hash((EVAL_AT, self.var, self.lower, self.upper, self.body))
@@ -1861,11 +1401,10 @@ class Symbol(Expr):
     It can be used to find expression with the given specific structure.
     
     """
-    def __init__(self, name: str, pat: List[str], type:Type=Unknown):
+    def __init__(self, name: str, pat: List[str]):
         self.ty = SYMBOL
         self.name = name
         self.pat = tuple(pat)
-        self.type = type
 
     def __eq__(self, other):
         return isinstance(other, Symbol) and self.name == other.name and self.pat == other.pat
@@ -1887,14 +1426,7 @@ class Summation(Expr):
         self.index_var: str = index_var
         self.lower: Expr = lower
         self.upper: Expr = upper
-        self.body: Expr = body.subst(index_var, Var(index_var, type=IntType))
-        self.type = RealType
-        self.index_var_type = IntType
-        if is_matrix_type(self.body.type) or self.body.type in (RealType, IntType):
-            self.type = self.body.type
-        else:
-            raise TypeError("body type is %s"%(str(body.type)))
-
+        self.body: Expr = body.subst(index_var, Var(index_var))
 
     def __str__(self):
         return "SUM(" + self.index_var + ", " + str(self.lower) + ", " + str(self.upper) + ", " + str(self.body) + ")"
@@ -1926,13 +1458,8 @@ class Product(Expr):
         self.index_var: str = index_var
         self.lower: Expr = lower
         self.upper: Expr = upper
-        self.body: Expr = body.subst(index_var, Var(index_var, type=IntType))
-        self.type = RealType
-        self.index_var_type = IntType
-        b = self.body
-        if is_matrix_type(b.type):
-            r, c = num_row(b.type), num_col(b.type)
-            self.type = TensorType(b.type.args[0], r, c)
+        self.body: Expr = body.subst(index_var, Var(index_var))
+
     def __str__(self):
         return "MUL(" + self.index_var + ", " + str(self.lower) + ", " + str(self.upper) + ", " + str(self.body) + ")"
 
@@ -2039,29 +1566,3 @@ def neg_expr(ex: Expr):
             raise NotImplementedError
     else:
         raise NotImplementedError
-
-def type_le(t1:Type, t2:Type):
-    import integral.poly
-    import integral.context
-    ctx = integral.context.Context()
-    if t1 == IntType and t2 in (IntType, RealType):
-        return True
-    elif t1 in (RealType, BoolType) and t2 == t1:
-        return True
-    elif is_matrix_type(t1) and is_matrix_type(t2):
-        if not type_le(t1.eleType, t2.eleType):
-            return False
-        if not integral.poly.normalize(t1.row, ctx) == integral.poly.normalize(t2.row, ctx):
-            return False
-        if not integral.poly.normalize(t1.col, ctx) == integral.poly.normalize(t2.col, ctx):
-            return False
-        return True
-    elif is_fun_type(t1) and is_fun_type(t2):
-        n, m = len(t1.args), len(t2.args)
-        if n != m:
-            return False
-        for i in range(n):
-            if not type_le(t1.args[i], t2.args[i]):
-                return False
-        return True
-    return False

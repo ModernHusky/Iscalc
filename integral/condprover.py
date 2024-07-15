@@ -233,35 +233,6 @@ def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Ex
                     res.append(update_inst(symb, fact.args[1], inst))
         return res
 
-    if expr.is_fun(cond) and cond.func_name == 'type':
-        n = len(cond.args)
-        assert n in [2, 3, 4]
-        v = cond.args[0]
-        type_mapping = {Const(0): expr.RealType, Const(1): expr.IntType, Const(2):'tensor'}
-        ele_type = type_mapping[cond.args[1]]
-        if n == 4:
-            r, c = cond.args[2:]
-            if v.type == expr.MatrixType(ele_type, r, c):
-                return [inst]
-        elif n == 3:
-            r = cond.args[2]
-            c = Const(1)
-            if v.type == expr.MatrixType(ele_type, r, c):
-                return [inst]
-        elif n == 2:
-            if v.type == ele_type:
-                return [inst]
-            if v.type == expr.IntType and ele_type == expr.RealType:
-                return [inst]
-            if ele_type == 'tensor' and expr.is_matrix_type(v.type):
-                return [inst]
-        else:
-            raise NotImplementedError
-
-    if expr.is_fun(cond) and cond.func_name == 'isSquare':
-        a = cond.args[0]
-        if expr.is_matrix_type(a.type) and expr.num_col(a.type) == expr.num_row(a.type):
-            return [inst]
     # Not found
     return list()
 

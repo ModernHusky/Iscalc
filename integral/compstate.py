@@ -1,9 +1,8 @@
 """State of computation"""
 from typing import Dict, List, Optional, Tuple, Union
 
-from integral.expr import Expr, Var, Const, Type
+from integral.expr import Expr, Var, Const
 from integral import rules, expr
-from integral.fixes import Fixes, Info
 from integral.rules import Rule, check_wellformed
 from integral.conditions import Conditions
 from integral.context import Context, Identity
@@ -86,14 +85,12 @@ class StateItem:
 class FuncDef(StateItem):
     """Introduce a new function definition."""
 
-    def __init__(self, parent: "CompFile", ctx: Context, eq: Expr, conds: Optional[Conditions] = None,
-                 fixes: Fixes = None):
+    def __init__(self, parent: "CompFile", ctx: Context, eq: Expr, conds: Optional[Conditions] = None):
         if not eq.is_equals():
             raise AssertionError("FuncDef: input should be an equation")
 
         self.parent = parent
         self.ctx = ctx
-        self.fixes = fixes if fixes is not None else Fixes()
         self.eq = eq
         if expr.is_fun(self.eq.lhs):
             self.symb = self.eq.lhs.func_name
@@ -129,8 +126,6 @@ class FuncDef(StateItem):
         }
         if self.conds.data:
             res["conds"] = self.conds.export()
-        if not self.fixes.empty():
-            res["fixes"] = self.fixes.export()
         return res
 
     def export_book(self):
@@ -159,16 +154,11 @@ class Goal(StateItem):
     """Goal to be proved."""
 
     def __init__(self, parent: Union['CompFile', StateItem], ctx: Context, goal: Expr, *,
-                 fixes: Fixes = None,
                  conds: Optional[Conditions] = None):
         self.parent = parent
 
         # Statement to be proved
         self.goal = goal
-        assert isinstance(fixes, Fixes) or fixes is None
-        # Mapping from variables to their types
-        self.fixes = fixes if fixes is not None else Fixes()
-
         # List of assumptions for the goal
         if conds is None:
             conds = Conditions()
@@ -178,7 +168,6 @@ class Goal(StateItem):
         self.ctx = ctx
 
         self.ctx.extend_condition(self.conds)
-        self.ctx.extend_fixes(self.fixes)
 
         # Check well-formedness of the goal
         proof_obligations_raw = check_wellformed(goal, self.ctx)
@@ -254,22 +243,7 @@ class Goal(StateItem):
             if not subgoal.is_finished():
                 return False
         if isinstance(self.proof, RewriteGoalProof):
-            proof_has_conds = len(self.proof.begin.ctx.get_conds().data) > 0
-            goal_has_conds = len(self.ctx.get_conds().data) > 0
-            if not goal_has_conds and proof_has_conds:
-                proof_cond_vars = set()
-                for cond in self.proof.begin.ctx.get_conds().data:
-                    cond: Expr
-                    proof_cond_vars = proof_cond_vars.union(cond.get_vars())
-                goal_vars = self.goal.get_vars()
-                return self.proof.is_finished() and goal_vars.intersection(proof_cond_vars) == set()
-            elif not goal_has_conds and not proof_has_conds:
-                return self.proof.is_finished()
-            elif goal_has_conds and proof_has_conds:
-                return self.proof.is_finished() and self.ctx.check_all_condtions(self.goal,
-                                                                                 self.proof.begin.ctx.get_conds())
-            else:
-                return self.proof.is_finished()
+            return self.proof.is_finished()
         else:
             return self.proof.is_finished()
 
@@ -293,9 +267,6 @@ class Goal(StateItem):
         if not self.wellformed:
             res['wellformed'] = False
             res['obligations'] = [p.export() for p in self.proof_obligations]
-
-        if not self.fixes.empty():
-            res['fixes'] = self.fixes.export()
         return res
 
     def export_book(self):
@@ -309,9 +280,6 @@ class Goal(StateItem):
         }
         if self.conds.data:
             res["conds"] = [str(cond) for cond in self.conds.data]
-
-        if not self.fixes.empty():
-            res["fixes"] = self.fixes.export()
         return res
     
     def covers_obligation(self, oblig: rules.ProofObligation) -> bool:
@@ -447,9 +415,6 @@ class CalculationStep(StateItem):
             "res": str(self.res),
             "latex_res": latex.convert_expr(self.res)
         }
-        bd = self.res.get_bounded_vars()
-        if bd != dict():
-            res['fixes'] = [[name, str(type)] for name, type in bd.items()]
         return res
 
     def clear(self):
@@ -478,8 +443,7 @@ class Calculation(StateItem):
 
     """
     def __init__(self, parent, ctx: Context, start: Expr, *,
-                 connection_symbol='=', conds: Optional[Conditions] = None,
-                 fixes=None):
+                 connection_symbol='=', conds: Optional[Conditions] = None):
         self.parent = parent
         self.start = start
         self.steps: List[CalculationStep] = []
@@ -488,11 +452,8 @@ class Calculation(StateItem):
         self.conds = conds
         self.connection_symbol = connection_symbol
         self.ctx = ctx
-        self.fixes = fixes if fixes is not None else Fixes()
         if conds is not None:
             self.ctx.extend_condition(self.conds)
-        self.ctx.extend_fixes(self.fixes)
-
     def __eq__(self, other):
         if not isinstance(other, Calculation):
             return False
@@ -518,8 +479,6 @@ class Calculation(StateItem):
         }
         if self.conds.data:
             res["conds"] = self.conds.export()
-        if not self.fixes.empty():
-            res['fixes'] = self.fixes.export()
         return res
 
     def clear(self, id: int = 0):
@@ -553,8 +512,6 @@ class Calculation(StateItem):
                 ctx.add_condition(expr.Op("=", expr.Var(var), subst_e))
         new_e = rule.eval(e, ctx)
         step = CalculationStep(self, rule, new_e, id + 1)
-        # update fixes of calculation
-        self.ctx.fixes.change(self.last_expr, new_e)
         self.add_step(step)
 
     def perform_rules(self, calc_rules: tuple[Rule], id: Optional[int] = None):
@@ -569,23 +526,8 @@ class Calculation(StateItem):
         else:
             raise AssertionError("get_by_label: invalid label")
 
-    def get_fixes(self) -> dict:
-        res = self.ctx.get_fixes()
-        bd_ty = self.last_expr.get_bounded_vars()
-        for name in bd_ty:
-            t = bd_ty[name]
-            if name not in res:
-                res[name] = [t]
-            elif t not in res[name]:
-                res[name].append(t)
-        return res
-
-    def parse_expr(self, s: str, fixes: Fixes = Fixes()) -> Expr:
-        res = self.ctx.get_fixes()
-        # prioritizing fixes over calculation's fixes
-        for name in fixes:
-            res[name] = fixes[name]
-        return parser.parse_expr(s, fixes=res)
+    def parse_expr(self, s: str) -> Expr:
+        return parser.parse_expr(s)
 
 
 class CalculationProof(StateItem):
@@ -604,23 +546,17 @@ class CalculationProof(StateItem):
             self.predicate = goal.op
             file = get_comp_file(parent)
             if isinstance(parent, Goal):
-                left_ctx = self.ctx
-                right_ctx = self.ctx
-                if len(parent.ctx.induct_hyps) > 0:
-                    ih = parent.ctx.induct_hyps[0].expr
-                    left_ctx.add_induct_hyp(ih)
-                    right_ctx.add_induct_hyp(ih)
-                self.calcs.append(Calculation(self, left_ctx, \
-                                              self.goal.args[0], fixes=parent.fixes, conds=parent.conds))
-                self.calcs.append(Calculation(self, right_ctx, \
-                                              self.goal.args[1], fixes=parent.fixes, conds=parent.conds))
+                self.calcs.append(Calculation(self, parent.ctx, \
+                                              self.goal.args[0]))
+                self.calcs.append(Calculation(self, parent.ctx, \
+                                              self.goal.args[1]))
             else:
                 raise NotImplementedError
         elif expr.is_fun(goal) and goal.func_name == "converges":
             self.predicate = goal.func_name
             assert isinstance(parent, Goal)
             goal = parent
-            self.calcs.append(Calculation(self, self.ctx, self.goal.args[0], conds=goal.conds, fixes=goal.fixes))
+            self.calcs.append(Calculation(self, self.ctx, self.goal.args[0], conds=goal.conds))
         else:
             raise AssertionError("CalculationProof: unknown form of goal.")
 
@@ -716,10 +652,10 @@ def get_comp_file(p):
     return p
 
 
-def conds_subst(conds: Conditions, var: str, e: Expr, fixes: Fixes):
+def conds_subst(conds: Conditions, var: str, e: Expr):
     res = Conditions()
     for cond in conds.data:
-        res.add_condition(parser.parse_expr(str(cond.subst(var, e)), fixes=fixes))
+        res.add_condition(parser.parse_expr(str(cond.subst(var, e))))
     return res
 
 
@@ -742,33 +678,21 @@ class InductionProof(StateItem):
         self.ctx = ctx
 
         if isinstance(start, int):
-            self.start = Const(start, type=expr.IntType)
+            self.start = Const(start)
         elif isinstance(start, Expr):
             self.start = start
         else:
             raise NotImplementedError
         # Base case: n = start
-        base_goal_ctx = self.ctx
-        base_goal_fixes = parent.fixes.subst(induct_var, self.start)
-        fixes = base_goal_fixes.update(base_goal_ctx.get_fixes())
-        eq0 = normalize(parser.parse_expr(str(goal.subst(induct_var, self.start)), \
-                                          fixes=fixes), base_goal_ctx)
-        base_goal_conds = conds_subst(parent.conds, induct_var, self.start, fixes)
-        self.base_case = Goal(self, base_goal_ctx, eq0, \
-                              fixes=base_goal_fixes, conds=base_goal_conds)
+        base_goal_ctx = Context(self.ctx)
+        eq0 = normalize(goal.subst(induct_var, self.start), base_goal_ctx)
+        self.base_case = Goal(self, base_goal_ctx, eq0)
 
-        n1 = Var(induct_var, type=expr.IntType) + Const(1)
-        induct_goal_ctx = self.ctx
-        induct_goal_fixes = parent.fixes.subst(induct_var, n1)
-        fixes = induct_goal_fixes.update(induct_goal_ctx.get_fixes())
-        eqI = normalize(parser.parse_expr(str(goal.subst(induct_var, n1)), fixes=fixes), induct_goal_ctx)
-        (other_conds, induct_var_conds) = parent.conds.exclude_induct_var_conds(induct_var)
-        induct_goal_conds = conds_subst(other_conds, induct_var, self.start, fixes)
-        induct_goal_conds.update(induct_var_conds)
-        self.induct_case = Goal(self, induct_goal_ctx, eqI, \
-                                fixes=induct_goal_fixes, conds=induct_goal_conds)
-        # TODO: conditions for IH
+        n1 = Var(induct_var) + Const(1)
+        induct_goal_ctx = Context(self.ctx)
+        eqI = normalize(goal.subst(induct_var, n1), induct_goal_ctx)
         induct_goal_ctx.add_induct_hyp(self.goal)
+        self.induct_case = Goal(self, induct_goal_ctx, eqI)
 
     def __eq__(self, other):
         if not isinstance(other, InductionProof):
@@ -857,14 +781,14 @@ class CaseProof(StateItem):
             case1_ctx = self.ctx
             conds1.add_condition(split_cond)
             conds1.update(parent.conds)
-            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
+            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1))
 
             # Case 2:
             conds2 = Conditions()
             case2_ctx = self.ctx
             conds2.add_condition(expr.neg_expr(split_cond))
             conds2.update(parent.conds)
-            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
+            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2))
 
         else:
             self.split_type = "three-way"
@@ -873,21 +797,21 @@ class CaseProof(StateItem):
             conds1.add_condition(expr.Op("<", split_cond, Const(0)))
             case1_ctx = self.ctx
             conds1.update(parent.conds)
-            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1, fixes=parent.fixes))
+            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1))
 
             # Case 2:
             conds2 = Conditions()
             case2_ctx = self.ctx
             conds2.add_condition(expr.Op("=", split_cond, Const(0)))
             conds2.update(parent.conds)
-            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2, fixes=parent.fixes))
+            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2))
 
             # Case 3:
             conds3 = Conditions()
             case3_ctx = self.ctx
             conds3.add_condition(expr.Op(">", split_cond, Const(0)))
             conds3.update(parent.conds)
-            self.cases.append(Goal(self, case3_ctx, goal, conds=conds3, fixes=parent.fixes))
+            self.cases.append(Goal(self, case3_ctx, goal, conds=conds3))
 
     def __eq__(self, other):
         if not isinstance(other, CaseProof):
@@ -1068,8 +992,7 @@ class CompFile:
                 ctx.extend_by_item(item.export_book())
         return ctx
 
-    def add_definition(self, funcdef: Union[str, Expr], *, conds: List[Union[str, Expr]] = None,
-                       fixes=Fixes()) -> FuncDef:
+    def add_definition(self, funcdef: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> FuncDef:
         """Add a function definition.
 
         funcdef: statement of the definition.
@@ -1077,28 +1000,20 @@ class CompFile:
                is already of type FuncDef.
 
         """
-        tmp = fixes
-        fixes = self.ctx.get_fixes().update(tmp)
         if conds is not None:
             if isinstance(conds, Conditions):
                 pass
             else:
                 for i in range(len(conds)):
                     if isinstance(conds[i], str):
-                        conds[i] = parser.parse_expr(conds[i], fixes=fixes)
+                        conds[i] = parser.parse_expr(conds[i])
         else:
             conds = []
         if isinstance(funcdef, str):
-            funcdef = parser.parse_expr(funcdef, fixes=fixes)
+            funcdef = parser.parse_expr(funcdef)
         if isinstance(funcdef, Expr):
             if funcdef.is_equals():
-                self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds), fixes=tmp))
-                if expr.is_fun(funcdef.lhs):
-                    args_name = [str(arg) for arg in funcdef.lhs.args]
-                    func_type = funcdef.lhs.func_type
-                    info = Info.get_instance('fun', func_type, args_name)
-                    func_name = funcdef.lhs.func_name
-                    self.ctx.add_fix(func_name, info)
+                self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds)))
             else:
                 raise NotImplementedError
         else:
@@ -1106,65 +1021,56 @@ class CompFile:
 
         return self.content[-1]
 
-    def add_calculation(self, calc: Union[str, Expr], *, conds: List[Union[str, Expr]] = None,
-                        fixes: Fixes = Fixes()) -> Calculation:
+    def add_calculation(self, calc: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> Calculation:
         """Add a calculation."""
-        tmp = fixes
-        fixes = self.ctx.get_fixes().update(tmp)
         ctx = self.get_context()
         if conds is not None:
             for i in range(len(conds)):
                 if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i], fixes=fixes)
+                    conds[i] = parser.parse_expr(conds[i])
         else:
             conds = []
         conds = Conditions(conds)
         if isinstance(calc, str):
-            self.content.append(Calculation(self, ctx, parser.parse_expr(calc, fixes=fixes), conds=conds, fixes=tmp))
+            self.content.append(Calculation(self, ctx, parser.parse_expr(calc), conds=conds))
         elif isinstance(calc, Expr):
-            self.content.append(Calculation(self, ctx, calc, conds=conds, fixes=tmp))
+            self.content.append(Calculation(self, ctx, calc, conds=conds))
         else:
             raise NotImplementedError
         return self.content[-1]
 
     def make_goal(self, goal: Union[str, Expr, Goal], *,
-                  fixes=Fixes(),
                   conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
         if isinstance(goal, Goal):
             self.content.append(goal)
             return self.content[-1]
-        tmp = fixes
-        fixes = self.ctx.get_fixes().update(tmp)
-
         # Parse goal statement
         if isinstance(goal, str):
-            goal = parser.parse_expr(goal, fixes=fixes)
+            goal = parser.parse_expr(goal)
         assert isinstance(goal, Expr)
 
         # Parse conditions
         if conds is not None:
             for i in range(len(conds)):
                 if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i], fixes=fixes)
+                    conds[i] = parser.parse_expr(conds[i])
         else:
             conds = []
 
         conds = Conditions(conds)
         ctx = self.get_context()
-        return Goal(self, ctx, goal, fixes=tmp, conds=conds)
+        return Goal(self, ctx, goal, conds=conds)
 
     def add_goal(self, goal: Union[str, Expr, Goal], *,
-                 fixes=Fixes(),
                  conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
         """Add a goal.
 
         goal: statement of the goal.
-        fixes: list of fixed variables
         conds: list of conditions for the goal. This is ignored if input goal
                is already of type Goal.
 
         """
-        self.content.append(self.make_goal(goal, fixes=fixes, conds=conds))
+        self.content.append(self.make_goal(goal, conds=conds))
         return self.content[-1]
 
     def add_item(self, item: StateItem):
@@ -1232,7 +1138,6 @@ class CompFile:
 
 
 def parse_rule(item, parent) -> Rule:
-    fixes = parent.ctx.get_fixes()
     if 'loc' in item:
         if item['loc'] == 'subterms':
             del item['loc']
@@ -1257,44 +1162,39 @@ def parse_rule(item, parent) -> Rule:
     elif item['name'] == 'ElimInfInterval':
         a = Const(0)
         if 'a' in item:
-            a = parser.parse_expr(item['a'], fixes=fixes)
+            a = parser.parse_expr(item['a'])
         return rules.ElimInfInterval(a)
     elif item['name'] == 'Substitution':
         var_name = item['var_name']
-        var_subst = parser.parse_expr(item['var_subst'], fixes=fixes)
+        var_subst = parser.parse_expr(item['var_subst'])
         return rules.Substitution(var_name, var_subst)
     elif item['name'] == 'SubstitutionInverse':
         var_name = item['var_name']
         old_var = item['old_var']
-        var_subst = parser.parse_expr(item['var_subst'], fixes=fixes)
+        var_subst = parser.parse_expr(item['var_subst'])
         return rules.SubstitutionInverse(var_name, old_var, var_subst)
     elif item['name'] == 'IntegrationByParts':
-        u = parser.parse_expr(item['u'], fixes=fixes)
-        v = parser.parse_expr(item['v'], fixes=fixes)
+        u = parser.parse_expr(item['u'])
+        v = parser.parse_expr(item['v'])
         return rules.IntegrationByParts(u, v)
     elif item['name'] == 'Equation':
-        new_expr_fixes = Fixes() if 'new_expr_fixes' not in item else \
-                        parser.parse_fixes(item, key='new_expr_fixes')
-        new_expr = parser.parse_expr(item['new_expr'], fixes=fixes.update(new_expr_fixes))
-        old_expr = parser.parse_expr(item['old_expr'], fixes=fixes) if ('old_expr' in item) else None
-        return rules.Equation(old_expr, new_expr, new_expr_fixes=new_expr_fixes)
+        new_expr = parser.parse_expr(item['new_expr'])
+        old_expr = parser.parse_expr(item['old_expr']) if ('old_expr' in item) else None
+        return rules.Equation(old_expr, new_expr)
     elif item['name'] == 'ApplyEquation':
-        eq_fixes = parser.parse_fixes(item, key='eq_fixes')
-        for name in eq_fixes:
-            fixes[name] = eq_fixes[name]
-        eq = parser.parse_expr(item['eq'], fixes=fixes)
+        eq = parser.parse_expr(item['eq'])
         if 'source' in item:
-            source = parser.parse_expr(item['source'], fixes=parent.ctx.get_fixes())
+            source = parser.parse_expr(item['source'])
         else:
             source = None
-        return rules.ApplyEquation(eq, source, eq_fixes)
+        return rules.ApplyEquation(eq, source)
     elif item['name'] == 'ExpandPolynomial':
         return rules.ExpandPolynomial()
     elif item['name'] == 'SplitRegion':
-        c = parser.parse_expr(item['c'], fixes=fixes)
+        c = parser.parse_expr(item['c'])
         return rules.SplitRegion(c)
     elif item['name'] == 'IntegrateByEquation':
-        lhs = parser.parse_expr(item['lhs'], fixes=fixes)
+        lhs = parser.parse_expr(item['lhs'])
         return rules.IntegrateByEquation(lhs)
     elif item['name'] == 'LHopital':
         return rules.LHopital()
@@ -1306,7 +1206,7 @@ def parse_rule(item, parent) -> Rule:
         return rules.IntegralEquation()
     elif item['name'] == 'LimitEquation':
         var = item['var']
-        lim = parser.parse_expr(item['lim'], fixes=fixes)
+        lim = parser.parse_expr(item['lim'])
         return rules.LimitEquation(var, lim)
     elif item['name'] == 'IntSumExchange':
         return rules.IntSumExchange()
@@ -1314,14 +1214,14 @@ def parse_rule(item, parent) -> Rule:
         var = item['var']
         return rules.DerivEquation(var)
     elif item['name'] == 'SolveEquation':
-        solve_for = parser.parse_expr(item['solve_for'], fixes=fixes)
+        solve_for = parser.parse_expr(item['solve_for'])
         return rules.SolveEquation(solve_for)
     elif item['name'] == 'VarSubsOfEquation':
         subst = item['subst']
         return rules.VarSubsOfEquation(subst)
     elif item['name'] == 'ApplyIdentity':
-        source = parser.parse_expr(item['source'], fixes=fixes)
-        target = parser.parse_expr(item['target'], fixes=fixes)
+        source = parser.parse_expr(item['source'])
+        target = parser.parse_expr(item['target'])
         return rules.ApplyIdentity(source, target)
     elif item['name'] == 'IndefiniteIntegralIdentity':
         return rules.IndefiniteIntegralIdentity()
@@ -1331,34 +1231,25 @@ def parse_rule(item, parent) -> Rule:
         index_var = item['index_var']
         old_expr = None
         if 'old_expr' in item:
-            old_expr = parser.parse_expr(item['old_expr'], fixes=fixes)
+            old_expr = parser.parse_expr(item['old_expr'])
         return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=index_var)
     elif item['name'] == 'SeriesEvaluationIdentity':
         return rules.SeriesEvaluationIdentity()
     elif item['name'] == 'ReplaceSubstitution':
         return rules.ReplaceSubstitution()
     elif item['name'] == 'ChangeSummationIndex':
-        e = parser.parse_expr(item['new_lower'], fixes=fixes)
+        e = parser.parse_expr(item['new_lower'])
         return rules.ChangeSummationIndex(e)
     elif item['name'] == 'SummationEquation':
         idx_v = item['index_var']
-        lower = parser.parse_expr(item['lower'], fixes=fixes)
-        upper = parser.parse_expr(item['upper'], fixes=fixes)
+        lower = parser.parse_expr(item['lower'])
+        upper = parser.parse_expr(item['upper'])
         return rules.SummationEquation(idx_v, lower, upper)
     elif item['name'] == 'FunEquation':
         func_name = item['func_name']
         return rules.FunEquation(func_name)
     elif item['name'] == 'PartialFractionDecomposition':
         return rules.PartialFractionDecomposition()
-    elif item['name'] == "ExpandMatFunc":
-        return rules.ExpandMatFunc()
-    elif item['name'] == 'SplitItem':
-        cond = parser.parse_expr(item['cond'], fixes=fixes)
-        return rules.SplitItem(cond)
-    elif item['name'] == 'RewriteMatrixMul':
-        source = parser.parse_expr(item['source'], fixes=fixes)
-        target = parser.parse_expr(item['target'], fixes=fixes)
-        return rules.RewriteMatrixMul(source, target)
     else:
         print(item['name'], flush=True)
         raise NotImplementedError
@@ -1378,13 +1269,11 @@ def parse_step(calc: Calculation, item, id: int) -> CalculationStep:
     return step
 
 
-def parse_conds(item, fixes: Optional[Dict[str, Type]] = None) -> Conditions:
-    if fixes is None:
-        fixes = Fixes()
+def parse_conds(item) -> Conditions:
     res = Conditions()
     if 'conds' in item:
         for subitem in item['conds']:
-            res.add_condition(parser.parse_expr(subitem['cond'], fixes=fixes))
+            res.add_condition(parser.parse_expr(subitem['cond']))
     return res
 
 
@@ -1393,38 +1282,29 @@ def parse_calculatioin(parent, item) -> Calculation:
     file = get_comp_file(parent)
     cur_id = len(file.content)
     if isinstance(parent, CompFile):
-        calc_fixes = parser.parse_fixes(item)
         ctx = parent.get_context()
-        fixes = ctx.get_fixes().update(calc_fixes)
-        start = parser.parse_expr(item['start'], fixes=fixes)
-        conds = parse_conds(item, fixes=fixes)
-        res = Calculation(parent, ctx, start, conds=conds, fixes=calc_fixes)
+        start = parser.parse_expr(item['start'])
+        conds = parse_conds(item)
+        res = Calculation(parent, ctx, start, conds=conds)
     elif isinstance(parent, CalculationProof):
         ctx = file.get_context(cur_id)
         goal = parent.parent
         assert isinstance(goal, Goal), "this calculation should belong to a Goal"
         if len(goal.ctx.induct_hyps) > 0:
             ctx.add_induct_hyp(goal.ctx.induct_hyps[0].expr)
-        calc_fixes = goal.ctx.fixes
-        fixes = file.ctx.get_fixes().update(calc_fixes)
-        start = parser.parse_expr(item['start'], fixes=fixes)
+        start = parser.parse_expr(item['start'])
         conds = goal.conds
-        res = Calculation(parent, ctx, start, conds=conds, fixes=calc_fixes)
+        res = Calculation(parent, ctx, start, conds=conds)
     elif isinstance(parent, RewriteGoalProof):
         ctx = file.get_context(cur_id)
-        begin_calc_fixes = parser.parse_fixes(item)
-        fixes = ctx.get_fixes().update(begin_calc_fixes)
         start = item['start']
-        conds = parse_conds(item, fixes=fixes)
-        res = Calculation(parent, ctx, start, conds=conds, fixes=begin_calc_fixes)
+        conds = parse_conds(item)
+        res = Calculation(parent, ctx, start, conds=conds)
     else:
         raise NotImplementedError
     for i, step in enumerate(item['steps']):
         e = res.last_expr
         res.add_step(parse_step(res, step, i))
-        # update fixes of calculation
-        res.ctx.fixes.change(e, res.last_expr)
-
     return res
 
 
@@ -1432,13 +1312,11 @@ def parse_goal(parent, item, ih=None) -> Goal:
     assert item['type'] == 'Goal'
     file = get_comp_file(parent)
     ctx = file.get_context(len(file.content) - 1)
-    goal_fixes = parser.parse_fixes(item)
     if ih is not None:
         ctx.add_induct_hyp(ih)
-    fixes = file.ctx.get_fixes().update(goal_fixes)
-    goal = parser.parse_expr(item['goal'], fixes=fixes)
-    conds = parse_conds(item, fixes=fixes)
-    res = Goal(parent, ctx, goal, conds=conds, fixes=goal_fixes)
+    goal = parser.parse_expr(item['goal'])
+    conds = parse_conds(item)
+    res = Goal(parent, ctx, goal, conds=conds)
     if 'subgoals' in item:
         res.subgoals = []
         for subgoal in item['subgoals']:
@@ -1454,9 +1332,9 @@ def parse_goal(parent, item, ih=None) -> Goal:
                 for b in obligation['branches']:
                     tmp = list()
                     for e in b['exprs']:
-                        tmp.append(parser.parse_expr(e, fixes=fixes))
+                        tmp.append(parser.parse_expr(e))
                     branches.append(rules.ProofObligationBranch(tmp))
-                c = parse_conds(obligation, fixes=fixes)
+                c = parse_conds(obligation)
                 res.proof_obligations.append(rules.ProofObligation(branches, c))
     return res
 
@@ -1464,14 +1342,11 @@ def parse_goal(parent, item, ih=None) -> Goal:
 def parse_item(parent, item) -> StateItem:
     file = get_comp_file(parent)
     if item['type'] == 'FuncDef':
-        def_fixes = parser.parse_fixes(item)
-        fixes = file.ctx.get_fixes().update(def_fixes)
-        conds = parse_conds(item, fixes=fixes)
-        eq = parser.parse_expr(item['eq'], fixes=fixes)
-        return FuncDef(parent, parent.ctx, eq, conds=conds, fixes=def_fixes)
+        conds = parse_conds(item)
+        eq = parser.parse_expr(item['eq'])
+        return FuncDef(parent, parent.ctx, eq, conds=conds)
     elif item['type'] == 'CalculationProof':
-        fixes = parent.ctx.get_fixes()
-        goal = parser.parse_expr(item['goal'], fixes=fixes)
+        goal = parser.parse_expr(item['goal'])
         res = CalculationProof(parent, parent.ctx, goal)
         for i, calc_item in enumerate(item['calcs']):
             res.calcs[i] = parse_calculatioin(res, calc_item)
@@ -1483,9 +1358,7 @@ def parse_item(parent, item) -> StateItem:
     elif item['type'] == 'InductionProof':
         file = get_comp_file(parent)
         assert isinstance(parent, Goal)
-        goal_fixes = parent.fixes
-        fixes = file.ctx.get_fixes().update(goal_fixes)
-        goal = parser.parse_expr(item['goal'], fixes=fixes)
+        goal = parser.parse_expr(item['goal'])
         induct_var = item['induct_var']
         res = InductionProof(parent, goal, induct_var)
         res.start = parser.parse_expr(item['start'])
@@ -1494,17 +1367,16 @@ def parse_item(parent, item) -> StateItem:
         return res
     elif item['type'] == 'CaseProof':
         ctx = parent.ctx
-        fixes = ctx.get_fixes()
-        goal = parser.parse_expr(item['goal'], fixes=fixes)
-        split_cond = parser.parse_expr(item['split_cond'], fixes=fixes)
+        goal = parser.parse_expr(item['goal'])
+        split_cond = parser.parse_expr(item['split_cond'])
         res = CaseProof(parent, goal, split_cond=split_cond)
         assert len(res.cases) == len(item['cases'])
         for i, case in enumerate(item['cases']):
             res.cases[i] = parse_goal(res, case)
         return res
     elif item['type'] == 'RewriteGoalProof':
-        fixes = parent.ctx.get_fixes()
-        goal = parser.parse_expr(item['goal'], fixes=fixes)
+        goal = parser.parse_expr(item['goal'])
+        begin_goal=parser.parse_expr(item['start'])
         res = RewriteGoalProof(parent, goal, begin=begin_goal)
         res.begin = parse_calculatioin(res, item['start'])
         return res

@@ -5,10 +5,9 @@ import os
 import json
 
 from integral import expr
-from integral.expr import Expr, Eq, Op, Const, expr_to_pattern, Matrix, type_le
+from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
 from integral import parser
 from integral.conditions import Conditions
-from integral.fixes import Fixes, Info, FUN_INFO
 dirname = os.path.dirname(__file__)
 
 class Identity:
@@ -125,9 +124,6 @@ class Context:
         # List of substitutions
         self.substs: Dict[str, Expr] = dict()
 
-        # List of fixes
-        self.fixes: Fixes = Fixes()
-
         # List of subgoals
         self.subgoals: Dict[str, Identity] = dict()
 
@@ -242,47 +238,6 @@ class Context:
             res.add_condition(cond)
         return res
 
-    def get_fixes(self) -> Dict[str, expr.Type]:
-        res = Fixes()
-        p = self
-        while p != None:
-            res = res.update(p.fixes)
-            p = p.parent
-        return res
-
-    def get_func_type(self, func_name, *args):
-        fixes = self.get_fixes()
-        if func_name in fixes:
-            for info in fixes[func_name]:
-                if not info.is_func():
-                    continue
-                t:expr.Type = info.get_type()
-                inst = dict()
-                flag = True
-                if len(args) == t.args_num:
-                    for a, b in zip([arg.type for arg in args], t.get_args_type()):
-                        if not type_le(a, b):
-                            flag = False
-                            break
-                if flag:
-                    for i, param_name in enumerate(info.get_args_name()):
-                        inst[param_name] = args[i]
-                    t_pat = expr.type_to_pattern(t.get_return_type())
-                    func_type_args = t.get_args_type()
-                    func_type_args.append(t_pat.inst_pat(inst))
-                    return [(func_name, expr.FunType(*func_type_args))] + list(args)
-                for i, param_name in enumerate(info.get_args_name()):
-                    inst[param_name] = args[i]
-                if expr.is_fun_type(t) and len(t.args) == len(args) + 1:
-                    # pattern match
-                    t_pat = expr.type_to_pattern(t)
-                    tmp = expr.FunType(*[arg.type for arg in args])
-                    tmp_pat = expr.FunType(*[arg for arg in t_pat.args[:-1]])
-                    tmp_inst = expr.type_match(tmp, tmp_pat)
-                    if tmp_inst is not None:
-                        inst.update(tmp_inst)
-                        return [(func_name, t_pat.inst_pat(inst))] + list(args)
-        return [(func_name, expr.FunType(*[expr.RealType for i in range(len(args) + 1)]))] + list(args)
 
     def get_subgoal(self, name: str) -> Optional[Identity]:
         res = self.parent.get_subgoal(name) if self.parent is not None else None
@@ -422,12 +377,6 @@ class Context:
         for cond in conds.data:
             self.add_condition(cond)
 
-    def add_fix(self, name, info:Info):
-        self.fixes[name] = info
-
-    def extend_fixes(self, fixes: Fixes):
-        self.fixes = self.fixes.update(fixes)
-
     def add_subst(self, var: str, expr: Expr):
         self.substs[var] = expr
 
@@ -437,23 +386,21 @@ class Context:
 
     def extend_by_item(self, item):
         if item['type'] == 'axiom' or item['type'] == 'problem':
-            fixes = parser.parse_fixes(item)
-            fixes = fixes.update(self.fixes)
-            e = parser.parse_expr(item['expr'], fixes=fixes)
+            e = parser.parse_expr(item['expr'])
             if e.is_equals() and expr.is_indefinite_integral(e.lhs):
                 self.add_indefinite_integral(e)
             elif e.is_equals() and expr.is_integral(e.lhs):
                 conds = Conditions()
                 if 'conds' in item:
                     for cond in item['conds']:
-                        conds.add_condition(parser.parse_expr(cond, fixes=fixes))
+                        conds.add_condition(parser.parse_expr(cond))
                 self.add_definite_integral(e, conds)
             elif 'category' in item and item['category'] == 'summation-split':
                 conds = Conditions()
                 if 'conds' in item:
                     for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c, fixes=fixes))
-                split_cond = parser.parse_expr(item['split-cond'], fixes=fixes)
+                        conds.add_condition(parser.parse_expr(c))
+                split_cond = parser.parse_expr(item['split-cond'])
                 self.add_summation_split_identities(e, conds, split_cond)
             elif e.is_equals() and not expr.is_summation(e.lhs) and expr.is_summation(e.rhs):
                 self.add_series_expansion(e)
@@ -461,14 +408,14 @@ class Context:
                     conds = Conditions()
                     if 'conds' in item:
                         for c in item['conds']:
-                            conds.add_condition(parser.parse_expr(c, fixes=fixes))
+                            conds.add_condition(parser.parse_expr(c))
                     self.add_lemma(e, conds)
             elif e.is_equals() and expr.is_summation(e.lhs) and not expr.is_summation(e.rhs):
                 if item['type'] == 'problem':
                     conds = Conditions()
                     if 'conds' in item:
                         for c in item['conds']:
-                            conds.add_condition(parser.parse_expr(c, fixes=fixes))
+                            conds.add_condition(parser.parse_expr(c))
                     self.add_lemma(e, conds)
                 else:
                     self.add_series_evaluation(e)
@@ -476,13 +423,13 @@ class Context:
                 conds = Conditions()
                 if 'conds' in item:
                     for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c, fixes=fixes))
+                        conds.add_condition(parser.parse_expr(c))
                 self.add_other_identities(e, item['category'], item.get('attributes'), conds)
             elif e.is_equals() and item['type'] == 'problem':
                 conds = Conditions()
                 if 'conds' in item:
                     for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c, fixes=fixes))
+                        conds.add_condition(parser.parse_expr(c))
                 self.add_lemma(e, conds)
         if 'attributes' in item and 'simplify' in item['attributes']:
             e = parser.parse_expr(item['expr'])
@@ -499,29 +446,14 @@ class Context:
                     conds.add_condition(parser.parse_expr(cond))
             self.add_inequality(e, conds)
         if item['type'] == 'definition':
-            fixes = self.fixes
-            fixes = fixes.update(parser.parse_fixes(item))
-            e = parser.parse_expr(item['expr'], fixes=fixes)
+            e = parser.parse_expr(item['expr'])
             conds = Conditions()
             if 'conds' in item:
                 for cond in item['conds']:
-                    conds.add_condition(parser.parse_expr(cond, fixes=fixes))
+                    conds.add_condition(parser.parse_expr(cond))
             self.add_definition(e, conds)
-            if expr.is_fun(e.lhs):
-                name = e.lhs.func_name
-                params_name = [str(arg) for arg in e.lhs.args]
-                type = e.lhs.func_type
-                info = Info.get_instance(FUN_INFO, type, params_name)
-                self.fixes[name] = info
         if item['type'] == 'table':
             self.add_function_table(item['name'], item['table'])
-        if item['type'] == 'func_type':
-            fixes = parser.parse_fixes(item)
-            name = item['name']
-            type = parser.parse_expr(item['func_type'], fixes=fixes)
-            args_name = item['args_name']
-            info = Info.get_instance(FUN_INFO, type, args_name)
-            self.fixes[name] = info
 
     def load_book(self, book_name: str, *, upto: Optional[str] = None):
         """Load the book with the given name.
@@ -568,28 +500,6 @@ class Context:
                     f = condprover.check_condition(Op('!=', e.args[1], e.args[0]), self)
         return f
 
-    def check_all_condtions(self, goal:Expr, conds:Conditions):
-        goal_vars = goal.get_vars(with_bd=True)
-        ctx = Context(self)
-        def rec(e):
-            if expr.is_limit(e) and e.lim == expr.POS_INF:
-                b = e.body
-                # LIM {n->oo}. SUM(i, 0, n, body)
-                if expr.is_summation(b) and expr.is_var(b.upper) and b.upper.name == e.var:
-                    cond = Op('>=', b.upper, b.lower)
-                    ctx.add_condition(cond)
-            elif expr.is_op(e):
-                for arg in e.args:
-                    rec(arg)
-        # expand conditions from goal
-        rec(goal)
-        for e in conds.data:
-            if e.get_vars().intersection(goal_vars) == set():
-                continue
-            if not ctx.check_condition(e):
-                return False
-        return True
-
     def is_positive(self, e: Expr) -> bool:
         return self.check_condition(Op(">", e, Const(0)))
     
@@ -626,20 +536,20 @@ def body_conds(e: Expr, ctx: Context) -> Context:
     ctx2 = Context(ctx)
     if expr.is_integral(e):
         if e.lower != expr.NEG_INF:
-            ctx2.add_condition(Op(">", expr.Var(e.var, type=e.var_type), e.lower))
+            ctx2.add_condition(Op(">", expr.Var(e.var), e.lower))
         if e.upper != expr.POS_INF:
-            ctx2.add_condition(Op("<", expr.Var(e.var, type=e.var_type), e.upper))
+            ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
     elif expr.is_indefinite_integral(e):
         pass
     elif expr.is_limit(e):
         if e.lim == expr.POS_INF:
-            ctx2.add_condition(expr.Op(">", expr.Var(e.var, type=e.var_type), Const(0)))
+            ctx2.add_condition(expr.Op(">", expr.Var(e.var), Const(0)))
     elif expr.is_summation(e) or expr.is_product(e):
-        ctx2.add_condition(expr.Op(">=", expr.Var(e.index_var, type=e.index_var_type), e.lower))
+        ctx2.add_condition(expr.Op(">=", expr.Var(e.index_var), e.lower))
         if e.upper != expr.POS_INF:
-            ctx2.add_condition(expr.Op("<=", expr.Var(e.index_var, type=e.index_var_type), e.upper))
-            ctx2.add_condition(expr.Op(">=", e.upper - expr.Var(e.index_var, type=e.index_var_type), Const(0)))
-        ctx2.add_condition(expr.Fun("isInt", expr.Var(e.index_var, type=e.index_var_type)))
+            ctx2.add_condition(expr.Op("<=", expr.Var(e.index_var), e.upper))
+            ctx2.add_condition(expr.Op(">=", e.upper - expr.Var(e.index_var), Const(0)))
+        ctx2.add_condition(expr.Fun("isInt", expr.Var(e.index_var)))
     else:
         raise TypeError
     return ctx2
@@ -653,7 +563,7 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             return f(expr.Op(e.op, *args), ctx)
         elif expr.is_fun(e):
             args = [rec(arg, ctx) for arg in e.args]
-            return f(expr.Fun((e.func_name, e.func_type), *args), ctx)
+            return f(expr.Fun(e.func_name, *args), ctx)
         elif expr.is_deriv(e):
             return f(expr.Deriv(e.var, rec(e.body, ctx)), ctx)
         elif expr.is_integral(e):
@@ -667,7 +577,7 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             body = rec(e.body, ctx)
             return f(expr.EvalAt(e.var, lower, upper, body), ctx)
         elif expr.is_limit(e):
-            return f(expr.Limit(e.var, rec(e.lim, ctx), rec(e.body, body_conds(e, ctx)), var_type=e.var_type), ctx)
+            return f(expr.Limit(e.var, rec(e.lim, ctx), rec(e.body, body_conds(e, ctx))), ctx)
         elif expr.is_indefinite_integral(e):
             return f(expr.IndefiniteIntegral(e.var, rec(e.body, ctx), e.skolem_args), ctx)
         elif expr.is_summation(e):
@@ -680,8 +590,6 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             upper = rec(e.upper, ctx)
             body = rec(e.body, body_conds(e, ctx))
             return f(expr.Product(e.index_var, lower, upper, body), ctx)
-        elif expr.is_matrix(e):
-            return f(Matrix([[rec(item, ctx) for item in row] for row in e.data], e.type), ctx)
         elif expr.is_symbol(e):
             return e
         else:
