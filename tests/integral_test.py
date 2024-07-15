@@ -2223,7 +2223,7 @@ class IntegralTest(unittest.TestCase):
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("(1+x+x^2)", "(x+1/2)^2 + 3/4"))
         calc.perform_rule(rules.Substitution("u", "2*(x+1/2)/sqrt(3)"))
-        calc.perform_rule(rules.Equation("3 * u ^ 2 / 2 + 3/2", "3/2*(u^2+1)"))
+        calc.perform_rule(rules.Equation("2 * (3 * u ^ 2 / 4 + 3/4)", "3/2*(u^2+1)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2)", "-sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3 / 2 * (1 / (u ^ 2 + 1))"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())

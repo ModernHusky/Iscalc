@@ -967,7 +967,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 rewrite 1 + x + x ^ 2 to (x + 1/2) ^ 2 + 3/4
                 substitute u for 2 * (x + 1/2) / sqrt(3)
-                rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
+                rewrite 2 * (3 * u ^ 2 / 4 + 3/4) to 3/2 * (u ^ 2 + 1)
                 simplify
                 rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
                 apply integral identity

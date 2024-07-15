@@ -1228,7 +1228,7 @@ class ApplyInductHyp(Rule):
             if e == eq.rhs:
                 return eq.lhs
             # pattern match
-            eq_pat = expr.expr_to_pattern(eq)
+            eq_pat = expr.expr_to_pattern(eq.expr)
             lhs_inst = expr.match(e, eq_pat.lhs)
             if lhs_inst != None:
                 return eq_pat.rhs.inst_pat(lhs_inst)

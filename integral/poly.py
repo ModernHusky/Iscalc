@@ -504,7 +504,14 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif expr.is_fun(e) and e.func_name == "sqrt":
         return to_poly(expr.Op("^", e.args[0], expr.Const(Fraction(1, 2))), ctx)
-
+    elif expr.is_fun(e) and e.func_name == "log":
+        a = e.args[0]
+        # log(a^b) ==> b * log(a)
+        if expr.is_op(a) and a.op == '^':
+            m1,m2=a.args
+            return to_poly(m2, ctx) * to_poly(expr.Fun('log', m1), ctx)
+        args_norm = [normalize(arg, ctx) for arg in e.args]
+        return singleton(expr.Fun(e.func_name, *args_norm))
     elif expr.is_fun(e):
         args_norm = [normalize(arg, ctx) for arg in e.args]
         return singleton(expr.Fun(e.func_name, *args_norm))
