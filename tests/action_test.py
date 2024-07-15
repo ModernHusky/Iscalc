@@ -1435,6 +1435,122 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter3Practice04", actions)
 
+    def testChapter3Practice06(self):
+        actions = """
+            prove (INT x:[-1,1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi
+            lhs:
+                inverse substitute cos(2 * u) for x creating u
+                rewrite cos(2 * u) to 2 * cos(u) ^ 2 - 1 using identity (at 1)
+                rewrite cos(2 * u) to 1 - 2 * sin(u) ^ 2 using identity
+                simplify
+                rewrite sin(2 * u) to 2 * sin(u) * cos(u) using identity
+                simplify
+                apply integral identity
+                simplify
+        """
+        self.check_actions("interesting", "Chapter3Practice06", actions)
+
+    def testChapter3Practice07a(self):
+        actions = """
+            prove (INT x:[-oo,oo]. x * exp(-(x ^ 2) - x)) = -1/2 * sqrt(pi * sqrt(exp(1)))
+            define I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a > 0
+            subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            lhs:
+                expand definition for I
+                rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
+                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2) using identity
+                simplify
+                substitute y for x - b / (2 * a)
+                apply integral identity
+                simplify
+            done
+            subgoal 2: (D b. I(a,b)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            lhs:
+                apply 1 on I(a,b)
+                simplify
+            done
+            subgoal 3: (INT x:[-oo,oo]. x * exp(-(a * x ^ 2) + b * x)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            from 2:
+                expand definition for I (all)
+                simplify
+            done
+            lhs:
+                rewrite x * exp(-(x ^ 2) - x) to x * exp(-(1 * x ^ 2) + -1 * x)
+                apply 3 on INT x:[-oo,oo]. x * exp(-(1 * x ^ 2) + -1 * x)
+                rewrite to -1/2 * sqrt(pi * sqrt(exp(1)))
+        """
+        self.check_actions("interesting", "Chapter3Practice07a", actions)
+
+    def testChapter3Practice07b(self):
+        actions = """
+            prove (INT x:[-oo,oo]. x ^ 2 * exp(-(x ^ 2) - x)) = 3/4 * sqrt(pi * sqrt(exp(1)))
+            define I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a > 0
+            subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            lhs:
+                expand definition for I
+                rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
+                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2) using identity
+                simplify
+                substitute y for x - b / (2 * a)
+                apply integral identity
+                simplify
+            done
+            subgoal 2: (D a. I(a,b)) = -(b ^ 2 / (4 * a ^ 2)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) - 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            lhs:
+                apply 1 on I(a,b)
+                simplify
+            rhs:
+                simplify
+            done
+            subgoal 3: (INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)) = b ^ 2 / (4 * a ^ 2) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) + 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            from 2:
+                expand definition for I (all)
+                simplify
+                solve equation for INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)
+            done
+            lhs:
+                rewrite x ^ 2 * exp(-(x ^ 2) - x) to x ^ 2 * exp(-(1 * x ^ 2) + -1 * x)
+                apply 3 on INT x:[-oo,oo]. x ^ 2 * exp(-(1 * x ^ 2) + -1 * x)
+                rewrite to 3/4 * sqrt(pi * sqrt(exp(1)))
+        """
+        self.check_actions("interesting", "Chapter3Practice07b", actions)
+
+    def testChapter3Practice08(self):
+        actions = """
+            prove (INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)) = pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m)) for a > 0, m > 0
+            subgoal 1: (INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = pi * (1 - exp(-a * m)) / (2 * a ^ 2) for a > 0, m > 0
+            lhs:
+                apply integral identity
+            done
+            from 1:
+                differentiate both sides at a
+                exchange derivative and integral (all)
+                simplify
+                solve equation for INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)
+                rewrite -((2 * a ^ 2 * m * pi * exp(-(a * m)) - 4 * a * pi * (-exp(-(a * m)) + 1)) / (8 * a ^ 5)) to pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m))
+        """
+        self.check_actions("interesting", "Chapter3Practice08", actions)
+
+    def testChapter3Practice09(self):
+        actions = """
+            prove (INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3) = 1 / (2 * a ^ 2 * b) for a > 0, b > 0, a > b
+            subgoal 1: (INT x:[0,1]. 1 / (a * x + b * (1 - x)) ^ 2) = 1 / (a * b) for a > 0, b > 0, a > b
+            lhs:
+                substitute u for (a - b) * x + b
+                rewrite 1 / ((a - b) * (b * (-((-b + u) / (a - b)) + 1) + a * (-b + u) / (a - b)) ^ 2) to 1 / (u ^ 2 * (a - b))
+                apply integral identity
+                simplify
+                rewrite 1 / (a - b) * (-(1 / a) + 1 / b) to 1 / (a * b)
+            done
+            from 1:
+                differentiate both sides at a
+                exchange derivative and integral (all)
+                simplify
+                rewrite (b * (-x + 1) + a * x) ^ 3 to (a * x + b * (1 - x)) ^ 3
+                solve equation for INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3
+        """
+        self.check_actions("interesting", "Chapter3Practice09", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
