@@ -1024,7 +1024,7 @@ class OnCount(Rule):
         if pred is None:
             if isinstance(rule, Equation):
                 pred = lambda t: t == rule.old_expr
-            elif isinstance(rule, (Substitution, SubstitutionInverse, IntegrationByParts)):
+            elif isinstance(rule, (Substitution, SubstitutionInverse, IntegrationByParts, SplitRegion)):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
             elif isinstance(rule, ExpandDefinition):
                 pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name

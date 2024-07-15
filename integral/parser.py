@@ -121,6 +121,7 @@ grammar = r"""
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
+        | "replace" "substitution" -> replace_substitution_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -539,6 +540,10 @@ class ExprTransformer(Transformer):
     def elim_improper_integral_rule(self, var_name: Token):
         from integral import rules
         return rules.ElimInfInterval(new_var=str(var_name))
+
+    def replace_substitution_rule(self):
+        from integral import rules
+        return rules.ReplaceSubstitution()
 
     def full_simplify_rule(self):
         from integral import rules

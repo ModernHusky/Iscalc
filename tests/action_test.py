@@ -1305,6 +1305,136 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "EulerConstant01", actions)
 
+    def testChapter3Practice01(self):
+        actions = """
+            prove (INT x:[0,oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) = pi / b * log(1 + a * b) for a > 0, b > 0
+            define I(a,b) = (INT x:[0,oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) for a >= 0, b > 0
+            subgoal 1: (D a. I(a,b)) = pi / (1 + a * b) for a > 0, b > 0
+            lhs:
+                expand definition for I (all)
+                exchange derivative and integral
+                simplify
+                rewrite x ^ 2 / ((b ^ 2 + x ^ 2) * (a ^ 2 * x ^ 2 + 1)) to 1 / (1 - a ^ 2 * b ^ 2) * (1 / (1 + a ^ 2 * x ^ 2) - b ^ 2 / (b ^ 2 + x ^ 2))
+                simplify
+                apply integral identity
+                substitute t for a * x
+                apply integral identity
+                simplify
+                rewrite to pi / (1 + a * b)
+            done
+            subgoal 2: I(a,b) = pi / b * log(1 + a * b) + SKOLEM_FUNC(C(b)) for a > 0, b > 0
+            from 1:
+                integrate both sides
+                substitute u for 1 + a * b
+                simplify
+                apply indefinite integral
+                replace substitution
+                rewrite abs(1 + a * b) to 1 + a * b
+            done
+            subgoal 3: I(0,b) = 0 for b > 0
+            lhs:
+                expand definition for I
+                simplify
+            done
+            subgoal 4: SKOLEM_FUNC(C(b)) = 0 for b > 0
+            from 2:
+                apply limit a -> 0 both sides
+                simplify
+                apply 3 on I(0,b)
+                solve equation for SKOLEM_FUNC(C(b))
+            done
+            from 2:
+                apply 4 on SKOLEM_FUNC(C(b))
+                expand definition for I (all)
+                simplify
+        """
+        self.check_actions("interesting", "Chapter3Practice01", actions)
+
+    def testChapter3Practice02(self):
+        actions = """
+            prove (INT x:[-oo,oo]. cos(a * x) / (b ^ 2 - x ^ 2)) = pi * sin(a * b) / b for a > 0, b > 0, b != x
+            lhs:
+                rewrite b ^ 2 - x ^ 2 to (b + x) * (b - x)
+                rewrite cos(a * x) / ((b + x) * (b - x)) to 1 / (2 * b) * (cos(a * x) / (b + x) + cos(a * x) / (b - x))
+                simplify
+                substitute u for b + x
+                substitute u for b - x (at 2)
+                rewrite a * (-b + u) to -(a * (b - u))
+                rewrite cos(-(a * (b - u))) to cos(a * (b - u)) using identity
+                simplify
+                rewrite cos(a * (b - u)) to cos(a * b - a * u)
+                rewrite cos(a * b - a * u) to cos(a * b) * cos(a * u) + sin(a * b) * sin(a * u) using identity
+                rewrite (cos(a * b) * cos(a * u) + sin(a * b) * sin(a * u)) / u to cos(a * b) * cos(a * u) / u + sin(a * b) * sin(a * u) / u
+                simplify
+                rewrite INT u:[-oo,oo]. cos(a * u) / u to 0
+                simplify
+                split region at 0
+                substitute u for -u
+                simplify
+                apply integral identity
+                simplify
+        """
+        self.check_actions("interesting", "Chapter3Practice02", actions)
+
+    def testChapter3Practice03(self):
+        actions = """
+            prove (INT x:[-oo,oo]. cos(a * x) / (b ^ 4 - x ^ 4)) = pi * (exp(-(a * b)) + sin(a * b)) / (2 * b ^ 3) for a > 0, b > 0, b != x
+            lhs:
+                rewrite b ^ 4 - x ^ 4 to (b ^ 2 + x ^ 2) * (b ^ 2 - x ^ 2)
+                rewrite cos(a * x) / ((b ^ 2 + x ^ 2) * (b ^ 2 - x ^ 2)) to 1 / (2 * b ^ 2) * (cos(a * x) / (b ^ 2 + x ^ 2) + cos(a * x) / (b ^ 2 - x ^ 2))
+                simplify
+                split region at 0
+                substitute x for -x
+                simplify
+                rewrite b ^ 2 + x ^ 2 to x ^ 2 + b ^ 2
+                apply integral identity
+                simplify
+                rewrite to pi * (exp(-(a * b)) + sin(a * b)) / (2 * b ^ 3)
+        """
+        self.check_actions("interesting", "Chapter3Practice03", actions)
+
+    def testChapter3Practice04(self):
+        actions = """
+            prove (INT x:[0,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b) for a > 0, b > 0, b != x
+            subgoal 1: (INT x:[0,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = 1/2 * (INT x:[-oo,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) for x != b, a > 0, b > 0
+            lhs:
+                simplify
+            rhs:
+                split region at 0
+                substitute x for -x
+                simplify
+            done
+            from 1:
+                rewrite x ^ 2 - b ^ 2 to (x + b) * (x - b) (at 2)
+                rewrite x * sin(a * x) / ((x + b) * (x - b)) to -x * sin(a * x) / ((b - x) * (b + x))
+                rewrite -x * sin(a * x) / ((b - x) * (b + x)) to -1 / (2 * b) * (x * sin(a * x) / (b + x) + x * sin(a * x) / (b - x))
+                simplify
+                substitute u for b + x (at 2)
+                substitute u for b - x (at 3)
+                rewrite sin(a * (-b + u)) to sin(-(a * (b - u)))
+                rewrite sin(-(a * (b - u))) to -sin(a * (b - u)) using identity
+                rewrite (-b + u) * -sin(a * (b - u)) to (b - u) * sin(a * (b - u))
+                simplify
+                rewrite INT u:[-oo,oo]. (b - u) * sin(a * (b - u)) / u to INT u:[-oo,oo]. (b - u) / u * sin(a * (b - u))
+                rewrite (b - u) / u * sin(a * (b - u)) to (b / u - 1) * sin(a * b - a * u)
+                rewrite (b / u - 1) * sin(a * b - a * u) to b / u * sin(a * b - a * u) - sin(a * b - a * u)
+                simplify
+                substitute s for a * b - a * u (at 3)
+                split region at 0 (at 3)
+                substitute s for -s (at 3)
+                simplify
+                rewrite sin(a * b - a * u) to sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u) using identity
+                rewrite (sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u)) / u to sin(a * b) * cos(a * u) / u - cos(a * b) * sin(a * u) / u
+                simplify
+                split region at 0 (at 3)
+                substitute u for -u (at 3)
+                split region at 0 (at 2)
+                substitute u for -u (at 2)
+                simplify
+                apply integral identity
+        """
+        self.check_actions("interesting", "Chapter3Practice04", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

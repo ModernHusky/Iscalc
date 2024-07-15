@@ -3262,10 +3262,13 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 3.10, C3.1
         file = compstate.CompFile("interesting", "Chapter3Practice01")
 
-        file.add_definition("I(a, b) = (INT x:[0, oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2))",
+        goal = file.add_goal("(INT x:[0, oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) = (pi / b) * log(1 + a * b)",
+                             conds=["a > 0", "b > 0"])
+
+        goal.add_definition("I(a, b) = (INT x:[0, oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2))",
                              conds=["a >= 0", "b > 0"])
 
-        goal01 = file.add_goal("(D a. I(a,b)) = pi / (1 + a * b)", conds=["a > 0", "b > 0"])
+        goal01 = goal.add_subgoal("1", "(D a. I(a,b)) = pi / (1 + a * b)", conds=["a > 0", "b > 0"])
         proof_of_goal01 = goal01.proof_by_calculation()
         calc = proof_of_goal01.lhs_calc
         calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
@@ -3280,8 +3283,9 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation(None, "pi / (1 + a * b)"))
         assert goal01.is_finished()
-        goal02 = file.add_goal("I(a, b) = (pi / b) * log(1 + a * b) + SKOLEM_FUNC(C(b))", conds=["a > 0", "b > 0"])
-        proof_of_goal02 = goal02.proof_by_rewrite_goal(begin = goal01)
+
+        goal02 = goal.add_subgoal("2", "I(a, b) = (pi / b) * log(1 + a * b) + SKOLEM_FUNC(C(b))", conds=["a > 0", "b > 0"])
+        proof_of_goal02 = goal02.proof_by_rewrite_goal(begin="1")
         calc = proof_of_goal02.begin
         calc.perform_rule(rules.IntegralEquation())
         calc.perform_rule(rules.Substitution(var_name="u", var_subst="1 + a * b"))
@@ -3290,29 +3294,32 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.ReplaceSubstitution())
         calc.perform_rule(rules.Equation("abs(1 + a * b)", "(1 + a * b)"))
         assert goal02.is_finished()
-        goal03 = file.add_goal("I(0, b) = 0", conds=['b>0'])
+
+        goal03 = goal.add_subgoal("3", "I(0, b) = 0", conds=['b > 0'])
         proof_of_goal03 = goal03.proof_by_calculation()
         calc = proof_of_goal03.lhs_calc
         calc.perform_rule(rules.ExpandDefinition("I"))
         calc.perform_rule(rules.Simplify())
         assert goal03.is_finished()
-        goal04 = file.add_goal("SKOLEM_FUNC(C(b)) = 0", conds=['b>0'])
-        proof_of_goal04 = goal04.proof_by_rewrite_goal(begin = goal02)
+
+        goal04 = goal.add_subgoal("4", "SKOLEM_FUNC(C(b)) = 0", conds=['b > 0'])
+        proof_of_goal04 = goal04.proof_by_rewrite_goal(begin="2")
         calc = proof_of_goal04.begin
         calc.perform_rule(rules.LimitEquation("a", parser.parse_expr("0")))
         calc.perform_rule(rules.Simplify())
         source = calc.parse_expr("I(0,b)")
-        calc.perform_rule(rules.ApplyEquation(goal03.goal, source))
+        calc.perform_rule(rules.ApplyEquation("3", source))
         calc.perform_rule(rules.SolveEquation("SKOLEM_FUNC(C(b))"))
         assert goal04.is_finished()
-        goal05 = file.add_goal("I(a, b) = (pi / b) * log(1 + a * b)", conds=["a > 0", "b > 0"])
-        proof_of_goal05 = goal05.proof_by_rewrite_goal(begin = goal02)
+
+        proof_of_goal05 = goal.proof_by_rewrite_goal(begin="2")
         calc = proof_of_goal05.begin
         s = calc.parse_expr("SKOLEM_FUNC(C(b))")
-        calc.perform_rule(rules.ApplyEquation(goal04.goal, s))
+        calc.perform_rule(rules.ApplyEquation("4", s))
+        calc.perform_rule(rules.OnSubterm(rules.ExpandDefinition("I")))
         calc.perform_rule(rules.Simplify())
-        assert goal05.is_finished()
-        self.checkAndOutput(file)
+
+        assert goal.is_finished()
 
     def testChapter3Practice02(self):
         # Reference:
@@ -3328,8 +3335,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("cos(a * x) / ((b + x) * (b - x))",
                                          "(1 / (2 * b)) * (cos(a * x) / (b + x) + cos(a * x) / (b - x))"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="b + x"), "1.0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="b - x"), "1.1"))
+        calc.perform_rule(rules.Substitution(var_name="u", var_subst="b + x"))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="u", var_subst="b - x"), 2))
         calc.perform_rule(rules.Equation("a * (-b + u)", "-(a * (b - u))"))
         calc.perform_rule(rules.ApplyIdentity("cos(-(a * (b - u)))", "cos(a * (b - u))"))
         calc.perform_rule(rules.Simplify())
@@ -3342,12 +3349,12 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("(INT u:[-oo,oo]. cos(a * u) / u)", "0"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.SplitRegion("0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="-u"), "1.0"))
+        calc.perform_rule(rules.Substitution(var_name="u", var_subst="-u"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testChapter3Practice03(self):
         # Reference:
@@ -3363,8 +3370,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("cos(a * x) / ((b ^ 2 + x ^ 2) * (b ^ 2 - x ^ 2))",
                                          "(1 / (2 * b ^ 2)) * (cos(a * x) / (b ^ 2 + x ^ 2) + cos(a * x) / (b ^ 2 - x ^ 2))"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.SplitRegion("0"), "1.0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="x", var_subst="-x"), " 1.0.0"))
+        calc.perform_rule(rules.SplitRegion("0"))
+        calc.perform_rule(rules.Substitution(var_name="x", var_subst="-x"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("b ^ 2 + x ^ 2", "x ^ 2 + b ^ 2"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
@@ -3378,30 +3385,32 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 3.10, C3.4
         file = compstate.CompFile("interesting", "Chapter3Practice04")
 
-        goal01 = file.add_goal(
+        goal = file.add_goal("(INT x:[0, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b)",
+                             conds=["a > 0", "b > 0", "b != x"])
+
+        goal01 = goal.add_subgoal("1",
             "(INT x:[0, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = \
             1/2 * (INT x:[-oo, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2))",\
-            conds=["x!=b", "a > 0", "b > 0"])
+            conds=["x != b", "a > 0", "b > 0"])
         proof_of_goal01 = goal01.proof_by_calculation()
         calc = proof_of_goal01.lhs_calc
         calc.perform_rule(rules.Simplify())
         calc = proof_of_goal01.rhs_calc
         calc.perform_rule(rules.SplitRegion("0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="x", var_subst="-x"), "1.0"))
+        calc.perform_rule(rules.Substitution(var_name="x", var_subst="-x"))
         calc.perform_rule(rules.Simplify())
         assert goal01.is_finished()
-        goal02 = file.add_goal("(INT x:[0, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b)",
-                               conds=["a > 0", "b > 0", "b != x"])
-        proof_of_goal02 = goal02.proof_by_rewrite_goal(begin = goal01)
+
+        proof_of_goal02 = goal.proof_by_rewrite_goal(begin="1")
         calc = proof_of_goal02.begin
-        calc.perform_rule(rules.OnLocation(rules.Equation("x ^ 2 - b ^ 2", "(x + b) * (x - b)"), "1"))
+        calc.perform_rule(rules.OnCount(rules.Equation("x ^ 2 - b ^ 2", "(x + b) * (x - b)"), 2))
         calc.perform_rule(rules.Equation("x * sin(a * x) / ((x + b) * (x - b))",
                                          "-x * sin(a * x) / ((b - x) * (b + x))"))
         calc.perform_rule(rules.Equation("-x * sin(a * x) / ((b - x) * (b + x))",
                                          "-1/(2 * b) * (x * sin(a * x) / (b + x) + x * sin(a * x) / (b - x))"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="b + x"), "1.0.1.0"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="b - x"), "1.0.1.1"))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="u", var_subst="b + x"), 2))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="u", var_subst="b - x"), 3))
         calc.perform_rule(rules.Equation("sin(a * (-b + u))", "sin(-(a * (b - u)))"))
         calc.perform_rule(rules.ApplyIdentity("sin(-(a * (b - u)))", "-sin(a * (b - u))"))
         calc.perform_rule(rules.Equation("(-b + u) * -sin(a * (b - u))", "(b - u) * sin(a * (b - u))"))
@@ -3413,23 +3422,23 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("(b / u - 1) * sin(a * b - a * u)",
                                          "(b / u) * sin(a * b - a * u) - sin(a * b - a * u)"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="s", var_subst="a * b - a * u"), "1.0.1.1"))
-        calc.perform_rule(rules.OnLocation(rules.SplitRegion("0"), "1.0.1.1"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="s", var_subst="-s"), "1.0.1.1.0"))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="s", var_subst="a * b - a * u"), 3))
+        calc.perform_rule(rules.OnCount(rules.SplitRegion("0"), 3))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="s", var_subst="-s"), 3))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(
             rules.ApplyIdentity("sin(a * b - a * u)", "sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u)"))
         calc.perform_rule(rules.Equation("(sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u)) / u",
                                          "sin(a * b) * cos(a * u) / u - cos(a * b) * sin(a * u) / u"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.SplitRegion("0"), "1.1.1"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="-u"), "1.1.1.0"))
-        calc.perform_rule(rules.OnLocation(rules.SplitRegion("0"), "1.0.1"))
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="u", var_subst="-u"), "1.0.1.0"))
+        calc.perform_rule(rules.OnCount(rules.SplitRegion("0"), 3))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="u", var_subst="-u"), 3))
+        calc.perform_rule(rules.OnCount(rules.SplitRegion("0"), 2))
+        calc.perform_rule(rules.OnCount(rules.Substitution(var_name="u", var_subst="-u"), 2))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
-        assert goal02.is_finished()
-        self.checkAndOutput(file)
+
+        assert goal.is_finished()
 
     def testChapter3Practice05(self):
         # Reference:
@@ -3479,7 +3488,6 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         self.checkAndOutput(file)
-
 
     def testChapter3Practice06(self):
         # Reference:
