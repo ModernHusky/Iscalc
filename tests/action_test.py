@@ -1551,6 +1551,101 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter3Practice09", actions)
 
+    def testChapter1Practice0104(self):
+        actions = """
+            prove (INT x:[0,pi / 3]. 1 / cos(x)) = log(2 + sqrt(3))
+            lhs:
+                rewrite 1 / cos(x) to cos(x) / cos(x) ^ 2
+                rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2 using identity
+                substitute u for sin(x)
+                rewrite 1 / (-(u ^ 2) + 1) to 1/2 * (1 / (1 - u) + 1 / (1 + u))
+                simplify
+                apply integral identity
+                simplify
+                substitute t for -u + 1
+                apply integral identity
+                simplify
+                rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
+                rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1)) using identity
+                rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
+                simplify
+                rewrite sqrt(3) + 2 to 2 + sqrt(3)
+        """
+        self.check_actions("interesting", "Chapter1Practice0104", actions)
+
+    def testChapter2Practice01(self):
+        actions = """
+            prove (INT x:[0,4]. log(x) / sqrt(4 * x - x ^ 2)) = 0
+            subgoal 1: (INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))) = pi
+            lhs:
+                inverse substitute sin(x) ^ 2 for y creating x
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity (at 2)
+                simplify
+                apply integral identity
+                simplify
+            done
+            subgoal 2: (INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))) = -(2 * pi * log(2))
+            lhs:
+                inverse substitute sin(x) ^ 2 for y creating x
+                rewrite log(sin(x) ^ 2) to 2 * log(sin(x))
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity (at 2)
+                simplify
+                rewrite sin(x) to 1 * sin(x)
+                apply integral identity
+                simplify
+            done
+            subgoal 3: 4 * x - x ^ 2 >= 0 for x > 0, x < 4
+            lhs:
+                rewrite 4 * x - x ^ 2 to x * (4 - x)
+            done
+            subgoal 4: sqrt(4 * x - x ^ 2) != 0 for x > 0, x < 4
+            lhs:
+                rewrite 4 * x - x ^ 2 to x * (4 - x)
+            done
+            lhs:
+                substitute y for x / 4
+                rewrite log(4 * y) to log(4) + log(y)
+                rewrite sqrt(-(16 * y ^ 2) + 16 * y) to 4 * sqrt(-(y ^ 2) + y)
+                rewrite sqrt(-(y ^ 2) + y) to sqrt(y) * sqrt(1 - y)
+                expand polynomial
+                simplify
+                rewrite -y + 1 to 1 - y
+                rewrite -y + 1 to 1 - y
+                apply 1 on INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))
+                apply 2 on INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))
+                simplify
+        """
+        self.check_actions("interesting", "Chapter2Practice01", actions)
+
+    def testChapter2Practice03(self):
+        actions = """
+            prove (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)) = (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) for m >= 1, isInt(m)
+            subgoal 1: (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) = 4 * m * ((INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) - (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1))) for m >= 1, isInt(m)
+            lhs:
+                integrate by parts with u = 1 / (x ^ 4 + 1) ^ m, v = x
+                simplify
+                rewrite x ^ 4 * (x ^ 4 + 1) ^ (-m - 1) to (x ^ 4 + 1) / (x ^ 4 + 1) ^ (m + 1) - 1 / (x ^ 4 + 1) ^ (m + 1)
+                rewrite INT x:[0,oo]. (x ^ 4 + 1) / (x ^ 4 + 1) ^ (m + 1) - 1 / (x ^ 4 + 1) ^ (m + 1) to (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) - (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1))
+            done
+            from 1:
+                solve equation for INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)
+                rewrite -(1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)) + (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) to (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m)
+        """
+        self.check_actions("interesting", "Chapter2Practice03", actions)
+
+    def testChapter2Practice05(self):
+        actions = """
+            prove (INT x:[0,oo]. log(x + 1) / x ^ (3/2)) = 2 * pi
+            lhs:
+                integrate by parts with u = log(1 + x), v = -2 / sqrt(x)
+                simplify
+                substitute t for sqrt(x)
+                simplify
+                apply integral identity
+                simplify
+        """
+        self.check_actions("interesting", "Chapter2Practice05", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

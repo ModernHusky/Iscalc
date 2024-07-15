@@ -3964,7 +3964,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.Substitution(var_name="t", var_subst="-u+1"), "0.1"))
+        calc.perform_rule(rules.Substitution(var_name="t", var_subst="-u+1"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("-(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1)",
@@ -3981,49 +3981,57 @@ class IntegralTest(unittest.TestCase):
         # Reference:
         # Inside interesting integrals, C2.1
         file = compstate.CompFile("interesting", "chapter2_practice01")
-        goal01 = file.add_goal("(INT y:[0,1]. 1/ (sqrt(y) * sqrt(1-y))) = pi")
+
+        goal = file.add_goal("(INT x:[0,4]. log(x)/sqrt(4*x-x^2)) = 0")
+
+        goal01 = goal.add_subgoal("1", "(INT y:[0,1]. 1/ (sqrt(y) * sqrt(1-y))) = pi")
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("x", "y", "sin(x)^2"))
-        calc.perform_rule(rules.OnLocation(rules.ApplyIdentity("sin(x)^2", "1-cos(x)^2"), "0.0.1.1.0.1"))
+        calc.perform_rule(rules.OnCount(rules.ApplyIdentity("sin(x)^2", "1-cos(x)^2"), 2))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        goal02 = file.add_goal("(INT y:[0,1]. log(y)/ (sqrt(y) * sqrt(1-y))) = -(2*pi*log(2))")
+        goal02 = goal.add_subgoal("2", "(INT y:[0,1]. log(y)/ (sqrt(y) * sqrt(1-y))) = -(2*pi*log(2))")
         proof = goal02.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("x", "y", "sin(x)^2"))
         calc.perform_rule(rules.Equation("log(sin(x)^2)", "2*log(sin(x))"))
-        calc.perform_rule(rules.OnLocation(rules.ApplyIdentity("sin(x)^2", "1-cos(x)^2"), "0.0.1.1.0.1"))
+        calc.perform_rule(rules.OnCount(rules.ApplyIdentity("sin(x)^2", "1-cos(x)^2"), 2))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("sin(x)", "1*sin(x)"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
 
-        sub_goal = file.add_goal("4 * x - x ^ 2 > 0", conds=["x > 0", "x < 4"])
+        sub_goal = goal.add_subgoal("3", "4 * x - x ^ 2 >= 0", conds=["x > 0", "x < 4"])
         proof = sub_goal.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("4 * x - x ^ 2", "x*(4 - x)"))
 
-        goal03 = file.add_goal("(INT x:[0,4]. log(x)/sqrt(4*x-x^2)) = 0")
-        proof = goal03.proof_by_calculation()
+        sub_goal2 = goal.add_subgoal("4", "sqrt(4 * x - x ^ 2) != 0", conds=["x > 0", "x < 4"])
+        proof = sub_goal2.proof_by_calculation()
+        calc = proof.lhs_calc
+        calc.perform_rule(rules.Equation("4 * x - x ^ 2", "x*(4 - x)"))
+
+        proof = goal.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Substitution("y", "x/4"))
         calc.perform_rule(rules.Equation("log(4*y)", "log(4)+log(y)"))
         calc.perform_rule(rules.Equation("sqrt(-(16 * y ^ 2) + 16 * y)", "4 * sqrt(-y ^ 2 + y)"))
         calc.perform_rule(rules.Equation("sqrt(-y^2 + y)", "sqrt(y) * sqrt(1-y)"))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0"))
+        calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("-y+1", "1-y"))
         calc.perform_rule(rules.Equation("-y+1", "1-y"))
         source = calc.parse_expr("INT y:[0,1]. 1/ (sqrt(y) * sqrt(1-y))")
-        calc.perform_rule(rules.ApplyEquation(goal01.goal, source))
+        calc.perform_rule(rules.ApplyEquation("1", source))
         source = calc.parse_expr("INT y:[0,1]. log(y)/ (sqrt(y) * sqrt(1-y))")
-        calc.perform_rule(rules.ApplyEquation(goal02.goal, source))
+        calc.perform_rule(rules.ApplyEquation("2", source))
         calc.perform_rule(rules.Simplify())
+        goal.print_entry()
 
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testChapter2Practice02(self):
         # Reference:
@@ -4064,7 +4072,11 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, C2.3
         file = compstate.CompFile("interesting", "chapter2_practice03")
 
-        goal01 = file.add_goal("(INT x:[0, oo]. 1/(x^4+1)^m) = 4*m*((INT x:[0, oo]. 1 / (x^4+1)^m)-(INT x:[0, oo]. 1 / (x^4+1)^(m+1)))", conds=["m>=1", "isInt(m)"])
+        goal = file.add_goal("(INT x:[0, oo]. 1/(x^4+1)^(m+1)) = (4*m-1)/(4*m) * (INT x:[0, oo]. 1/(x^4+1)^m)",
+                             conds=["m>=1", "isInt(m)"])
+
+        goal01 = goal.add_subgoal("1", "(INT x:[0, oo]. 1/(x^4+1)^m) = 4*m*((INT x:[0, oo]. 1 / (x^4+1)^m)-(INT x:[0, oo]. 1 / (x^4+1)^(m+1)))",
+                                  conds=["m>=1", "isInt(m)"])
         proof = goal01.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.IntegrationByParts(u="1/(x^4+1)^m", v="x"))
@@ -4073,14 +4085,13 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("(INT x:[0,oo]. (x ^ 4 + 1) / (x ^ 4 + 1) ^ (m + 1) - 1 / (x ^ 4 + 1) ^ (m + 1))",
                                          "(INT x:[0, oo]. 1 / (x^4+1)^m)-(INT x:[0, oo]. 1 / (x^4+1)^(m+1))"))
         assert goal01.is_finished()
-        goal02 = file.add_goal("(INT x:[0, oo]. 1/(x^4+1)^(m+1)) = (4*m-1)/(4*m) * (INT x:[0, oo]. 1/(x^4+1)^m)", conds=["m>=1", "isInt(m)"])
-        proof = goal02.proof_by_rewrite_goal(begin = goal01)
+
+        proof = goal.proof_by_rewrite_goal(begin="1")
         calc = proof.begin
         calc.perform_rule(rules.SolveEquation("(INT x:[0, oo]. 1/(x^4+1)^(m+1))"))
         calc.perform_rule(rules.Equation("-(1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)) + (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)",
                                          "(4*m-1)/(4*m) * (INT x:[0, oo]. 1/(x^4+1)^m)"))
-
-        self.checkAndOutput(file)
+        assert goal.is_finished()
 
     def testChapter2Practice05(self):
         # Reference:
@@ -4108,6 +4119,7 @@ class IntegralTest(unittest.TestCase):
         calc = proof.rhs_calc
         calc.perform_rule(rules.Simplify())
         assert goal01.is_finished()
+
         goal02 = file.add_goal("(INT x:[0,1]. (1-sqrt(x))^n) = 2 / ((n+1)*(n+2))", conds=["n>-1"])
         proof = goal02.proof_by_calculation()
         calc = proof.lhs_calc
@@ -4138,12 +4150,14 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.ApplyIdentity(s, t))
         calc.perform_rule(rules.Simplify())
         assert goal02.is_finished()
+
         goal03 = file.add_goal("(INT x:[0,1]. (1-sqrt(x))^9) = 1 / 55")
         proof = goal03.proof_by_rewrite_goal(begin = goal02)
         calc = proof.begin
         calc.perform_rule(rules.VarSubsOfEquation([{'var': 'n', 'expr': "9"}]))
         calc.perform_rule(rules.Simplify())
         assert goal03.is_finished()
+
         self.checkAndOutput(file)
 
     # The condition of goal02 can not be weakened until complex integration is supported.
