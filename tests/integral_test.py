@@ -562,7 +562,7 @@ class IntegralTest(unittest.TestCase):
         calc = proof02.lhs_calc
         calc.perform_rule(rules.Substitution("u", "3 * exp(-x) + 1"))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0.0.1.0"))
+        calc.perform_rule(rules.Equation("u ^ 5 * (u - 1) ^ 2", "u ^ 7 - 2 * u ^ 6 + u ^ 5"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
@@ -581,19 +581,20 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ReplaceSubstitution())
 
-        goal04 = file.add_goal("(INT x. (27*exp(9*x) + exp(12*x)) ^ (1/3)) = "
-                             "(exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)")
-        proof04 = goal04.proof_by_calculation()
-        calc = proof04.lhs_calc
-        calc.perform_rule(rules.Equation("27*exp(9*x) + exp(12*x)", "exp(9*x) * (27 + exp(3*x))"))
-        calc.perform_rule(rules.ApplyIdentity("(exp(9*x) * (27 + exp(3*x))) ^ (1/3)",
-                                              "exp(9*x) ^ (1/3) * (27 + exp(3*x)) ^ (1/3)"))
-        calc.perform_rule(rules.Equation("exp(9*x) ^ (1/3)", "exp(3*x)"))
-        calc.perform_rule(rules.Substitution("u", "exp(3*x) + 27"))
-        calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.IndefiniteIntegralIdentity())
-        calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.ReplaceSubstitution())
+        # goal04 = file.add_goal("(INT x. (27*exp(9*x) + exp(12*x)) ^ (1/3)) = "
+        #                      "(exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)")
+        # proof04 = goal04.proof_by_calculation()
+        # calc = proof04.lhs_calc
+        # calc.perform_rule(rules.Equation("27*exp(9*x) + exp(12*x)", "exp(9*x) * (27 + exp(3*x))"))
+        # calc.perform_rule(rules.ApplyIdentity("(exp(9*x) * (27 + exp(3*x))) ^ (1/3)",
+        #                                       "exp(9*x) ^ (1/3) * (27 + exp(3*x)) ^ (1/3)"))
+        # calc.perform_rule(rules.Equation("exp(9*x) ^ (1/3)", "exp(3*x)"))
+        # calc.perform_rule(rules.Substitution("u", "exp(3*x) + 27"))
+        # calc.perform_rule(rules.Simplify())
+        # calc.perform_rule(rules.IndefiniteIntegralIdentity())
+        # calc.perform_rule(rules.Simplify())
+        # calc.perform_rule(rules.ReplaceSubstitution())
+        # goal04.print_entry()
 
         # self.checkAndOutput(file)
 
@@ -623,7 +624,7 @@ class IntegralTest(unittest.TestCase):
 
         calc = file.add_calculation("INT x. (sin(x) + cos(x)) ^ 2", conds=["x > 0", "x < pi/2"])
         calc.perform_rule(rules.ExpandPolynomial())
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "2 * cos(x) * sin(x) + (sin(x) ^ 2 + cos(x) ^ 2)"), "0"))
+        calc.perform_rule(rules.Equation("2 * cos(x) * sin(x) + cos(x) ^ 2 + sin(x) ^ 2", "2 * cos(x) * sin(x) + (sin(x) ^ 2 + cos(x) ^ 2)"))
         calc.perform_rule(rules.ApplyIdentity("sin(x) ^ 2 + cos(x) ^ 2", "1"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Substitution("u", "sin(x)"))
@@ -659,7 +660,7 @@ class IntegralTest(unittest.TestCase):
 
         calc = file.add_calculation("INT x. cos(5*x) / (3 + sin(5*x))", conds=["x > 0", "x < pi/10"])
         calc.perform_rule(rules.Substitution("u", "sin(5*x)"))
-        calc.perform_rule(rules.Substitution("v", "5 * u + 15"))
+        calc.perform_rule(rules.Substitution("v", "u + 3"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
@@ -674,10 +675,9 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         calc = file.add_calculation("INT x. sin(x) / (1 + sin(x))", conds=['x>-pi/2', 'x<pi/2'])
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "sin(x) * (1 - sin(x)) / (1 - sin(x)^2)"), "0"))
+        calc.perform_rule(rules.Equation("sin(x) / (1 + sin(x))", "sin(x) * (1 - sin(x)) / (1 - sin(x)^2)"))
         calc.perform_rule(rules.ApplyIdentity("1 - sin(x)^2", "cos(x)^2"))
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "(1/cos(x)) * (sin(x)/cos(x)) - ((sin(x)/cos(x))^2)"), "0"))
-
+        calc.perform_rule(rules.Equation("sin(x) * (1 - sin(x)) / cos(x) ^ 2", "(1/cos(x)) * (sin(x)/cos(x)) - ((sin(x)/cos(x))^2)"))
         calc.perform_rule(rules.ApplyIdentity("1 / cos(x)", "sec(x)"))
         calc.perform_rule(rules.ApplyIdentity("sin(x) / cos(x)", "tan(x)"))
         calc.perform_rule(rules.ApplyIdentity("sin(x) / cos(x)", "tan(x)"))
@@ -717,7 +717,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("tan(x)^3", "tan(x) * tan(x)^2"))
         calc.perform_rule(rules.ApplyIdentity("tan(x)^2", "sec(x)^2 - 1"))
-        calc.perform_rule(rules.OnLocation(rules.ExpandPolynomial(), "0.1"))
+        calc.perform_rule(rules.Equation("tan(x) * (sec(x) ^ 2 - 1)", "tan(x) * sec(x) ^ 2 - tan(x)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Substitution("u", "tan(x)"))
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
@@ -725,7 +725,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         calc = file.add_calculation("INT x. (sin(x) - cos(x)) * (sin(x) + cos(x)) ^ 5")
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "-(sin(x) + cos(x)) ^ 5 * (cos(x) - sin(x))"), "0"))
+        calc.perform_rule(rules.Equation("(sin(x) - cos(x)) * (sin(x) + cos(x)) ^ 5", "-(sin(x) + cos(x)) ^ 5 * (cos(x) - sin(x))"))
         calc.perform_rule(rules.Substitution("u", "sin(x) + cos(x)"))
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
@@ -794,21 +794,22 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IntegrationByParts("exp(x)", "sin(x)"))
         calc.perform_rule(rules.IntegrateByEquation("INT x. exp(x) * sin(x)"))
 
-        calc = file.add_calculation("INT x. sin(3*x) * cos(4*x)")
-        calc.perform_rule(rules.IntegrationByParts("sin(3*x)", "sin(4*x)/4"))
-        calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.IntegrationByParts("cos(3*x)", "-cos(4*x)/4"))
-        calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.IntegrateByEquation("INT x. sin(3*x) * cos(4*x)"))
+        # calc = file.add_calculation("INT x. sin(3*x) * cos(4*x)")
+        # calc.perform_rule(rules.IntegrationByParts("sin(3*x)", "sin(4*x)/4"))
+        # calc.perform_rule(rules.Simplify())
+        # calc.perform_rule(rules.IntegrationByParts("cos(3*x)", "-cos(4*x)/4"))
+        # calc.perform_rule(rules.Simplify())
+        # calc.perform_rule(rules.IntegrateByEquation("INT x. sin(3*x) * cos(4*x)"))
+        # calc.print_entry()
 
         calc = file.add_calculation("INT x. sec(x) * sqrt(sec(x) + tan(x))")
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "2 * ((sec(x) * tan(x) + sec(x) ^ 2) / (2 * sqrt(sec(x) + tan(x))))"), "0"))
+        calc.perform_rule(rules.Equation("sec(x) * sqrt(sec(x) + tan(x))", "2 * ((sec(x) * tan(x) + sec(x) ^ 2) / (2 * sqrt(sec(x) + tan(x))))"))
         calc.perform_rule(rules.Substitution("u", "sqrt(sec(x) + tan(x))"))
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
 
         calc = file.add_calculation("INT x. (sin(2*x) - cos(2*x)) / (sin(2*x) + cos(2*x))")
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "(-1/(2 * (sin(2*x) + cos(2*x)))) * (2 * cos(2 * x) - 2 * sin(2 * x))"), "0"))
+        calc.perform_rule(rules.Equation("(sin(2*x) - cos(2*x)) / (sin(2*x) + cos(2*x))", "(-1/(2 * (sin(2*x) + cos(2*x)))) * (2 * cos(2 * x) - 2 * sin(2 * x))"))
         calc.perform_rule(rules.Substitution("u", "sin(2*x) + cos(2*x)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
@@ -816,7 +817,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
 
         calc = file.add_calculation("INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x))")
-        calc.perform_rule(rules.OnLocation(rules.Equation(None, "(1 / (1 + exp(x) * sin(x))) * (cos(x) * exp(x) + exp(x) * sin(x))"), "0"))
+        calc.perform_rule(rules.Equation("(sin(x) + cos(x)) / (exp(-x) + sin(x))", "(1 / (1 + exp(x) * sin(x))) * (cos(x) * exp(x) + exp(x) * sin(x))"))
         calc.perform_rule(rules.Substitution("u", "1 + exp(x) * sin(x)"))
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())

@@ -526,6 +526,21 @@ class Expr:
 
     def is_evaluable(self):
         return self.is_constant() or is_inf(self)
+    
+    def is_closed_form(self):
+        """Determine whether expression is in closed form."""
+        if is_const(self):
+            return True
+        elif is_var(self):
+            return True
+        elif is_op(self):
+            return all(arg.is_closed_form() for arg in self.args)
+        elif is_fun(self):
+            return all(arg.is_closed_form() for arg in self.args)
+        elif is_skolem_func(self):
+            return True
+        else:
+            return False
 
     def get_vars(self) -> Set[str]:
         """Obtain the set of variables in self."""

@@ -76,12 +76,17 @@ class RewriteGoalAction(Action):
 
 class CalculateAction(Action):
     """Start a calculation."""
-    def __init__(self, expr: Expr):
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
         self.expr = expr
+        self.conditions = Conditions(conditions)
 
     def __str__(self):
-        return "calculate %s" % self.expr
-    
+        if self.conditions:
+            return "calculate %s for %s" % (
+                self.expr, ', '.join(str(cond) for cond in self.conditions))
+        else:
+            return "calculate %s" % self.expr
+
 
 class InductionAction(Action):
     """Start an induction."""
@@ -198,7 +203,7 @@ class InitialState(State):
     def process_action(self, action: Action) -> State:
         # Start a calculation
         if isinstance(action, CalculateAction):
-            calc = Calculation(self.comp_file, self.comp_file.ctx, action.expr)
+            calc = Calculation(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
             return CalculateState(self, calc)
         
         # Start a proof
@@ -339,7 +344,7 @@ class CalculateState(State):
                 return False
 
             res = self.calc.steps[-1].res
-            return res.is_evaluable() and poly.normalize(res, self.calc.ctx) == res
+            return res.is_closed_form() and poly.normalize(res, self.calc.ctx) == res
         else:
             return self.past.is_finished()
 

@@ -64,6 +64,7 @@ grammar = r"""
         | "define" expr "for" conditions -> define_with_condition_action
 
     ?calculate_action: "calculate" expr -> calculate_action
+        | "calculate" expr "for" conditions -> calculate_with_condition_action
 
     ?subgoal_action: "subgoal" INT ":" expr -> subgoal_action
         | "subgoal" INT ":" expr "for" conditions -> subgoal_with_condition_action
@@ -118,6 +119,7 @@ grammar = r"""
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
         | "replace" "substitution" -> replace_substitution_rule
+        | "l'Hopital's" "rule" -> lhopitals_rule
         | "simplify" -> full_simplify_rule
 
     ?rule: atomic_rule
@@ -304,6 +306,10 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.CalculateAction(expr)
     
+    def calculate_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
+        from integral import action
+        return action.CalculateAction(expr, conditions)
+
     def subgoal_action(self, name: Token, expr: Expr):
         from integral import action
         return action.SubgoalAction(str(name), expr)
@@ -491,6 +497,10 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.Simplify()
     
+    def lhopitals_rule(self):
+        from integral import rules
+        return rules.LHopital()
+
     def on_count_rule(self, rule, n: Token):
         from integral import rules
         return rules.OnCount(rule, int(str(n)))
