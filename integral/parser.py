@@ -1,14 +1,12 @@
 """Parsing"""
 
-from typing import Dict, Optional, Tuple, List
+from typing import Tuple
 from lark import Lark, Token, Transformer, v_args, exceptions
 from decimal import Decimal
 from fractions import Fraction
 
 from integral import expr
-from integral.expr import Expr, type_le
-from integral.fixes import Fixes, Info
-
+from integral.expr import Expr
 grammar = r"""
     ?atom: CNAME -> var_expr
         | "?" CNAME  -> symbol_expr
@@ -32,8 +30,6 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
         | "[" expr ("," expr)* "]" -> vector_expr
-        | "$" CNAME -> type0_expr
-        | "$" CNAME "(" expr ("," expr)* ")" -> type_expr
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -156,16 +152,10 @@ grammar = r"""
 @v_args(inline=True)
 class ExprTransformer(Transformer):
     def __init__(self):
-        self.fixes: Fixes = None
+        pass
 
     def var_expr(self, s):
-        fixes = self.fixes
-        s = str(s)
-        if fixes is not None and s in fixes:
-            for info in fixes[s]:
-                if info.is_var() or info.is_binding_var():
-                    return expr.Var(s, type=info.get_type())
-        return expr.Var(s)
+        return expr.Var(str(s))
 
     def symbol_expr(self, s):
         return expr.Symbol(str(s), [expr.VAR, expr.CONST, expr.OP, expr.FUN])
@@ -250,43 +240,7 @@ class ExprTransformer(Transformer):
         elif func_name == 'MUL':
             e = expr.Product(str(args[0]), *args[1:])
             return e
-        s = str(func_name)
-        fixes = self.fixes
-        if fixes is not None and s in fixes:
-            for info in self.fixes[s]:
-                if not info.is_func():
-                    continue
-                t = info.get_type()
-                inst = dict()
-                flag = True
-                if t.args_num == len(args):
-                    for a, b in zip([arg.type for arg in args], t.get_args_type()):
-                        if not type_le(a, b):
-                            flag = False
-                            break
-                if flag:
-                    for i, param_name in enumerate(info.get_args_name()):
-                        inst[param_name] = args[i]
-                    t_pat = expr.type_to_pattern(t.get_return_type())
-                    func_type_args = t.get_args_type()
-                    func_type_args.append(t_pat.inst_pat(inst))
-                    res = expr.FunType(*func_type_args)
-                    return expr.Fun((s, res), *args)
-                for i, param_name in enumerate(info.get_args_name()):
-                    inst[param_name] = args[i]
-                if expr.is_fun_type(t) and t.args_num == len(args):
-                    # pattern match
-                    t_pat = expr.type_to_pattern(t)
-                    tmp = expr.FunType(*[arg.type for arg in args])
-                    tmp_pat = expr.FunType(*[arg for arg in t_pat.get_args_type()])
-                    tmp_inst = expr.type_match(tmp, tmp_pat)
-                    if tmp_inst is not None:
-                        inst.update(tmp_inst)
-                        return expr.Fun((s, t_pat.inst_pat(inst)), *args)
-            raise NotImplementedError(
-                s + ":" + ",".join(str(arg.type) for arg in args) + ":" + ",".join(str(arg) for arg in args))
-        else:
-            return expr.Fun(s, *args)
+        return expr.Fun(str(func_name), *args)
 
     def abs_expr(self, expr):
         return expr.Fun("abs", expr)
@@ -310,13 +264,7 @@ class ExprTransformer(Transformer):
         return expr.EvalAt(var, lower, upper, body)
 
     def limit_inf_expr(self, var, lim, body):
-        var_type = expr.RealType
-        var = str(var)
-        if self.fixes != None and var in self.fixes:
-            for info in self.fixes[var]:
-                if info.is_binding_var():
-                    var_type = info.get_type()
-        return expr.Limit(var, lim, body, var_type=var_type)
+        return expr.Limit(str(var), lim, body)
 
     def limit_l_expr(self, var, lim, body):
         return expr.Limit(str(var), lim, body, "-")
@@ -332,12 +280,6 @@ class ExprTransformer(Transformer):
             else:
                 data.append(arg)
         return expr.Matrix(tuple(data))
-
-    def type0_expr(self, name) -> expr.Type:
-        return expr.Type(str(name))
-
-    def type_expr(self, name, *args) -> expr.Type:
-        return expr.Type(str(name), *args)
     
     def conditions(self, *exprs: Expr) -> Tuple[Expr]:
         return tuple(exprs)
@@ -567,12 +509,10 @@ expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer
 action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
 
 
-def parse_expr(s: str, *, fixes: Fixes = None) -> Expr:
+def parse_expr(s: str) -> Expr:
     """Parse an integral expression."""
     try:
-        transformer.fixes = fixes
         res = expr_parser.parse(s)
-        transformer.fixes = None
         return res
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
         print("When parsing:", s)
@@ -580,19 +520,3 @@ def parse_expr(s: str, *, fixes: Fixes = None) -> Expr:
 
 def parse_action(s: str):
     return action_parser.parse(s)
-
-def parse_raw_fixes(raw_fixes):
-    fixes = Fixes()
-    for name, info in raw_fixes:
-        symbol_type = info['symbol_type']
-        type = parse_expr(info['type'], fixes=fixes)
-        args_name = info['args_name'] if 'args_name' in info else None
-        info = Info.get_instance(symbol_type, type, args_name)
-        fixes[name] = info
-    return fixes
-
-
-def parse_fixes(item, key='fixes'):
-    if key not in item:
-        return Fixes()
-    return parse_raw_fixes(item[key])

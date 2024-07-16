@@ -1,0 +1,7 @@
+INT x. x*exp(x)/sqrt(exp(x)-1)####2*x*sqrt(exp(x)-1)-4*sqrt(exp(x)-1)+4*atan(sqrt(exp(x)-1))+SKOLEM_CONST(C)####139calculus####187页(1)
+INT x. x*exp(x)/(1+x)^2####exp(x)/(1+x) + SKOLEM_CONST(C)####139calculus####187页(2)
+INT x. x*exp(x)/(1+x)^2####exp(x)/(1+x) + SKOLEM_CONST(C)####139calculus####187页(3)
+INT x. x^2*exp(x)/ (x+2)^2####-x^2*exp(x)/(x+2)+(x-1)*exp(x)+SKOLEM_CONST(C)####139calculus####187页(4)
+INT x. x*exp(x)/ (1+exp(x))^2####-x/(1+exp(x))+log(exp(x)/(1+exp(x)))+SKOLEM_CONST(C)####139calculus####187页(5)
+INT x. x*exp(x)/ sqrt(exp(x)-a)####(2*x-4)*sqrt(exp(x)-a)+4*sqrt(a)*atan(sqrt(exp(x)-1)/sqrt(a))+SKOLEM_CONST(C)####139calculus####187页(6)
+INT x. atan(sqrt(x))/(sqrt(x)*(1+x))####atan(sqrt(x))^2 + SKOLEM_CONST(C)####全国大学生数学竞赛辅导指南####例5

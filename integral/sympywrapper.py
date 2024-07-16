@@ -3,7 +3,7 @@ import sympy
 from fractions import Fraction
 
 from integral import expr
-from integral.expr import Expr, Var, Const, Type
+from integral.expr import Expr, Var, Const
 
 def is_rational(e: Expr) -> bool:
     """Detect rational functions in x."""

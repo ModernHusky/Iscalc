@@ -154,6 +154,7 @@ class ActionTest(unittest.TestCase):
             inverse substitute sqrt(2) * sin(u) for x creating u
             simplify
             rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+            rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
             simplify
             apply integral identity
             simplify
@@ -165,6 +166,7 @@ class ActionTest(unittest.TestCase):
             inverse substitute 2 * sin(u) for y creating u
             simplify
             rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+            rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
             simplify
             apply integral identity
             expand polynomial
@@ -328,7 +330,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[0, 1]. x * atan(x)
             integrate by parts with u = atan(x) / 2, v = x ^ 2
             simplify
-            rewrite x^2 / (2 * x^2 + 2) to (1 - 1 / (x^2 + 1)) / 2
+            rewrite x^2 / (x^2 + 1) to 1 - 1 / (x^2 + 1)
             apply integral identity
             simplify
         """
@@ -340,7 +342,9 @@ class ActionTest(unittest.TestCase):
             simplify
             integrate by parts with u = exp(2*x), v = -cos(x)
             simplify
-            solve integral INT x:[0, pi/2]. exp(2*x)*cos(x)
+            solve integral INT x:[0, pi/2]. cos(x) * exp(2*x)
+            expand polynomial
+            simplify
         """
         self.check_actions("base", "tongji", actions)
 
@@ -415,9 +419,13 @@ class ActionTest(unittest.TestCase):
                         rewrite -((2 * m + 1) / 2) - 1 to -m - 3/2
                         rewrite to b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)
                     rhs:
+                        rewrite binom(2 * (m + 1),m + 1) to binom(2*m+2, m+1)
                         rewrite binom(2 * m + 2,m + 1) to 2 * binom(2 * m,m) * ((2 * m + 1) / (m + 1)) using identity
-                        rewrite -((2 * m + 3) / 2) to -m - 3/2
+                        rewrite -((2 * (m + 1) + 1) / 2) to -m - 3/2
                         simplify
+                        rewrite -(2 * (m + 1)) to -(2*m) - 2
+                        rewrite 2 ^ (-(2*m) -2) to 2 ^ (-2*m) / 2^2 using identity
+                        rewrite b ^ (-m - 3/2) * (2 ^ (-2 * m) / 2 ^ 2) * pi * (2 * m + 1) / (m + 1) * binom(2 * m,m) to b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)
                 done
             done
 
@@ -967,7 +975,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 rewrite 1 + x + x ^ 2 to (x + 1/2) ^ 2 + 3/4
                 substitute u for 2 * (x + 1/2) / sqrt(3)
-                rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
+                rewrite 2 * (3 * u ^ 2 / 4 + 3/4) to 3/2 * (u ^ 2 + 1)
                 simplify
                 rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
                 apply integral identity
@@ -1183,7 +1191,7 @@ class ActionTest(unittest.TestCase):
     def testBernoulliIntegral(self):
         actions = """
             prove (INT x:[0,1]. x ^ (c * x ^ a)) = SUM(k, 0, oo, (-c) ^ k / (k * a + 1) ^ (k + 1)) for a > 0, c != 0
-            subgoal 1: converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k)))) for a > 0, c != 0
+            subgoal 1: converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k)))) for a > 0, c != 0, isInt(k)
             arg:
                 simplify
                 rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
