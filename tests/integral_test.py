@@ -47,6 +47,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
         assert goal1.is_finished()
+
         goal2 = file.add_goal("(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)", conds=["a != 0"])
         proof = goal2.proof_by_calculation()
         calc = proof.lhs_calc
@@ -55,6 +56,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
         assert goal2.is_finished()
+
         goal3 = file.add_goal("(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)", conds=["a != 0"])
         proof = goal3.proof_by_calculation()
         calc = proof.lhs_calc
@@ -64,6 +66,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.ReplaceSubstitution())
         calc.perform_rule(rules.Simplify())
         assert goal3.is_finished()
+
         goal4 = file.add_goal("(INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)", conds=["a != 0"])
         proof = goal4.proof_by_calculation()
         calc = proof.lhs_calc
@@ -72,6 +75,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.ReplaceSubstitution())
         assert goal4.is_finished()
+
         goal5 = file.add_goal("(INT x. 1 / (a ^ 2 + x ^ 2)) = (1/a) * atan(x / a) + SKOLEM_CONST(C)", conds=["a != 0"])
         proof = goal5.proof_by_calculation()
         calc = proof.lhs_calc
@@ -82,6 +86,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.ReplaceSubstitution())
         calc.perform_rule(rules.Simplify())
         assert goal5.is_finished()
+
         goal6 = file.add_goal(
             "(INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)", conds=["x > 0", "k != -1"])
         proof = goal6.proof_by_calculation()
@@ -93,6 +98,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         assert goal6.is_finished()
+
         goal7 = file.add_goal("(INT x:[0,1]. x ^ m * log(x) ^ n) = (-1)^n * factorial(n) / (m+1) ^ (n+1)", conds=["m >= 0", "n >= 0", "isInt(n)"])
         proof = goal7.proof_by_induction("n")
         proof_base = proof.base_case.proof_by_calculation()
@@ -122,6 +128,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.ApplyIdentity(s1, s2))
         calc.perform_rule(rules.Simplify())
         assert goal7.is_finished()
+
         goal8 = file.add_goal("(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)", conds=["y > 0"])
         proof = goal8.proof_by_calculation()
         calc = proof.lhs_calc
@@ -134,6 +141,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IntegrateByEquation(parser.parse_expr("INT x:[0,oo]. exp(-(x * y)) * sin(a * x)")))
         calc.perform_rule(rules.Equation(None, "a / (a ^ 2 + y ^ 2)"))
         assert goal8.is_finished()
+
         goal9 = file.add_goal("(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)",
                               conds = ["a>0", "a!=1"])
         proof = goal9.proof_by_calculation()
@@ -142,7 +150,8 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IndefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
         assert goal9.is_finished()
-        goal10 = file.add_goal("(INT x. cos(x) ^ 2) = sin(2 * x) / 4 + x / 2 + SKOLEM_CONST(C)")
+
+        goal10 = file.add_goal("(INT x. cos(x) ^ 2) = 1/2 * (sin(2 * x) / 2 + x) + SKOLEM_CONST(C)")
         proof = goal10.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.ApplyIdentity("cos(x)^2", "(1 + cos(2*x)) / 2"))

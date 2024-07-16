@@ -19,370 +19,401 @@ class ActionTest(unittest.TestCase):
                 print(act)
             a = parser.parse_action(act)
             state = state.process_action(a)
-        while not isinstance(state.past, action.InitialState):
-            state = state.past
         if print_state:
             print(state)
-        self.assertTrue(state.is_finished())
+        if not print_state and not isinstance(state, action.InitialState):
+            raise AssertionError("Does not end in initial state")
+
+    def testStandard(self):
+        actions = """
+            prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
+            lhs:
+                substitute u for x + a
+                apply indefinite integral
+                replace substitution
+            done
+
+            prove (INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C) for a != 0
+            lhs:
+                substitute u for a * x
+                simplify
+                apply indefinite integral
+                replace substitution
+            done
+
+            prove (INT x. sin(a * x)) = -(cos(a * x) / a) + SKOLEM_CONST(C) for a != 0
+            lhs:
+                substitute u for a * x
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            prove (INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C) for a != 0
+            lhs:
+                substitute u for a * x
+                simplify
+                apply indefinite integral
+                replace substitution
+            done
+
+            prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * atan(x / a) + SKOLEM_CONST(C) for a != 0
+            lhs:
+                substitute u for x / a
+                rewrite a ^ 2 * u ^ 2 + a ^ 2 to a ^ 2 * (u ^ 2 + 1)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            prove (INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C) for x > 0, k != -1
+            lhs:
+                integrate by parts with u = log(x), v = x ^ (k + 1) / (k + 1)
+                simplify
+                apply indefinite integral
+                simplify
+            done
+
+            prove (INT x:[0,1]. x ^ m * log(x) ^ n) = (-1) ^ n * factorial(n) / (m + 1) ^ (n + 1) for m >= 0, n >= 0, isInt(n)
+            induction on n
+            base:
+                lhs:
+                    apply integral identity
+                    simplify
+                rhs:
+                    simplify
+                done
+            induct:
+                lhs:
+                    integrate by parts with u = log(x) ^ (n + 1), v = x ^ (m + 1) / (m + 1)
+                    simplify
+                    apply induction hypothesis (all)
+                    simplify
+                    rewrite to (-1) ^ (n + 1) * (m + 1) ^ (-n - 2) * ((n + 1) * factorial(n))
+                    rewrite (n + 1) * factorial(n) to factorial(n + 1) using identity
+                    simplify
+                rhs:
+                    simplify
+                done
+            done
+
+            prove (INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2) for y > 0
+            lhs:
+                integrate by parts with u = exp(-(x * y)), v = -cos(a * x) / a
+                simplify
+                integrate by parts with u = exp(-(x * y)), v = sin(a * x) / a
+                simplify
+                solve integral INT x:[0,oo]. exp(-(x * y)) * sin(a * x)
+                rewrite to a / (a ^ 2 + y ^ 2)
+            done
+
+            prove (INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C) for a > 0, a != 1
+            lhs:
+                rewrite a ^ x to exp(log(a) * x)
+                apply indefinite integral
+                simplify
+            done
+
+            prove (INT x. cos(x) ^ 2) = 1/2 * (sin(2 * x) / 2 + x) + SKOLEM_CONST(C)
+            lhs:
+                rewrite cos(x) ^ 2 to (1 + cos(2 * x)) / 2 using identity
+                apply indefinite integral
+                simplify
+            done
+        """
+        self.check_actions("base", "standard", actions)
 
     def testTongji(self):
         actions = """
             calculate INT x:[2,3]. 2 * x + x ^ 2
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0,1]. (3 * x + 1) ^ (-2)
-            substitute u for 3 * x + 1
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for 3 * x + 1
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0,1]. exp(6 * x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-1,2]. x * exp(x)
-            integrate by parts with u = x, v = exp(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = x, v = exp(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0,pi/4]. sin(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0,1]. 3*x^2 - x + 1
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1,2]. x^2 + 1/x^4
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[pi/3, pi]. sin(2*x + pi/3)
-            substitute u for 2*x + pi/3
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for 2*x + pi/3
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[4, 9]. x ^ (1 / 3) * (x ^ (1 / 2) + 1)
-            expand polynomial
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                expand polynomial
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-1, 0]. (3 * x ^ 4 + 3 * x ^ 2 + 1) / (x ^ 2 + 1)
-            partial fraction decomposition
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                partial fraction decomposition
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[4, exp(1) + 3]. (x ^ 3 - 12 * x ^ 2 - 42) / (x - 3)
-            partial fraction decomposition
-            apply integral identity
-            simplify
-            substitute u for x - 3
-            apply integral identity
-            expand polynomial
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                partial fraction decomposition
+                apply integral identity
+                simplify
+                substitute u for x - 3
+                apply integral identity
+                expand polynomial
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, pi / 2]. sin(x) * cos(x) ^ 3
-            substitute u for cos(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for cos(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, pi]. 1 - sin(x) ^ 3
-            simplify
-            rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
-            rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
-            substitute u for cos(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                simplify
+                rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
+                substitute u for cos(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[pi/6, pi/2]. cos(x) ^ 2
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
-            inverse substitute sin(u) for x creating u
-            rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2 using identity
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                inverse substitute sin(u) for x creating u
+                rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2 using identity
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
-            inverse substitute sqrt(2) * sin(u) for x creating u
-            simplify
-            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
-            rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                inverse substitute sqrt(2) * sin(u) for x creating u
+                simplify
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
-            inverse substitute 2 * sin(u) for y creating u
-            simplify
-            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
-            rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
-            simplify
-            apply integral identity
-            expand polynomial
-        """
-        self.check_actions("base", "tongji", actions)
+                inverse substitute 2 * sin(u) for y creating u
+                simplify
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
+                simplify
+                apply integral identity
+                expand polynomial
+            done
 
-        actions = """
             calculate INT x:[1/sqrt(2), 1]. sqrt(1 - x^2) / x ^ 2
-            inverse substitute sin(u) for x creating u
-            simplify
-            rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
-            simplify
-            rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2 using identity
-            expand polynomial
-            simplify
-            rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2 using identity
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                inverse substitute sin(u) for x creating u
+                simplify
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                simplify
+                rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2 using identity
+                expand polynomial
+                simplify
+                rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2 using identity
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-1, 1]. x / sqrt(5 - 4 * x)
-            substitute u for 5 - 4 * x
-            expand polynomial
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for 5 - 4 * x
+                expand polynomial
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1,4]. 1 / (1 + sqrt(x))
-            substitute u for sqrt(x)
-            substitute v for u + 1
-            expand polynomial
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for sqrt(x)
+                substitute v for u + 1
+                expand polynomial
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[3/4, 1]. 1 / (sqrt(1-x) - 1)
-            substitute u for sqrt(1 - x)
-            substitute v for u - 1
-            expand polynomial
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for sqrt(1 - x)
+                substitute v for u - 1
+                expand polynomial
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT t:[0, 1]. t * exp(-t ^ 2 / 2)
-            substitute u for t ^ 2 / 2
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for t ^ 2 / 2
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1, exp(2)]. 1 / (x * sqrt(1 + log(x)))
-            substitute u for 1 + log(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for 1 + log(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-2, 0]. (x + 2) / (x^2 + 2*x + 2)
-            rewrite x^2 + 2*x + 2 to (x + 1) ^ 2 + 1
-            substitute u for x + 1
-            expand polynomial
-            simplify
-            split region at 0
-            substitute v for u ^ 2 + 1
-            apply integral identity
-            substitute v for u ^ 2 + 1
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                rewrite x^2 + 2*x + 2 to (x + 1) ^ 2 + 1
+                substitute u for x + 1
+                expand polynomial
+                simplify
+                split region at 0
+                substitute v for u ^ 2 + 1
+                apply integral identity
+                substitute v for u ^ 2 + 1
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4
-            rewrite cos(x) ^ 4 to (cos(x) ^ 2) ^ 2
-            rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2 using identity
-            expand polynomial
-            substitute u for 2 * x
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                rewrite cos(x) ^ 4 to (cos(x) ^ 2) ^ 2
+                rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2 using identity
+                expand polynomial
+                substitute u for 2 * x
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[-pi/2, pi/2]. sqrt(cos(x) - cos(x)^3)
-            rewrite cos(x) - cos(x)^3 to cos(x) * (1 - cos(x)^2)
-            rewrite 1 - cos(x)^2 to sin(x)^2 using identity
-            simplify
-            split region at 0
-            simplify
-            substitute u for cos(x)
-            apply integral identity
-            substitute u for cos(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                rewrite cos(x) - cos(x)^3 to cos(x) * (1 - cos(x)^2)
+                rewrite 1 - cos(x)^2 to sin(x)^2 using identity
+                simplify
+                split region at 0
+                simplify
+                substitute u for cos(x)
+                apply integral identity
+                substitute u for cos(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, pi]. sqrt(1 + cos(2*x))
-            rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1 using identity
-            simplify
-            split region at pi / 2
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1 using identity
+                simplify
+                split region at pi / 2
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, 1]. x * exp(-x)
-            integrate by parts with u = x, v = -exp(-x)
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = x, v = -exp(-x)
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1, exp(1)]. x * log(x)
-            integrate by parts with u = log(x) / 2, v = x ^ 2
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = log(x) / 2, v = x ^ 2
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[pi/4, pi/3]. x / sin(x)^2
-            rewrite sin(x) ^ 2 to csc(x) ^ -2 using identity
-            integrate by parts with u = x, v = -cot(x)
-            simplify
-            rewrite cot(x) to cos(x) / sin(x) using identity
-            substitute u for sin(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                rewrite sin(x) ^ 2 to csc(x) ^ -2 using identity
+                integrate by parts with u = x, v = -cot(x)
+                simplify
+                rewrite cot(x) to cos(x) / sin(x) using identity
+                substitute u for sin(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1, 4]. log(x) / sqrt(x)
-            integrate by parts with u = 2 * log(x), v = sqrt(x)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = 2 * log(x), v = sqrt(x)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, 1]. x * atan(x)
-            integrate by parts with u = atan(x) / 2, v = x ^ 2
-            simplify
-            rewrite x^2 / (x^2 + 1) to 1 - 1 / (x^2 + 1)
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = atan(x) / 2, v = x ^ 2
+                simplify
+                rewrite x^2 / (x^2 + 1) to 1 - 1 / (x^2 + 1)
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0, pi/2]. exp(2*x) * cos(x)
-            integrate by parts with u = exp(2*x), v = sin(x)
-            simplify
-            integrate by parts with u = exp(2*x), v = -cos(x)
-            simplify
-            solve integral INT x:[0, pi/2]. cos(x) * exp(2*x)
-            expand polynomial
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                integrate by parts with u = exp(2*x), v = sin(x)
+                simplify
+                integrate by parts with u = exp(2*x), v = -cos(x)
+                simplify
+                solve integral INT x:[0, pi/2]. cos(x) * exp(2*x)
+                expand polynomial
+                simplify
+            done
 
-        actions = """
             calculate INT x:[0,pi]. (x * sin(x)) ^ 2
-            simplify
-            rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity
-            expand polynomial
-            simplify
-            integrate by parts with u = x^2 / 2, v = sin(2*x)
-            simplify
-            integrate by parts with u = x / 2, v = -cos(2*x)
-            simplify
-            apply integral identity
-            simplify
-        """
-        self.check_actions("base", "tongji", actions)
+                simplify
+                rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity
+                expand polynomial
+                simplify
+                integrate by parts with u = x^2 / 2, v = sin(2*x)
+                simplify
+                integrate by parts with u = x / 2, v = -cos(2*x)
+                simplify
+                apply integral identity
+                simplify
+            done
 
-        actions = """
             calculate INT x:[1, exp(1)]. sin(log(x))
-            substitute u for log(x)
-            integrate by parts with u = -exp(u), v = cos(u)
-            simplify
-            integrate by parts with u = exp(u), v = sin(u)
-            simplify
-            solve integral INT u:[0,1]. exp(u) * sin(u)
-        """
-        self.check_actions("base", "tongji", actions)
+                substitute u for log(x)
+                integrate by parts with u = -exp(u), v = cos(u)
+                simplify
+                integrate by parts with u = exp(u), v = sin(u)
+                simplify
+                solve integral INT u:[0,1]. exp(u) * sin(u)
+            done
 
-        actions = """
             calculate INT x:[1/exp(1), exp(1)]. abs(log(x))
-            split region at 1
-            simplify
-            integrate by parts with u = log(x), v = x
-            simplify
-            integrate by parts with u = log(x), v = x
-            apply integral identity
-            simplify
+                split region at 1
+                simplify
+                integrate by parts with u = log(x), v = x
+                simplify
+                integrate by parts with u = log(x), v = x
+                apply integral identity
+                simplify
+            done
         """
         self.check_actions("base", "tongji", actions)
 
@@ -432,6 +463,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 fold definition for I (all)
                 apply 2 on I(m,b)
+            done
         """
         self.check_actions("base", "wallis", actions)
 
@@ -465,12 +497,13 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[0,oo]. exp(-(x ^ 3))
-            substitute y for x ^ 3
-            simplify
-            rewrite exp(-y) / y ^ (2/3) to exp(-y) * y ^ (1/3 - 1)
-            fold definition for Gamma (all)
-            rewrite to (4/3 - 1) * Gamma(4/3 - 1)
-            apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
+                substitute y for x ^ 3
+                simplify
+                rewrite exp(-y) / y ^ (2/3) to exp(-y) * y ^ (1/3 - 1)
+                fold definition for Gamma (all)
+                rewrite to (4/3 - 1) * Gamma(4/3 - 1)
+                apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
+            done
         """
         self.check_actions("interesting", "GammaFunction", actions)
 
@@ -483,6 +516,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1
                 simplify
+            done
         """
         self.check_actions("interesting", "chapter1section5", actions)
 
@@ -494,6 +528,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "chapter1section7", actions)
 
@@ -507,6 +542,7 @@ class ActionTest(unittest.TestCase):
                 rewrite y ^ 2 * (a + 1) + a + 1 to (a + 1) * (y^2 + 1)
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "easy01", actions)
 
@@ -519,6 +555,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x^2 * (a^2 / x^2 + 1) to a^2 + x^2
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "easy02", actions)
 
@@ -534,6 +571,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "easy03", actions)
 
@@ -561,6 +599,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (x+1) ^ 2 to 1^2 * (x+1)^2
                 apply 2 on INT x:[1,oo]. log(x) / (1 ^ 2 * (x + 1) ^ 2)
                 simplify
+            done
         """
         self.check_actions("interesting", "easy04", actions)
 
@@ -577,6 +616,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sqrt(2) to 2 ^ (1/2) (at 2)
                 rewrite 2 ^ (1/2) ^ (-sqrt(2) + 1) to 2 ^ (1/2 * (-sqrt(2) + 1)) using identity
                 rewrite (sqrt(2) + 1) * log(2 ^ (1/2 * (-sqrt(2) + 1)) + 1) to (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
+            done
         """
         self.check_actions("interesting", "easy05", actions)
 
@@ -592,29 +632,32 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "easy06", actions)
 
     def testTrick2a(self):
         actions = """
             calculate INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
-            substitute y for pi / 2 - x
-            rewrite sqrt(cos(y)) / (sqrt(cos(y)) + sqrt(sin(y))) to 1 - sqrt(sin(y)) / (sqrt(cos(y)) + sqrt(sin(y)))
-            apply integral identity
-            solve integral INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
+                substitute y for pi / 2 - x
+                rewrite sqrt(cos(y)) / (sqrt(cos(y)) + sqrt(sin(y))) to 1 - sqrt(sin(y)) / (sqrt(cos(y)) + sqrt(sin(y)))
+                apply integral identity
+                solve integral INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
+            done
         """
         self.check_actions("interesting", "Trick2a", actions)
 
     def testTrick2b(self):
         actions = """
             calculate INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
-            substitute y for pi - x
-            expand polynomial
-            simplify
-            solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
-            substitute u for cos(y)
-            apply integral identity
-            simplify
+                substitute y for pi - x
+                expand polynomial
+                simplify
+                solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
+                substitute u for cos(y)
+                apply integral identity
+                simplify
+            done
         """
         self.check_actions("interesting", "Trick2b", actions)
 
@@ -655,6 +698,7 @@ class ActionTest(unittest.TestCase):
                 rewrite log(sqrt(2) + 1) - log(sqrt(2) - 1) to log((sqrt(2) + 1) / (sqrt(2) - 1)) using identity
                 rewrite (sqrt(2) + 1) / (sqrt(2) - 1) to 3 + 2 * sqrt(2)
                 simplify
+            done
         """
         self.check_actions("interesting", "Trick2c", actions)
 
@@ -682,6 +726,7 @@ class ActionTest(unittest.TestCase):
             done
             from 2:
                 solve equation for INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)
+            done
         """
         self.check_actions("interesting", "Trick2d", actions)
 
@@ -714,6 +759,7 @@ class ActionTest(unittest.TestCase):
                 rewrite 1/8 * pi * log(a ^ 2) + pi * log(2) / 8 to 1/8 * pi * (log(2) + log(a ^ 2))
                 rewrite log(2) + log(a ^ 2) to log(2 * a ^ 2)
                 rewrite 1 / a * (1/8 * pi * log(2 * a ^ 2)) to pi / (8 * a) * log(2 * a ^ 2)
+            done
         """
         self.check_actions("interesting", "Trick2e", actions)
 
@@ -733,6 +779,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite to pi / (4 * ((exp(a) + exp(-a)) / 2))
                 fold definition for cosh (all)
+            done
         """
         self.check_actions("interesting", "partialFraction", actions)
 
@@ -760,6 +807,7 @@ class ActionTest(unittest.TestCase):
                 differentiate both sides at a
                 simplify
                 solve equation for INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 3
+            done
         """
         self.check_actions("interesting", "Leibniz01", actions)
 
@@ -847,6 +895,7 @@ class ActionTest(unittest.TestCase):
                 substitute t for exp(-(x ^ 2))
                 simplify
                 solve equation for INT x:[0,1]. 1 / sqrt(-log(x))
+            done
         """
         self.check_actions("interesting", "Leibniz02", actions)
 
@@ -892,6 +941,7 @@ class ActionTest(unittest.TestCase):
             rhs:
                 rewrite log(a / 2) to log(a) - log(2) using identity
                 expand polynomial
+            done
         """
         self.check_actions("interesting", "euler_log_sin", actions)
 
@@ -910,6 +960,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             rhs:
                 expand polynomial
+            done
         """
         self.check_actions("interesting", "euler_log_sin02", actions)
 
@@ -943,6 +994,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite 1 / (y ^ 2 + 1) * log(1 / y + y) to log(y + 1 / y) / (y ^ 2 + 1)
                 solve equation for INT y:[0,1]. log(y + 1 / y) / (y ^ 2 + 1)
+            done
         """
         self.check_actions("interesting", "euler_log_sin0304", actions)
 
@@ -966,6 +1018,7 @@ class ActionTest(unittest.TestCase):
             done
             from 2:
                 solve equation for INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)
+            done
         """
         self.check_actions("interesting", "euler_log_sin05", actions)
 
@@ -985,6 +1038,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
+            done
         """
         self.check_actions("interesting", "euler_log_sin06", actions)
 
@@ -1018,6 +1072,7 @@ class ActionTest(unittest.TestCase):
                 apply 2 on I(a)
                 apply 3 on SKOLEM_CONST(C)
                 simplify
+            done
         """
         self.check_actions("interesting", "flipside03", actions)
 
@@ -1030,6 +1085,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 rewrite log(a + 1) - log(b + 1) to log((a + 1) / (b + 1)) using identity
+            done
         """
         self.check_actions("interesting", "flipside04", actions)
 
@@ -1065,6 +1121,7 @@ class ActionTest(unittest.TestCase):
                 apply 2 on I(a,b)
                 apply 3 on SKOLEM_FUNC(C(b))
                 simplify
+            done
         """
         self.check_actions("interesting", "FrullaniIntegral01", actions)
 
@@ -1087,6 +1144,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             rhs:
                 expand definition for G
+            done
         """
         self.check_actions("interesting", "CatalanConstant01", actions)
 
@@ -1135,6 +1193,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 rewrite pi * log(2) / 4 to pi / 4 * log(2)
+            done
         """
         self.check_actions("interesting", "CatalanConstant02", actions)
 
@@ -1165,6 +1224,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
                 rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
+            done
         """
         self.check_actions("interesting", "CatalanConstant03", actions)
 
@@ -1185,6 +1245,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 apply series evaluation
+            done
         """
         self.check_actions("interesting", "LogFunction01", actions)
 
@@ -1237,6 +1298,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite k / 2 + 1 to (2 / (k + 2)) ^ (-1)
                 rewrite (2 / (k + 2)) ^ (-1) ^ (-k - 1) to (2 / (k + 2)) ^ (k + 1) using identity
+            done
         """
         self.check_actions("interesting", "BernoulliIntegral", actions)
 
@@ -1295,6 +1357,7 @@ class ActionTest(unittest.TestCase):
                 apply 4 on INT u:[1,oo]. D u. I(u)
                 solve equation for I(1)
                 expand definition for I (all)
+            done
         """
         self.check_actions("interesting", "AhmedIntegral", actions)
 
@@ -1310,6 +1373,7 @@ class ActionTest(unittest.TestCase):
                 expand definition for EulerConstant
                 split region at 1
                 simplify
+            done
         """
         self.check_actions("interesting", "EulerConstant01", actions)
 
@@ -1355,6 +1419,7 @@ class ActionTest(unittest.TestCase):
                 apply 4 on SKOLEM_FUNC(C(b))
                 expand definition for I (all)
                 simplify
+            done
         """
         self.check_actions("interesting", "Chapter3Practice01", actions)
 
@@ -1381,6 +1446,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "Chapter3Practice02", actions)
 
@@ -1398,6 +1464,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 rewrite to pi * (exp(-(a * b)) + sin(a * b)) / (2 * b ^ 3)
+            done
         """
         self.check_actions("interesting", "Chapter3Practice03", actions)
 
@@ -1440,6 +1507,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for -u (at 2)
                 simplify
                 apply integral identity
+            done
         """
         self.check_actions("interesting", "Chapter3Practice04", actions)
 
@@ -1455,6 +1523,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "Chapter3Practice06", actions)
 
@@ -1486,6 +1555,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x * exp(-(x ^ 2) - x) to x * exp(-(1 * x ^ 2) + -1 * x)
                 apply 3 on INT x:[-oo,oo]. x * exp(-(1 * x ^ 2) + -1 * x)
                 rewrite to -1/2 * sqrt(pi * sqrt(exp(1)))
+            done
         """
         self.check_actions("interesting", "Chapter3Practice07a", actions)
 
@@ -1520,6 +1590,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x ^ 2 * exp(-(x ^ 2) - x) to x ^ 2 * exp(-(1 * x ^ 2) + -1 * x)
                 apply 3 on INT x:[-oo,oo]. x ^ 2 * exp(-(1 * x ^ 2) + -1 * x)
                 rewrite to 3/4 * sqrt(pi * sqrt(exp(1)))
+            done
         """
         self.check_actions("interesting", "Chapter3Practice07b", actions)
 
@@ -1536,6 +1607,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 solve equation for INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)
                 rewrite -((2 * a ^ 2 * m * pi * exp(-(a * m)) - 4 * a * pi * (-exp(-(a * m)) + 1)) / (8 * a ^ 5)) to pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m))
+            done
         """
         self.check_actions("interesting", "Chapter3Practice08", actions)
 
@@ -1556,6 +1628,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite (b * (-x + 1) + a * x) ^ 3 to (a * x + b * (1 - x)) ^ 3
                 solve equation for INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3
+            done
         """
         self.check_actions("interesting", "Chapter3Practice09", actions)
 
@@ -1578,6 +1651,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
                 simplify
                 rewrite sqrt(3) + 2 to 2 + sqrt(3)
+            done
         """
         self.check_actions("interesting", "Chapter1Practice0104", actions)
 
@@ -1622,6 +1696,7 @@ class ActionTest(unittest.TestCase):
                 apply 1 on INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))
                 apply 2 on INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))
                 simplify
+            done
         """
         self.check_actions("interesting", "Chapter2Practice01", actions)
 
@@ -1638,6 +1713,7 @@ class ActionTest(unittest.TestCase):
             from 1:
                 solve equation for INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)
                 rewrite -(1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)) + (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) to (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m)
+            done
         """
         self.check_actions("interesting", "Chapter2Practice03", actions)
 
@@ -1651,6 +1727,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
+            done
         """
         self.check_actions("interesting", "Chapter2Practice05", actions)
 

@@ -276,8 +276,12 @@ class ProveState(State):
         # Done with current subgoal
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
+                if not self.goal.is_finished():
+                    raise StateException("Use done when goal is not finished")
                 if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
+                elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
+                    self.past.comp_file.ctx.add_indefinite_integral(self.goal.goal)
                 else:
                     self.past.comp_file.ctx.add_lemma(self.goal.goal, self.goal.conds)
             return self.past
@@ -312,7 +316,12 @@ class CalculateState(State):
         
         # Done with current calculation or proof
         elif isinstance(action, DoneAction):
-            return self.past.process_action(action)
+            if isinstance(self.past, InitialState):
+                if not self.is_finished():
+                    raise StateException("Use done when calculation is not finished")
+                return self.past
+            else:
+                return self.past.process_action(action)
         
         # Go to the other branch
         elif isinstance(action, RHSAction):
