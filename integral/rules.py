@@ -2073,7 +2073,7 @@ class ExpandDefinition(Rule):
                         return normalize(identity.rhs.inst_pat(inst), ctx)
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():
-                if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:
+                if expr.is_var(identity.lhs) and identity.lhs.name == self.func_name:
                     return identity.rhs
 
         # Not found

@@ -1573,7 +1573,7 @@ class ActionTest(unittest.TestCase):
                 substitute t for -u + 1
                 apply integral identity
                 simplify
-                rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
+                rewrite 1/2 * (-log(-(sqrt(3) / 2) + 1) + log(sqrt(3) / 2 + 1)) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
                 rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1)) using identity
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
                 simplify
