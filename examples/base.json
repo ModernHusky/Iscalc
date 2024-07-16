@@ -256,7 +256,7 @@
             "category": "power",
             "expr": "(a * b) ^ k = a ^ k * b ^ k",
             "type": "axiom",
-            "conds": ["type(a,0)", "type(b,0)", "type(k,0)"]
+            "conds": ["isInt(k)"]
         },
         {
             "attributes": [
@@ -369,6 +369,15 @@
             "expr": "x^a * x^b = x^(a+b)",
             "type": "axiom",
             "conds": ["x!=0", "a>=0", "b>=0"]
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "power",
+            "expr": "x^a / x^b = x^(a-b)",
+            "type": "axiom",
+            "conds": []
         },
         {
             "attributes": [
@@ -517,10 +526,7 @@
                 "simplify"
             ],
             "category": "exp-log",
-            "conds": [
-                "type(x,0)",
-                "type(a,0)"
-            ],
+            "conds": [],
             "expr": "log(x ^ a) = a * log(x)",
             "type": "axiom"
         },
