@@ -13,6 +13,12 @@ class PolyTest(unittest.TestCase):
         p = poly.to_poly(t, ctx)
         self.assertEqual(p, poly.Polynomial(tuple()))  # equal to zero
 
+    def testSimplifyLog(self):
+        t = parser.parse_expr("log(10)")
+        ctx = context.Context()
+        simp_t = poly.simplify_log(t, ctx)
+        self.assertEqual(simp_t, parser.parse_expr("log(2) + log(5)"))
+
 
 if __name__ == "__main__":
     unittest.main()

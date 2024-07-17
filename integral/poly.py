@@ -759,7 +759,7 @@ def simplify_log(e: expr.Expr, ctx: Context) -> expr.Expr:
                 log_ints.append(e * expr.log(expr.Const(b)))
             else:
                 log_ints.append(expr.log(expr.Const(b)))
-            return sum(log_ints[1:], log_ints[0])
+        return sum(log_ints[1:], log_ints[0])
     elif expr.is_const(a) and isinstance(a.val, Fraction):
         return expr.log(expr.Const(a.val.numerator)) - expr.log(expr.Const(a.val.denominator))
     elif a.is_times():
