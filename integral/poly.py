@@ -437,7 +437,7 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif e.is_times():
         a, b = to_poly(e.args[0], ctx), to_poly(e.args[1], ctx)
-        if a.is_monomial() and b.is_monomial():
+        if a.is_monomial() and b.is_monomial() or a.is_fraction() or b.is_fraction():
             return a * b
         elif a.is_monomial():
             return a * singleton(from_poly(b))

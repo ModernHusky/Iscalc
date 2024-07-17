@@ -242,10 +242,7 @@ class Goal(StateItem):
         for n, subgoal in self.subgoals:
             if not subgoal.is_finished():
                 return False
-        if isinstance(self.proof, RewriteGoalProof):
-            return self.proof.is_finished()
-        else:
-            return self.proof.is_finished()
+        return self.proof.is_finished()
 
     def clear(self):
         self.proof = None
