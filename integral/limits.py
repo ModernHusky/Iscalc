@@ -117,7 +117,7 @@ def asymp_compare(a: Asymptote, b: Asymptote, ctx:Context) -> int:
     else:
         raise NotImplementedError
     
-def asymp_add(a: Asymptote, b: Asymptote, ctx:Context) -> Asymptote:
+def asymp_add(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
     """Return the sum of two asymptotes."""
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
@@ -130,12 +130,12 @@ def asymp_add(a: Asymptote, b: Asymptote, ctx:Context) -> Asymptote:
     else:
         return Unknown()
 
-def asymp_add_inv(a: Asymptote, b: Asymptote) -> Asymptote:
+def asymp_add_inv(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
     """Return the sum of two decaying asumptotes."""
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
 
-    cmp = asymp_compare(a, b)
+    cmp = asymp_compare(a, b, ctx)
     if cmp == GREATER:
         return b
     elif cmp == LESS or cmp == EQUAL:
@@ -148,7 +148,7 @@ def asymp_mult(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
     elif isinstance(a, Exp) and isinstance(b, Exp):
-        s = asymp_add(a.order, b.order)
+        s = asymp_add(a.order, b.order, ctx)
         if isinstance(s, Unknown):
             return Unknown()
         else:
@@ -302,7 +302,7 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
     else:
         res_e = normalize(a.e + b.e, ctx)
         if a.side == TWO_SIDED or b.side == TWO_SIDED:
-            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp))
+            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp, ctx))
         elif a.side == AT_CONST:
             return Limit(res_e, asymp=b.asymp, side=b.side)
         elif b.side == AT_CONST:
@@ -310,7 +310,7 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
         elif a.side == FROM_ABOVE and b.side == AT_CONST:
             return Limit(res_e, asymp=a.asymp, side=FROM_ABOVE)
         elif a.side == FROM_ABOVE and b.side == FROM_ABOVE:
-            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp), side=FROM_ABOVE)
+            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp, ctx), side=FROM_ABOVE)
         elif a.side == FROM_ABOVE and b.side == FROM_BELOW:
             cmp = asymp_compare(a.asymp, b.asymp, ctx)
             if cmp == UNKNOWN:
@@ -324,7 +324,7 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
         elif a.side == FROM_BELOW and b.side == FROM_ABOVE:
             return limit_add(b, a, ctx)
         elif a.side == FROM_BELOW and b.side == FROM_BELOW:
-            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp), side=FROM_BELOW)
+            return Limit(res_e, asymp=asymp_add_inv(a.asymp, b.asymp, ctx), side=FROM_BELOW)
         else:
             raise NotImplementedError
 
