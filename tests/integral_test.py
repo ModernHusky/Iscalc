@@ -251,7 +251,6 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.SubstitutionInverse("u", "x", parser.parse_expr("sqrt(2) * sin(u)")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ApplyIdentity("sin(u)^2", "1 - cos(u)^2"))
-        calc.perform_rule(rules.Equation("-(2 * (1 - cos(u) ^ 2)) + 2", "2*cos(u)^2"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
@@ -261,7 +260,6 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.SubstitutionInverse("u", "y", parser.parse_expr("2 * sin(u)")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ApplyIdentity("sin(u)^2", "1 - cos(u)^2"))
-        calc.perform_rule(rules.Equation("-(8 * (1 - cos(u) ^ 2)) + 8", "8*cos(u)^2"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.ExpandPolynomial())
@@ -295,7 +293,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        self.assertEqual(str(calc.last_expr), "-(2 * (-log(2) + log(3))) + 2")
+        self.assertEqual(str(calc.last_expr), "2 * log(2) - 2 * log(3) + 2")
 
         calc = file.add_calculation("INT x:[3/4, 1]. 1 / (sqrt(1-x) - 1)")
         calc.perform_rule(rules.Substitution("u", parser.parse_expr("sqrt(1 - x)")))
@@ -375,7 +373,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IntegrationByParts(parser.parse_expr("log(x)/2"), parser.parse_expr("x^2")))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        self.assertEqual(str(calc.last_expr), "-(1/2 * (exp(2) / 2 - 1/2)) + exp(2) / 2")
+        self.assertEqual(str(calc.last_expr), "exp(2) / 4 + 1/4")
 
         calc = file.add_calculation("INT x:[pi/4, pi/3]. x / sin(x)^2")
         calc.perform_rule(rules.ApplyIdentity("sin(x)^2", "csc(x)^(-2)"))
@@ -396,20 +394,18 @@ class IntegralTest(unittest.TestCase):
         calc = file.add_calculation("INT x:[0, 1]. x * atan(x)")
         calc.perform_rule(rules.IntegrationByParts(parser.parse_expr("atan(x)/2"), parser.parse_expr("x^2")))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.Equation("x^2 / (x^2 + 1)", "1 - 1 / (x^2 + 1)"))
+        calc.perform_rule(rules.Equation("x^2 / (2 * x^2 + 2)", "(1 - 1 / (x^2 + 1)) / 2"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        self.assertEqual(str(calc.last_expr), "-(1/2 * (-(pi / 4) + 1)) + pi / 8")
+        self.assertEqual(str(calc.last_expr), "pi / 4 - 1/2")
 
         calc = file.add_calculation("INT x:[0, pi/2]. exp(2*x)*cos(x)")
         calc.perform_rule(rules.IntegrationByParts(parser.parse_expr("exp(2*x)"), parser.parse_expr("sin(x)")))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.IntegrationByParts(parser.parse_expr("exp(2*x)"), parser.parse_expr("-cos(x)")))
         calc.perform_rule(rules.Simplify())
-        calc.perform_rule(rules.IntegrateByEquation(parser.parse_expr("INT x:[0, pi/2]. cos(x)*exp(2*x)")))
-        calc.perform_rule(rules.ExpandPolynomial())
-        calc.perform_rule(rules.Simplify())
-        self.assertEqual(str(calc.last_expr), "exp(pi) / 5 - 2/5")
+        calc.perform_rule(rules.IntegrateByEquation(parser.parse_expr("INT x:[0, pi/2]. exp(2*x)*cos(x)")))
+        self.assertEqual(str(calc.last_expr), "(exp(pi) - 2) / 5")
 
         calc = file.add_calculation("INT x:[0,pi]. (x * sin(x))^2")
         calc.perform_rule(rules.Simplify())
@@ -870,23 +866,13 @@ class IntegralTest(unittest.TestCase):
 
         # Induction step, RHS
         calc = proof_induct.rhs_calc
-        calc.perform_rule(rules.Equation("binom(2 * (m + 1),m + 1)", "binom(2*m+2, m+1)"))
         s1 = parser.parse_expr("binom(2*m+2, m+1)")
         s2 = parser.parse_expr("2 * binom(2*m, m) * ((2*m+1) / (m+1))")
         calc.perform_rule(rules.ApplyIdentity(s1, s2))
-        s1 = parser.parse_expr("-((2 * (m + 1) + 1) / 2)")
+        s1 = parser.parse_expr("-((2 * m + 3) / 2)")
         s2 = parser.parse_expr("-m - 3/2")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.Simplify())
-        s1 = "-(2 * (m + 1)) "
-        s2 = "-(2*m) - 2"
-        calc.perform_rule(rules.Equation(s1, s2))
-        s1 = "2 ^ (-(2*m) -2) "
-        s2 = "2 ^ (-2*m) / 2^2"
-        calc.perform_rule(rules.ApplyIdentity(s1, s2))
-        s1 = "b ^ (-m - 3/2) * (2 ^ (-2 * m) / 2 ^ 2) * pi * (2 * m + 1) / (m + 1) * binom(2 * m,m)"
-        s2 = "b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m) "
-        calc.perform_rule(rules.Equation(s1, s2))
         assert Eq2.is_finished()
 
         proof = goal.proof_by_calculation()
@@ -2205,15 +2191,15 @@ class IntegralTest(unittest.TestCase):
 
         goal = file.add_goal("(INT x:[0,oo]. log(x) / (x^2-b*x+1)) = 0", conds=["b > -2", "b < 2"])
 
-        sub_goal = goal.add_subgoal("1", "x ^ 2 - b * x + 1 != 0", conds=["b > -2", "b < 2"])
-        proof = sub_goal.proof_by_calculation()
+        sub_goal1 = goal.add_subgoal("1", "x ^ 2 - b * x + 1 != 0")
+        proof = sub_goal1.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("x ^ 2 - b * x + 1", "(x - 1/2 * b) ^ 2 + 1 - 1/4 * b^2"))
+        assert sub_goal1.is_finished()
 
-        goal01 = goal.add_subgoal("2", "(INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) = \
-        (INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) - a * INT x:[0,oo]. log(x) / (x^2-b*x+1)", \
-                               conds=["a > 0", "b>-2", "b<2"])
-        proof = goal01.proof_by_calculation()
+        sub_goal2 = goal.add_subgoal("2", "(INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) = \
+        (INT x:[0, oo]. log(x^a+1) / (x^2 - b*x + 1)) - a * INT x:[0,oo]. log(x) / (x^2-b*x+1)", conds=["a>0"])
+        proof = sub_goal2.proof_by_calculation()
         calc = proof.lhs_calc
         calc.perform_rule(rules.SubstitutionInverse("u", "x", "1/u"))
         calc.perform_rule(rules.Simplify())
@@ -2223,7 +2209,7 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Equation("log((1 + u ^ a) / u ^ a)", "log(1+u^a) - log(u^a)"))
         calc.perform_rule(rules.ExpandPolynomial())
         calc.perform_rule(rules.Simplify())
-
+        assert sub_goal2.is_finished()
         proof = goal.proof_by_rewrite_goal(begin="2")
         calc = proof.begin
         calc.perform_rule(rules.SolveEquation("INT x:[0,oo]. log(x) / (x^2-b*x+1)"))
@@ -2238,7 +2224,7 @@ class IntegralTest(unittest.TestCase):
         calc = proof.lhs_calc
         calc.perform_rule(rules.Equation("(1+x+x^2)", "(x+1/2)^2 + 3/4"))
         calc.perform_rule(rules.Substitution("u", "2*(x+1/2)/sqrt(3)"))
-        calc.perform_rule(rules.Equation("2 * (3 * u ^ 2 / 4 + 3/4)", "3/2*(u^2+1)"))
+        calc.perform_rule(rules.Equation("3 * u ^ 2 / 2 + 3/2", "3/2*(u^2+1)"))
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.Equation("1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2)", "-sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3 / 2 * (1 / (u ^ 2 + 1))"))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
@@ -2932,10 +2918,10 @@ class IntegralTest(unittest.TestCase):
         # Inside interesting integrals, Section 6.1
         file = compstate.CompFile("interesting", "BernoulliIntegral")
 
-        goal = file.add_goal("(INT x:[0,1]. x^(c*x^a)) = SUM(k,0,oo,(-c)^k / (k*a+1)^(k+1))", conds=["a > 0", "c != 0"])
+        goal1 = file.add_goal("(INT x:[0,1]. x^(c*x^a)) = SUM(k,0,oo,(-c)^k / (k*a+1)^(k+1))", conds=["a > 0", "c != 0"])
 
-        goal1 = goal.add_subgoal("1", "converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k))))", conds=["a > 0", "c != 0", "isInt(k)"])
-        proof = goal1.proof_by_calculation()
+        goal11 = goal1.add_subgoal("1", "converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k))))")
+        proof = goal11.proof_by_calculation()
         calc = proof.arg_calc
         calc.perform_rule(rules.Simplify())
         s1 = calc.parse_expr("(c*x^a * log(x))^k")
@@ -2947,10 +2933,10 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        assert goal1.is_finished()
+        assert goal11.is_finished()
 
-        proof_of_goal = goal.proof_by_calculation()
-        calc = proof_of_goal.lhs_calc
+        proof_of_goal1 = goal1.proof_by_calculation()
+        calc = proof_of_goal1.lhs_calc
         s1 = calc.parse_expr("x^(c*x^a)")
         s2 = calc.parse_expr("exp(log(x^(c*x^a)))")
         calc.perform_rule(rules.Equation(s1, s2))
@@ -2971,43 +2957,46 @@ class IntegralTest(unittest.TestCase):
         s1 = calc.parse_expr("c^k * (-1)^k")
         s2 = calc.parse_expr("(-c)^k")
         calc.perform_rule(rules.ApplyIdentity(s1, s2))
-        calc = proof_of_goal.rhs_calc
+        calc = proof_of_goal1.rhs_calc
         calc.perform_rule(rules.Simplify())
-        assert goal.is_finished()
+        assert goal1.is_finished()
 
-        goal1 = file.add_goal("(INT x:[0,1]. x^x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))")
-        proof_of_goal1 = goal1.proof_by_calculation()
-        calc = proof_of_goal1.lhs_calc
+        goal2 = file.add_goal("(INT x:[0,1]. x^x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))")
+        proof_of_goal2 = goal2.proof_by_calculation()
+        calc = proof_of_goal2.lhs_calc
         s1 = parser.parse_expr("x^x")
         s2 = parser.parse_expr("x^(1*x^1)")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
+        # source = parser.parse_expr("INT x:[0,1]. x ^ (1 * x ^ 1)")
+        # calc.perform_rule(rules.ApplyEquation(goal1.goal, source))
+        calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        assert goal1.is_finished()
+        assert goal2.is_finished()
 
-        goal2 = file.add_goal("(INT x:[0,1]. x^(-x)) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))")
-        proof_of_goal2 = goal2.proof_by_calculation()
-        calc = proof_of_goal2.lhs_calc
+        goal3 = file.add_goal("(INT x:[0,1]. x^(-x)) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))")
+        proof_of_goal3 = goal3.proof_by_calculation()
+        calc = proof_of_goal3.lhs_calc
         s1 = parser.parse_expr("x^(-x)")
         s2 = parser.parse_expr("x^(-1*x^1)")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        assert goal2.is_finished()
+        assert goal3.is_finished()
 
-        goal3 = file.add_goal("(INT x:[0,1]. x^(x^2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))")
-        proof_of_goal3 = goal3.proof_by_calculation()
-        calc = proof_of_goal3.lhs_calc
+        goal4 = file.add_goal("(INT x:[0,1]. x^(x^2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))")
+        proof_of_goal4 = goal4.proof_by_calculation()
+        calc = proof_of_goal4.lhs_calc
         s1 = parser.parse_expr("x^(x^2)")
         s2 = parser.parse_expr("x^(1*x^2)")
         calc.perform_rule(rules.Equation(s1, s2))
         calc.perform_rule(rules.DefiniteIntegralIdentity())
         calc.perform_rule(rules.Simplify())
-        assert goal3.is_finished()
+        assert goal4.is_finished()
 
-        goal4 = file.add_goal("(INT x:[0,1]. x^(sqrt(x))) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k+1))")
-        proof_of_goal4 = goal4.proof_by_calculation()
-        calc = proof_of_goal4.lhs_calc
+        goal5 = file.add_goal("(INT x:[0,1]. x^(sqrt(x))) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k+1))")
+        proof_of_goal5 = goal5.proof_by_calculation()
+        calc = proof_of_goal5.lhs_calc
         s1 = parser.parse_expr("x^(sqrt(x))")
         s2 = parser.parse_expr("x^(1*x^(1/2))")
         calc.perform_rule(rules.Equation(s1, s2))
@@ -3019,13 +3008,13 @@ class IntegralTest(unittest.TestCase):
         s1 = calc.parse_expr("(2 / (k + 2)) ^ (-1) ^ (-k - 1)")
         s2 = calc.parse_expr("(2/(k+2))^(k+1)")
         calc.perform_rule(rules.OnLocation(rules.ApplyIdentity(s1, s2), "0.1"))
-        assert goal4.is_finished()
+        assert goal5.is_finished()
 
-        goal.print_entry()
         goal1.print_entry()
         goal2.print_entry()
         goal3.print_entry()
         goal4.print_entry()
+        goal5.print_entry()
 
     def testAhmedIntegral(self):
         # Reference:
