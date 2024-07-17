@@ -577,20 +577,19 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.Simplify())
         calc.perform_rule(rules.ReplaceSubstitution())
 
-        # goal04 = file.add_goal("(INT x. (27*exp(9*x) + exp(12*x)) ^ (1/3)) = "
-        #                      "(exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)")
-        # proof04 = goal04.proof_by_calculation()
-        # calc = proof04.lhs_calc
-        # calc.perform_rule(rules.Equation("27*exp(9*x) + exp(12*x)", "exp(9*x) * (27 + exp(3*x))"))
-        # calc.perform_rule(rules.ApplyIdentity("(exp(9*x) * (27 + exp(3*x))) ^ (1/3)",
-        #                                       "exp(9*x) ^ (1/3) * (27 + exp(3*x)) ^ (1/3)"))
-        # calc.perform_rule(rules.Equation("exp(9*x) ^ (1/3)", "exp(3*x)"))
-        # calc.perform_rule(rules.Substitution("u", "exp(3*x) + 27"))
-        # calc.perform_rule(rules.Simplify())
-        # calc.perform_rule(rules.IndefiniteIntegralIdentity())
-        # calc.perform_rule(rules.Simplify())
-        # calc.perform_rule(rules.ReplaceSubstitution())
-        # goal04.print_entry()
+        goal04 = file.add_goal("(INT x. (27*exp(9*x) + exp(12*x)) ^ (1/3)) = "
+                             "(exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)")
+        proof04 = goal04.proof_by_calculation()
+        calc = proof04.lhs_calc
+        calc.perform_rule(rules.Equation("27*exp(9*x) + exp(12*x)", "exp(9*x) * (27 + exp(3*x))"))
+        calc.perform_rule(rules.Equation("(exp(9*x) * (27 + exp(3*x))) ^ (1/3)",
+                                         "exp(3*x) * (27 + exp(3*x)) ^ (1/3)"))
+        calc.perform_rule(rules.Substitution("u", "exp(3*x) + 27"))
+        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.IndefiniteIntegralIdentity())
+        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.ReplaceSubstitution())
+        goal04.print_entry()
 
         # self.checkAndOutput(file)
 
@@ -790,13 +789,13 @@ class IntegralTest(unittest.TestCase):
         calc.perform_rule(rules.IntegrationByParts("exp(x)", "sin(x)"))
         calc.perform_rule(rules.IntegrateByEquation("INT x. exp(x) * sin(x)"))
 
-        # calc = file.add_calculation("INT x. sin(3*x) * cos(4*x)")
-        # calc.perform_rule(rules.IntegrationByParts("sin(3*x)", "sin(4*x)/4"))
-        # calc.perform_rule(rules.Simplify())
-        # calc.perform_rule(rules.IntegrationByParts("cos(3*x)", "-cos(4*x)/4"))
-        # calc.perform_rule(rules.Simplify())
-        # calc.perform_rule(rules.IntegrateByEquation("INT x. sin(3*x) * cos(4*x)"))
-        # calc.print_entry()
+        calc = file.add_calculation("INT x. sin(3*x) * cos(4*x)")
+        calc.perform_rule(rules.IntegrationByParts("sin(3*x)", "sin(4*x)/4"))
+        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.IntegrationByParts("cos(3*x)", "-cos(4*x)/4"))
+        calc.perform_rule(rules.Simplify())
+        calc.perform_rule(rules.IntegrateByEquation("INT x. sin(3*x) * cos(4*x)"))
+        calc.print_entry()
 
         calc = file.add_calculation("INT x. sec(x) * sqrt(sec(x) + tan(x))")
         calc.perform_rule(rules.Equation("sec(x) * sqrt(sec(x) + tan(x))", "2 * ((sec(x) * tan(x) + sec(x) ^ 2) / (2 * sqrt(sec(x) + tan(x))))"))

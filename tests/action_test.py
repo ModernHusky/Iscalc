@@ -530,6 +530,17 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+
+            prove (INT x. (27 * exp(9 * x) + exp(12 * x)) ^ (1/3)) = (exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)
+            lhs:
+                rewrite 27 * exp(9 * x) + exp(12 * x) to exp(9 * x) * (27 + exp(3 * x))
+                rewrite (exp(9 * x) * (27 + exp(3 * x))) ^ (1/3) to exp(3 * x) * (27 + exp(3 * x)) ^ (1/3)
+                substitute u for exp(3 * x) + 27
+                simplify
+                apply indefinite integral
+                simplify
+                replace substitution
+            done
         """
         self.check_actions("UCDavis", "Exponential", actions)
 
@@ -745,6 +756,14 @@ class ActionTest(unittest.TestCase):
                 simplify
                 integrate by parts with u = exp(x), v = sin(x)
                 solve integral INT x. exp(x) * sin(x)
+            done
+
+            calculate INT x. cos(4 * x) * sin(3 * x)
+                integrate by parts with u = sin(3 * x), v = sin(4 * x) / 4
+                simplify
+                integrate by parts with u = cos(3 * x), v = -cos(4 * x) / 4
+                simplify
+                solve integral INT x. sin(3 * x) * cos(4 * x)
             done
 
             calculate INT x. sec(x) * sqrt(sec(x) + tan(x))
@@ -1998,7 +2017,7 @@ class ActionTest(unittest.TestCase):
                 substitute t for -u + 1
                 apply integral identity
                 simplify
-                rewrite 1/2 * (-log(-(sqrt(3) / 2) + 1) + log(sqrt(3) / 2 + 1)) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
+                rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
                 rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1)) using identity
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
                 simplify
