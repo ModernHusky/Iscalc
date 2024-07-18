@@ -544,13 +544,20 @@ class PartialFractionDecomposition(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        if expr.is_integral(e) or expr.is_indefinite_integral(e):
-            return OnLocation(self, "0").eval(e, ctx)
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
+            sep_ints = e.separate_integral()
+            if len(sep_ints) == 0:
+                return e
+            else:
+                return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
-        if sympywrapper.is_rational(e):
-            return normalize(sympywrapper.partial_fraction(e), ctx)
+        new_body = normalize(sympywrapper.partial_fraction(e.body), ctx)
+        if expr.is_integral(e):
+            return expr.Integral(e.var, e.lower, e.upper, new_body)
+        elif expr.is_indefinite_integral(e):
+            return expr.IndefiniteIntegral(e.var, new_body, skolem_args=e.skolem_args)
         else:
-            return e
+            raise AssertionError("Partial Fraction Decomposition")
 
 
 class ApplyIdentity(Rule):
@@ -789,6 +796,7 @@ class IndefiniteIntegralIdentity(Rule):
         if expr.is_integral(e) or expr.is_indefinite_integral(e):
             e = Linearity().eval(e, ctx)
 
+        # Apply to right side of equation
         if e.is_equals():
             return OnLocation(self, "1").eval(e, ctx)
 
@@ -1289,10 +1297,12 @@ class Substitution(Rule):
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e)):
             sep_ints = e.separate_integral()
             sep_lims = e.separate_limits()
-            if len(sep_ints) == 0:
+            if len(sep_ints) == 0 and len(sep_lims) == 0:
                 return e
-            else:
+            elif len(sep_ints) != 0:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
+            else:
+                return OnLocation(self, sep_lims[0][1]).eval(e, ctx)
 
         # Variable to be substituted in the integral
         var_name = Var(self.var_name)
@@ -1407,14 +1417,14 @@ class SubstitutionInverse(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        if not expr.is_integral(e):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             sep_ints = e.separate_integral()
             if len(sep_ints) == 0:
                 return e
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
             
-        if not expr.is_integral(e):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             raise RuleException("SubstitutionInverse", "input is not integral")
         
         if e.var != self.old_var:
@@ -1433,24 +1443,28 @@ class SubstitutionInverse(Rule):
         # g(x) = g(x(u)) * f'(u)
         new_e_body = new_e_body * subst_deriv
 
-        # Solve the equations lower = f(u) and upper = f(u) for u.
-        # Solve the equations lower = f(u) and upper = f(u) for u.
-        x = Var("_" + self.var_name)
-        lower = solve_equation(self.var_subst, x, self.var_name, ctx)
-        upper = solve_equation(self.var_subst, x, self.var_name, ctx)
-        if lower is None or upper is None:
-            raise RuleException("SubstitutionInverse", "cannot solve equation")
+        if expr.is_integral(e):
+            # Solve the equations lower = f(u) and upper = f(u) for u.
+            x = Var("_" + self.var_name)
+            lower = solve_equation(self.var_subst, x, self.var_name, ctx)
+            upper = solve_equation(self.var_subst, x, self.var_name, ctx)
+            if lower is None or upper is None:
+                raise RuleException("SubstitutionInverse", "cannot solve equation")
 
-        lower = limits.reduce_inf_limit(lower.subst(x.name, (1 / x) + e.lower), x.name, ctx)
-        upper = limits.reduce_inf_limit(upper.subst(x.name, e.upper - (1 / x)), x.name, ctx)
+            lower = limits.reduce_inf_limit(lower.subst(x.name, (1 / x) + e.lower), x.name, ctx)
+            upper = limits.reduce_inf_limit(upper.subst(x.name, e.upper - (1 / x)), x.name, ctx)
 
-        lower = normalize(lower, ctx)
-        upper = normalize(upper, ctx)
-        if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
-            return -expr.Integral(self.var_name, upper, lower, new_e_body)
+            lower = normalize(lower, ctx)
+            upper = normalize(upper, ctx)
+            if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
+                return -expr.Integral(self.var_name, upper, lower, new_e_body)
+            else:
+                return expr.Integral(self.var_name, lower, upper, new_e_body)
+
+        elif expr.is_indefinite_integral(e):
+            return expr.IndefiniteIntegral(self.var_name, new_e_body, skolem_args=e.skolem_args)
         else:
-            return expr.Integral(self.var_name, lower, upper, new_e_body)
-
+            raise AssertionError("SubstitutionInverse")
 
 class ExpandPolynomial(Rule):
     """Expand multiplication and power."""

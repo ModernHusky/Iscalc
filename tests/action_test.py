@@ -1496,6 +1496,72 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("UCDavis", "LogAndArcTangent", actions)
 
+    def testPowerSubstitution(self):
+        actions = """
+            calculate INT x. 1 / (1 + sqrt(x))
+                substitute u for sqrt(x)
+                partial fraction decomposition
+                simplify
+                substitute v for u + 1
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))
+                substitute u for sqrt(x)
+                partial fraction decomposition
+                simplify
+                substitute v for u - 3
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. 3 / (4 + x ^ (1/3))
+                substitute u for x ^ (1/3)
+                simplify
+                partial fraction decomposition
+                simplify
+                substitute v for u + 4
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. x * (x - 1) ^ (1/6) for x > 1
+                substitute u for (x - 1) ^ (1/6)
+                simplify
+                expand polynomial
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. (3 * x + 2) / sqrt(x - 9) for x > 9
+                substitute u for sqrt(x - 9)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. 1 / (x ^ (2/3) - x ^ (1/3))
+                substitute u for x ^ (1/3)
+                partial fraction decomposition
+                substitute v for u - 1
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+        """
+        self.check_actions("UCDavis", "PowerSubstitution", actions)
+
     def testWallis(self):
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
