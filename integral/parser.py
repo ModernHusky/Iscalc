@@ -71,6 +71,8 @@ grammar = r"""
 
     ?done_action: "done" -> done_action
 
+    ?sorry_action: "sorry" -> sorry_action
+
     ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
 
     ?induction_action: "induction" "on" CNAME -> induction_action
@@ -129,6 +131,7 @@ grammar = r"""
     ?action: prove_action
         | subgoal_action
         | done_action
+        | sorry_action
         | rewrite_goal_action
         | induction_action
         | case_analysis_action
@@ -321,7 +324,11 @@ class ExprTransformer(Transformer):
     def done_action(self):
         from integral import action
         return action.DoneAction()
-    
+
+    def sorry_action(self):
+        from integral import action
+        return action.SorryAction()
+ 
     def rewrite_goal_action(self, name: Token):
         from integral import action
         return action.RewriteGoalAction(str(name))

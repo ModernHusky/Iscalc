@@ -1559,6 +1559,71 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+
+            calculate INT x. (sqrt(x) + 1) / (sqrt(x) * (x ^ (1/3) + 1)) for x > 0
+                substitute u for x ^ (1/6)
+                simplify
+                partial fraction decomposition
+                simplify
+                expand polynomial
+                simplify
+                substitute v for u ^ 2 + 1
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(5 + sqrt(x)) for x > 0
+                substitute u for sqrt(5 + sqrt(x))
+                simplify
+                sorry
+                
+            calculate INT x. (1 + sqrt(x - 3)) ^ (1/3) for x > 3
+                substitute u for (1 + sqrt(x - 3)) ^ (1/3)
+                simplify
+                sorry
+
+            calculate INT x. sqrt(x) / (x - 1)
+                substitute u for sqrt(x)
+                simplify
+                partial fraction decomposition
+                simplify
+                substitute v for 2 * u + 2
+                substitute w for 2 * u - 2 (at 2)
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(4 - x) / x ^ 2 for x < 4
+                substitute u for sqrt(4 - x)
+                simplify
+                partial fraction decomposition
+                simplify
+                substitute v1 for 8 * u + 16
+                substitute v2 for 8 * u - 16 (at 2)
+                substitute v3 for u + 2 (at 3)
+                substitute v4 for u - 2 (at 4)
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. (x ^ (1/4) + 5) / (x - 16)
+                substitute u for x ^ (1/4)
+                simplify
+                partial fraction decomposition
+                simplify
+                expand polynomial
+                simplify
+                substitute v for 2 * u ^ 2 + 8
+                sorry
         """
         self.check_actions("UCDavis", "PowerSubstitution", actions)
 

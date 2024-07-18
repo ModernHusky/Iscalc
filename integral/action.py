@@ -65,6 +65,15 @@ class DoneAction(Action):
         return "done"
 
 
+class SorryAction(Action):
+    """Abandon the current computation."""
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "sorry"
+
+
 class RewriteGoalAction(Action):
     """Invoke rewriting goal."""
     def __init__(self, name: str):
@@ -324,6 +333,13 @@ class CalculateState(State):
             if isinstance(self.past, InitialState):
                 if not self.is_finished():
                     raise StateException("Use done when calculation is not finished")
+                return self.past
+            else:
+                return self.past.process_action(action)
+            
+        # Abandon the current calculation or proof
+        elif isinstance(action, SorryAction):
+            if isinstance(self.past, InitialState):
                 return self.past
             else:
                 return self.past.process_action(action)
