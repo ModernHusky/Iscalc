@@ -1627,6 +1627,23 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("UCDavis", "PowerSubstitution", actions)
 
+    def testTrigSubstitution(self):
+        actions = """
+            calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
+                inverse substitute sin(t) for x creating t
+                rewrite 1 - sin(t)^2 to cos(t)^2 using identity
+                simplify
+                sorry
+
+            calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
+                inverse substitute sec(t) for x creating t
+                simplify
+                rewrite sec(t)^2 - 1 to tan(t)^2 using identity
+                simplify
+                sorry
+        """
+        self.check_actions("UCDavis", "TrigSubstitution", actions)
+
     def testWallis(self):
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
