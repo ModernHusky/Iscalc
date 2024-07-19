@@ -2954,6 +2954,37 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter2Practice05", actions)
 
+    def testSimpleIndefiniteIntegral01(self):
+        # 139 chapter 04
+        actions = """
+        calculate INT x. 1/sqrt(x-x^2) for x > 0, x < 1
+            rewrite 1/sqrt(x-x^2) to 2/(2*sqrt(x-x^2))
+            rewrite 2*sqrt(x-x^2) to sqrt(4*x-4*x^2)
+            rewrite 4*x-4*x^2 to 1-(2*x-1)^2
+            substitute u for 2*x-1
+            apply indefinite integral
+            replace substitution
+        done
+        calculate INT x. x^2 / (1+x^2)
+            rewrite x^2 to x^2 + 1 - 1
+            rewrite (x ^ 2 + 1 - 1) / (1 + x ^ 2) to 1 - 1/(1+x^2)
+            simplify
+            apply indefinite integral
+            simplify
+        done
+        calculate INT x. x^4 / (1+x^2)
+            rewrite x^4 to (x^2-1)*(x^2+1) + 1
+            rewrite ((x ^ 2 - 1) * (x ^ 2 + 1) + 1) / (1 + x ^ 2) to x^2 - 1 + 1 / (1 + x^2)
+            simplify
+            apply indefinite integral
+            simplify
+        done
+        calculate INT x. 1/(2-3*x^2)
+            rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
+            linearity
+        sorry
+        """
+        self.check_actions("base", "simple_indefinite_integral_01", actions)
 
 if __name__ == "__main__":
     unittest.main()

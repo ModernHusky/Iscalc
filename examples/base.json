@@ -1159,6 +1159,26 @@
             "type": "problem"
         },
         {
+            "expr": "(INT x. 1/sqrt(1-x^2)) = asin(x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(-(x^2)+1)) = asin(x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(x^2-1)) = acos(x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(-1+x^2)) = acos(x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
             "level": 1,
             "name": "Results from contour integration",
             "type": "header"
