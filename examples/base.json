@@ -85,6 +85,10 @@
             "type": "axiom"
         },
         {
+            "expr": "(INT x. sec(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "expr": "(INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
@@ -1068,6 +1072,30 @@
             ],
             "category": "trigonometric",
             "expr": "csc(atan(x)) = sqrt(x^2 + 1) / x",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "cot(asin(x)) = sqrt(1 - x^2) / x",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "csc(asin(x)) = 1 / x",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(asec(x)) = sqrt(x^2 - 1) / x",
             "type": "axiom"
         },
         {

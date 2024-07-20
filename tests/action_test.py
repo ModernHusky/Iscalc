@@ -1724,6 +1724,67 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+
+            calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
+                substitute u for asin(3*x/2)
+                simplify
+                rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite cos(u)^2 * sin(u)^3 to sin(u) * sin(u)^2 * cos(u)^2
+                rewrite sin(u)^2 to 1 - cos(u)^2 using identity
+                expand polynomial
+                simplify
+                substitute v for cos(u)
+                substitute v2 for cos(u) (at 2)
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
+                substitute u for asin(x)
+                rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite cos(u) ^ 2 to 1 - sin(u)^2 using identity
+                expand polynomial
+                rewrite 1 / sin(u) to csc(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
+                substitute u for asec(x/3)
+                rewrite 9 * sec(u)^2 - 9 to 9 * (sec(u)^2 - 1)
+                rewrite sec(u)^2 - 1 to tan(u)^2 using identity
+                simplify
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                expand polynomial
+                rewrite 1 / sec(u) to cos(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
+                substitute u for atan(x)
+                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                simplify
+                rewrite sec(u)^3 to sec(u) * sec(u)^2
+                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                expand polynomial
+                simplify
+                rewrite sec(u) / tan(u)^2 to cot(u) * csc(u)
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
