@@ -1696,6 +1696,35 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+            
+            prove (INT x. sec(x)^3) = 1/2*sec(x)*tan(x)+1/2*log(abs(sec(x)+tan(x)))+SKOLEM_CONST(C) for x > -pi/2, x<pi/2
+            subgoal1: abs(sec(x) + tan(x)) > 0
+            lhs:
+                rewrite sec(x) to 1/cos(x) using identity
+                rewrite tan(x) to sin(x)/cos(x) using identity
+                rewrite 1/cos(x) + sin(x)/cos(x) to (1+sin(x))/cos(x)
+            done
+            lhs:
+                integrate by parts with u=sec(x), v=tan(x)
+                rewrite tan(x)^2 to sec(x)^2 - 1 using identity
+                expand polynomial
+                simplify
+                solve integral INT x. sec(x)^3
+                apply indefinite integral
+                expand polynomial
+                simplify
+            rhs:
+                simplify
+            done
+            calculate INT x. sqrt(x^2+25)
+                substitute u for atan(x/5)
+                simplify
+                rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
+                rewrite tan(u)^2+1 to sec(u)^2 using identity
+                simplify
+                apply indefinite integral
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 

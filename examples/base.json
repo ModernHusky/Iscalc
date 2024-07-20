@@ -1175,6 +1175,11 @@
             "type": "problem"
         },
         {
+            "expr": "(INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
             "expr": "(INT x. 1/sqrt(1-x^2)) = asin(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
