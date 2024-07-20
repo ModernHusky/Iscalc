@@ -12,6 +12,20 @@ from integral.rules import RuleException
 
 
 class RulesTest(unittest.TestCase):
+    def testSubstitutionIndefinite(self):
+        ctx = context.Context()
+
+        t = parse_expr("INT x. sin(5 * x)")
+        rule = rules.Substitution("u", parse_expr("5 * x"))
+        self.assertEqual(rule.eval(t, ctx), parse_expr("INT u. sin(u) / 5"))
+
+    def testSubstitutionDefinite(self):
+        ctx = context.Context()
+
+        t = parse_expr("INT x:[0, pi/5]. sin(5 * x)")
+        rule = rules.Substitution("u", parse_expr("5 * x"))
+        self.assertEqual(rule.eval(t, ctx), parse_expr("INT u:[0, pi]. sin(u) / 5"))
+
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
         # u ^ 2 - 5 >= 0, so simplify abs(u ^ 2 - 5) to u ^ 2 - 5.

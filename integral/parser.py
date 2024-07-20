@@ -7,6 +7,8 @@ from fractions import Fraction
 
 from integral import expr
 from integral.expr import Expr
+
+
 grammar = r"""
     ?atom: CNAME -> var_expr
         | "?" CNAME  -> symbol_expr
@@ -530,14 +532,26 @@ expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer
 action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
 
 
+class ParseException(Exception):
+    def __init__(self, s: str, msg: str):
+        self.s = s
+        self.msg = msg
+
+    def __str__(self):
+        return "Error while parsing %s\n%s" % (self.s, self.msg)
+
+
 def parse_expr(s: str) -> Expr:
     """Parse an integral expression."""
     try:
         res = expr_parser.parse(s)
         return res
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
-        print("When parsing:", s)
-        raise e
+        raise ParseException(s, str(e))
 
 def parse_action(s: str):
-    return action_parser.parse(s)
+    try:
+        res = action_parser.parse(s)
+        return res
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
+        raise ParseException(s, str(e))

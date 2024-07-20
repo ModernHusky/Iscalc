@@ -380,6 +380,8 @@ class Rule:
     expression that it is equal to.
 
     """
+    # Name of the rule
+    name: str
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Evaluation of the rule on the given expression. Returns
@@ -618,7 +620,7 @@ class ApplyIdentity(Rule):
         if self.source != e:
             find_res = e.find_subexpr(self.source)
             if len(find_res) == 0:
-                raise AssertionError("ApplyIdentity: source expression not found")
+                raise RuleException("ApplyIdentity", "old expression %s not found" % self.source)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -636,7 +638,7 @@ class ApplyIdentity(Rule):
                 if normalize(expected_rhs, ctx) == normalize(self.target, ctx):
                     return self.target
 
-        raise AssertionError("ApplyIdentity: no matching identity for %s" % e)
+        raise RuleException("ApplyIdentity", "no matching identity for %s" % e)
 
 
 class DefiniteIntegralIdentity(Rule):
@@ -1024,7 +1026,7 @@ class OnCount(Rule):
             elif isinstance(rule, ExpandDefinition):
                 pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
             else:
-                raise AssertionError("OnCount: unable to derive pred")
+                raise RuleException("OnCount", "(at n) should not be applied to rule %s" % rule.name)
         self.pred = pred
 
     def __str__(self):
