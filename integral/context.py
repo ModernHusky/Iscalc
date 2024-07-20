@@ -168,7 +168,9 @@ class Context:
         res += "Conditions\n"
         for cond in self.get_conds().data:
             res += str(cond) + "\n"
-
+        res += "Substitutions\n"
+        for var_name, var_subst in self.get_substs().items():
+            res += "%s: %s" % (var_name, var_subst) + "\n"
 
         return res
 
