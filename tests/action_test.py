@@ -2980,10 +2980,24 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         calculate INT x. 1/(2-3*x^2)
-            rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
+        rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
             linearity
-        sorry
+            substitute u for sqrt(3/2)*x
+            simplify
+            rewrite 1 / (-(3*u^2)+3) to 1/3 * (1/(1 - u^2))
+            simplify
+            rewrite 1 / (-u^2+1) to 1/2 * (1/(1-u) + 1/(1+u))
+            simplify
+            apply indefinite integral
+            substitute v for -u
+            simplify
+            apply indefinite integral
+            replace substitution
+            replace substitution
+            simplify
+        done
         """
+        # TODO: abs(u+1) should not be simplied to u+1 in the third exmple
         self.check_actions("base", "simple_indefinite_integral_01", actions)
 
 if __name__ == "__main__":
