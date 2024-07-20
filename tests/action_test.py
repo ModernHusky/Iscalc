@@ -1681,12 +1681,9 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
-                substitute u for acos(1/x)
-                rewrite (1 / cos(u)^2 - 1) to (1 - cos(u)^2) / cos(u)^2
-                rewrite 1 - cos(u)^2 to sin(u)^2 using identity
+                substitute u for asec(x)
+                rewrite sec(u)^2 - 1 to tan(u)^2 using identity
                 simplify
-                rewrite sin(u)^4 / cos(u)^4 to (sin(u) / cos(u))^4
-                rewrite sin(u) / cos(u) to tan(u) using identity
                 rewrite tan(u)^4 to tan(u)^2 * tan(u)^2
                 rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
                 expand polynomial

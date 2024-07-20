@@ -61,6 +61,21 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("sin(u) >= 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("cos(u) >= 0"), ctx2))
 
+    def testSubstitutionCondCheck3a(self):
+        file = compstate.CompFile("base", "standard")
+        ctx = file.ctx
+
+        t = parse_expr("INT x. (x^2 - 1)^(3/2) / x")
+        ctx.add_condition(parse_expr("x > 1"))
+
+        rule = rules.Substitution("u", parse_expr("asec(x)"))
+        t2 = rule.eval(t, ctx)
+        self.assertEqual(t2, parse_expr("INT u. sec(u) * tan(u) * (sec(u) ^ 2 - 1) ^ (3/2) / sec(u)"))
+        ctx2 = rule.update_context(ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("tan(u) >= 0"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
+
     def testSubstitutionInverse(self):
         # Basic correct case
         ctx = context.Context()

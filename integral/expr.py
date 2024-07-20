@@ -1271,6 +1271,15 @@ def arccos(e):
 def arctan(e):
     return Fun("atan", e)
 
+def arccot(e):
+    return Fun("acot", e)
+
+def arcsec(e):
+    return Fun("asec", e)
+
+def arccsc(e):
+    return Fun("acsc", e)
+
 def sqrt(e):
     return Fun("sqrt", e)
 

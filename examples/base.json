@@ -1031,7 +1031,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "tan(acos(1 / x)) = sqrt(x ^ 2 - 1)",
+            "expr": "tan(asec(x)) = sqrt(x ^ 2 - 1)",
             "type": "axiom"
         },
         {
