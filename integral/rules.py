@@ -395,6 +395,10 @@ class Rule:
     def get_substs(self) -> Dict[str, Expr]:
         """Return dictionary of variable substitutions produced by the rule."""
         return dict()
+    
+    def update_context(self, ctx: Context) -> Context:
+        """Produce the updated context after performing this rule."""
+        return ctx
 
 
 class Linearity(Rule):
@@ -551,13 +555,16 @@ class PartialFractionDecomposition(Rule):
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
+        if not sympywrapper.is_rational(e.body):
+            raise RuleException("PartialFractionDecomposition", "cannot be applied to non-rational body")
+
         new_body = normalize(sympywrapper.partial_fraction(e.body), ctx)
         if expr.is_integral(e):
             return expr.Integral(e.var, e.lower, e.upper, new_body)
         elif expr.is_indefinite_integral(e):
             return expr.IndefiniteIntegral(e.var, new_body, skolem_args=e.skolem_args)
         else:
-            raise AssertionError("Partial Fraction Decomposition")
+            raise RuleException("PartialFractionDecomposition", "cannot be applied to non-integrals")
 
 
 class ApplyIdentity(Rule):
@@ -887,6 +894,9 @@ class OnSubterm(Rule):
 
     def get_substs(self):
         return self.rule.get_substs()
+    
+    def update_context(self, ctx: Context) -> Context:
+        return self.rule.update_context(ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         return apply_subterm(e, self.rule.eval, ctx)
@@ -914,6 +924,9 @@ class OnLocation(Rule):
 
     def get_substs(self):
         return self.rule.get_substs()
+    
+    def update_context(self, ctx: Context) -> Context:
+        return self.rule.update_context()
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         def rec(cur_e, loc, ctx):
@@ -1027,6 +1040,9 @@ class OnCount(Rule):
 
     def get_substs(self):
         return self.rule.get_substs()
+    
+    def update_context(self, ctx: Context) -> Context:
+        return self.rule.update_context(ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         count = self.n
@@ -1283,6 +1299,11 @@ class Substitution(Rule):
 
     def get_substs(self):
         return {self.var_name: self.var_subst}
+    
+    def update_context(self, ctx: Context) -> Context:
+        ctx2 = Context(ctx)
+        ctx2.add_subst(self.var_name, self.var_subst)
+        return ctx2
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """
@@ -1313,14 +1334,24 @@ class Substitution(Rule):
         if e.var not in var_subst.get_vars():
             raise RuleException("Substitution", "variable %s not found" % e.var)
 
+        # Compute g(x)'
         dfx = deriv(e.var, var_subst, ctx)
         ctx2 = body_conds(e, ctx)
+
+        # If body is a product and g(x)' is on one of the sides, then
+        # the new body is the other side. Otherwise, the new body is
+        # obtained by dividing the original body by g(x)'.
         if e.body.is_times() and e.body.args[1] == dfx:
             body = e.body.args[0]
         elif e.body.is_times() and e.body.args[0] == dfx:
             body = e.body.args[1]
         else:
             body = normalize(e.body / dfx, ctx2)
+
+        # Now attempt to write the new body in the form of f(g(x)).
+        # First substitute all appearances of g(x) by u. If this clears
+        # all appearances of x, then we are done. Otherwise, we need
+        # to solve x as a function of u, then replace x by that function.
         body_subst = body.replace(var_subst, var_name)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand

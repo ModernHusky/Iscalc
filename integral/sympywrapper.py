@@ -68,5 +68,7 @@ def convert_from_sympy(e) -> Expr:
     return rec(e)
 
 def partial_fraction(e: Expr) -> Expr:
+    if not is_rational(e):
+        raise NotImplementedError("partial_fraction on non-rational expressions.")
     return convert_from_sympy(sympy.apart(convert_to_sympy(e)))
 

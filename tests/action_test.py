@@ -1575,15 +1575,47 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            calculate INT x. sqrt(5 + sqrt(x)) for x > 0
+            calculate INT x. sqrt(5 + sqrt(x)) for x >= 0
                 substitute u for sqrt(5 + sqrt(x))
                 simplify
-                sorry
+                expand polynomial
+                simplify
+                apply indefinite integral
+                simplify
+                replace substitution
+                simplify
+            done
                 
             calculate INT x. (1 + sqrt(x - 3)) ^ (1/3) for x > 3
                 substitute u for (1 + sqrt(x - 3)) ^ (1/3)
                 simplify
-                sorry
+                expand polynomial
+                simplify
+                apply indefinite integral
+                simplify
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(2 + sqrt(4 + sqrt(x))) for x > 0
+                substitute u for sqrt(2 + sqrt(4 + sqrt(x)))
+                simplify
+                expand polynomial
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. 1 / sqrt(2 + sqrt(1 + sqrt(x))) for x > 0
+                substitute u for sqrt(2 + sqrt(1 + sqrt(x)))
+                simplify
+                expand polynomial
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
 
             calculate INT x. sqrt(x) / (x - 1)
                 substitute u for sqrt(x)
@@ -1615,15 +1647,24 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            calculate INT x. (x ^ (1/4) + 5) / (x - 16)
+            calculate INT x. (x ^ (1/4) + 5) / (x - 16) for x > 0
                 substitute u for x ^ (1/4)
                 simplify
                 partial fraction decomposition
                 simplify
                 expand polynomial
                 simplify
-                substitute v for 2 * u ^ 2 + 8
-                sorry
+                substitute v1 for 2 * u ^ 2 + 8
+                substitute v2 for u / 2 (at 2)
+                rewrite 8 * v2 ^ 2 + 8 to 8 * (v2 ^ 2 + 1)
+                substitute v3 for 4 * u + 8 (at 3)
+                substitute v4 for 4 * u - 8 (at 4)
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "PowerSubstitution", actions)
 

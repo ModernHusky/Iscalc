@@ -395,12 +395,15 @@ def get_standard_inequalities() -> List[Identity]:
         # Square root
         (["a > 0"], "sqrt(a) > 0"),
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
+        (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
+        (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
         ([], "a ^ 2 >= 0"),
         (["x > 0"], "x ^ y > 0"),
         (["x != 0"], "x ^ n != 0"),
+        (["x > y", "y >= 0", "z > 0"], "x ^ z > y ^ z"),
         (["x < a", "x > -a"], "x ^ 2 < a ^ 2"),
         (["x > a", "a >= 0"], "x ^ 2 > a ^ 2"),
         (["x <= a", "x >= -a"], "x ^ 2 <= a ^ 2"),
