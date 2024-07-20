@@ -1715,11 +1715,15 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite sec(u)^3 to sec(u) * sec(u)^2
                 rewrite sec(u)^2 to 1 + tan(u)^2 using identity
-                rewrite sec(u) to 1 / cos(u) using identity
-                rewrite tan(u) to sin(u) / cos(u) using identity (at 2)
-                simplify
+                rewrite sec(u) * (1 + tan(u)^2) / tan(u) to (1 + tan(u)^2) / sin(u)
                 expand polynomial
-                sorry
+                rewrite 1 / sin(u) to csc(u)
+                rewrite tan(u) ^ 2 / sin(u) to sec(u) * tan(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
