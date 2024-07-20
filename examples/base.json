@@ -1023,6 +1023,22 @@
                 "simplify"
             ],
             "category": "trigonometric",
+            "expr": "sin(2*asin(x)) = 2 * x * sqrt(1 - x^2)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "tan(asec(x)) = sqrt(x ^ 2 - 1)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
             "expr": "sec(atan(x)) = sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
