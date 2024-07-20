@@ -1744,6 +1744,18 @@ class ActionTest(unittest.TestCase):
                 rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
                 simplify
             done
+            calculate INT x. x / sqrt(x^4-16) for x > 2
+                substitute u for x^2
+                simplify
+                substitute v for asec(u/4)
+                rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
+                rewrite sec(v)^2-1 to tan(v)^2 using identity
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
