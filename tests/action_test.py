@@ -3021,7 +3021,7 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         calculate INT x. 1/(2-3*x^2)
-        rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
+            rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
             linearity
             substitute u for sqrt(3/2)*x
             simplify
@@ -3044,6 +3044,7 @@ class ActionTest(unittest.TestCase):
             simplify
             apply indefinite integral
             replace substitution
+            simplify
         done
         calculate INT x. 1/ sqrt(2-3*x^2) for x > -sqrt(3/2), x < sqrt(3/2)
             substitute u for sqrt(3/2)*x
@@ -3052,7 +3053,17 @@ class ActionTest(unittest.TestCase):
             simplify
             apply indefinite integral
             rewrite sqrt(3/2) * sqrt(2) to sqrt(3)
+            simplify
         done
+        calculate INT x. (sqrt(x^2+1)-sqrt(x^2-1))/sqrt(x^4-1) for x > 1
+            rewrite sqrt(x ^ 4 - 1) to sqrt(x^2-1) * sqrt(x^2+1)
+            rewrite (sqrt(x ^ 2 + 1) - sqrt(x ^ 2 - 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) to (sqrt(x ^ 2 + 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) - (sqrt(x ^ 2 - 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) 
+            simplify
+            apply indefinite integral
+            inverse substitute tan(u) for x creating u
+            rewrite tan(u)^2+1 to sec(u)^2 using identity
+            simplify
+        sorry
         """
         # TODO: abs(u+1) should not be simplied to u+1 in the third exmple
         self.check_actions("base", "simple_indefinite_integral_01", actions)
