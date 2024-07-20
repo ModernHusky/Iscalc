@@ -1671,17 +1671,34 @@ class ActionTest(unittest.TestCase):
     def testTrigSubstitution(self):
         actions = """
             calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
-                inverse substitute sin(t) for x creating t
-                rewrite 1 - sin(t)^2 to cos(t)^2 using identity
+                substitute u for asin(x)
+                rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
                 simplify
-                sorry
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
 
             calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
-                inverse substitute sec(t) for x creating t
+                substitute u for acos(1/x)
+                rewrite (1 / cos(u)^2 - 1) to (1 - cos(u)^2) / cos(u)^2
+                rewrite 1 - cos(u)^2 to sin(u)^2 using identity
                 simplify
-                rewrite sec(t)^2 - 1 to tan(t)^2 using identity
+                rewrite sin(u)^4 / cos(u)^4 to (sin(u) / cos(u))^4
+                rewrite sin(u) / cos(u) to tan(u) using identity
+                rewrite tan(u)^4 to tan(u)^2 * tan(u)^2
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
+                expand polynomial
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
                 simplify
-                sorry
+                apply indefinite integral
+                substitute v for tan(u)
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 

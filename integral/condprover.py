@@ -391,6 +391,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["a <= b", "c > 0"], "a / c <= b / c"),
         (["a >= b", "c < 0"], "a / c <= b / c"),
         (["a <= b", "c < 0"], "a / c >= b / c"),
+        (["x > 1"], "1 / x < 1"),
+        (["x > 0"], "1 / x > 0"),
 
         # Square root
         (["a > 0"], "sqrt(a) > 0"),
@@ -443,6 +445,24 @@ def get_standard_inequalities() -> List[Identity]:
         (["x > 0", "x < pi / 2"], "tan(x) > 0"),
         (["cos(x) != 0"], "sin(x) > -1"),
         (["cos(x) != 0"], "sin(x) < 1"),
+
+        # Inverse trigonometric
+        (["x >= -1", "x <= 1"], "asin(x) >= -pi / 2"),
+        (["x >= -1", "x <= 1"], "asin(x) <= pi / 2"),
+        (["x > -1", "x < 1"], "asin(x) > -pi / 2"),
+        (["x > -1", "x < 1"], "asin(x) < pi / 2"),
+        (["x > 0", "x <= 1"], "asin(x) > 0"),
+        (["x >= 0", "x <= 1"], "asin(x) >= 0"),
+        (["x < 0", "x >= -1"], "asin(x) < 0"),
+        (["x <= 0", "x >= -1"], "asin(x) <= 0"),
+        (["x >= -1", "x <= 1"], "acos(x) >= 0"),
+        (["x >= -1", "x <= 1"], "acos(x) <= pi"),
+        (["x > 0", "x <= 1"], "acos(x) < pi / 2"),
+        (["x >= 0", "x <= 1"], "acos(x) <= pi / 2"),
+        (["x < 0", "x >= -1"], "acos(x) > pi / 2"),
+        (["x <= 0", "x >= -1"], "acos(x) >= pi / 2"),
+        (["x > -1", "x < 1"], "acos(x) > 0"),
+        (["x > -1", "x < 1"], "acos(x) < pi"),
 
         # Hyperbolic
         ([], "cosh(x) > 0"),

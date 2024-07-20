@@ -78,6 +78,12 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
             return solve_equation(f.args[0], expr.arccos(a), x, ctx)
         elif f.func_name == "tan":
             return solve_equation(f.args[0], expr.arctan(a), x, ctx)
+        elif f.func_name == "asin":
+            return solve_equation(f.args[0], expr.sin(a), x, ctx)
+        elif f.func_name == "acos":
+            return solve_equation(f.args[0], expr.cos(a), x, ctx)
+        elif f.func_name == "atan":
+            return solve_equation(f.args[0], expr.tan(a), x, ctx)
         elif f.func_name == "sqrt":
             return solve_equation(f.args[0], a ^ 2, x, ctx)
 
