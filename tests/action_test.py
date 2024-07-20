@@ -1724,6 +1724,25 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply indefinite integral
                 simplify
+                replace substitution
+                simplify
+                rewrite sqrt(x ^ 2 / 25 + 1) to sqrt(x^2 + 25) / 5
+                simplify
+            done
+            calculate INT x. sqrt(x^2-4) for x > 2
+                substitute u for asec(x/2)
+                rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
+                rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
+                simplify
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                expand polynomial
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
+                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
+                simplify
             done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
