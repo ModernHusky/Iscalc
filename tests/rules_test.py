@@ -106,6 +106,22 @@ class RulesTest(unittest.TestCase):
         res = "INT u. 1 / (1 + sqrt(u ^ 2)) * (2 * u)"
         self.assertEqual(rule.eval(t, ctx), parser.parse_expr(res))
 
+    def testSubstitutionCondCheck4(self):
+        file = compstate.CompFile("base", "simple_integral_01")
+        ctx = file.ctx
+
+        t = parse_expr("INT x. 1 / sqrt(x ^ 2 + 1)")
+        ctx.add_condition(parse_expr("x > 1"))
+
+        rule = rules.Substitution("u", parse_expr("atan(x)"))
+        ctx2 = rule.update_context(ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("tan(u) > 0"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("u > pi / 4"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("u < pi / 2"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("sec(u) < sqrt(2)"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 1"), ctx2))
+
 
 if __name__ == "__main__":
     unittest.main()

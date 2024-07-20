@@ -446,7 +446,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["cos(x) != 0"], "sin(x) > -1"),
         (["cos(x) != 0"], "sin(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sec(x) > 0"),
-
+        (["x > pi / 4", " x < pi / 2"], "sec(x) > 1"),
+        (["x > pi / 4", " x < pi / 2"], "sec(x) < sqrt(2)"),
         # Inverse trigonometric
         (["x >= -1", "x <= 1"], "asin(x) >= -pi / 2"),
         (["x >= -1", "x <= 1"], "asin(x) <= pi / 2"),
@@ -476,7 +477,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["x <= -1"], "asec(x) >= -pi / 2"),
         (["x <= -1"], "asec(x) < 0"),
         (["x < -1"], "asec(x) > -pi / 2"),
-
+        (["x > 1"], "atan(x) > pi / 4"),
+        (["x > 1"], "atan(x) < pi / 2"),
         # Hyperbolic
         ([], "cosh(x) > 0"),
 
