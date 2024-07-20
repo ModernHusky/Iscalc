@@ -2996,6 +2996,22 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        calculate INT x. 1/(2+3*x^2)
+            rewrite 1/(2+3*x^2) to 1/2 * (1/(1+(sqrt(3/2)*x)^2))
+            substitute u for sqrt(3/2)*x
+            rewrite sqrt(3/2) / (3 * u ^ 2 + 3) to sqrt(3/2) / 3 * (1 / (u ^ 2 + 1))
+            simplify
+            apply indefinite integral
+            replace substitution
+        done
+        calculate INT x. 1/ sqrt(2-3*x^2) for x > -sqrt(3/2), x < sqrt(3/2)
+            substitute u for sqrt(3/2)*x
+            simplify
+            rewrite sqrt(-(2*u^2)+2) to sqrt(2) * sqrt(1-u^2)
+            simplify
+            apply indefinite integral
+            rewrite sqrt(3/2) * sqrt(2) to sqrt(3)
+        done
         """
         # TODO: abs(u+1) should not be simplied to u+1 in the third exmple
         self.check_actions("base", "simple_indefinite_integral_01", actions)
