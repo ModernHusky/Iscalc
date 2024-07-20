@@ -135,6 +135,20 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("u < pi / 2"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) < sqrt(2)"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 1"), ctx2))
+    def testSubstitutionCondCheck5(self):
+        file = compstate.CompFile("base", "simple_integral_01")
+        ctx = file.ctx
+
+        t = parse_expr("INT x. sqrt(x ^ 2 + 1)")
+
+        rule = rules.Substitution("u", "atan(x)")
+        ctx2 = rule.update_context(ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("u > -pi/2"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("u < pi/2"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("cos(u) > 0"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
+
 
 
 if __name__ == "__main__":

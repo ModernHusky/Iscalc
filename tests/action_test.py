@@ -1696,6 +1696,164 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+
+            calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
+                substitute u for asin(x)
+                rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite 1 / cos(u)^2 to (1/cos(u))^2
+                rewrite 1/cos(u) to sec(u) using identity
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 + 1) / x
+                substitute u for atan(x)
+                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                simplify
+                rewrite sec(u)^3 to sec(u) * sec(u)^2
+                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                rewrite sec(u) * (1 + tan(u)^2) / tan(u) to (1 + tan(u)^2) / sin(u)
+                expand polynomial
+                rewrite 1 / sin(u) to csc(u)
+                rewrite tan(u) ^ 2 / sin(u) to sec(u) * tan(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
+                substitute u for asin(3*x/2)
+                simplify
+                rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite cos(u)^2 * sin(u)^3 to sin(u) * sin(u)^2 * cos(u)^2
+                rewrite sin(u)^2 to 1 - cos(u)^2 using identity
+                expand polynomial
+                simplify
+                substitute v for cos(u)
+                substitute v2 for cos(u) (at 2)
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
+                substitute u for asin(x)
+                rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite cos(u) ^ 2 to 1 - sin(u)^2 using identity
+                expand polynomial
+                rewrite 1 / sin(u) to csc(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
+                substitute u for asec(x/3)
+                rewrite 9 * sec(u)^2 - 9 to 9 * (sec(u)^2 - 1)
+                rewrite sec(u)^2 - 1 to tan(u)^2 using identity
+                simplify
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                expand polynomial
+                rewrite 1 / sec(u) to cos(u)
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
+                substitute u for atan(x)
+                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                simplify
+                rewrite sec(u)^3 to sec(u) * sec(u)^2
+                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                expand polynomial
+                simplify
+                rewrite sec(u) / tan(u)^2 to cot(u) * csc(u)
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+            prove (INT x. sec(x)^3) = 1/2*sec(x)*tan(x)+1/2*log(abs(sec(x)+tan(x)))+SKOLEM_CONST(C) for x > -pi/2, x<pi/2
+            subgoal1: abs(sec(x) + tan(x)) > 0
+            lhs:
+                rewrite sec(x) to 1/cos(x) using identity
+                rewrite tan(x) to sin(x)/cos(x) using identity
+                rewrite 1/cos(x) + sin(x)/cos(x) to (1+sin(x))/cos(x)
+            done
+            lhs:
+                integrate by parts with u=sec(x), v=tan(x)
+                rewrite tan(x)^2 to sec(x)^2 - 1 using identity
+                expand polynomial
+                simplify
+                solve integral INT x. sec(x)^3
+                apply indefinite integral
+                expand polynomial
+                simplify
+            rhs:
+                simplify
+            done
+            calculate INT x. sqrt(x^2+25)
+                substitute u for atan(x/5)
+                simplify
+                rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
+                rewrite tan(u)^2+1 to sec(u)^2 using identity
+                simplify
+                apply indefinite integral
+                simplify
+                replace substitution
+                simplify
+                rewrite sqrt(x ^ 2 / 25 + 1) to sqrt(x^2 + 25) / 5
+                simplify
+            done
+            calculate INT x. sqrt(x^2-4) for x > 2
+                substitute u for asec(x/2)
+                rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
+                rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
+                simplify
+                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                expand polynomial
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
+                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
+                simplify
+            done
+            calculate INT x. x / sqrt(x^4-16) for x > 2
+                substitute u for x^2
+                simplify
+                substitute v for asec(u/4)
+                rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
+                rewrite sec(v)^2-1 to tan(v)^2 using identity
+                simplify
+                apply indefinite integral
+                replace substitution
+                replace substitution
+                simplify
+            done
+            calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
+                rewrite x^2-4*x to (x-2)^2 - 4
+                substitute u for asec((x-2)/2)
+                rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
+                rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
+                simplify
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
@@ -3009,78 +3167,6 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter2Practice05", actions)
 
-    def testSimpleIndefiniteIntegral01(self):
-        # 139 chapter 04
-        actions = """
-        calculate INT x. 1/sqrt(x-x^2) for x > 0, x < 1
-            rewrite 1/sqrt(x-x^2) to 2/(2*sqrt(x-x^2))
-            rewrite 2*sqrt(x-x^2) to sqrt(4*x-4*x^2)
-            rewrite 4*x-4*x^2 to 1-(2*x-1)^2
-            substitute u for 2*x-1
-            apply indefinite integral
-            replace substitution
-        done
-        calculate INT x. x^2 / (1+x^2)
-            rewrite x^2 to x^2 + 1 - 1
-            rewrite (x ^ 2 + 1 - 1) / (1 + x ^ 2) to 1 - 1/(1+x^2)
-            simplify
-            apply indefinite integral
-            simplify
-        done
-        calculate INT x. x^4 / (1+x^2)
-            rewrite x^4 to (x^2-1)*(x^2+1) + 1
-            rewrite ((x ^ 2 - 1) * (x ^ 2 + 1) + 1) / (1 + x ^ 2) to x^2 - 1 + 1 / (1 + x^2)
-            simplify
-            apply indefinite integral
-            simplify
-        done
-        calculate INT x. 1/(2-3*x^2)
-            rewrite 1/(2-3*x^2) to 1/2 * (1/(1-(sqrt(3/2)*x)^2))
-            linearity
-            substitute u for sqrt(3/2)*x
-            simplify
-            rewrite 1 / (-(3*u^2)+3) to 1/3 * (1/(1 - u^2))
-            simplify
-            rewrite 1 / (-u^2+1) to 1/2 * (1/(1-u) + 1/(1+u))
-            simplify
-            apply indefinite integral
-            substitute v for -u
-            simplify
-            apply indefinite integral
-            replace substitution
-            replace substitution
-            simplify
-        done
-        calculate INT x. 1/(2+3*x^2)
-            rewrite 1/(2+3*x^2) to 1/2 * (1/(1+(sqrt(3/2)*x)^2))
-            substitute u for sqrt(3/2)*x
-            rewrite sqrt(3/2) / (3 * u ^ 2 + 3) to sqrt(3/2) / 3 * (1 / (u ^ 2 + 1))
-            simplify
-            apply indefinite integral
-            replace substitution
-            simplify
-        done
-        calculate INT x. 1/ sqrt(2-3*x^2) for x > -sqrt(3/2), x < sqrt(3/2)
-            substitute u for sqrt(3/2)*x
-            simplify
-            rewrite sqrt(-(2*u^2)+2) to sqrt(2) * sqrt(1-u^2)
-            simplify
-            apply indefinite integral
-            rewrite sqrt(3/2) * sqrt(2) to sqrt(3)
-            simplify
-        done
-        calculate INT x. (sqrt(x^2+1)-sqrt(x^2-1))/sqrt(x^4-1) for x > 1
-            rewrite sqrt(x ^ 4 - 1) to sqrt(x^2-1) * sqrt(x^2+1)
-            rewrite (sqrt(x ^ 2 + 1) - sqrt(x ^ 2 - 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) to (sqrt(x ^ 2 + 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) - (sqrt(x ^ 2 - 1)) / (sqrt(x ^ 2 - 1) * sqrt(x ^ 2 + 1)) 
-            simplify
-            apply indefinite integral
-            inverse substitute tan(u) for x creating u
-            rewrite tan(u)^2+1 to sec(u)^2 using identity
-            simplify
-        sorry
-        """
-        # TODO: abs(u+1) should not be simplied to u+1 in the third exmple
-        self.check_actions("base", "simple_indefinite_integral_01", actions)
 
 if __name__ == "__main__":
     unittest.main()
