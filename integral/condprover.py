@@ -464,6 +464,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["x <= 0", "x >= -1"], "acos(x) >= pi / 2"),
         (["x > -1", "x < 1"], "acos(x) > 0"),
         (["x > -1", "x < 1"], "acos(x) < pi"),
+        ([], "atan(x) > -pi / 2"),
+        ([], "atan(x) < pi / 2"),
         (["x >= 1"], "asec(x) >= 0"),
         (["x >= 1"], "asec(x) < pi / 2"),
         (["x > 1"], "asec(x) > 0"),

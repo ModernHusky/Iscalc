@@ -1696,6 +1696,30 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+
+            calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
+                substitute u for asin(x)
+                rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
+                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                simplify
+                rewrite 1 / cos(u)^2 to (1/cos(u))^2
+                rewrite 1/cos(u) to sec(u) using identity
+                apply indefinite integral
+                replace substitution
+                simplify
+            done
+
+            calculate INT x. sqrt(x^2 + 1) / x
+                substitute u for atan(x)
+                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                simplify
+                rewrite sec(u)^3 to sec(u) * sec(u)^2
+                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                rewrite sec(u) to 1 / cos(u) using identity
+                rewrite tan(u) to sin(u) / cos(u) using identity (at 2)
+                simplify
+                expand polynomial
+                sorry
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 

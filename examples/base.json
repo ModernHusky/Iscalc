@@ -1039,6 +1039,14 @@
                 "simplify"
             ],
             "category": "trigonometric",
+            "expr": "tan(asin(x)) = x / sqrt(1 - x ^ 2)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
             "expr": "sec(atan(x)) = sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
