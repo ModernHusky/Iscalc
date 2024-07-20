@@ -98,7 +98,7 @@ def normalize_quotient(e: Expr, ctx: Context) -> NormalQuotient:
                 f1,f2 = e.args
                 n1,n2 = f1.args[0], f2.args[0]
                 if n1 == n2:
-                    return NormalQuotient(poly.constant(1, ctx), poly.constant(1, ctx), ctx)
+                    return NormalQuotient(poly.constant(1), poly.constant(1), ctx)
                 try:
                     v = expr.eval_expr(poly.normalize(n1 - n2, ctx))
                     if v > 0:
@@ -124,6 +124,14 @@ def normalize_quotient(e: Expr, ctx: Context) -> NormalQuotient:
         elif expr.is_fun(e):
             if e.func_name == 'sqrt':
                 return rec(e.args[0] ** Const(Fraction(1,2)))
+            elif e.func_name == "tan":
+                return NormalQuotient(poly.singleton(expr.sin(e.args[0])), poly.singleton(expr.cos(e.args[0])), ctx)
+            elif e.func_name == "cot":
+                return NormalQuotient(poly.singleton(expr.cos(e.args[0])), poly.singleton(expr.sin(e.args[0])), ctx)
+            elif e.func_name == "sec":
+                return NormalQuotient(poly.constant(1), poly.singleton(expr.cos(e.args[0])), ctx)
+            elif e.func_name == "csc":
+                return NormalQuotient(poly.constant(1), poly.singleton(expr.sin(e.args[0])), ctx)
             else:
                 e = expr.Fun(e.func_name, *(quotient_normalize(arg, ctx) for arg in e.args))
 

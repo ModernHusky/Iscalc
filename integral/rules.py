@@ -1345,6 +1345,10 @@ class Substitution(Rule):
             body = e.body.args[0]
         elif e.body.is_times() and e.body.args[0] == dfx:
             body = e.body.args[1]
+        elif e.body.is_times() and -e.body.args[1] == dfx:
+            body = -e.body.args[0]
+        elif e.body.is_times() and -e.body.args[0] == dfx:
+            body = -e.body.args[1]
         else:
             body = normalize(e.body / dfx, ctx2)
 
