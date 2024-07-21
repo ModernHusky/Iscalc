@@ -10,7 +10,7 @@ from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL
+    Product, SYMBOL, SkolemFunc
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -161,8 +161,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
         elif expr.is_inf(e):
             return Const(0)
         else:
-            print(e, type(e))
-            raise NotImplementedError
+            raise NotImplementedError(f"{e}, {type(e)}")
 
     return rec(e)
 
@@ -1079,8 +1078,10 @@ class OnCount(Rule):
             elif expr.is_summation(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 return Summation(cur_e.index_var, rec(cur_e.lower, ctx), rec(cur_e.upper, ctx), rec(cur_e.body, ctx2))
+            elif expr.is_skolem_func(cur_e):
+                return SkolemFunc(cur_e.name, tuple(rec(arg, ctx) for arg in cur_e.dependent_vars))
             else:
-                raise NotImplementedError(type(cur_e))
+                raise RuleException("OnCount", f"has not a implemention for {cur_e}.")
 
         res = rec(e, ctx)
         if count > 0:
@@ -1470,10 +1471,11 @@ class SubstitutionInverse(Rule):
 
         if e.contains_var(self.var_name) or e.var == self.var_name:
             raise RuleException("SubstitutionInverse", "variable %s already exists" % self.var_name)
-
-        # dx = f'(u) * du
-        subst_deriv = deriv(self.var_name, self.var_subst, ctx)
-
+        try:
+            # dx = f'(u) * du
+            subst_deriv = deriv(self.var_name, self.var_subst, ctx)
+        except NotImplementedError:
+            raise RuleException('Inverse Substitute', f"{self.var_subst} can not be derived")
         # Replace x with f(u)
         new_e_body = e.body.replace(Var(e.var), self.var_subst)
 
@@ -1846,7 +1848,11 @@ class IntegrateByEquation(Rule):
         else:
             new_rhs = normalize(norm_e + ((-coeff) * lhs), ctx)
         self.coeff = normalize(-(coeff), ctx)
-        return normalize(new_rhs / ((Const(1) - coeff)), ctx)
+        try:
+            res = normalize(new_rhs / ((Const(1) - coeff)), ctx)
+        except Exception:
+            raise RuleException("IntegrateByEquation", f"normalizing {new_rhs / ((Const(1) - coeff))} is failed")
+        return res
 
 
 class ElimInfInterval(Rule):
