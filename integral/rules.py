@@ -843,9 +843,16 @@ class ReplaceSubstitution(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        for var, expr in ctx.get_substs().items():
-            e = e.subst(var, expr)
-        return e
+        try:
+            if e.contains_integral():
+                raise RuleException("ReplaceSubstitution", f"can not using replace substitution because {e} is not in a closed-form, it contains integral expression.")
+            for var, expr in ctx.get_substs().items():
+                e = e.subst(var, expr)
+            return e
+        except RuleException as ee:
+            raise ee
+        except Exception:
+            raise RuleException("ReplaceSubstitution", f"can not handle {e}")
 
 
 class DerivativeSimplify(Rule):

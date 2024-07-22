@@ -592,6 +592,16 @@ class Expr:
         assert isinstance(x, str)
         return x in self.get_vars()
 
+    def contains_integral(self) -> bool:
+        if is_var(self) or is_const(self) or is_skolem_func(self):
+            return False
+        elif is_integral(self) or is_indefinite_integral(self):
+            return True
+        elif is_op(self) or is_fun(self):
+            return any(arg.contains_integral() for arg in self.args)
+        else:
+            return False
+
     def replace(self, e: "Expr", repl_e: "Expr") -> "Expr":
         """Replace occurrences of e with repl_e."""
         assert isinstance(e, Expr) and isinstance(repl_e, Expr)
