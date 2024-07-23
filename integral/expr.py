@@ -1035,8 +1035,9 @@ class Var(Expr):
 class Const(Expr):
     """Constants."""
 
-    def __init__(self, val: Union[int, Fraction]):
-        assert isinstance(val, (int, Fraction))
+    def __init__(self, val: Union[int, Fraction, Decimal]):
+        assert isinstance(val, (int, Fraction, Decimal))
+        if isinstance(val, Decimal): val = Fraction(val)
         self.ty = CONST
         if isinstance(val, Fraction) and val.denominator == 1:
             self.val = val.numerator
