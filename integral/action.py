@@ -90,9 +90,9 @@ class CalculateAction(Action):
         self.conditions = Conditions(conditions)
 
     def __str__(self):
-        if self.conditions:
+        if self.conditions.data:
             return "calculate %s for %s" % (
-                self.expr, ', '.join(str(cond) for cond in self.conditions))
+                self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
             return "calculate %s" % self.expr
 
