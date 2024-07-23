@@ -1166,10 +1166,10 @@ class ActionTest(unittest.TestCase):
                 substitute u for 3 * x
                 simplify
                 apply indefinite integral
-                replace substitution
-                substitute u for 3 * x
+                substitute v for 3 * x
                 simplify
                 apply indefinite integral
+                replace substitution
                 replace substitution
                 simplify
             done
@@ -1188,7 +1188,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute u for tan(x)
                 apply indefinite integral
-                replace substitution
                 simplify
                 rewrite tan(x) ^ 3 to tan(x) * tan(x) ^ 2
                 rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
@@ -1196,6 +1195,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute u for tan(x)
                 apply indefinite integral
+                replace substitution
                 replace substitution
                 simplify
             done
