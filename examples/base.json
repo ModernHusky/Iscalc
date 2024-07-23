@@ -1187,6 +1187,16 @@
             "type": "problem"
         },
         {
+            "expr": "(INT x. 1/(x-a)) = log(abs(x-a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/(x+a)) = log(abs(x+a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
             "conds": [
                 "a != 0"
             ],
