@@ -786,7 +786,6 @@ class IndefiniteIntegralIdentity(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
-
         def apply(e: Expr):
             for indef in ctx.get_indefinite_integrals():
                 inst = expr.match(e, indef.lhs)
@@ -811,6 +810,8 @@ class IndefiniteIntegralIdentity(Rule):
         integrals = e.separate_integral()
         skolem_args = set()
         for sub_e, loc in integrals:
+            if expr.is_integral(sub_e):
+                raise RuleException("apply indefinite integral", "Attempting to apply indefinite integral methods to a definite integral expression will not work")
             new_e = apply(sub_e)
             if new_e != sub_e:
                 e = e.replace_expr(loc, new_e)
