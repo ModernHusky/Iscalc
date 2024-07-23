@@ -96,7 +96,7 @@ grammar = r"""
     ?inst_equation: CNAME "for" expr -> inst_equation
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
-        | "inverse" "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
+        | "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
         | "apply" "integral" "identity" -> integral_identity_rule
         | "apply" "indefinite" "integral" -> indefinite_integral_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
@@ -388,13 +388,13 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.CaseAction("positive")
 
-    def substitute_rule(self, var_name: Token, expr: Expr):
+    def substitute_rule(self, var_name: Token, expr: Token):
         from integral import rules
-        return rules.Substitution(str(var_name), expr)
+        return rules.Substitution(str(var_name), str(expr))
 
-    def inverse_substitute_rule(self, expr: Expr, old_var: Token, var_name: Token):
+    def inverse_substitute_rule(self, expr: Token, old_var: Token, var_name: Token):
         from integral import rules
-        return rules.SubstitutionInverse(str(var_name), str(old_var), expr)
+        return rules.SubstitutionInverse(str(var_name), str(old_var), str(expr))
 
     def integral_identity_rule(self):
         from integral import rules

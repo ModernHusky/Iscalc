@@ -1448,7 +1448,7 @@ class SubstitutionInverse(Rule):
         self.var_subst = var_subst
 
     def __str__(self):
-        return "inverse substitute %s for %s creating %s" % (
+        return "substitute %s for %s creating %s" % (
             self.var_subst, self.old_var, self.var_name)
 
     def export(self):
