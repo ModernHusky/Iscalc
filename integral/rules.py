@@ -827,6 +827,90 @@ class IndefiniteIntegralIdentity(Rule):
 
         return e
 
+class IntegralIdentity(Rule):
+    def __init__(self):
+        self.name = "IntegralIdentity"
+
+    def __str__(self):
+        return "apply integral identity"
+
+    def export(self):
+        return {
+            "name": self.name,
+            "str": str(self)
+        }
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        """Apply indefinite integral identity to expression."""
+        def apply(e: Expr):
+            for indef in ctx.get_indefinite_integrals():
+                inst = expr.match(e, indef.lhs)
+                if inst is None:
+                    continue
+
+                inst['x'] = Var(e.var)
+                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                return indef.rhs.args[0].inst_pat(inst)
+
+            # No matching identity found
+            return e
+
+        # Apply linearity
+        if expr.is_integral(e) or expr.is_indefinite_integral(e):
+            e = Linearity().eval(e, ctx)
+
+        # Apply to right side of equation
+        if e.is_equals():
+            return OnLocation(self, "1").eval(e, ctx)
+
+        integrals = e.separate_integral()
+        skolem_args = set()
+        exist_indefinite_integral = False
+        for sub_e, loc in integrals:
+            new_e = sub_e
+            if expr.is_indefinite_integral(sub_e):
+                exist_indefinite_integral = True
+                new_e = apply(sub_e)
+                if new_e != sub_e:
+                    e = e.replace_expr(loc, new_e)
+                    skolem_args = skolem_args.union(set(sub_e.skolem_args))
+            elif expr.is_integral(sub_e):
+                flag = False
+                for identity in ctx.get_indefinite_integrals():
+                    inst = expr.match(IndefiniteIntegral(sub_e.var, sub_e.body, skolem_args=tuple()), identity.lhs)
+                    if inst is None:
+                        continue
+
+                    inst[identity.lhs.var] = Var(sub_e.var)
+                    assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                    pat_rhs = identity.rhs.args[0]  # remove Skolem constant C
+                    new_e = EvalAt(sub_e.var, sub_e.lower, sub_e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
+                    flag = True
+                if not flag:
+                    # Look for definite integral identities
+                    for identity in ctx.get_definite_integrals():
+                        inst = expr.match(sub_e, identity.lhs)
+                        if inst is not None:
+                            # Check conditions
+                            satisfied = True
+                            for cond in identity.conds.data:
+                                cond = expr.expr_to_pattern(cond)
+                                cond = cond.inst_pat(inst)
+                                if not ctx.check_condition(cond):
+                                    satisfied = False
+                            if satisfied:
+                                new_e =  normalize(identity.rhs.inst_pat(inst), ctx)
+                if new_e != sub_e:
+                    e = e.replace_expr(loc, new_e)
+        if exist_indefinite_integral:
+            if e.is_plus() and expr.is_skolem_func(e.args[1]):
+                # If already has Skolem variable at right
+                skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
+                e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
+            else:
+                # If no Skolem variable at right
+                e = e + expr.SkolemFunc("C", tuple(Var(arg) for arg in skolem_args))
+        return e
 
 class ReplaceSubstitution(Rule):
     """Replace previously performed substitution"""
@@ -1093,7 +1177,7 @@ class OnCount(Rule):
 
         res = rec(e, ctx)
         if count > 0:
-            raise AssertionError("OnCount: n is out of range")
+            raise RuleException("OnCount",f"{self.n} is out of range")
         return res
 
 class Simplify(Rule):

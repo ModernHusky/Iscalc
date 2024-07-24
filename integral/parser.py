@@ -98,7 +98,6 @@ grammar = r"""
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "substitute" expr "for" CNAME "creating" CNAME -> inverse_substitute_rule
         | "apply" "integral" "identity" -> integral_identity_rule
-        | "apply" "indefinite" "integral" -> indefinite_integral_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
         | "rewrite" expr "to" expr -> equation_rule
@@ -398,7 +397,7 @@ class ExprTransformer(Transformer):
 
     def integral_identity_rule(self):
         from integral import rules
-        return rules.DefiniteIntegralIdentity()
+        return rules.IntegralIdentity()
 
     def indefinite_integral_rule(self):
         from integral import rules
