@@ -381,7 +381,7 @@ class Expr:
             return Deriv(self.var, self.body.replace_expr(loc.rest, new_expr))
         elif is_limit(self):
             assert loc.head == 0, "replace_expr: invalid location"
-            return Limit(self.var, self.limit, self.body.replace_expr(loc.rest, new_expr), self.drt)
+            return Limit(self.var, self.lim, self.body.replace_expr(loc.rest, new_expr), self.drt)
         elif is_summation(self):
             if loc.head == 0:
                 return Summation(self.index_var, self.lower, self.upper, self.body.replace_expr(loc.rest, new_expr))
