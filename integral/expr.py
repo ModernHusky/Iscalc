@@ -219,7 +219,7 @@ class Expr:
         if self.is_equals():
             return self.args[0]
         else:
-            raise AssertionError("lhs: term is not an equality")
+            raise AssertionError(f"lhs: term {self} is not an equality")
 
     @property
     def rhs(self) -> "Expr":
@@ -357,7 +357,7 @@ class Expr:
         elif is_fun(self):
             assert loc.head < len(self.args), "replace_expr: invalid location"
             arg = self.args[loc.head].replace_expr(loc.rest, new_expr)
-            return Fun((self.func_name, self.type), arg)
+            return Fun(self.func_name, arg)
         elif is_integral(self):
             if loc.head == 0:
                 return Integral(self.var, self.lower, self.upper, self.body.replace_expr(loc.rest, new_expr))
@@ -382,8 +382,17 @@ class Expr:
         elif is_limit(self):
             assert loc.head == 0, "replace_expr: invalid location"
             return Limit(self.var, self.limit, self.body.replace_expr(loc.rest, new_expr), self.drt)
+        elif is_summation(self):
+            if loc.head == 0:
+                return Summation(self.index_var, self.lower, self.upper, self.body.replace_expr(loc.rest, new_expr))
+            elif loc.head == 1:
+                return Summation(self.index_var, self.lower.replace_expr(loc.rest, new_expr), self.upper, self.body)
+            elif loc.head == 2:
+                return Summation(self.index_var, self.lower, self.upper.replace_expr(loc.rest, new_expr), self.body)
+            else:
+                raise AssertionError("replace_expr: invalid location")
         else:
-            raise NotImplementedError
+            raise NotImplementedError(self)
 
     def get_location(self) -> Location:
         """Returns the location at which the 'selected' field is True."""

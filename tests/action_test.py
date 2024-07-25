@@ -29,7 +29,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
             lhs:
                 substitute u for x + a
-                apply indefinite integral
+                apply integral identity
                 replace substitution
             done
 
@@ -37,7 +37,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 substitute u for a * x
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
             done
 
@@ -45,7 +45,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 substitute u for a * x
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -54,7 +54,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 substitute u for a * x
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
             done
 
@@ -63,7 +63,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for x / a
                 rewrite a ^ 2 * u ^ 2 + a ^ 2 to a ^ 2 * (u ^ 2 + 1)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -72,7 +72,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 integrate by parts with u = log(x), v = x ^ (k + 1) / (k + 1)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -112,14 +112,14 @@ class ActionTest(unittest.TestCase):
             prove (INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C) for a > 0, a != 1
             lhs:
                 rewrite a ^ x to exp(log(a) * x)
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
             prove (INT x. cos(x) ^ 2) = 1/2 * (sin(2 * x) / 2 + x) + SKOLEM_CONST(C)
             lhs:
                 rewrite cos(x) ^ 2 to (1 + cos(2 * x)) / 2 using identity
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
         """
@@ -987,11 +987,11 @@ class ActionTest(unittest.TestCase):
     def testExponential(self):
         actions = """
             calculate INT x. 5 * exp(x)
-                apply indefinite integral
+                apply integral identity
             done
 
             calculate INT x. 2 - 3 * exp(x)
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1002,27 +1002,27 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. 7 ^ (2 * x + 3)
                 substitute u for 2 * x
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
 
             calculate INT x. exp(5 * x) * (exp(2 * x) / 7 + 3 / exp(3 * x))
                 expand polynomial
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
             calculate INT x. exp(x) * (1 + 2 * exp(x)) ^ 4
                 substitute u for 2 * exp(x) + 1
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
 
             calculate INT x. (exp(4 * x) - exp(-4 * x)) ^ 2
                 expand polynomial
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1030,7 +1030,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for exp(x) + 1
                 simplify
                 expand polynomial
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1048,7 +1048,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite u ^ 5 * (u - 1) ^ 2 to u ^ 7 - 2 * u ^ 6 + u ^ 5
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1059,7 +1059,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (exp(9 * x) * (27 + exp(3 * x))) ^ (1/3) to exp(3 * x) * (27 + exp(3 * x)) ^ (1/3)
                 substitute u for exp(3 * x) + 27
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
                 replace substitution
             done
@@ -1072,7 +1072,7 @@ class ActionTest(unittest.TestCase):
                 rewrite tan(5 * x) to sin(5 * x) / cos(5 * x) using identity
                 substitute u for cos(5 * x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1083,7 +1083,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute u for cos(4 * x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1094,14 +1094,14 @@ class ActionTest(unittest.TestCase):
                 rewrite sin(x) ^ 2 + cos(x) ^ 2 to 1 using identity
                 simplify
                 substitute u for sin(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
 
             calculate INT x. 3 * cos(5 * x) ^ 2
                 substitute u for 5 * x
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1109,10 +1109,10 @@ class ActionTest(unittest.TestCase):
             calculate INT x. (2 + tan(x)) ^ 2
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1120,10 +1120,10 @@ class ActionTest(unittest.TestCase):
                 rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
                 rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
                 expand polynomial
-                apply indefinite integral
+                apply integral identity
                 substitute u for cos(x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1132,7 +1132,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for sin(5 * x)
                 substitute v for u + 3
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1142,7 +1142,7 @@ class ActionTest(unittest.TestCase):
                 rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2 using identity
                 rewrite 1 - sin(x) ^ 2 to (1 + sin(x)) * (1 - sin(x))
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1155,7 +1155,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sin(x) / cos(x) to tan(x) using identity
                 rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1165,10 +1165,10 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute u for 3 * x
                 simplify
-                apply indefinite integral
+                apply integral identity
                 substitute v for 3 * x
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1176,7 +1176,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. sec(x) ^ 2 * sqrt(5 + tan(x))
                 substitute u for 5 + tan(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1187,14 +1187,14 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 simplify
                 substitute u for tan(x)
-                apply indefinite integral
+                apply integral identity
                 simplify
                 rewrite tan(x) ^ 3 to tan(x) * tan(x) ^ 2
                 rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
                 rewrite tan(x) * (sec(x) ^ 2 - 1) to tan(x) * sec(x) ^ 2 - tan(x)
                 simplify
                 substitute u for tan(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1203,7 +1203,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. (sin(x) - cos(x)) * (sin(x) + cos(x)) ^ 5
                 rewrite (sin(x) - cos(x)) * (sin(x) + cos(x)) ^ 5 to -((sin(x) + cos(x)) ^ 5) * (cos(x) - sin(x))
                 substitute u for sin(x) + cos(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1211,7 +1211,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. cos(x) * exp(4 + sin(x))
                 rewrite cos(x) * exp(4 + sin(x)) to exp(4 + sin(x)) * cos(x)
                 substitute u for 4 + sin(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1220,7 +1220,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sin(3 * x) * sin(cos(3 * x)) to -sin(cos(3 * x)) / 3 * -(3 * sin(3 * x))
                 substitute u for cos(3 * x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1228,7 +1228,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. cos(x) * log(sin(x)) / sin(x)
                 rewrite cos(x) * log(sin(x)) / sin(x) to log(sin(x)) * (cos(x) / sin(x))
                 substitute u for log(sin(x))
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1236,14 +1236,14 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sec(x) * tan(x) * sqrt(4 + 3 * sec(x))
                 rewrite sec(x) * tan(x) * sqrt(4 + 3 * sec(x)) to sqrt(4 + 3 * sec(x)) / 3 * (3 * sec(x) * tan(x))
                 substitute u for 4 + 3 * sec(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
 
             calculate INT x. exp(x) * cos(exp(x))
                 substitute u for exp(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1251,7 +1251,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. x * sin(3 * x)
                 integrate by parts with u = x, v = -1/3 * cos(3 * x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1260,7 +1260,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 integrate by parts with u = x, v = -cos(x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
 
@@ -1268,7 +1268,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sin(x) * cos(x) * exp(sin(x)) to sin(x) * exp(sin(x)) * cos(x)
                 substitute u for sin(x)
                 integrate by parts with u = u, v = exp(u)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1291,7 +1291,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sec(x) * sqrt(sec(x) + tan(x))
                 rewrite sec(x) * sqrt(sec(x) + tan(x)) to 2 * ((sec(x) * tan(x) + sec(x) ^ 2) / (2 * sqrt(sec(x) + tan(x))))
                 substitute u for sqrt(sec(x) + tan(x))
-                apply indefinite integral
+                apply integral identity
                 replace substitution
             done
 
@@ -1299,7 +1299,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x)) to -1 / (2 * (sin(2 * x) + cos(2 * x))) * (2 * cos(2 * x) - 2 * sin(2 * x))
                 substitute u for sin(2 * x) + cos(2 * x)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1307,7 +1307,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x))
                 rewrite (sin(x) + cos(x)) / (exp(-x) + sin(x)) to 1 / (1 + exp(x) * sin(x)) * (cos(x) * exp(x) + exp(x) * sin(x))
                 substitute u for 1 + exp(x) * sin(x)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1503,7 +1503,7 @@ class ActionTest(unittest.TestCase):
                 partial fraction decomposition
                 simplify
                 substitute v for u + 1
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1514,7 +1514,7 @@ class ActionTest(unittest.TestCase):
                 partial fraction decomposition
                 simplify
                 substitute v for u - 3
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1526,7 +1526,7 @@ class ActionTest(unittest.TestCase):
                 partial fraction decomposition
                 simplify
                 substitute v for u + 4
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1537,7 +1537,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1545,7 +1545,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. (3 * x + 2) / sqrt(x - 9) for x > 9
                 substitute u for sqrt(x - 9)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1554,7 +1554,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for x ^ (1/3)
                 partial fraction decomposition
                 substitute v for u - 1
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1569,7 +1569,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute v for u ^ 2 + 1
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1580,7 +1580,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
                 replace substitution
                 simplify
@@ -1591,7 +1591,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
                 replace substitution
                 simplify
@@ -1602,7 +1602,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1612,7 +1612,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1625,7 +1625,7 @@ class ActionTest(unittest.TestCase):
                 substitute v for 2 * u + 2
                 substitute w for 2 * u - 2 (at 2)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1641,7 +1641,7 @@ class ActionTest(unittest.TestCase):
                 substitute v3 for u + 2 (at 3)
                 substitute v4 for u - 2 (at 4)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1660,7 +1660,7 @@ class ActionTest(unittest.TestCase):
                 substitute v3 for 4 * u + 8 (at 3)
                 substitute v4 for 4 * u - 8 (at 4)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1675,7 +1675,7 @@ class ActionTest(unittest.TestCase):
                 rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
                 rewrite 1 - sin(u)^2 to cos(u)^2 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1689,9 +1689,9 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 substitute v for tan(u)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1704,7 +1704,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite 1 / cos(u)^2 to (1/cos(u))^2
                 rewrite 1/cos(u) to sec(u) using identity
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1720,7 +1720,7 @@ class ActionTest(unittest.TestCase):
                 rewrite 1 / sin(u) to csc(u)
                 rewrite tan(u) ^ 2 / sin(u) to sec(u) * tan(u)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1738,7 +1738,7 @@ class ActionTest(unittest.TestCase):
                 substitute v for cos(u)
                 substitute v2 for cos(u) (at 2)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1753,7 +1753,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 rewrite 1 / sin(u) to csc(u)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1767,7 +1767,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 rewrite 1 / sec(u) to cos(u)
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1781,7 +1781,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 simplify
                 rewrite sec(u) / tan(u)^2 to cot(u) * csc(u)
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -1798,7 +1798,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 simplify
                 solve integral INT x. sec(x)^3
-                apply indefinite integral
+                apply integral identity
                 expand polynomial
                 simplify
             rhs:
@@ -1810,7 +1810,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
                 rewrite tan(u)^2+1 to sec(u)^2 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
                 replace substitution
                 simplify
@@ -1825,7 +1825,7 @@ class ActionTest(unittest.TestCase):
                 rewrite tan(u)^2 to sec(u)^2 - 1 using identity
                 expand polynomial
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
                 rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
@@ -1839,7 +1839,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
                 rewrite sec(v)^2-1 to tan(v)^2 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 replace substitution
                 simplify
@@ -1850,7 +1850,7 @@ class ActionTest(unittest.TestCase):
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
                 rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 simplify
             done
@@ -2277,7 +2277,7 @@ class ActionTest(unittest.TestCase):
             subgoal 3: 2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) * (y ^ 2 + 1) ^ (-1)) + g(t) = SKOLEM_CONST(C) for t > 0
             from 2:
                 integrate both sides
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
             subgoal 4: pi / 2 = SKOLEM_CONST(C)
@@ -2493,7 +2493,7 @@ class ActionTest(unittest.TestCase):
             subgoal 2: I(a) = log(a + 1) + SKOLEM_CONST(C) for a > -1
             from 1:
                 integrate both sides
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
             subgoal 3: SKOLEM_CONST(C) = 0
@@ -2542,7 +2542,7 @@ class ActionTest(unittest.TestCase):
             from 1:
                 integrate both sides
                 simplify
-                apply indefinite integral
+                apply integral identity
                 simplify
             done
             subgoal 3: SKOLEM_FUNC(C(a)) = -(pi * log(a) / 2) for a > 0
@@ -2835,7 +2835,7 @@ class ActionTest(unittest.TestCase):
                 integrate both sides
                 substitute u for 1 + a * b
                 simplify
-                apply indefinite integral
+                apply integral identity
                 replace substitution
                 rewrite abs(1 + a * b) to 1 + a * b
             done
