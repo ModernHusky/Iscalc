@@ -1854,6 +1854,16 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+            calculate INT x. x/sqrt(x^2 + 4*x + 5)
+                rewrite x^2+4*x+5 to (x+2)^2 + 1
+                substitute u for (x+2)
+                substitute v for atan(u)
+                rewrite tan(v)^2+1 to sec(v)^2
+                simplify
+                expand polynomial
+                apply integral identity
+                simplify
+                done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
