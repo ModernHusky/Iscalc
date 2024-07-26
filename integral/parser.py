@@ -104,7 +104,6 @@ grammar = r"""
         | "rewrite" "to" expr -> equation_none_rule
         | "expand" "polynomial" -> expand_polynomial_rule
         | "partial" "fraction" "decomposition" -> partial_fraction_decomposition_rule
-        | "rewrite" expr "to" expr "using" "identity" -> apply_identity_rule
         | "solve" "integral" expr -> solve_integral_rule
         | "solve" "equation" "for" expr -> solve_equation_rule
         | "differentiate" "both" "sides" "at" CNAME -> deriv_equation_rule
@@ -413,11 +412,11 @@ class ExprTransformer(Transformer):
     
     def equation_rule(self, old_expr: Expr, new_expr: Expr):
         from integral import rules
-        return rules.Equation(old_expr, new_expr)
+        return rules.Rewriting(old_expr, new_expr)
 
     def equation_none_rule(self, new_expr: Expr):
         from integral import rules
-        return rules.Equation(old_expr=None, new_expr=new_expr)
+        return rules.Rewriting(old_expr=None, new_expr=new_expr)
 
     def expand_polynomial_rule(self):
         from integral import rules

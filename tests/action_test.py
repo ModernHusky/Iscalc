@@ -92,7 +92,7 @@ class ActionTest(unittest.TestCase):
                     apply induction hypothesis (all)
                     simplify
                     rewrite to (-1) ^ (n + 1) * (m + 1) ^ (-n - 2) * ((n + 1) * factorial(n))
-                    rewrite (n + 1) * factorial(n) to factorial(n + 1) using identity
+                    rewrite (n + 1) * factorial(n) to factorial(n + 1)
                     simplify
                 rhs:
                     simplify
@@ -118,7 +118,7 @@ class ActionTest(unittest.TestCase):
 
             prove (INT x. cos(x) ^ 2) = 1/2 * (sin(2 * x) / 2 + x) + SKOLEM_CONST(C)
             lhs:
-                rewrite cos(x) ^ 2 to (1 + cos(2 * x)) / 2 using identity
+                rewrite cos(x) ^ 2 to (1 + cos(2 * x)) / 2
                 apply integral identity
                 simplify
             done
@@ -201,7 +201,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[0, pi]. 1 - sin(x) ^ 3
                 simplify
                 rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
-                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2
                 substitute u for cos(x)
                 apply integral identity
                 simplify
@@ -214,7 +214,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
                 substitute sin(u) for x creating u
-                rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2 using identity
+                rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2
                 simplify
                 apply integral identity
                 simplify
@@ -223,7 +223,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
                 substitute sqrt(2) * sin(u) for x creating u
                 simplify
-                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
                 simplify
                 apply integral identity
@@ -233,7 +233,7 @@ class ActionTest(unittest.TestCase):
             calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
                 substitute 2 * sin(u) for y creating u
                 simplify
-                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
                 simplify
                 apply integral identity
@@ -243,12 +243,12 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[1/sqrt(2), 1]. sqrt(1 - x^2) / x ^ 2
                 substitute sin(u) for x creating u
                 simplify
-                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2 using identity
+                rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 simplify
-                rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2 using identity
+                rewrite cos(u) ^ 2 to 1 - sin(u) ^ 2
                 expand polynomial
                 simplify
-                rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2 using identity
+                rewrite 1 / sin(u) ^ 2 to csc(u) ^ 2
                 apply integral identity
                 simplify
             done
@@ -306,7 +306,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4
                 rewrite cos(x) ^ 4 to (cos(x) ^ 2) ^ 2
-                rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2 using identity
+                rewrite cos(x) ^ 2 to (1 + cos(2*x)) / 2
                 expand polynomial
                 substitute u for 2 * x
                 simplify
@@ -316,7 +316,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[-pi/2, pi/2]. sqrt(cos(x) - cos(x)^3)
                 rewrite cos(x) - cos(x)^3 to cos(x) * (1 - cos(x)^2)
-                rewrite 1 - cos(x)^2 to sin(x)^2 using identity
+                rewrite 1 - cos(x)^2 to sin(x)^2
                 simplify
                 split region at 0
                 simplify
@@ -328,7 +328,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[0, pi]. sqrt(1 + cos(2*x))
-                rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1 using identity
+                rewrite cos(2 * x) to 2 * cos(x) ^ 2 - 1
                 simplify
                 split region at pi / 2
                 simplify
@@ -350,10 +350,10 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[pi/4, pi/3]. x / sin(x)^2
-                rewrite sin(x) ^ 2 to csc(x) ^ -2 using identity
+                rewrite sin(x) ^ 2 to csc(x) ^ -2
                 integrate by parts with u = x, v = -cot(x)
                 simplify
-                rewrite cot(x) to cos(x) / sin(x) using identity
+                rewrite cot(x) to cos(x) / sin(x)
                 substitute u for sin(x)
                 apply integral identity
                 simplify
@@ -383,7 +383,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[0,pi]. (x * sin(x)) ^ 2
                 simplify
-                rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity
+                rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2
                 expand polynomial
                 simplify
                 integrate by parts with u = x^2 / 2, v = sin(2*x)
@@ -418,8 +418,8 @@ class ActionTest(unittest.TestCase):
     def testMIT2019(self):
         actions = """
             calculate INT x:[0,pi / 100]. (sin(20 * x) + sin(19 * x)) / (cos(20 * x) + cos(19 * x))
-                rewrite sin(20 * x) + sin(19 * x) to 2 * cos(1/2 * x) * sin(39/2 * x) using identity
-                rewrite cos(20 * x) + cos(19 * x) to 2 * cos(1/2 * x) * cos(39/2 * x) using identity
+                rewrite sin(20 * x) + sin(19 * x) to 2 * cos(1/2 * x) * sin(39/2 * x)
+                rewrite cos(20 * x) + cos(19 * x) to 2 * cos(1/2 * x) * cos(39/2 * x)
                 simplify
                 substitute u for cos(39/2 * x)
                 apply integral identity
@@ -905,7 +905,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[0, pi/4]. x * sin(x) * cos(x)
                 integrate by parts with u = x, v = 1/2 * sin(x) ^ 2
                 simplify
-                rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2 using identity
+                rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2
                 apply integral identity
                 simplify
             done
@@ -1036,8 +1036,8 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[0,1]. (3 ^ x + 4 ^ x) / 5 ^ x
                 rewrite (3 ^ x + 4 ^ x) / 5 ^ x to 3 ^ x / 5 ^ x + 4 ^ x / 5 ^ x
-                rewrite 3 ^ x / 5 ^ x to (3/5) ^ x using identity
-                rewrite 4 ^ x / 5 ^ x to (4/5) ^ x using identity
+                rewrite 3 ^ x / 5 ^ x to (3/5) ^ x
+                rewrite 4 ^ x / 5 ^ x to (4/5) ^ x
                 simplify
                 apply integral identity
                 simplify
@@ -1069,7 +1069,7 @@ class ActionTest(unittest.TestCase):
     def testTrigonometric(self):
         actions = """
             calculate INT x. tan(5 * x) for x > 0, x < pi/10
-                rewrite tan(5 * x) to sin(5 * x) / cos(5 * x) using identity
+                rewrite tan(5 * x) to sin(5 * x) / cos(5 * x)
                 substitute u for cos(5 * x)
                 simplify
                 apply integral identity
@@ -1078,8 +1078,8 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. 5 * sec(4 * x) * tan(4 * x)
-                rewrite sec(4 * x) to 1 / cos(4 * x) using identity
-                rewrite tan(4 * x) to sin(4 * x) / cos(4 * x) using identity
+                rewrite sec(4 * x) to 1 / cos(4 * x)
+                rewrite tan(4 * x) to sin(4 * x) / cos(4 * x)
                 simplify
                 substitute u for cos(4 * x)
                 simplify
@@ -1091,7 +1091,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. (sin(x) + cos(x)) ^ 2
                 expand polynomial
                 rewrite 2 * cos(x) * sin(x) + cos(x) ^ 2 + sin(x) ^ 2 to 2 * cos(x) * sin(x) + (sin(x) ^ 2 + cos(x) ^ 2)
-                rewrite sin(x) ^ 2 + cos(x) ^ 2 to 1 using identity
+                rewrite sin(x) ^ 2 + cos(x) ^ 2 to 1
                 simplify
                 substitute u for sin(x)
                 apply integral identity
@@ -1110,7 +1110,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 simplify
                 apply integral identity
-                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
+                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1
                 simplify
                 apply integral identity
                 simplify
@@ -1118,7 +1118,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. sin(x) ^ 3
                 rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
-                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2
                 expand polynomial
                 apply integral identity
                 substitute u for cos(x)
@@ -1139,7 +1139,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. cos(x) ^ 2 / (1 + sin(x))
-                rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2 using identity
+                rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2
                 rewrite 1 - sin(x) ^ 2 to (1 + sin(x)) * (1 - sin(x))
                 simplify
                 apply integral identity
@@ -1148,12 +1148,12 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. sin(x) / (1 + sin(x))
                 rewrite sin(x) / (1 + sin(x)) to sin(x) * (1 - sin(x)) / (1 - sin(x) ^ 2)
-                rewrite 1 - sin(x) ^ 2 to cos(x) ^ 2 using identity
+                rewrite 1 - sin(x) ^ 2 to cos(x) ^ 2
                 rewrite sin(x) * (1 - sin(x)) / cos(x) ^ 2 to 1 / cos(x) * (sin(x) / cos(x)) - (sin(x) / cos(x)) ^ 2
-                rewrite 1 / cos(x) to sec(x) using identity
-                rewrite sin(x) / cos(x) to tan(x) using identity
-                rewrite sin(x) / cos(x) to tan(x) using identity
-                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
+                rewrite 1 / cos(x) to sec(x)
+                rewrite sin(x) / cos(x) to tan(x)
+                rewrite sin(x) / cos(x) to tan(x)
+                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1
                 simplify
                 apply integral identity
                 simplify
@@ -1161,7 +1161,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. (csc(3 * x) + cot(3 * x)) ^ 2
                 expand polynomial
-                rewrite cot(3 * x) ^ 2 to csc(3 * x) ^ 2 - 1 using identity
+                rewrite cot(3 * x) ^ 2 to csc(3 * x) ^ 2 - 1
                 simplify
                 substitute u for 3 * x
                 simplify
@@ -1183,14 +1183,14 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. tan(x) ^ 5
                 rewrite tan(x) ^ 5 to tan(x) ^ 3 * tan(x) ^ 2
-                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
+                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1
                 expand polynomial
                 simplify
                 substitute u for tan(x)
                 apply integral identity
                 simplify
                 rewrite tan(x) ^ 3 to tan(x) * tan(x) ^ 2
-                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1 using identity
+                rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1
                 rewrite tan(x) * (sec(x) ^ 2 - 1) to tan(x) * sec(x) ^ 2 - tan(x)
                 simplify
                 substitute u for tan(x)
@@ -1673,7 +1673,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
                 substitute u for asin(x)
                 rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
-                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
                 apply integral identity
                 replace substitution
@@ -1682,12 +1682,12 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
                 substitute u for asec(x)
-                rewrite sec(u)^2 - 1 to tan(u)^2 using identity
+                rewrite sec(u)^2 - 1 to tan(u)^2
                 simplify
                 rewrite tan(u)^4 to tan(u)^2 * tan(u)^2
-                rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
+                rewrite tan(u)^2 to sec(u)^2 - 1 (at 2)
                 expand polynomial
-                rewrite tan(u)^2 to sec(u)^2 - 1 using identity (at 2)
+                rewrite tan(u)^2 to sec(u)^2 - 1 (at 2)
                 simplify
                 apply integral identity
                 substitute v for tan(u)
@@ -1700,10 +1700,10 @@ class ActionTest(unittest.TestCase):
             calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
                 substitute u for asin(x)
                 rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
-                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
                 rewrite 1 / cos(u)^2 to (1/cos(u))^2
-                rewrite 1/cos(u) to sec(u) using identity
+                rewrite 1/cos(u) to sec(u)
                 apply integral identity
                 replace substitution
                 simplify
@@ -1711,10 +1711,10 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. sqrt(x^2 + 1) / x
                 substitute u for atan(x)
-                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                rewrite tan(u)^2 + 1 to sec(u)^2
                 simplify
                 rewrite sec(u)^3 to sec(u) * sec(u)^2
-                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                rewrite sec(u)^2 to 1 + tan(u)^2
                 rewrite sec(u) * (1 + tan(u)^2) / tan(u) to (1 + tan(u)^2) / sin(u)
                 expand polynomial
                 rewrite 1 / sin(u) to csc(u)
@@ -1729,10 +1729,10 @@ class ActionTest(unittest.TestCase):
                 substitute u for asin(3*x/2)
                 simplify
                 rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
-                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
                 rewrite cos(u)^2 * sin(u)^3 to sin(u) * sin(u)^2 * cos(u)^2
-                rewrite sin(u)^2 to 1 - cos(u)^2 using identity
+                rewrite sin(u)^2 to 1 - cos(u)^2
                 expand polynomial
                 simplify
                 substitute v for cos(u)
@@ -1747,9 +1747,9 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
                 substitute u for asin(x)
                 rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
-                rewrite 1 - sin(u)^2 to cos(u)^2 using identity
+                rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
-                rewrite cos(u) ^ 2 to 1 - sin(u)^2 using identity
+                rewrite cos(u) ^ 2 to 1 - sin(u)^2
                 expand polynomial
                 rewrite 1 / sin(u) to csc(u)
                 simplify
@@ -1761,9 +1761,9 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
                 substitute u for asec(x/3)
                 rewrite 9 * sec(u)^2 - 9 to 9 * (sec(u)^2 - 1)
-                rewrite sec(u)^2 - 1 to tan(u)^2 using identity
+                rewrite sec(u)^2 - 1 to tan(u)^2
                 simplify
-                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                rewrite tan(u)^2 to sec(u)^2 - 1
                 expand polynomial
                 rewrite 1 / sec(u) to cos(u)
                 simplify
@@ -1774,10 +1774,10 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
                 substitute u for atan(x)
-                rewrite tan(u)^2 + 1 to sec(u)^2 using identity
+                rewrite tan(u)^2 + 1 to sec(u)^2
                 simplify
                 rewrite sec(u)^3 to sec(u) * sec(u)^2
-                rewrite sec(u)^2 to 1 + tan(u)^2 using identity
+                rewrite sec(u)^2 to 1 + tan(u)^2
                 expand polynomial
                 simplify
                 rewrite sec(u) / tan(u)^2 to cot(u) * csc(u)
@@ -1788,13 +1788,13 @@ class ActionTest(unittest.TestCase):
             prove (INT x. sec(x)^3) = 1/2*sec(x)*tan(x)+1/2*log(abs(sec(x)+tan(x)))+SKOLEM_CONST(C) for x > -pi/2, x<pi/2
             subgoal1: abs(sec(x) + tan(x)) > 0
             lhs:
-                rewrite sec(x) to 1/cos(x) using identity
-                rewrite tan(x) to sin(x)/cos(x) using identity
+                rewrite sec(x) to 1/cos(x)
+                rewrite tan(x) to sin(x)/cos(x)
                 rewrite 1/cos(x) + sin(x)/cos(x) to (1+sin(x))/cos(x)
             done
             lhs:
                 integrate by parts with u=sec(x), v=tan(x)
-                rewrite tan(x)^2 to sec(x)^2 - 1 using identity
+                rewrite tan(x)^2 to sec(x)^2 - 1
                 expand polynomial
                 simplify
                 solve integral INT x. sec(x)^3
@@ -1808,7 +1808,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for atan(x/5)
                 simplify
                 rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
-                rewrite tan(u)^2+1 to sec(u)^2 using identity
+                rewrite tan(u)^2+1 to sec(u)^2
                 simplify
                 apply integral identity
                 simplify
@@ -1820,9 +1820,9 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sqrt(x^2-4) for x > 2
                 substitute u for asec(x/2)
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
-                rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
+                rewrite sec(u) ^ 2 - 1 to tan(u)^2
                 simplify
-                rewrite tan(u)^2 to sec(u)^2 - 1 using identity
+                rewrite tan(u)^2 to sec(u)^2 - 1
                 expand polynomial
                 simplify
                 apply integral identity
@@ -1837,7 +1837,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute v for asec(u/4)
                 rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
-                rewrite sec(v)^2-1 to tan(v)^2 using identity
+                rewrite sec(v)^2-1 to tan(v)^2
                 simplify
                 apply integral identity
                 replace substitution
@@ -1848,7 +1848,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x^2-4*x to (x-2)^2 - 4
                 substitute u for asec((x-2)/2)
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
-                rewrite sec(u) ^ 2 - 1 to tan(u)^2 using identity
+                rewrite sec(u) ^ 2 - 1 to tan(u)^2
                 simplify
                 apply integral identity
                 replace substitution
@@ -1890,7 +1890,7 @@ class ActionTest(unittest.TestCase):
                         rewrite -((2 * m + 1) / 2) - 1 to -m - 3/2
                         rewrite to b ^ (-m - 3/2) * 2 ^ -(2 * m) * pi * (2 * m + 1) / (4 * m + 4) * binom(2 * m,m)
                     rhs:
-                        rewrite binom(2 * m + 2,m + 1) to 2 * binom(2 * m,m) * ((2 * m + 1) / (m + 1)) using identity
+                        rewrite binom(2 * m + 2,m + 1) to 2 * binom(2 * m,m) * ((2 * m + 1) / (m + 1))
                         rewrite -((2 * m + 3) / 2) to -m - 3/2
                         simplify
                 done
@@ -1928,7 +1928,7 @@ class ActionTest(unittest.TestCase):
                     apply Gamma(n) = (n - 1) * Gamma(n - 1) on Gamma(n + 1)
                     simplify
                     apply induction hypothesis (all)
-                    rewrite n * factorial(n - 1) to factorial(n) using identity
+                    rewrite n * factorial(n - 1) to factorial(n)
                 done
             done
 
@@ -2050,7 +2050,7 @@ class ActionTest(unittest.TestCase):
                 rewrite -sqrt(2) + 1 to -1 / (1 + sqrt(2)) (at 2)
                 simplify
                 rewrite sqrt(2) to 2 ^ (1/2) (at 2)
-                rewrite 2 ^ (1/2) ^ (-sqrt(2) + 1) to 2 ^ (1/2 * (-sqrt(2) + 1)) using identity
+                rewrite 2 ^ (1/2) ^ (-sqrt(2) + 1) to 2 ^ (1/2 * (-sqrt(2) + 1))
                 rewrite (sqrt(2) + 1) * log(2 ^ (1/2 * (-sqrt(2) + 1)) + 1) to (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
             done
         """
@@ -2131,7 +2131,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 rewrite sqrt(2) * (log(sqrt(2) + 1) - log(sqrt(2) - 1)) / 4 to 1/4 * sqrt(2) * (log(sqrt(2) + 1) - log(sqrt(2) - 1))
-                rewrite log(sqrt(2) + 1) - log(sqrt(2) - 1) to log((sqrt(2) + 1) / (sqrt(2) - 1)) using identity
+                rewrite log(sqrt(2) + 1) - log(sqrt(2) - 1) to log((sqrt(2) + 1) / (sqrt(2) - 1))
                 rewrite (sqrt(2) + 1) / (sqrt(2) - 1) to 3 + 2 * sqrt(2)
                 simplify
             done
@@ -2144,7 +2144,7 @@ class ActionTest(unittest.TestCase):
             subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))
             lhs:
                 substitute tan(u) for x creating u
-                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1 using identity
+                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1
                 simplify
             done
             subgoal 2: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) - (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1))
@@ -2152,10 +2152,10 @@ class ActionTest(unittest.TestCase):
                 apply 1 on INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)
                 substitute pi / 4 - y for x creating y
                 simplify
-                rewrite tan(pi / 4 - y) to (tan(pi / 4) - tan(y)) / (1 + tan(pi / 4) * tan(y)) using identity
+                rewrite tan(pi / 4 - y) to (tan(pi / 4) - tan(y)) / (1 + tan(pi / 4) * tan(y))
                 simplify
                 rewrite (-tan(y) + 1) / (tan(y) + 1) + 1 to 2 / (1 + tan(y))
-                rewrite log(2 / (1 + tan(y))) to log(2) - log(1 + tan(y)) using identity
+                rewrite log(2 / (1 + tan(y))) to log(2) - log(1 + tan(y))
                 apply integral identity
                 simplify
                 apply 1 on INT x:[0,pi / 4]. log(tan(x) + 1)
@@ -2176,7 +2176,7 @@ class ActionTest(unittest.TestCase):
                 rewrite 1 / (t ^ 2 / a ^ 2 + 1) * log(t / a + 1) to log(t / a + 1) * a ^ 2 / (t ^ 2 + a ^ 2)
                 rewrite t / a + 1 to (t + a) / a
                 simplify
-                rewrite log((a + t) / a) to log(a + t) - log(a) using identity
+                rewrite log((a + t) / a) to log(a + t) - log(a)
                 rewrite 1 / (a ^ 2 + t ^ 2) * (log(a + t) - log(a)) to log(a + t) / (a ^ 2 + t ^ 2) - log(a) / (a ^ 2 + t ^ 2)
                 simplify
                 apply integral identity
@@ -2269,7 +2269,7 @@ class ActionTest(unittest.TestCase):
                 rewrite exp(t ^ 2 * (-(y ^ 2) - 1) / 2) to exp(1/2 * t ^ 2 * (-(y ^ 2) - 1))
                 rewrite 1/2 * t ^ 2 * (-(y ^ 2) - 1) to -1/2 * t ^ 2 * y ^ 2 + 1/2 * t ^ 2 * -1
                 simplify
-                rewrite exp(-(t ^ 2 * y ^ 2 / 2) - t ^ 2 / 2) to exp(-1/2 * t ^ 2 * y ^ 2) * exp(-1/2 * t ^ 2) using identity
+                rewrite exp(-(t ^ 2 * y ^ 2 / 2) - t ^ 2 / 2) to exp(-1/2 * t ^ 2 * y ^ 2) * exp(-1/2 * t ^ 2)
                 simplify
                 rewrite (-(y ^ 2) - 1) / (y ^ 2 + 1) to -1
                 simplify
@@ -2353,10 +2353,10 @@ class ActionTest(unittest.TestCase):
             subgoal 2: J(a) = pi / 2 * log(2 / a) + 2 * I(a) for a > 0
             lhs:
                 expand definition for J
-                rewrite sin(2 * x) to 2 * sin(x) * cos(x) using identity
+                rewrite sin(2 * x) to 2 * sin(x) * cos(x)
                 rewrite a * (2 * sin(x) * cos(x)) to 2 / a * (a * sin(x)) * (a * cos(x))
-                rewrite log(2 / a * (a * sin(x)) * (a * cos(x))) to log(2 / a * (a * sin(x))) + log(a * cos(x)) using identity
-                rewrite log(2 / a * (a * sin(x))) to log(2 / a) + log(a * sin(x)) using identity
+                rewrite log(2 / a * (a * sin(x)) * (a * cos(x))) to log(2 / a * (a * sin(x))) + log(a * cos(x))
+                rewrite log(2 / a * (a * sin(x))) to log(2 / a) + log(a * sin(x))
                 apply integral identity
                 simplify
                 substitute t for pi / 2 - x
@@ -2371,11 +2371,11 @@ class ActionTest(unittest.TestCase):
                 apply 1 on I(a)
                 apply 2 on J(a)
                 solve integral I(a)
-                rewrite log(2 / a) to log(2) + log(1 / a) using identity
+                rewrite log(2 / a) to log(2) + log(1 / a)
                 expand polynomial
                 simplify
             rhs:
-                rewrite log(a / 2) to log(a) - log(2) using identity
+                rewrite log(a / 2) to log(a) - log(2)
                 expand polynomial
             done
         """
@@ -2385,7 +2385,7 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[0,pi / 2]. log(sin(x) / x)) = pi / 2 * (1 - log(pi))
             lhs:
-                rewrite log(sin(x) / x) to log(sin(x)) - log(x) using identity
+                rewrite log(sin(x) / x) to log(sin(x)) - log(x)
                 simplify
                 rewrite log(sin(x)) to log(1 * sin(x))
                 apply integral identity
@@ -2406,10 +2406,10 @@ class ActionTest(unittest.TestCase):
             subgoal 1: (INT x:[0,oo]. log(x ^ 2 + 1) / (x ^ 2 + 1)) = pi * log(2)
             lhs:
                 substitute tan(u) for x creating u
-                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1 using identity
+                rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1
                 simplify
-                rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2 using identity
-                rewrite sec(u) to cos(u) ^ (-1) using identity
+                rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2
+                rewrite sec(u) to cos(u) ^ (-1)
                 simplify
                 substitute x for pi / 2 - u
                 rewrite sin(x) to 1 * sin(x)
@@ -2426,7 +2426,7 @@ class ActionTest(unittest.TestCase):
                 rewrite log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1) to (log(y ^ 2 + 1) + log(1 / y ^ 2 + 1)) / (y ^ 2 + 1)
                 rewrite log(y ^ 2 + 1) + log(1 / y ^ 2 + 1) to log((y ^ 2 + 1) * (1 / y ^ 2 + 1))
                 rewrite (y ^ 2 + 1) * (1 / y ^ 2 + 1) to (y + 1 / y) ^ 2
-                rewrite log((y + 1 / y) ^ 2) to 2 * log(y + 1 / y) using identity
+                rewrite log((y + 1 / y) ^ 2) to 2 * log(y + 1 / y)
                 simplify
                 rewrite 1 / (y ^ 2 + 1) * log(1 / y + y) to log(y + 1 / y) / (y ^ 2 + 1)
                 solve equation for INT y:[0,1]. log(y + 1 / y) / (y ^ 2 + 1)
@@ -2446,7 +2446,7 @@ class ActionTest(unittest.TestCase):
                 substitute 1 / u for x creating u
                 simplify
                 expand polynomial
-                rewrite (1 / u) ^ a to 1 ^ a / u ^ a using identity
+                rewrite (1 / u) ^ a to 1 ^ a / u ^ a
                 rewrite 1 ^ a / u ^ a + 1 to (1 + u ^ a) / u ^ a
                 rewrite log((1 + u ^ a) / u ^ a) to log(1 + u ^ a) - log(u ^ a)
                 expand polynomial
@@ -2520,7 +2520,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (x ^ a - 1 - (x ^ b - 1)) / log(x) to (x ^ a - 1) / log(x) - (x ^ b - 1) / log(x)
                 simplify
                 apply integral identity
-                rewrite log(a + 1) - log(b + 1) to log((a + 1) / (b + 1)) using identity
+                rewrite log(a + 1) - log(b + 1) to log((a + 1) / (b + 1))
             done
         """
         self.check_actions("interesting", "flipside04", actions)
@@ -2620,7 +2620,7 @@ class ActionTest(unittest.TestCase):
                 split region at 1
                 apply integral identity
                 rewrite x + 1 to x * (1 + 1 / x)
-                rewrite log(x * (1 + 1 / x)) to log(x) + log(1 + 1 / x) using identity
+                rewrite log(x * (1 + 1 / x)) to log(x) + log(1 + 1 / x)
                 rewrite (log(x) + log(1 + 1 / x)) / (x ^ 2 + 1) to log(x) / (x ^ 2 + 1) + log(1 + 1 / x) / (x ^ 2 + 1)
                 simplify
                 apply 3 on INT x:[1,oo]. log(x) / (x ^ 2 + 1)
@@ -2656,7 +2656,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
-                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a)) using identity
+                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a))
                 simplify
                 rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
                 rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
@@ -2691,8 +2691,8 @@ class ActionTest(unittest.TestCase):
             subgoal 1: converges(SUM(k, 0, oo, abs(INT x:[0,1]. (c * x ^ a * log(x)) ^ k / factorial(k))))
             arg:
                 simplify
-                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
-                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k
                 simplify
                 apply integral identity
                 simplify
@@ -2701,13 +2701,13 @@ class ActionTest(unittest.TestCase):
                 rewrite x ^ (c * x ^ a) to exp(log(x ^ (c * x ^ a)))
                 apply series expansion on exp(log(x ^ (c * x ^ a))) index k
                 exchange integral and sum
-                rewrite log(x ^ (c * x ^ a)) to c * x ^ a * log(x) using identity
-                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k using identity
-                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k using identity
+                rewrite log(x ^ (c * x ^ a)) to c * x ^ a * log(x)
+                rewrite (c * x ^ a * log(x)) ^ k to (c * x ^ a) ^ k * log(x) ^ k
+                rewrite (c * x ^ a) ^ k to c ^ k * x ^ a ^ k
                 simplify
                 apply integral identity
                 simplify
-                rewrite c ^ k * (-1) ^ k to (-c) ^ k using identity
+                rewrite c ^ k * (-1) ^ k to (-c) ^ k
             done
             prove (INT x:[0,1]. x ^ x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))
             lhs:
@@ -2733,7 +2733,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 rewrite k / 2 + 1 to (2 / (k + 2)) ^ (-1)
-                rewrite (2 / (k + 2)) ^ (-1) ^ (-k - 1) to (2 / (k + 2)) ^ (k + 1) using identity
+                rewrite (2 / (k + 2)) ^ (-1) ^ (-k - 1) to (2 / (k + 2)) ^ (k + 1)
             done
         """
         self.check_actions("interesting", "BernoulliIntegral", actions)
@@ -2780,7 +2780,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)
                 simplify
                 rewrite 1 / sqrt(x ^ 2 + 2) to sqrt(x ^ 2 + 2) ^ (-1)
-                rewrite atan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - atan(sqrt(x ^ 2 + 2)) using identity
+                rewrite atan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - atan(sqrt(x ^ 2 + 2))
                 expand polynomial
                 simplify
                 rewrite atan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
@@ -2869,10 +2869,10 @@ class ActionTest(unittest.TestCase):
                 substitute u for b + x
                 substitute u for b - x (at 2)
                 rewrite a * (-b + u) to -(a * (b - u))
-                rewrite cos(-(a * (b - u))) to cos(a * (b - u)) using identity
+                rewrite cos(-(a * (b - u))) to cos(a * (b - u))
                 simplify
                 rewrite cos(a * (b - u)) to cos(a * b - a * u)
-                rewrite cos(a * b - a * u) to cos(a * b) * cos(a * u) + sin(a * b) * sin(a * u) using identity
+                rewrite cos(a * b - a * u) to cos(a * b) * cos(a * u) + sin(a * b) * sin(a * u)
                 rewrite (cos(a * b) * cos(a * u) + sin(a * b) * sin(a * u)) / u to cos(a * b) * cos(a * u) / u + sin(a * b) * sin(a * u) / u
                 simplify
                 rewrite INT u:[-oo,oo]. cos(a * u) / u to 0
@@ -2923,7 +2923,7 @@ class ActionTest(unittest.TestCase):
                 substitute u for b + x (at 2)
                 substitute u for b - x (at 3)
                 rewrite sin(a * (-b + u)) to sin(-(a * (b - u)))
-                rewrite sin(-(a * (b - u))) to -sin(a * (b - u)) using identity
+                rewrite sin(-(a * (b - u))) to -sin(a * (b - u))
                 rewrite (-b + u) * -sin(a * (b - u)) to (b - u) * sin(a * (b - u))
                 simplify
                 rewrite INT u:[-oo,oo]. (b - u) * sin(a * (b - u)) / u to INT u:[-oo,oo]. (b - u) / u * sin(a * (b - u))
@@ -2934,7 +2934,7 @@ class ActionTest(unittest.TestCase):
                 split region at 0 (at 3)
                 substitute s for -s (at 3)
                 simplify
-                rewrite sin(a * b - a * u) to sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u) using identity
+                rewrite sin(a * b - a * u) to sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u)
                 rewrite (sin(a * b) * cos(a * u) - cos(a * b) * sin(a * u)) / u to sin(a * b) * cos(a * u) / u - cos(a * b) * sin(a * u) / u
                 simplify
                 split region at 0 (at 3)
@@ -2952,10 +2952,10 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[-1,1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi
             lhs:
                 substitute cos(2 * u) for x creating u
-                rewrite cos(2 * u) to 2 * cos(u) ^ 2 - 1 using identity (at 1)
-                rewrite cos(2 * u) to 1 - 2 * sin(u) ^ 2 using identity
+                rewrite cos(2 * u) to 2 * cos(u) ^ 2 - 1 (at 1)
+                rewrite cos(2 * u) to 1 - 2 * sin(u) ^ 2
                 simplify
-                rewrite sin(2 * u) to 2 * sin(u) * cos(u) using identity
+                rewrite sin(2 * u) to 2 * sin(u) * cos(u)
                 simplify
                 apply integral identity
                 simplify
@@ -2971,7 +2971,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 expand definition for I
                 rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
-                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2) using identity
+                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2)
                 simplify
                 substitute y for x - b / (2 * a)
                 apply integral identity
@@ -3003,7 +3003,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 expand definition for I
                 rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
-                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2) using identity
+                rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2)
                 simplify
                 substitute y for x - b / (2 * a)
                 apply integral identity
@@ -3073,7 +3073,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,pi / 3]. 1 / cos(x)) = log(2 + sqrt(3))
             lhs:
                 rewrite 1 / cos(x) to cos(x) / cos(x) ^ 2
-                rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2 using identity
+                rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2
                 substitute u for sin(x)
                 rewrite 1 / (-(u ^ 2) + 1) to 1/2 * (1 / (1 - u) + 1 / (1 + u))
                 simplify
@@ -3083,7 +3083,7 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
-                rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1)) using identity
+                rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1))
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
                 simplify
                 rewrite sqrt(3) + 2 to 2 + sqrt(3)
@@ -3097,7 +3097,7 @@ class ActionTest(unittest.TestCase):
             subgoal 1: (INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))) = pi
             lhs:
                 substitute sin(x) ^ 2 for y creating x
-                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity (at 2)
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
                 simplify
                 apply integral identity
                 simplify
@@ -3106,7 +3106,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 substitute sin(x) ^ 2 for y creating x
                 rewrite log(sin(x) ^ 2) to 2 * log(sin(x))
-                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 using identity (at 2)
+                rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
                 simplify
                 rewrite sin(x) to 1 * sin(x)
                 apply integral identity

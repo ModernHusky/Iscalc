@@ -1197,10 +1197,8 @@ class OnCount(Rule):
         self.rule = rule
         self.n = n
         if pred is None:
-            if isinstance(rule, Equation):
+            if isinstance(rule, Rewriting):
                 pred = lambda t: t == rule.old_expr
-            elif isinstance(rule, ApplyIdentity):
-                pred = lambda t: t == rule.source
             elif isinstance(rule, (Substitution, SubstitutionInverse, IntegrationByParts, SplitRegion)):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
             elif isinstance(rule, ExpandDefinition):
@@ -1747,6 +1745,129 @@ class ExpandPolynomial(Rule):
         else:
             return e
 
+class Rewriting(Rule):
+    def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
+        self.name = "Equation"
+        if isinstance(old_expr, str):
+            old_expr = parser.parse_expr(old_expr)
+        if isinstance(new_expr, str):
+            new_expr = parser.parse_expr(new_expr)
+        self.old_expr = old_expr
+        self.new_expr = new_expr
+
+    def __str__(self):
+        if self.old_expr is None:
+            return "rewrite to %s" % self.new_expr
+        else:
+            return "rewrite %s to %s" % (self.old_expr, self.new_expr)
+
+    def export(self):
+        if self.old_expr is None:
+            latex_str = "rewrite to \\(%s\\)" % latex.convert_expr(self.new_expr)
+        else:
+            latex_str = "rewrite \\(%s\\) to \\(%s\\)" % \
+                        (latex.convert_expr(self.old_expr), latex.convert_expr(self.new_expr))
+        res = {
+            "name": self.name,
+            "new_expr": str(self.new_expr),
+            "str": str(self),
+            "latex_str": latex_str
+        }
+        if self.old_expr:
+            res['old_expr'] = str(self.old_expr)
+        return res
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        # If old_expr is given, try to find it within e
+        if self.old_expr is not None and self.old_expr != e:
+            find_res = e.find_subexpr(self.old_expr)
+            if len(find_res) == 0:
+                print(e)
+                raise RuleException("Equation", "old expression %s not found" % self.old_expr)
+            loc = find_res[0]
+            return OnLocation(self, loc).eval(e, ctx)
+
+        # Now e is the old expression
+        assert self.old_expr is None or self.old_expr == e
+
+        r = Simplify()
+        r1, r2 = r.eval(e, ctx), r.eval(self.new_expr, ctx)
+        if r1 == r2:
+            return self.new_expr
+
+        # Rewriting 1 to sin(x)^2 + cos(x)^2
+        x = Symbol("x", [VAR, CONST, OP, FUN])
+        p = expr.sin(x) ** 2 + expr.cos(x) ** 2
+        if e == Const(1) and expr.match(self.new_expr, p):
+            return self.new_expr
+
+        if norm.eq_quotient(e, self.new_expr, ctx):
+            return self.new_expr
+
+        if norm.eq_power(e, self.new_expr, ctx):
+            return self.new_expr
+
+        if norm.eq_log(e, self.new_expr, ctx):
+            return self.new_expr
+
+        if norm.eq_definite_integral(e, self.new_expr, ctx):
+            return self.new_expr
+
+        if norm.simp_definite_integral(e, ctx) == normalize(self.new_expr, ctx):
+            return self.new_expr
+
+        # x * sum(k,l,u,body) => sum(k, l, u, x* body)
+        x = Symbol('x', [VAR, CONST, OP, FUN])
+        y = Symbol('y', [SUMMATION])
+        p = x * y
+        mapping = expr.match(e, p)
+        if mapping is not None:
+            sum = mapping[y.name]
+            idx = sum.index_var
+            out = mapping[x.name]
+            if idx not in out.get_vars():
+                e = Summation(idx, sum.lower, sum.upper, out * sum.body)
+
+        # sum(k, l, u, body1) + sum(i, l, u, body2) => sum(k, l, u, body1+body2)
+        x = Symbol('x', [SUMMATION])
+        y = Symbol('y', [SUMMATION])
+        p = x + y
+        mapping = expr.match(e, p)
+        if mapping is not None:
+            sum1: Summation = mapping[x.name]
+            sum2: Summation = mapping[y.name]
+            if sum1.lower == sum2.lower and sum1.upper == sum2.upper:
+                e = Summation(sum1.index_var, sum1.lower, sum1.upper, sum1.body + sum2.body)
+            if normalize(e, ctx) == normalize(self.new_expr, ctx):
+                return self.new_expr
+
+        if expr.is_summation(e):
+            # SUM(i, 0, oo, body) -> LIM {n->oo}. SUM(i, 0, n, body)
+            if e.upper == expr.POS_INF:
+                v = e.index_var + e.index_var
+                tmp = Limit(v, expr.POS_INF, Summation(e.index_var, e.lower, Var(v), e.body))
+                if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
+                    return self.new_expr
+            # sum(k, l, u, body1) + sum(i, l, u, body2) <== sum(k, l, u, body1+body2)
+            if expr.is_op(e.body) and e.body.op in '+-':
+                v, l, u = e.index_var, e.lower, e.upper
+                tmp = Op(e.body.op, Summation(v, l, u, e.body.args[0]), Summation(v, l, u, e.body.args[1]))
+                if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
+                    return self.new_expr
+        # apply identity
+        for identity in ctx.get_other_identities():
+            inst = expr.match(e, identity.lhs)
+            if inst is not None:
+                expected_rhs = identity.rhs.inst_pat(inst)
+                tmp_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
+                flag = True
+                for cond in tmp_conds:
+                    flag = flag and ctx.check_condition(cond)
+                if not flag:
+                    continue
+                if normalize(expected_rhs, ctx) == normalize(self.new_expr, ctx):
+                    return self.new_expr
+        raise RuleException("Rewriting", "rewriting %s to %s failed" % (e, self.new_expr))
 
 class Equation(Rule):
     """Apply substitution for equal expressions"""
