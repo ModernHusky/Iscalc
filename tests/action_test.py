@@ -766,10 +766,6 @@ class ActionTest(unittest.TestCase):
                 rewrite 2 / (32 * u ^ 2 + 32) to 1/16 * (1 / (u ^ 2 + 1))
                 apply integral identity
                 simplify
-                substitute u for 32 * x + 64
-                substitute u for 32 * x - 64 (at 2)
-                apply integral identity
-                simplify
             done
 
             calculate INT x:[pi/6, pi/3]. cos(x) / (sin(x) ^ 3 + sin(x))
@@ -1785,36 +1781,21 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
-            prove (INT x. sec(x)^3) = 1/2*sec(x)*tan(x)+1/2*log(abs(sec(x)+tan(x)))+SKOLEM_CONST(C) for x > -pi/2, x<pi/2
-            subgoal1: abs(sec(x) + tan(x)) > 0
-            lhs:
-                rewrite sec(x) to 1/cos(x)
-                rewrite tan(x) to sin(x)/cos(x)
-                rewrite 1/cos(x) + sin(x)/cos(x) to (1+sin(x))/cos(x)
-            done
-            lhs:
-                integrate by parts with u=sec(x), v=tan(x)
-                rewrite tan(x)^2 to sec(x)^2 - 1
-                expand polynomial
-                simplify
-                solve integral INT x. sec(x)^3
-                apply integral identity
-                expand polynomial
-                simplify
-            rhs:
-                simplify
-            done
+            
             calculate INT x. sqrt(x^2+25)
                 substitute u for atan(x/5)
                 simplify
                 rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
                 rewrite tan(u)^2+1 to sec(u)^2
                 simplify
+                integrate by parts with u=sec(u), v=tan(u)
+                rewrite tan(u)^2 to sec(u)^2 - 1
+                expand polynomial
                 apply integral identity
+                solve integral INT u. sec(u)^3
+                expand polynomial
                 simplify
                 replace substitution
-                simplify
-                rewrite sqrt(x ^ 2 / 25 + 1) to sqrt(x^2 + 25) / 5
                 simplify
             done
             calculate INT x. sqrt(x^2-4) for x > 2
@@ -1825,11 +1806,13 @@ class ActionTest(unittest.TestCase):
                 rewrite tan(u)^2 to sec(u)^2 - 1
                 expand polynomial
                 simplify
+                integrate by parts with u=sec(u), v=tan(u)
+                rewrite tan(u)^2 to sec(u)^2 - 1
+                expand polynomial
                 apply integral identity
+                solve integral INT u. sec(u)^3
+                expand polynomial
                 replace substitution
-                simplify
-                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
-                rewrite sqrt(x ^ 2 / 4 - 1) to sqrt(x^2-4)/2
                 simplify
             done
             calculate INT x. x / sqrt(x^4-16) for x > 2
