@@ -23,7 +23,26 @@
             "type": "axiom"
         },
         {
+            "conds": ["a!=0"],
+            "expr": "(INT x. a*x) = x ^ 2 / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "expr": "(INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
         {
@@ -1158,10 +1177,37 @@
             "type": "problem"
         },
         {
+            "conds": [ "a != 0" ],
+            "expr": "(INT x. 1 / (a * x)) = log(abs(a * x)) / a+ SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. 1 / (a * x - b)) = log(abs(a * x - b)) / a+ SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "conds": [
                 "a != 0"
             ],
             "expr": "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. exp(a * x + b)) = exp(a * x + b) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. exp(a * x - b)) = exp(a * x - b) / a + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
@@ -1177,9 +1223,27 @@
             "conds": [
                 "a != 0"
             ],
+            "expr": "(INT x. exp(-x)) = - exp(-x) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
             "expr": "(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
+        },
+        {
+            "expr": "(INT x. sin(-x)) = cos(-x) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. sin(a * x + b)) = -cos(a * x + b) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
         },
         {
             "conds": [
@@ -1190,9 +1254,39 @@
             "type": "problem"
         },
         {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. cos(a * x + b)) = sin(a * x + b) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. cos(-x)) = -sin(-x) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "expr": "(INT x. tan(x)) = log(abs(sec(x))) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
+        },
+        {
+            "expr": "(INT x. tan(-x)) = -log(abs(sec(-x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. tan(a*x)) = log(abs(sec(a*x))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. tan(a*x + b)) = log(abs(sec(a*x + b))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. tan(a*x - b)) = log(abs(sec(a*x - b))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
         },
         {
             "expr": "(INT x. 1/(x-a)) = log(abs(x-a)) + SKOLEM_CONST(C)",
@@ -1250,8 +1344,26 @@
         },
         {
             "expr": "(INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C)",
-            "path": "standard",
-            "type": "problem"
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. sec(-x)) = -log(abs(sec(-x)+tan(-x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a != 0"],
+            "expr": "(INT x. sec(a*x)) = log(abs(sec(a*x)+tan(a*x))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a != 0"],
+            "expr": "(INT x. sec(a*x + b)) = log(abs(sec(a*x+b)+tan(a*x+b))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "conds": ["a != 0"],
+            "expr": "(INT x. sec(a*x - b)) = log(abs(sec(a*x-b)+tan(a*x-b))) / a + SKOLEM_CONST(C)",
+            "type": "axiom"
         },
         {
             "expr": "(INT x. 1/sqrt(1-x^2)) = asin(x) + SKOLEM_CONST(C)",

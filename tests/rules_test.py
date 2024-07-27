@@ -166,5 +166,38 @@ class RulesTest(unittest.TestCase):
         e = rules.IntegralIdentity().eval(e, ctx)
         self.assertEqual(e, parser.parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * ((-1) ^ k * factorial(k) * (a * k + 1) ^ (-k - 1)))"))
 
+
+    def testIntegralIdentity(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parser.parse_expr("INT x. exp(3*x)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("exp(3 * x) / 3 + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. exp(3*x+2)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("exp(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. sin(3*x+2)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("-cos(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. cos(3*x+2)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("sin(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. cos(-x)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("-sin(-x) + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. sin(-x)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("cos(-x) + SKOLEM_CONST(C)"))
+
+        e = parser.parse_expr("INT x. 1 / (2 * x - 3)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("log(abs(2*x-3))/2 + SKOLEM_CONST(C)"))
+
 if __name__ == "__main__":
     unittest.main()
