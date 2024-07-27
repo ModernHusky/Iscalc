@@ -1153,6 +1153,14 @@
             "conds": [
                 "a != 0"
             ],
+            "expr": "(INT x. 1 / (a*x + b)) = log(abs(a*x + b))/a+ SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
             "expr": "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
