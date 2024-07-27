@@ -149,7 +149,22 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(u) > 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
 
+    def testRewriting1(self):
+        file = compstate.CompFile("base", "test_rewriting1")
+        ctx = file.ctx
+        ctx.load_book("interesting")
 
+        # "conds": [ "m + 1 > 0" ],
+        # "expr": "(INT x:[0,1].x^m * log(x)^n) = (-1)^n * factorial(n) / (m+1)^(n+1)",
+        # "path": "chapter4_practice02",
+        # "type": "problem"
+
+        e = parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * (INT x:[0,1]. x ^ (a * k) * log(x) ^ k))")
+        ctx.add_condition("a > 0")
+        ctx.add_condition("c != 0")
+
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parser.parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * ((-1) ^ k * factorial(k) * (a * k + 1) ^ (-k - 1)))"))
 
 if __name__ == "__main__":
     unittest.main()
