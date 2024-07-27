@@ -1783,7 +1783,7 @@ class Rewriting(Rule):
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
                 print(e)
-                raise RuleException("Equation", "old expression %s not found" % self.old_expr)
+                raise RuleException("Rewriting", "old expression %s not found" % self.old_expr)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
