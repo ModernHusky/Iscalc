@@ -824,6 +824,41 @@ def simplify_inf(e: expr.Expr, ctx: Context) -> expr.Expr:
                 return e.args[0]
     return e
 
+def simplify_skolem(e:expr.Expr, ctx:Context):
+    if expr.is_skolem_func(e) or expr.is_const(e) or expr.is_var(e) or expr.is_inf(e):
+        return e
+    elif expr.is_op(e):
+        op = e.op
+        if op == '*':
+            a, b = e.args
+            if expr.is_const(a) and expr.is_skolem_func(b):
+                if a.val != 0:
+                    return b
+                else:
+                    return expr.Const(0)
+            elif expr.is_const(b) and expr.is_skolem_func(a):
+                if b.val != 0:
+                    return a
+                else:
+                    return expr.Const(0)
+        elif op == '/':
+            a, b = e.args
+            if expr.is_const(b) and expr.is_skolem_func(a):
+                if b.val != 0:
+                    return a
+                else:
+                    raise ValueError("The denominator cannot be 0")
+        return expr.Op(op, *[simplify_skolem(arg, ctx) for arg in e.args])
+    elif expr.is_fun(e):
+        return expr.Fun(e.func_name, *[simplify_skolem(arg, ctx) for arg in e.args])
+    elif expr.is_summation(e):
+        return expr.Summation(e.index_var, simplify_skolem(e.lower,ctx), simplify_skolem(e.upper,ctx), simplify_skolem(e.body,ctx))
+    elif expr.is_limit(e):
+        return expr.Limit(e.var, simplify_skolem(e.lim, ctx), simplify_skolem(e.body, ctx))
+    elif expr.is_integral(e):
+        e:expr.Integral
+        return expr.Integral(e.var, simplify_skolem(e.lower,ctx), simplify_skolem(e.upper,ctx), simplify_skolem(e.body,ctx))
+    return e
 def normal_const(e:expr.Expr, ctx:Context):
     if e.is_constant():
         return normalize(e, ctx)
@@ -865,6 +900,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_sqrt, ctx)
         e = apply_subterm(e, simplify_inf, ctx)
         e = apply_subterm(e, simplify_sum, ctx)
+        e = apply_subterm(e, simplify_skolem, ctx)
         if e == old_e:
             break
 
