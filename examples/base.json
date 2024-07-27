@@ -1333,6 +1333,7 @@
             "type": "problem"
         },
         {
+            "conds": ["a != 1"],
             "expr": "(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
