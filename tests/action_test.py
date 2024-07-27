@@ -1792,12 +1792,13 @@ class ActionTest(unittest.TestCase):
                 rewrite tan(u)^2 to sec(u)^2 - 1
                 expand polynomial
                 apply integral identity
-                solve integral INT u. sec(u)^3
+                solve integral 25 * INT u. sec(u)^3
                 expand polynomial
                 simplify
                 replace substitution
                 simplify
             done
+            
             calculate INT x. sqrt(x^2-4) for x > 2
                 substitute u for asec(x/2)
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
@@ -1807,14 +1808,14 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 simplify
                 integrate by parts with u=sec(u), v=tan(u)
-                rewrite tan(u)^2 to sec(u)^2 - 1
+                solve integral 4*(INT u. sec(u)*tan(u)^2)
                 expand polynomial
                 apply integral identity
-                solve integral INT u. sec(u)^3
-                expand polynomial
+                simplify
                 replace substitution
                 simplify
             done
+            
             calculate INT x. x / sqrt(x^4-16) for x > 2
                 substitute u for x^2
                 simplify
@@ -1846,7 +1847,7 @@ class ActionTest(unittest.TestCase):
                 expand polynomial
                 apply integral identity
                 simplify
-                done
+            done
         """
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
