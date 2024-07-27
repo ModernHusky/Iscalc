@@ -1828,6 +1828,7 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+            
             calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
                 rewrite x^2-4*x to (x-2)^2 - 4
                 substitute u for asec((x-2)/2)
@@ -1838,6 +1839,7 @@ class ActionTest(unittest.TestCase):
                 replace substitution
                 simplify
             done
+            
             calculate INT x. x/sqrt(x^2 + 4*x + 5)
                 rewrite x^2+4*x+5 to (x+2)^2 + 1
                 substitute u for (x+2)
@@ -1846,6 +1848,66 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 apply integral identity
+                simplify
+            done
+            
+            calculate INT x. x * sqrt(10*x - x^2) for x > 0, x < 10
+                rewrite 10*x - x^2 to 25 - (x-5)^2
+                substitute u for (x-5) / 5
+                substitute v for asin(u)
+                rewrite sqrt(-(25*sin(v)^2)+25) to 5*sqrt(1-sin(v)^2)
+                rewrite 1-sin(v)^2 to cos(v)^2
+                simplify
+                expand polynomial
+                simplify
+                substitute w for cos(v)
+                apply integral identity
+                simplify
+                replace substitution
+                replace substitution
+                replace substitution
+                simplify
+            done
+            
+            calculate INT x. sqrt((x-1) / x) for x > 1
+                substitute u for sqrt(x)
+                simplify
+                substitute v for asec(u)
+                rewrite sec(v)^2-1 to tan(v)^2
+                simplify
+                integrate by parts with u=tan(v),v=sec(v)
+                rewrite sec(v)^3 to sec(v)*sec(v)^2
+                rewrite sec(v)^2 to tan(v)^2 + 1
+                expand polynomial
+                expand polynomial
+                simplify
+                solve integral 2 * INT v. sec(v)*tan(v)^2
+                expand polynomial
+                apply integral identity
+                simplify
+                replace substitution
+                replace substitution
+                simplify
+            done
+            
+            calculate INT x. sqrt(1-x)*sqrt(x+3) for x < 1, x > -3
+                rewrite sqrt(1-x)*sqrt(x+3) to sqrt((1-x)*(x+3))
+                rewrite (1-x)*(x+3) to 4 - (x+1)^2
+                substitute u for(x+1)/2
+                rewrite sqrt(-(4 * u ^ 2) + 4) to 2 * sqrt(1 - u ^ 2)
+                substitute v for asin(u)
+                rewrite -(sin(v) ^ 2) + 1 to 1-sin(v)^2
+                rewrite 1-sin(v) ^ 2 to cos(v)^2
+                simplify
+                integrate by parts with u=cos(v),v=sin(v)
+                simplify
+                rewrite sin(v)^2 to 1-cos(v)^2
+                simplify
+                solve integral 4 * (INT v. cos(v) ^ 2)
+                expand polynomial
+                apply integral identity
+                replace substitution
+                replace substitution
                 simplify
             done
         """
