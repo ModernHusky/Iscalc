@@ -3137,6 +3137,15 @@ class ActionTest(unittest.TestCase):
         # Section A
         // page 166
         
+        calculate INT x. 1 / sqrt(x-x^2)
+            rewrite x - x^2 to 1/4 - (x-1/2)^2
+            substitute u for asin(x-1/2)
+            substitute v for sin(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
         calculate INT x. 1/x^2
             apply integral identity
             simplify

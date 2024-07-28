@@ -1411,12 +1411,34 @@
             "type": "problem"
         },
         {
+            "conds": ["a > 0"],
+            "expr": "(INT x. 1/sqrt(a-x^2)) = asin(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": ["a > 0"],
+            "expr": "(INT x. 1/sqrt(-(x^2)+a)) = asin(x/sqrt(a))+ SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
             "expr": "(INT x. 1/sqrt(x^2-1)) = acos(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
             "expr": "(INT x. 1/sqrt(-1+x^2)) = acos(x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(x^2-a)) = acos(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(-a+x^2)) = acos(x/sqrt(a)) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
