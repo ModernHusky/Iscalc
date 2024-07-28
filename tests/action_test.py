@@ -26,6 +26,40 @@ class ActionTest(unittest.TestCase):
             print(state)
         if not print_state and not isinstance(state, action.InitialState):
             raise AssertionError("Does not end in initial state")
+        
+    def testCalculationFinished(self):
+        file = compstate.CompFile("base", "standard")
+        state = action.InitialState(file)
+
+        actions = """
+            calculate INT x. (3 - 2*x)^3
+                substitute u for 3 - 2*x
+                apply integral identity
+                simplify
+        """
+        actions = [s for s in actions.split('\n') if s.strip()]
+        for act in actions:
+            a = parser.parse_action(act)
+            state = state.process_action(a)
+        self.assertFalse(state.is_finished())
+
+    def testCalculationFinished2(self):
+        file = compstate.CompFile("base", "standard")
+        state = action.InitialState(file)
+
+        actions = """
+            calculate INT x. (3 - 2*x)^3
+                substitute u for 3 - 2*x
+                apply integral identity
+                simplify
+                replace substitution
+                simplify
+        """
+        actions = [s for s in actions.split('\n') if s.strip()]
+        for act in actions:
+            a = parser.parse_action(act)
+            state = state.process_action(a)
+        self.assertTrue(state.is_finished())
 
     def testStandard(self):
         actions = """
@@ -910,6 +944,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 apply integral identity
+                replace substitution
                 simplify
             done
 
@@ -1013,7 +1048,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
 
@@ -1049,7 +1083,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
 
@@ -1074,7 +1107,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute u for tan(x)
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1384,7 +1416,6 @@ class ActionTest(unittest.TestCase):
                 substitute v for u + 1
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
 
@@ -1394,7 +1425,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute v for u - 3
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1406,7 +1436,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 substitute v for u + 4
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1435,7 +1464,6 @@ class ActionTest(unittest.TestCase):
                 substitute v for u - 1
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
 
@@ -1449,7 +1477,6 @@ class ActionTest(unittest.TestCase):
                 substitute v for u ^ 2 + 1
                 simplify
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1506,7 +1533,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
 
@@ -1521,7 +1547,6 @@ class ActionTest(unittest.TestCase):
                 substitute v4 for u - 2 (at 4)
                 simplify
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1540,7 +1565,6 @@ class ActionTest(unittest.TestCase):
                 substitute v4 for 4 * u - 8 (at 4)
                 simplify
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1571,7 +1595,6 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 substitute v for tan(u)
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1618,7 +1641,6 @@ class ActionTest(unittest.TestCase):
                 substitute v2 for cos(u) (at 2)
                 simplify
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1708,7 +1730,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 replace substitution
-                replace substitution
                 simplify
             done
             
@@ -1731,6 +1752,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
                 apply integral identity
+                replace substitution
                 simplify
             done
             
@@ -1746,8 +1768,6 @@ class ActionTest(unittest.TestCase):
                 substitute w for cos(v)
                 apply integral identity
                 simplify
-                replace substitution
-                replace substitution
                 replace substitution
                 simplify
             done
@@ -1769,7 +1789,6 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 replace substitution
-                replace substitution
                 simplify
             done
             
@@ -1789,7 +1808,6 @@ class ActionTest(unittest.TestCase):
                 solve integral 4 * (INT v. cos(v) ^ 2)
                 expand polynomial
                 apply integral identity
-                replace substitution
                 replace substitution
                 simplify
             done

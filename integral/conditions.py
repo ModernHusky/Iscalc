@@ -45,18 +45,6 @@ class Conditions:
             })
         return res
 
-    def update(self, other:'Conditions'):
+    def update(self, other: 'Conditions'):
         for e in other.data:
             self.add_condition(e)
-
-    def exclude_induct_var_conds(self, induct_var:str):
-        induct_conds = Conditions()
-        other_conds = Conditions()
-        induct_var = Var(induct_var, type=IntType)
-        for e in self.data:
-            if len(e.find_subexpr(induct_var)) > 0:
-                induct_conds.add_condition(e)
-            else:
-                other_conds.add_condition(e)
-        return other_conds, induct_conds
-

@@ -292,8 +292,9 @@ def saturate(e: Expr, ineqs: List[Identity], all_conds: Dict[Expr, List[Expr]], 
         if prev_size == next_size:
             return
         if next_size > size_limit or i > round_limit:
-            print_all_conds(all_conds)
-            raise AssertionError("saturate: limit reached")
+            # print_all_conds(all_conds)
+            return
+            # raise AssertionError("saturate: limit reached")
 
 def print_all_conds(all_conds: Dict[Expr, List[Expr]]):
     for x, conds in all_conds.items():
@@ -536,7 +537,7 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         return check_condition(e1, ctx) and check_condition(e2,ctx)
     if ctx.get_substs():
         new_e = e
-        for var, subst_e in ctx.get_substs().items():
+        for var, subst_e in reversed(ctx.get_substs()):
             new_e = new_e.subst(var, subst_e)
         if new_e != e:
             if check_condition(new_e, ctx):

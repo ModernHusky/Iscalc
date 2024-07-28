@@ -504,9 +504,7 @@ class Calculation(StateItem):
         e = self.last_expr
         ctx = Context(self.ctx)
         for step in self.steps:
-            for var, subst_e in step.rule.get_substs().items():
-                ctx.add_subst(var, subst_e)
-                ctx.add_condition(expr.Op("=", expr.Var(var), subst_e))
+            ctx = step.rule.update_context(ctx)
         new_e = rule.eval(e, ctx)
         step = CalculationStep(self, rule, new_e, id + 1)
         self.add_step(step)
@@ -1255,9 +1253,7 @@ def parse_step(calc: Calculation, item, id: int) -> CalculationStep:
     rule = parse_rule(item['rule'], calc)
     ctx = Context(calc.ctx)
     for step in calc.steps:
-        for var, subst_e in step.rule.get_substs().items():
-            ctx.add_subst(var, subst_e)
-            ctx.add_condition(expr.Op("=", expr.Var(var), subst_e))
+        ctx = step.rule.update_context(ctx)
     new_e = rule.eval(calc.last_expr, ctx)
     step = CalculationStep(calc, rule, new_e, id)
     return step

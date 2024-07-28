@@ -121,8 +121,8 @@ class Context:
         # List of assumptions
         self.conds: Conditions = Conditions()
 
-        # List of substitutions
-        self.substs: Dict[str, Expr] = dict()
+        # List of substitutions.
+        self.substs: list[tuple[str, Expr]] = list()
 
         # List of subgoals
         self.subgoals: Dict[str, Identity] = dict()
@@ -169,7 +169,7 @@ class Context:
         for cond in self.get_conds().data:
             res += str(cond) + "\n"
         res += "Substitutions\n"
-        for var_name, var_subst in self.get_substs().items():
+        for var_name, var_subst in self.get_substs():
             res += "%s: %s" % (var_name, var_subst) + "\n"
 
         return res
@@ -267,10 +267,9 @@ class Context:
                 res.add_condition(cond)
         return res
 
-    def get_substs(self) -> Dict[str, Expr]:
-        res = self.parent.get_substs() if self.parent is not None else dict()
-        for var, expr in self.substs.items():
-            res[var] = expr
+    def get_substs(self) -> list[str, Expr]:
+        res = self.parent.get_substs() if self.parent is not None else list()
+        res.extend(self.substs)
         return res
 
     def add_definition(self, eq: Expr, conds:Conditions):
@@ -380,11 +379,7 @@ class Context:
             self.add_condition(cond)
 
     def add_subst(self, var: str, expr: Expr):
-        self.substs[var] = expr
-
-    def extend_substs(self, substs: Dict[str, Expr]):
-        for var, expr in substs.items():
-            self.substs[var] = expr
+        self.substs.append((var, expr))
 
     def extend_by_item(self, item):
         if item['type'] == 'axiom' or item['type'] == 'problem':

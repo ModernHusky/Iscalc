@@ -363,6 +363,13 @@ class CalculateState(State):
                 return False
 
             res = self.calc.steps[-1].res
+            ctx = self.calc.ctx
+            for step in self.calc.steps:
+                ctx = step.rule.update_context(ctx)
+            substs = ctx.get_substs()
+            for var, _ in substs:
+                if res.contains_var(var) and not self.calc.start.contains_var(var):
+                    return False
             return res.is_closed_form() and poly.normalize(res, self.calc.ctx) == res
         else:
             return self.past.is_finished()

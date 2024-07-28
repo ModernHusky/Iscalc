@@ -392,10 +392,6 @@ class Rule:
     def export(self):
         """Returns the JSON representation of the rule."""
         raise NotImplementedError
-
-    def get_substs(self) -> Dict[str, Expr]:
-        """Return dictionary of variable substitutions produced by the rule."""
-        return dict()
     
     def update_context(self, ctx: Context) -> Context:
         """Produce the updated context after performing this rule."""
@@ -959,16 +955,14 @@ class ReplaceSubstitution(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        try:
-            if e.contains_integral():
-                raise RuleException("ReplaceSubstitution", f"can not using replace substitution because {e} is not in a closed-form, it contains integral expression.")
-            for var, expr in ctx.get_substs().items():
-                e = e.subst(var, expr)
-            return e
-        except RuleException as ee:
-            raise ee
-        except Exception:
-            raise RuleException("ReplaceSubstitution", f"can not handle {e}")
+        success = False
+        for var, expr in reversed(ctx.get_substs()):
+            if e.contains_var(var):
+                success = True
+            e = e.subst(var, expr)
+        if not success:
+            raise RuleException("ReplaceSubstitution", "No more substitution need to be replaced")
+        return e
 
 
 class DerivativeSimplify(Rule):
@@ -1015,9 +1009,6 @@ class OnSubterm(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' (all)'
         return res
-
-    def get_substs(self):
-        return self.rule.get_substs()
     
     def update_context(self, ctx: Context) -> Context:
         return self.rule.update_context(ctx)
@@ -1045,9 +1036,6 @@ class OnLocation(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' at ' + str(self.loc)
         return res
-
-    def get_substs(self):
-        return self.rule.get_substs()
     
     def update_context(self, ctx: Context) -> Context:
         return self.rule.update_context()
@@ -1159,9 +1147,6 @@ class OnCount(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' (at %s)' + str(self.n)
         return res
-
-    def get_substs(self):
-        return self.rule.get_substs()
     
     def update_context(self, ctx: Context) -> Context:
         return self.rule.update_context(ctx)
@@ -1450,9 +1435,6 @@ class Substitution(Rule):
             "latex_str": "substitute \\(%s\\) for \\(%s\\)" % \
                          (self.var_name, latex.convert_expr(self.var_subst))
         }
-
-    def get_substs(self):
-        return {self.var_name: self.var_subst}
     
     def update_context(self, ctx: Context) -> Context:
         ctx2 = Context(ctx)
