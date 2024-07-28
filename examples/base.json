@@ -92,7 +92,15 @@
             "type": "axiom"
         },
         {
+            "expr": "(INT x. 1 / cos(x)^2) = tan(x) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "expr": "(INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. 1 / sin(x)^2) = -cot(x) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
         {
@@ -282,8 +290,7 @@
             ],
             "category": "power",
             "expr": "(a * b) ^ k = a ^ k * b ^ k",
-            "type": "axiom",
-            "conds": ["isInt(k)"]
+            "type": "axiom"
         },
         {
             "attributes": [
@@ -981,6 +988,11 @@
         },
         {
             "category": "trigonometric",
+            "expr": "cos(2 * x) = cos(x)^2 - sin(x)^2",
+            "type": "axiom"
+        },
+        {
+            "category": "trigonometric",
             "expr": "cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)",
             "type": "axiom"
         },
@@ -1317,6 +1329,14 @@
                 "a != 0"
             ],
             "expr": "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a != 0"
+            ],
+            "expr": "(INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * atan(x / sqrt(a)) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
