@@ -504,6 +504,11 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("UCDavis", "USubstitution", actions)
 
+    def testTongjiIndefSubstitution(self):
+        with open('theories/tongji0402.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "tongji0402", actions)
+
     def testUCDavisPartialFraction(self):
         actions = """
             calculate INT x:[3, 4]. 1 / (x ^ 2 - 4)
