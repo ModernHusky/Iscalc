@@ -464,7 +464,7 @@ class Linearity(Rule):
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) + \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
                 elif expr.is_uminus(e.body):
-                    return -IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)
+                    return -rec(IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args))
                 elif e.body.is_minus():
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) - \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
@@ -827,6 +827,70 @@ class IndefiniteIntegralIdentity(Rule):
 
         return e
 
+
+class EvaluateIndefiniteIntegral(Rule):
+    def __init__(self):
+        self.name = "EvaluateIndefiniteIntegral"
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        assert isinstance(e, IndefiniteIntegral)
+        for indef in ctx.get_indefinite_integrals():
+            assert isinstance(indef.lhs, IndefiniteIntegral)
+            inst = expr.match(e, indef.lhs)
+            if inst is None:
+                continue
+
+            inst[indef.lhs.var] = Var(e.var)
+
+            # The right side of the identity should be of the form "expr + C"
+            # take the expr part of the expression.
+            assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+            return indef.rhs.args[0].inst_pat(inst)
+
+        # No matching identity found
+        return e
+
+class EvaluateDefiniteIntegral(Rule):
+    def __init__(self):
+        self.name = "EvaluateDefiniteIntegral"
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        assert isinstance(e, Integral)
+
+        # First, try indefinite integral identities
+        for identity in ctx.get_indefinite_integrals():
+            assert isinstance(identity.lhs, IndefiniteIntegral)
+            inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
+            if inst is None:
+                continue
+
+            inst[identity.lhs.var] = Var(e.var)
+
+            # The right side of the identity should be of the form "expr + C"
+            # take the expr part of the expression.
+            assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+            pat_rhs = identity.rhs.args[0]
+            return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
+
+        # Next, look for definite integral identities
+        for identity in ctx.get_definite_integrals():
+            inst = expr.match(e, identity.lhs)
+            if inst is None:
+                continue
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx.check_condition(cond):
+                    satisfied = False
+            if satisfied:
+                return normalize(identity.rhs.inst_pat(inst), ctx)
+
+        # No matching identity found
+        return e
+
 class IntegralIdentity(Rule):
     def __init__(self):
         self.name = "IntegralIdentity"
@@ -842,155 +906,33 @@ class IntegralIdentity(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
-        def apply(e: Expr):
-            for indef in ctx.get_indefinite_integrals():
-                inst = expr.match(e, indef.lhs)
-                if inst is None:
-                    continue
 
-                inst['x'] = Var(e.var)
-                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
-                return indef.rhs.args[0].inst_pat(inst)
-
-            # No matching identity found
-            return e
-
-        def f(e: Expr, ctx: Context):
-            integrals = e.separate_integral()
-            exist_indefinite_integral = False
-            skolem_args = set()
-            for sub_e, loc in integrals:
-                new_e = sub_e
-                if expr.is_indefinite_integral(sub_e):
-                    exist_indefinite_integral = True
-                    new_e = apply(sub_e)
-                    if new_e != sub_e:
-                        e = e.replace_expr(loc, new_e)
-                        skolem_args = skolem_args.union(set(sub_e.skolem_args))
-                elif expr.is_integral(sub_e):
-                    flag = False
-                    for identity in ctx.get_indefinite_integrals():
-                        inst = expr.match(IndefiniteIntegral(sub_e.var, sub_e.body, skolem_args=tuple()), identity.lhs)
-                        if inst is None:
-                            continue
-                        inst[identity.lhs.var] = Var(sub_e.var)
-                        assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
-                        pat_rhs = identity.rhs.args[0]  # remove Skolem constant C
-                        new_e = EvalAt(sub_e.var, sub_e.lower, sub_e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
-                        flag = True
-                    if not flag:
-                        # Look for definite integral identities
-                        for identity in ctx.get_definite_integrals():
-                            inst = expr.match(sub_e, identity.lhs)
-                            if inst is not None:
-                                # Check conditions
-                                satisfied = True
-                                for cond in identity.conds.data:
-                                    cond = expr.expr_to_pattern(cond)
-                                    cond = cond.inst_pat(inst)
-                                    if not ctx.check_condition(cond):
-                                        satisfied = False
-                                if satisfied:
-                                    new_e = normalize(identity.rhs.inst_pat(inst), ctx)
-                    if new_e != sub_e:
-                        e = e.replace_expr(loc, new_e)
-            return e, exist_indefinite_integral, skolem_args
-        def get_ctx(ctx, e, loc):
-            if loc.is_empty():
-                return ctx
-            elif expr.is_var(e) or expr.is_const(e):
-                raise AssertionError("invalid location")
-            elif expr.is_op(e):
-                assert loc.head < len(e.args), "invalid location"
-                if len(e.args) == 1:
-                    return get_ctx(ctx, e.args[0], loc.rest)
-                elif len(e.args) == 2:
-                    if loc.head == 0:
-                        return get_ctx(ctx, e.args[0], loc.rest)
-                    elif loc.head == 1:
-                        return get_ctx(ctx, e.args[1], loc.rest)
-                    else:
-                        raise AssertionError("invalid location")
-                else:
-                    raise NotImplementedError
-            elif expr.is_fun(e):
-                assert loc.head < len(e.args), "invalid location"
-                return get_ctx(ctx, e.args[loc.head], loc.rest)
-            elif expr.is_integral(e):
-                ctx2 = body_conds(e, ctx)
-                if loc.head == 0:
-                    return get_ctx(ctx2, e.body, loc.rest)
-                elif loc.head == 1:
-                    return get_ctx(ctx, e.lower, loc.rest)
-                elif loc.head == 2:
-                    return get_ctx(ctx, e.upper, loc.rest)
-                else:
-                    raise AssertionError("invalid location")
-            elif expr.is_evalat(e):
-                if loc.head == 0:
-                    return get_ctx(ctx, e.body, loc.rest)
-                elif loc.head == 1:
-                    return get_ctx(ctx, e.lower, loc.rest)
-                elif loc.head == 2:
-                    return get_ctx(ctx, e.upper, loc.rest)
-                else:
-                    raise AssertionError("OnLocation: invalid location")
-            elif expr.is_deriv(e):
-                assert loc.head == 0, "OnLocation: invalid location"
-                return get_ctx(ctx, e.body, loc.rest)
-            elif expr.is_limit(e):
-                if loc.head == 0:
-                    if e.lim.is_evaluable():
-                        v = expr.eval_expr(e.lim)
-                        var = Var(e.var)
-                        if v == float('inf'):
-                            cond = Op('>', var, Const(0))
-                            ctx2 = Context(ctx)
-                            ctx2.add_condition(cond)
-                            return get_ctx(ctx2, e.body, loc.rest)
-                        elif v == float('-inf'):
-                            cond = Op('<', var, Const(0))
-                            ctx2 = Context(ctx)
-                            ctx2.add_condition(cond)
-                            return get_ctx(ctx2, e.body, loc.rest)
-                        else:
-                            return get_ctx(ctx, e.body, loc.rest)
-                elif loc.head == 1:
-                    return get_ctx(ctx, e.lim, loc.rest)
-                else:
-                    raise AssertionError("invalid location")
-            elif expr.is_indefinite_integral(e):
-                assert loc.head == 0, "invalid location"
-                return get_ctx(ctx, e.body, loc.rest)
-            elif expr.is_summation(e):
-                ctx2 = body_conds(e, ctx)
-                if loc.head == 0:
-                    return get_ctx(ctx2, e.body, loc.rest)
-                elif loc.head == 1:
-                    return get_ctx(ctx, e.lower, loc.rest)
-                elif loc.head == 2:
-                    return get_ctx(ctx, e.upper, loc.rest)
-                else:
-                    raise AssertionError("invalid location")
-            else:
-                raise NotImplementedError
-
-        # Apply to right side of equation
+        # If incoming expression is equality, apply to the right side of equation
         if e.is_equals():
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
             return Op("=", lhs, rhs)
+        
+        # Apply linearity first
+        integrals = e.separate_integral()
+        for _, loc in integrals:
+            e = OnLocation(Linearity(), loc).eval(e, ctx)
 
         integrals = e.separate_integral()
         skolem_args = set()
         exist_indefinite_integral = False
         for sub_e, loc in integrals:
-            ctx2 = get_ctx(ctx, e, loc)
-            new_e, flag, ska = f(Linearity().eval(sub_e, ctx2), ctx2)
-            exist_indefinite_integral = exist_indefinite_integral or flag
-            skolem_args = skolem_args.union(ska)
-            if new_e != sub_e:
-                e = e.replace_expr(loc, new_e)
+            if isinstance(sub_e, IndefiniteIntegral):
+                e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
+                new_e = e.get_subexpr(loc)
+                if new_e != sub_e:
+                    exist_indefinite_integral = True
+                    skolem_args = skolem_args.union(sub_e.skolem_args)
+            elif isinstance(sub_e, Integral):
+                e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
+            else:
+                raise AssertionError
+
         if exist_indefinite_integral:
             if e.is_plus() and expr.is_skolem_func(e.args[1]):
                 # If already has Skolem variable at right

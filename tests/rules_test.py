@@ -93,32 +93,32 @@ class RulesTest(unittest.TestCase):
     def testSubstitutionInverse(self):
         # Basic correct case
         ctx = context.Context()
-        t = parser.parse_expr("INT x:[0,1]. x ^ 2")
-        rule = rules.SubstitutionInverse("u", "x", parser.parse_expr("u + 1"))
+        t = parse_expr("INT x:[0,1]. x ^ 2")
+        rule = rules.SubstitutionInverse("u", "x", parse_expr("u + 1"))
         res = "INT u:[-1,0]. (u + 1) ^ 2 * 1"
-        self.assertEqual(rule.eval(t, ctx), parser.parse_expr(res))
+        self.assertEqual(rule.eval(t, ctx), parse_expr(res))
 
     def testSubstitutionInverseWrong(self):
         # Substitution variable already used, case 1
         ctx = context.Context()
-        t = parser.parse_expr("INT x:[0,1]. x + y")
-        rule = rules.SubstitutionInverse("x", "x", parser.parse_expr("x + 1"))
+        t = parse_expr("INT x:[0,1]. x + y")
+        rule = rules.SubstitutionInverse("x", "x", parse_expr("x + 1"))
         self.assertRaises(RuleException, rule.eval, t, ctx)
 
     def testSubstitutionInverseWrong2(self):
         # Substitution variable already used, case 2
         ctx = context.Context()
-        t = parser.parse_expr("INT x:[0,1]. x + y")
-        rule = rules.SubstitutionInverse("y", "x", parser.parse_expr("y + 1"))
+        t = parse_expr("INT x:[0,1]. x + y")
+        rule = rules.SubstitutionInverse("y", "x", parse_expr("y + 1"))
         self.assertRaises(RuleException, rule.eval, t, ctx)
 
     def testSubstitutionInverseIndef(self):
         # Substitution for indefinite integrals
         ctx = context.Context()
-        t = parser.parse_expr("INT x. 1 / (1 + sqrt(x))")
-        rule = rules.SubstitutionInverse("u", "x", parser.parse_expr("u ^ 2"))
+        t = parse_expr("INT x. 1 / (1 + sqrt(x))")
+        rule = rules.SubstitutionInverse("u", "x", parse_expr("u ^ 2"))
         res = "INT u. 1 / (1 + sqrt(u ^ 2)) * (2 * u)"
-        self.assertEqual(rule.eval(t, ctx), parser.parse_expr(res))
+        self.assertEqual(rule.eval(t, ctx), parse_expr(res))
 
     def testSubstitutionCondCheck4(self):
         file = compstate.CompFile("base", "simple_integral_01")
@@ -164,40 +164,57 @@ class RulesTest(unittest.TestCase):
         ctx.add_condition("c != 0")
 
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * ((-1) ^ k * factorial(k) * (a * k + 1) ^ (-k - 1)))"))
+        self.assertEqual(e, parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * ((-1) ^ k * factorial(k) * (a * k + 1) ^ (-k - 1)))"))
 
 
     def testIntegralIdentity(self):
         ctx = context.Context()
         ctx.load_book("base")
 
-        e = parser.parse_expr("INT x. exp(3*x)")
+        e = parse_expr("INT x. exp(3*x)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("exp(3 * x) / 3 + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("exp(3 * x) / 3 + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. exp(3*x+2)")
+        e = parse_expr("INT x. exp(3*x+2)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("exp(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("exp(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. sin(3*x+2)")
+        e = parse_expr("INT x. sin(3*x+2)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("-cos(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("-cos(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. cos(3*x+2)")
+        e = parse_expr("INT x. cos(3*x+2)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("sin(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("sin(3 * x + 2) / 3 + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. cos(-x)")
+        e = parse_expr("INT x. cos(-x)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("-sin(-x) + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("-sin(-x) + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. sin(-x)")
+        e = parse_expr("INT x. sin(-x)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("cos(-x) + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("cos(-x) + SKOLEM_CONST(C)"))
 
-        e = parser.parse_expr("INT x. 1 / (2 * x - 3)")
+        e = parse_expr("INT x. 1 / (2 * x - 3)")
         e = rules.IntegralIdentity().eval(e, ctx)
-        self.assertEqual(e, parser.parse_expr("log(abs(2*x-3))/2 + SKOLEM_CONST(C)"))
+        self.assertEqual(e, parse_expr("log(abs(2*x-3))/2 + SKOLEM_CONST(C)"))
+
+        e = parse_expr("INT x. x^2 + x^3")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parse_expr("x ^ (2 + 1) / (2 + 1) + x ^ (3 + 1) / (3 + 1) + SKOLEM_CONST(C)"))
+
+        e = parse_expr("INT x. -(x^2 / 2)")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parse_expr("-(1/2 * (x ^ (2 + 1) / (2 + 1))) + SKOLEM_CONST(C)"))
+
+    def testIntegralIdentityLinear1(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parse_expr("1 - (INT x:[0, pi/2]. -cos(x))")
+        e = rules.IntegralIdentity().eval(e, ctx)
+        self.assertEqual(e, parse_expr("1 - -([sin(x)]_x=0,pi / 2)"))
+
 
 if __name__ == "__main__":
     unittest.main()

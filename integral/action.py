@@ -290,6 +290,8 @@ class ProveState(State):
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
                 if not self.goal.is_finished():
+                    print("Current goal is:")
+                    print(self.goal)
                     raise StateException("Use done when goal is not finished")
                 if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
@@ -331,6 +333,8 @@ class CalculateState(State):
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
                 if not self.is_finished():
+                    print("Current calculation is:")
+                    print(self.calc)
                     raise StateException("Use done when calculation is not finished")
                 return self.past
             else:
