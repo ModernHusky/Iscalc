@@ -893,7 +893,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. exp(x) * (1 + 2 * exp(x)) ^ 4
-                substitute u for 2 * exp(x) + 1
+                substitute u for 1 + 2 * exp(x)
                 apply integral identity
                 replace substitution
                 simplify
@@ -936,7 +936,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 rewrite 27 * exp(9 * x) + exp(12 * x) to exp(9 * x) * (27 + exp(3 * x))
                 rewrite (exp(9 * x) * (27 + exp(3 * x))) ^ (1/3) to exp(3 * x) * (27 + exp(3 * x)) ^ (1/3)
-                substitute u for exp(3 * x) + 27
+                substitute u for 27 + exp(3 * x)
                 simplify
                 apply integral identity
                 simplify
@@ -1982,7 +1982,7 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[sqrt(2),oo]. 1 / (x + x ^ sqrt(2))) = (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
             lhs:
-                rewrite 1 / (x + x ^ sqrt(2)) to x ^ -sqrt(2) / (x ^ (1 - sqrt(2)) + 1)
+                rewrite 1 / (x + x ^ sqrt(2)) to x ^ -sqrt(2) / (x ^ (-sqrt(2) + 1) + 1)
                 substitute u for log(x ^ (1 - sqrt(2)) + 1)
                 apply integral identity
                 simplify

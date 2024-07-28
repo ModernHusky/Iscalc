@@ -158,6 +158,14 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", "-(x^2)")
         self.assertEqual(rule.eval(t, ctx), parse_expr("INT u. -(exp(u) / 2)"))
 
+    def testSubstitutionSquare2(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        t = parse_expr("INT x. x / sqrt(2 - 3*x^2)")
+        rule = rules.Substitution("u", "2 - 3*x^2")
+        self.assertEqual(rule.eval(t, ctx), parse_expr("INT u. -(1 / (6 * sqrt(u)))"))
+
     def testIntegralIdentitySum(self):
         file = compstate.CompFile("base", "test_rewriting1")
         ctx = file.ctx
