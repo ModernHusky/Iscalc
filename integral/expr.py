@@ -1000,7 +1000,7 @@ def collect_spec_expr(expr, symb):
     return c
 
 
-def decompose_expr_factor(e):
+def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
     """Get production factors from expr."""
     num_factors, denom_factors = [], []
     def rec(e: Expr, sign):

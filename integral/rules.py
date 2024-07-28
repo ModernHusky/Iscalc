@@ -1387,6 +1387,36 @@ class ApplyInductHyp(Rule):
         return e
 
 
+def normalize_divide(e1: Expr, e2: Expr, ctx: Context):
+    # First decompose into factors
+    num_factors1, denom_factors1 = decompose_expr_factor(e1)
+    num_factors2, denom_factors2 = decompose_expr_factor(e2)
+
+    # Cancel out factors that are the same
+    new_num_factors1 = []
+    for factor in num_factors1:
+        if factor in num_factors2:
+            num_factors2.remove(factor)
+        else:
+            new_num_factors1.append(factor)
+    new_denom_factors1 = []
+    for factor in denom_factors1:
+        if factor in denom_factors2:
+            denom_factors2.remove(factor)
+        else:
+            new_denom_factors1.append(factor)
+
+    def prod(es):
+        es = list(es)
+        if len(es) == 0:
+            return Const(1)
+        else:
+            return functools.reduce(operator.mul, es[1:], es[0])
+
+    new_num = prod(new_num_factors1 + denom_factors2)
+    new_denom = prod(new_denom_factors1 + num_factors2)
+    return normalize(new_num / new_denom, ctx)
+
 class Substitution(Rule):
     """Apply substitution u = g(x).
 
@@ -1469,12 +1499,8 @@ class Substitution(Rule):
             body = e.body.args[0]
         elif e.body.is_times() and e.body.args[0] == dfx:
             body = e.body.args[1]
-        elif e.body.is_times() and -e.body.args[1] == dfx:
-            body = -e.body.args[0]
-        elif e.body.is_times() and -e.body.args[0] == dfx:
-            body = -e.body.args[1]
         else:
-            body = normalize(e.body / dfx, ctx2)
+            body = normalize_divide(e.body, dfx, ctx2)
 
         # Now attempt to write the new body in the form of f(g(x)).
         # First substitute all appearances of g(x) by u. If this clears

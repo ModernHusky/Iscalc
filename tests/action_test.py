@@ -2030,6 +2030,8 @@ class ActionTest(unittest.TestCase):
                 simplify
                 solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
                 substitute u for cos(y)
+                rewrite -(u ^ 2) - 1 to -(u^2 + 1)
+                simplify
                 apply integral identity
                 simplify
             done
@@ -2591,7 +2593,7 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2) to pi * sin(x) / (a + b * cos(x) ^ 2)
                 substitute u for cos(x)
                 substitute x for sqrt(b / a) * u
-                rewrite a * x ^ 2 + a to a * (x ^ 2 + 1)
+                rewrite -(a * x ^ 2) - a to -a * (x ^ 2 + 1)
                 simplify
                 apply integral identity
                 simplify

@@ -135,6 +135,7 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("u < pi / 2"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) < sqrt(2)"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 1"), ctx2))
+
     def testSubstitutionCondCheck5(self):
         file = compstate.CompFile("base", "simple_integral_01")
         ctx = file.ctx
@@ -149,15 +150,18 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(u) > 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
 
-    def testRewriting1(self):
+    def testSubstitutionSquare(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        t = parse_expr("INT x. x * exp(-(x^2))")
+        rule = rules.Substitution("u", "-(x^2)")
+        self.assertEqual(rule.eval(t, ctx), parse_expr("INT u. -(exp(u) / 2)"))
+
+    def testIntegralIdentitySum(self):
         file = compstate.CompFile("base", "test_rewriting1")
         ctx = file.ctx
         ctx.load_book("interesting")
-
-        # "conds": [ "m + 1 > 0" ],
-        # "expr": "(INT x:[0,1].x^m * log(x)^n) = (-1)^n * factorial(n) / (m+1)^(n+1)",
-        # "path": "chapter4_practice02",
-        # "type": "problem"
 
         e = parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * (INT x:[0,1]. x ^ (a * k) * log(x) ^ k))")
         ctx.add_condition("a > 0")
@@ -165,7 +169,6 @@ class RulesTest(unittest.TestCase):
 
         e = rules.IntegralIdentity().eval(e, ctx)
         self.assertEqual(e, parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * ((-1) ^ k * factorial(k) * (a * k + 1) ^ (-k - 1)))"))
-
 
     def testIntegralIdentity(self):
         ctx = context.Context()
