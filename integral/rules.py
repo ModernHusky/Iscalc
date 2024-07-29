@@ -2016,13 +2016,12 @@ class IntegrationByParts(Rule):
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
         ctx2 = body_conds(e, ctx)
-        e.body = normalize(e.body, ctx2)
         du = deriv(e.var, self.u, ctx)
         dv = deriv(e.var, self.v, ctx)
         udv = normalize(self.u * dv, ctx2)
 
         equal = False
-        if udv == e.body:
+        if udv == normalize(e.body, ctx2):
             equal = True
 
         if not equal and norm.eq_quotient(udv, e.body, ctx2):
@@ -2088,7 +2087,6 @@ class IntegrateByEquation(Rule):
         if isinstance(lhs, str):
             lhs = parser.parse_expr(lhs)
         self.lhs = lhs
-        self.coeff = None
 
     def __str__(self):
         return "solve integral %s" % self.lhs
@@ -2103,15 +2101,11 @@ class IntegrateByEquation(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Eliminate the lhs's integral in rhs by solving equation."""
-        norm_e = normalize(e, ctx)
-        rhs_var = None
         lhs = normalize(self.lhs, ctx)
 
         def get_coeff(t: Expr):
-            nonlocal rhs_var
+            """Obtain the coefficient of lhs within t."""
             if t == lhs:
-                if expr.is_integral(t):
-                    rhs_var = t.var
                 return Const(1)
 
             if t.is_plus():
@@ -2127,20 +2121,16 @@ class IntegrateByEquation(Rule):
             else:
                 return Const(0)
 
+        norm_e = normalize(e, ctx)
         coeff = normalize(get_coeff(norm_e), ctx)
-        if coeff == Const(0):
-            return e
 
-        if rhs_var != None:
-            new_rhs = normalize(norm_e + ((-coeff) * lhs.alpha_convert(rhs_var)), ctx)
-        else:
-            new_rhs = normalize(norm_e + ((-coeff) * lhs), ctx)
-        self.coeff = normalize(-(coeff), ctx)
-        try:
-            res = normalize(new_rhs / ((Const(1) - coeff)), ctx)
-        except Exception:
-            raise RuleException("IntegrateByEquation", f"normalizing {new_rhs / ((Const(1) - coeff))} is failed")
-        return res
+        if coeff == Const(0):
+            raise RuleException("IntegrateByEquation", "lhs %s not found in integral" % self.lhs)
+
+        if coeff == Const(1):
+            raise RuleException("IntegrateByEquation", "lhs %s has coeff 1 in integral" % self.lhs)
+
+        return normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
 
 
 class ElimInfInterval(Rule):

@@ -4,7 +4,7 @@ from typing import Optional
 
 from integral import expr
 from integral.expr import Expr
-from integral.rules import Rule
+from integral.rules import Rule, IntegrateByEquation, RuleException
 from integral import compstate
 from integral.compstate import Calculation, Goal, CompFile
 from integral.conditions import Conditions
@@ -326,6 +326,16 @@ class CalculateState(State):
     def process_action(self, action: Action) -> State:
         # Perform a rule
         if isinstance(action, RuleAction):
+            # Special check for IntegrateByEquation: lhs must appear exactly
+            # as one of the steps.
+            if isinstance(action.rule, IntegrateByEquation):
+                if not (self.calc.start == action.rule.lhs or
+                        any(step.res == action.rule.lhs for step in self.calc.steps)):
+                    print("Current calculation is:")
+                    print(self.calc)
+                    raise RuleException(
+                        "IntegrateByEquation",
+                        "lhs %s must appear as one of the steps" % action.rule.lhs)
             self.calc.perform_rule(action.rule)
             return self
         

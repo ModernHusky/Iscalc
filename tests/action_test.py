@@ -1175,7 +1175,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 integrate by parts with u = cos(3 * x), v = -cos(4 * x) / 4
                 simplify
-                solve integral INT x. sin(3 * x) * cos(4 * x)
+                solve integral INT x. cos(4 * x) * sin(3 * x)
             done
 
             calculate INT x. sec(x) * sqrt(sec(x) + tan(x))
@@ -1676,7 +1676,7 @@ class ActionTest(unittest.TestCase):
                 rewrite tan(u)^2 to sec(u)^2 - 1
                 expand polynomial
                 apply integral identity
-                solve integral 25 * INT u. sec(u)^3
+                solve integral 25 * (INT u. sec(u)^3)
                 expand polynomial
                 simplify
                 replace substitution
