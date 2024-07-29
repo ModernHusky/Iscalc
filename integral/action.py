@@ -364,8 +364,10 @@ class CalculateState(State):
 
             res = self.calc.steps[-1].res
             ctx = self.calc.ctx
+            cur_e = self.calc.start
             for step in self.calc.steps:
-                ctx = step.rule.update_context(ctx)
+                ctx = step.rule.update_context(cur_e, ctx)
+                cur_e = step.res
             substs = ctx.get_substs()
             for var, _ in substs:
                 if res.contains_var(var) and not self.calc.start.contains_var(var):

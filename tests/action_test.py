@@ -223,10 +223,6 @@ class ActionTest(unittest.TestCase):
                 partial fraction decomposition
                 apply integral identity
                 simplify
-                substitute u for x - 3
-                apply integral identity
-                expand polynomial
-                simplify
             done
 
             calculate INT x:[0, pi / 2]. sin(x) * cos(x) ^ 3
@@ -532,17 +528,12 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[1, 2]. (2 - x) / (x ^ 2 + 5 * x)
                 partial fraction decomposition
                 apply integral identity
-                substitute u for 5 * x + 25
-                apply integral identity
                 simplify
             done
 
             calculate INT x:[1, 2]. (x^2 - 1) / (x^2 - 16)
                 partial fraction decomposition
                 simplify
-                substitute u for 8 * x + 32
-                apply integral identity
-                substitute u for 8 * x - 32
                 apply integral identity
                 simplify
             done
@@ -550,10 +541,6 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[3, 4]. (x^4 + x^3 + x^2 + 1)/(x^2 + x - 2)
                 partial fraction decomposition
                 simplify
-                substitute u for 3 * x + 6
-                apply integral identity
-                simplify
-                substitute u for 3 * x - 3
                 apply integral identity
                 simplify
             done
@@ -561,10 +548,6 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[2, 4]. (x^2 + x - 1) / (x * (x^2 - 1))
                 partial fraction decomposition
                 simplify
-                substitute u for 2 * x + 2
-                apply integral identity
-                simplify
-                substitute u for 2 * x - 2
                 apply integral identity
                 simplify
             done
@@ -573,16 +556,10 @@ class ActionTest(unittest.TestCase):
                 partial fraction decomposition
                 apply integral identity
                 simplify
-                substitute u for 4 * x + 8
-                apply integral identity
-                simplify
             done
 
             calculate INT x:[2, 4]. (x^5 + 1) / (x ^ 3 * (x + 2))
                 partial fraction decomposition
-                apply integral identity
-                simplify
-                substitute u for 8 * x + 16
                 apply integral identity
                 simplify
             done
@@ -619,9 +596,6 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[pi/12, pi/6]. sec(x) ^ 2 / (tan(x) ^ 3 - tan(x) ^ 2)
                 substitute u for tan(x)
                 partial fraction decomposition
-                apply integral identity
-                simplify
-                substitute v for u - 1
                 apply integral identity
                 simplify
             done

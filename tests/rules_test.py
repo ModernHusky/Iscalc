@@ -38,7 +38,7 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("sqrt(5 + sqrt(x))"))
         t2 = rule.eval(t, ctx)
         self.assertEqual(t2, parse_expr("INT u. 4 * u * (u ^ 2 - 5) * sqrt(abs(u ^ 2 - 5) + 5)"))
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         t3 = rules.Simplify().eval(t2, ctx2)
         self.assertEqual(t3, parse_expr("4 * (INT u. u ^ 2 * (u ^ 2 - 5))"))
@@ -55,7 +55,7 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("(1 + sqrt(x - 3)) ^ (1/3)"))
         t2 = rule.eval(t, ctx)
         self.assertEqual(t2, parse_expr("INT u. 6 * u ^ 2 * (u ^ 3 - 1) * (abs(u ^ 3 - 1) + 1) ^ (1/3)"))
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         t3 = rules.Simplify().eval(t2, ctx2)
         self.assertEqual(t3, parse_expr("6 * (INT u. u ^ 3 * (u ^ 3 - 1))"))
@@ -70,7 +70,7 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("acos(1/x)"))
         t2 = rule.eval(t, ctx)
         self.assertEqual(t2, parse_expr("INT u. cos(u) * sin(u) / cos(u) ^ 2 * (1 / cos(u) ^ 2 - 1) ^ (3/2)"))
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         self.assertTrue(condprover.check_condition(parse_expr("sin(u) >= 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("cos(u) >= 0"), ctx2))
@@ -85,10 +85,28 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("asec(x)"))
         t2 = rule.eval(t, ctx)
         self.assertEqual(t2, parse_expr("INT u. sec(u) * tan(u) * (sec(u) ^ 2 - 1) ^ (3/2) / sec(u)"))
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         self.assertTrue(condprover.check_condition(parse_expr("tan(u) >= 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
+
+    def testInverseSubstitutionCondCheck3(self):
+        file = compstate.CompFile("base", "standard")
+        ctx = file.ctx
+
+        t = parse_expr("INT x. (x^2 - 1)^(3/2) / x")
+        ctx.add_condition(parse_expr("x > 1"))
+
+        rule = rules.SubstitutionInverse("x", parse_expr("sec(u)"))
+        t2 = rule.eval(t, ctx)
+        self.assertEqual(t2, parse_expr("INT u. (sec(u) ^ 2 - 1) ^ (3/2) / sec(u) * (sec(u) * tan(u))"))
+        ctx2 = rule.update_context(t, ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("tan(u) >= 0"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
+
+        t3 = rules.Simplify().eval(t2, ctx2)
+        self.assertEqual(t3, parse_expr("INT u. tan(u) * (sec(u) ^ 2 - 1) ^ (3/2)"))
 
     def testSubstitutionInverse(self):
         # Basic correct case
@@ -129,7 +147,7 @@ class RulesTest(unittest.TestCase):
         ctx.add_condition(parse_expr("x > 1"))
 
         rule = rules.Substitution("u", parse_expr("atan(x)"))
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         self.assertTrue(condprover.check_condition(parse_expr("tan(u) > 0"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("u > pi / 4"), ctx2))
@@ -144,7 +162,7 @@ class RulesTest(unittest.TestCase):
         t = parse_expr("INT x. sqrt(x ^ 2 + 1)")
 
         rule = rules.Substitution("u", "atan(x)")
-        ctx2 = rule.update_context(ctx)
+        ctx2 = rule.update_context(t, ctx)
 
         self.assertTrue(condprover.check_condition(parse_expr("u > -pi/2"), ctx2))
         self.assertTrue(condprover.check_condition(parse_expr("u < pi/2"), ctx2))

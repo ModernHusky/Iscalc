@@ -393,7 +393,7 @@ class Rule:
         """Returns the JSON representation of the rule."""
         raise NotImplementedError
     
-    def update_context(self, ctx: Context) -> Context:
+    def update_context(self, e: Expr, ctx: Context) -> Context:
         """Produce the updated context after performing this rule."""
         return ctx
 
@@ -1010,8 +1010,8 @@ class OnSubterm(Rule):
             res['latex_str'] += ' (all)'
         return res
     
-    def update_context(self, ctx: Context) -> Context:
-        return self.rule.update_context(ctx)
+    def update_context(self, e: Expr, ctx: Context) -> Context:
+        return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         return apply_subterm(e, self.rule.eval, ctx)
@@ -1037,8 +1037,8 @@ class OnLocation(Rule):
             res['latex_str'] += ' at ' + str(self.loc)
         return res
     
-    def update_context(self, ctx: Context) -> Context:
-        return self.rule.update_context()
+    def update_context(self, e: Expr, ctx: Context) -> Context:
+        return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         def rec(cur_e, loc, ctx):
@@ -1148,8 +1148,8 @@ class OnCount(Rule):
             res['latex_str'] += ' (at %s)' + str(self.n)
         return res
     
-    def update_context(self, ctx: Context) -> Context:
-        return self.rule.update_context(ctx)
+    def update_context(self, e: Expr, ctx: Context) -> Context:
+        return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         count = self.n
@@ -1436,10 +1436,23 @@ class Substitution(Rule):
                          (self.var_name, latex.convert_expr(self.var_subst))
         }
     
-    def update_context(self, ctx: Context) -> Context:
-        ctx2 = Context(ctx)
-        ctx2.add_subst(self.var_name, self.var_subst)
-        return ctx2
+    def update_context(self, e: Expr, ctx: Context) -> Context:
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e)):
+            sep_ints = e.separate_integral()
+            sep_lims = e.separate_limits()
+            if len(sep_ints) == 0 and len(sep_lims) == 0:
+                return ctx
+            elif len(sep_ints) != 0:
+                e, _ = sep_ints[0]
+            else:
+                e, _ = sep_lims[0]
+
+        if isinstance(e, IndefiniteIntegral):
+            ctx2 = Context(ctx)
+            ctx2.add_subst(self.var_name, self.var_subst)
+            return ctx2
+        else:
+            return ctx
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """
@@ -1455,7 +1468,7 @@ class Substitution(Rule):
             sep_ints = e.separate_integral()
             sep_lims = e.separate_limits()
             if len(sep_ints) == 0 and len(sep_lims) == 0:
-                return e
+                raise RuleException("Substitution", "integral or limit not found")
             elif len(sep_ints) != 0:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
             else:
@@ -1574,6 +1587,31 @@ class SubstitutionInverse(Rule):
                 latex.convert_expr(self.var_subst), self.old_var)
         }
 
+    def update_context(self, e: Expr, ctx: Context) -> Expr:
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
+            sep_ints = e.separate_integral()
+            if len(sep_ints) == 0:
+                return ctx
+            else:
+                e, _ = sep_ints[0]
+
+        new_vars = self.var_subst.get_vars() - set(ctx.get_vars()) - {e.var}
+        if len(new_vars) >= 2:
+            return ctx
+        
+        if not new_vars:
+            return ctx
+        
+        new_var = new_vars.pop()
+
+        if isinstance(e, IndefiniteIntegral):
+            ctx2 = Context(ctx)
+            inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
+            ctx2.add_subst(new_var, inv_f)
+            return ctx2
+        else:
+            return ctx
+
     def eval(self, e: Expr, ctx: Context) -> Expr:
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             sep_ints = e.separate_integral()
@@ -1610,16 +1648,16 @@ class SubstitutionInverse(Rule):
         # g(x) = g(x(u)) * f'(u)
         new_e_body = new_e_body * subst_deriv
 
-        if expr.is_integral(e):
-            # Solve the equations lower = f(u) and upper = f(u) for u.
-            x = Var("_" + new_var)
-            lower = solve_equation(self.var_subst, x, new_var, ctx)
-            upper = solve_equation(self.var_subst, x, new_var, ctx)
-            if lower is None or upper is None:
-                raise RuleException("SubstitutionInverse", "cannot solve equation")
+        # Solve the equations f(u) = x for u
+        inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
+        if inv_f is None:
+            raise RuleException("SubstitutionInverse", "cannot solve equation %s = %s for %s" % (
+                self.var_subst, e.var, new_var
+            ))
 
-            lower = limits.reduce_inf_limit(lower.subst(x.name, (1 / x) + e.lower), x.name, ctx)
-            upper = limits.reduce_inf_limit(upper.subst(x.name, e.upper - (1 / x)), x.name, ctx)
+        if expr.is_integral(e):
+            lower = limits.reduce_inf_limit(inv_f.subst(e.var, (1 / Var(e.var)) + e.lower), e.var, ctx)
+            upper = limits.reduce_inf_limit(inv_f.subst(e.var, e.upper - (1 / Var(e.var))), e.var, ctx)
 
             lower = normalize(lower, ctx)
             upper = normalize(upper, ctx)
@@ -1627,7 +1665,6 @@ class SubstitutionInverse(Rule):
                 return -expr.Integral(new_var, upper, lower, new_e_body)
             else:
                 return expr.Integral(new_var, lower, upper, new_e_body)
-
         elif expr.is_indefinite_integral(e):
             return expr.IndefiniteIntegral(new_var, new_e_body, skolem_args=e.skolem_args)
         else:

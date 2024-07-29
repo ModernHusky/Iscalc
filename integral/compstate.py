@@ -507,8 +507,10 @@ class Calculation(StateItem):
 
         e = self.last_expr
         ctx = Context(self.ctx)
+        cur_e = self.start
         for step in self.steps:
-            ctx = step.rule.update_context(ctx)
+            ctx = step.rule.update_context(cur_e, ctx)
+            cur_e = step.res
         new_e = rule.eval(e, ctx)
         step = CalculationStep(self, rule, new_e, id + 1)
         self.add_step(step)
@@ -1256,8 +1258,10 @@ def parse_step(calc: Calculation, item, id: int) -> CalculationStep:
     assert isinstance(calc, Calculation), "it should belong to a Calculation"
     rule = parse_rule(item['rule'], calc)
     ctx = Context(calc.ctx)
+    cur_e = calc.start
     for step in calc.steps:
-        ctx = step.rule.update_context(ctx)
+        ctx = step.rule.update_context(cur_e, ctx)
+        cur_e = step.res
     new_e = rule.eval(calc.last_expr, ctx)
     step = CalculationStep(calc, rule, new_e, id)
     return step
