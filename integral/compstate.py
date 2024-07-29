@@ -167,6 +167,7 @@ class Goal(StateItem):
         self.proof = None
         self.ctx = ctx
 
+        self.ctx.extend_vars(goal.get_vars())
         self.ctx.extend_condition(self.conds)
 
         # Check well-formedness of the goal
@@ -448,9 +449,12 @@ class Calculation(StateItem):
             conds = Conditions()
         self.conds = conds
         self.connection_symbol = connection_symbol
+
         self.ctx = ctx
+        self.ctx.extend_vars(start.get_vars())
         if conds is not None:
             self.ctx.extend_condition(self.conds)
+
     def __eq__(self, other):
         if not isinstance(other, Calculation):
             return False

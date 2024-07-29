@@ -1,6 +1,6 @@
 """Context of integral calculations"""
 
-from typing import Optional, List, Dict, Union, Callable
+from typing import Iterable, Optional, List, Dict, Union, Callable
 import os
 import json
 
@@ -118,6 +118,9 @@ class Context:
         # Inductive hypothesis
         self.induct_hyps: List[Identity] = list()
 
+        # List of variables
+        self.vars: list[str] = list()
+
         # List of assumptions
         self.conds: Conditions = Conditions()
 
@@ -234,12 +237,16 @@ class Context:
         res.extend(self.induct_hyps)
         return res
 
+    def get_vars(self) -> list[str]:
+        res = self.parent.get_vars() if self.parent is not None else []
+        res.extend(self.vars)
+        return res
+
     def get_conds(self) -> Conditions:
         res = self.parent.get_conds() if self.parent is not None else Conditions()
         for cond in self.conds.data:
             res.add_condition(cond)
         return res
-
 
     def get_subgoal(self, name: str) -> Optional[Identity]:
         res = self.parent.get_subgoal(name) if self.parent is not None else None
@@ -373,6 +380,12 @@ class Context:
             cond = parser.parse_expr(cond)
         if cond not in self.conds.data:
             self.conds.add_condition(cond)
+
+    def extend_vars(self, vars: Iterable[str]):
+        cur_vars = self.get_vars()
+        for var in vars:
+            if var not in cur_vars:
+                self.vars.append(var)
 
     def extend_condition(self, conds: Conditions):
         for cond in conds.data:

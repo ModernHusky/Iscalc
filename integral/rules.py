@@ -1554,34 +1554,31 @@ class SubstitutionInverse(Rule):
 
     """
 
-    def __init__(self, var_name: str, old_var: str, var_subst: Union[Expr, str]):
+    def __init__(self, old_var: str, var_subst: Union[Expr, str]):
         self.name = "SubstitutionInverse"
-        self.var_name = var_name
         self.old_var = old_var
         if isinstance(var_subst, str):
             var_subst = parser.parse_expr(var_subst)
         self.var_subst = var_subst
 
     def __str__(self):
-        return "substitute %s for %s creating %s" % (
-            self.var_subst, self.old_var, self.var_name)
+        return "substitute %s for %s" % (self.var_subst, self.old_var)
 
     def export(self):
         return {
             "name": self.name,
-            "var_name": self.var_name,
             "old_var": self.old_var,
             "var_subst": str(self.var_subst),
             "str": str(self),
-            "latex_str": "inverse substitute \\(%s\\) for \\(%s\\) creating \\(%s\\)" % (
-                latex.convert_expr(self.var_subst), self.old_var, self.var_name)
+            "latex_str": "substitute \\(%s\\) for \\(%s\\)" % (
+                latex.convert_expr(self.var_subst), self.old_var)
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             sep_ints = e.separate_integral()
             if len(sep_ints) == 0:
-                return e
+                raise RuleException("SubstitutionInverse", "no integral found in expression")
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
             
@@ -1592,13 +1589,21 @@ class SubstitutionInverse(Rule):
             raise RuleException("SubstitutionInverse", "incorrect old variable %s, should be %s" % (
                 self.old_var, e.var))
 
-        if e.contains_var(self.var_name) or e.var == self.var_name:
-            raise RuleException("SubstitutionInverse", "variable %s already exists" % self.var_name)
+        new_vars = self.var_subst.get_vars() - set(ctx.get_vars()) - {e.var}
+        if len(new_vars) >= 2:
+            raise RuleException("SubstitutionInverse", "more than one new variable: %s" % str(new_vars))
+        
+        if not new_vars:
+            raise RuleException("SubstitutionInverse", "no new variable found in substitution")
+        
+        new_var = new_vars.pop()
+
         try:
             # dx = f'(u) * du
-            subst_deriv = deriv(self.var_name, self.var_subst, ctx)
+            subst_deriv = deriv(new_var, self.var_subst, ctx)
         except NotImplementedError:
             raise RuleException('Inverse Substitute', f"{self.var_subst} can not be derived")
+
         # Replace x with f(u)
         new_e_body = e.body.replace(Var(e.var), self.var_subst)
 
@@ -1607,9 +1612,9 @@ class SubstitutionInverse(Rule):
 
         if expr.is_integral(e):
             # Solve the equations lower = f(u) and upper = f(u) for u.
-            x = Var("_" + self.var_name)
-            lower = solve_equation(self.var_subst, x, self.var_name, ctx)
-            upper = solve_equation(self.var_subst, x, self.var_name, ctx)
+            x = Var("_" + new_var)
+            lower = solve_equation(self.var_subst, x, new_var, ctx)
+            upper = solve_equation(self.var_subst, x, new_var, ctx)
             if lower is None or upper is None:
                 raise RuleException("SubstitutionInverse", "cannot solve equation")
 
@@ -1619,12 +1624,12 @@ class SubstitutionInverse(Rule):
             lower = normalize(lower, ctx)
             upper = normalize(upper, ctx)
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
-                return -expr.Integral(self.var_name, upper, lower, new_e_body)
+                return -expr.Integral(new_var, upper, lower, new_e_body)
             else:
-                return expr.Integral(self.var_name, lower, upper, new_e_body)
+                return expr.Integral(new_var, lower, upper, new_e_body)
 
         elif expr.is_indefinite_integral(e):
-            return expr.IndefiniteIntegral(self.var_name, new_e_body, skolem_args=e.skolem_args)
+            return expr.IndefiniteIntegral(new_var, new_e_body, skolem_args=e.skolem_args)
         else:
             raise AssertionError("SubstitutionInverse")
 

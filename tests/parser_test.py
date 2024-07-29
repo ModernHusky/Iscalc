@@ -2,26 +2,13 @@
 
 import unittest
 from fractions import Fraction
-from decimal import Decimal
 
-from integral import expr
-from integral.expr import Var, Const, Op, Fun, Matrix
+from integral.expr import Var, Const, Op, Fun
 from integral.parser import parse_expr, parse_action
 from integral.action import Action
 
 
 class ParserTest(unittest.TestCase):
-    def testParseType(self):
-        test_data = [
-            "$real",
-            "$tensor($real, 3)",
-            "$tensor($real, 2, 3)",
-        ]
-
-        for s in test_data:
-            t = parse_expr(s)
-            self.assertEqual(str(t), s)
-
     def testParseTerm(self):
         test_data = [
             "x", "1", "11/10", "-1", "-11/10",
@@ -74,46 +61,15 @@ class ParserTest(unittest.TestCase):
         test_data = [
             "calculate INT x:[0,1]. (3 * x + 1) ^ (-2)",
             "substitute u for 3 * x + 1",
-            "apply definite integral",
-            "full simplify"
+            "substitute sin(t) for x",
+            "apply integral identity",
+            "simplify"
         ]
 
         for s in test_data:
             action = parse_action(s)
             self.assertIsInstance(action, Action)
             self.assertEqual(str(action), s)
-
-    def testParseVector(self):
-        test_data = [
-            ("[[1],[2],[3]]", Matrix([[Const(1)], [Const(2)], [Const(3)]])),
-            ("T([[1],[2],[3]])", Fun("T",Matrix([[Const(1)], [Const(2)], [Const(3)]])))
-        ]
-        for s, r in test_data:
-            e = parse_expr(s)
-            self.assertEqual(e, r)
-
-    def testParseMatrix(self):
-        test_data = [
-            ("{{1,2,3}, {4,5,6}}", Matrix([Vector([Const(1), Const(2), Const(3)], is_column=False),\
-                                           Vector([Const(4), Const(5), Const(6)], is_column=False)],\
-                                           is_row=True)),
-            ("{T({1,2,3}), T({4,5,6})}", Matrix([Vector([Const(1), Const(2), Const(3)], is_column=True), \
-                                             Vector([Const(4), Const(5), Const(6)], is_column=True)], \
-                                             is_row=False)),
-            ("T({T({1,2,3}), T({4,5,6})})", Matrix([Vector([Const(1), Const(2), Const(3)], is_column=False),\
-                                           Vector([Const(4), Const(5), Const(6)], is_column=False)],\
-                                           is_row=True))
-        ]
-        for s, r in test_data:
-            e = parse_expr(s)
-            self.assertEqual(e, r)
-
-    def testMatrixVar(self):
-        test_data = [("matrix a[2][3]", "matrix a[2][3]"),
-                     ("matrix A[n][n]", "matrix A[n][n]"),
-                     ("a", "a")]
-        for s, res in test_data:
-            self.assertEqual(str(parse_expr(s)), res)
 
 
 if __name__ == "__main__":

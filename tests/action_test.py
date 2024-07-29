@@ -250,7 +250,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
-                substitute sin(u) for x creating u
+                substitute sin(u) for x
                 rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2
                 simplify
                 apply integral identity
@@ -258,7 +258,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
-                substitute sqrt(2) * sin(u) for x creating u
+                substitute sqrt(2) * sin(u) for x
                 simplify
                 rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
@@ -268,7 +268,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
-                substitute 2 * sin(u) for y creating u
+                substitute 2 * sin(u) for y
                 simplify
                 rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
@@ -278,7 +278,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x:[1/sqrt(2), 1]. sqrt(1 - x^2) / x ^ 2
-                substitute sin(u) for x creating u
+                substitute sin(u) for x
                 simplify
                 rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
                 simplify
@@ -1402,7 +1402,7 @@ class ActionTest(unittest.TestCase):
 
             calculate INT x:[1, 4]. (9 + 6*sqrt(x) + x)/(4*sqrt(x) + x)
                 rewrite 4*sqrt(x) + x to sqrt(x) * (4 + sqrt(x))
-                substitute (u - 4)^2 for x creating u
+                substitute (u - 4)^2 for x
                 substitute t for u - 4
                 simplify
                 partial fraction decomposition
@@ -1838,7 +1838,7 @@ class ActionTest(unittest.TestCase):
                 base:
                     lhs:
                         expand definition for I
-                        substitute sqrt(b) * u for x creating u
+                        substitute sqrt(b) * u for x
                         simplify
                         rewrite 1 / (b * u ^ 2 + b) to 1 / b * (1 / (1 ^ 2 + u ^ 2))
                         apply integral identity
@@ -1910,7 +1910,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
             lhs:
                 split region at 1
-                substitute 1 / u for x creating u
+                substitute 1 / u for x
                 simplify
                 rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1
                 simplify
@@ -1961,10 +1961,10 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b) for b > 0
             lhs:
-                substitute 1/t for x creating t
+                substitute 1/t for x
                 rewrite log(1/t) to -log(t)
                 rewrite -log(t) / ((1/t)^2 + b^2) * -(1/t^2) to log(t) / (1 + b^2*t^2)
-                substitute s/b for t creating s
+                substitute s/b for t
                 rewrite log(s/b) to log(s) - log(b)
                 expand polynomial
                 apply integral identity
@@ -2107,14 +2107,14 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 8 * log(2)
             subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))
             lhs:
-                substitute tan(u) for x creating u
+                substitute tan(u) for x
                 rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1
                 simplify
             done
             subgoal 2: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) - (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1))
             lhs:
                 apply 1 on INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)
-                substitute pi / 4 - y for x creating y
+                substitute pi / 4 - y for x
                 simplify
                 rewrite tan(pi / 4 - y) to (tan(pi / 4) - tan(y)) / (1 + tan(pi / 4) * tan(y))
                 simplify
@@ -2135,7 +2135,7 @@ class ActionTest(unittest.TestCase):
             prove (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) = pi / (8 * a) * log(2 * a ^ 2) for a > 0
             subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) for a > 0
             lhs:
-                substitute t / a for x creating t
+                substitute t / a for x
                 simplify
                 rewrite 1 / (t ^ 2 / a ^ 2 + 1) * log(t / a + 1) to log(t / a + 1) * a ^ 2 / (t ^ 2 + a ^ 2)
                 rewrite t / a + 1 to (t + a) / a
@@ -2188,7 +2188,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 3) = 3 * pi / (16 * a ^ 5) for a > 0
             subgoal 1: (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a) for a > 0
             lhs:
-                substitute a * u for x creating u
+                substitute a * u for x
                 simplify
                 rewrite 1 / (a ^ 2 * u ^ 2 + a ^ 2) to 1 / (a ^ 2 * (u ^ 2 + 1))
                 simplify
@@ -2369,7 +2369,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,1]. log(x + 1 / x) / (x ^ 2 + 1)) = pi / 2 * log(2)
             subgoal 1: (INT x:[0,oo]. log(x ^ 2 + 1) / (x ^ 2 + 1)) = pi * log(2)
             lhs:
-                substitute tan(u) for x creating u
+                substitute tan(u) for x
                 rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1
                 simplify
                 rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2
@@ -2407,7 +2407,7 @@ class ActionTest(unittest.TestCase):
             done
             subgoal 2: (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) = (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) - a * (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) for a > 0
             lhs:
-                substitute 1 / u for x creating u
+                substitute 1 / u for x
                 simplify
                 expand polynomial
                 rewrite (1 / u) ^ a to 1 ^ a / u ^ a
@@ -2719,7 +2719,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite 1 / (u ^ 2 * x ^ 2 + 2 * u ^ 2 + 1) to u ^ (-2) * (x ^ 2 + (2 * u ^ 2 + 1) / u ^ 2) ^ (-1)
                 simplify
-                substitute y * sqrt(u ^ (-2) * (2 * u ^ 2 + 1)) for x creating y
+                substitute y * sqrt(u ^ (-2) * (2 * u ^ 2 + 1)) for x
                 simplify
                 rewrite 1 / (y ^ 2 * (2 * u ^ 2 + 1) / u ^ 2 + (2 * u ^ 2 + 1) / u ^ 2) to 1 / (y ^ 2 + 1) * (u ^ 2 / (2 * u ^ 2 + 1))
                 apply integral identity
@@ -2738,7 +2738,7 @@ class ActionTest(unittest.TestCase):
                 apply 2 on D u. I(u)
                 expand polynomial
                 simplify
-                substitute 1 / x for u creating x
+                substitute 1 / x for u
                 simplify
                 rewrite x ^ 3 * (1 / x ^ 2 + 1) * sqrt(2 / x ^ 2 + 1) to sqrt((1 + x ^ 2) ^ 2 * (2 + x ^ 2))
                 rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)
@@ -2915,7 +2915,7 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[-1,1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi
             lhs:
-                substitute cos(2 * u) for x creating u
+                substitute cos(2 * u) for x
                 rewrite cos(2 * u) to 2 * cos(u) ^ 2 - 1 (at 1)
                 rewrite cos(2 * u) to 1 - 2 * sin(u) ^ 2
                 simplify
@@ -3060,7 +3060,7 @@ class ActionTest(unittest.TestCase):
             prove (INT x:[0,4]. log(x) / sqrt(4 * x - x ^ 2)) = 0
             subgoal 1: (INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))) = pi
             lhs:
-                substitute sin(x) ^ 2 for y creating x
+                substitute sin(x) ^ 2 for y
                 rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
                 simplify
                 apply integral identity
@@ -3068,7 +3068,7 @@ class ActionTest(unittest.TestCase):
             done
             subgoal 2: (INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))) = -(2 * pi * log(2))
             lhs:
-                substitute sin(x) ^ 2 for y creating x
+                substitute sin(x) ^ 2 for y
                 rewrite log(sin(x) ^ 2) to 2 * log(sin(x))
                 rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
                 simplify
