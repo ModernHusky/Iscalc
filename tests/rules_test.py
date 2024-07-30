@@ -284,5 +284,19 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("v != pi/2"), ctx3))
         self.assertTrue(condprover.check_condition(parse_expr("v != -pi/2"), ctx3))
 
+    def testCondCheck3(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parser.parse_expr("INT x. x^3 / (9 + x^2)")
+        ctx.add_condition("x > 0")
+
+        rule = rules.Substitution("u", "x^2 + 9")
+        e = rule.eval(e, ctx)
+        ctx2 = rule.update_context(e, ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("u - 9 > 0"), ctx2))
+
+
 if __name__ == "__main__":
     unittest.main()

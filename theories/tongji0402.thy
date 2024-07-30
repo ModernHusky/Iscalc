@@ -244,8 +244,13 @@ calculate INT x. (1 - x) / sqrt(9 - 4 * x^2) for x > -3/2, x < 3/2
     simplify
 done
 
-calculate INT x. x^3 / (9 + x^2)
+calculate INT x. x^3 / (9 + x^2) for x != 0
     partial fraction decomposition
     substitute u for x ^ 2 + 9
+    expand polynomial
     simplify
-    sorry
+    apply integral identity
+    simplify
+    replace substitution
+    simplify
+done
