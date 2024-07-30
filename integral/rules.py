@@ -141,6 +141,12 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
             elif e.func_name == "acot":
                 x, = e.args
                 return normal(-rec(x)) / (Const(1) + x ^ Const(2))
+            elif e.func_name == "asec":
+                x, = e.args
+                return normal(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1))))
+            elif e.func_name == "acsc":
+                x, = e.args
+                return normal(-(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1)))))
             elif e.func_name == "binom":
                 # Arguments should be integers
                 assert not e.contains_var(var), "deriv: binom applied to real variables"

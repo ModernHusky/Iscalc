@@ -967,6 +967,9 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "bidirectional"
+            ],
             "category": "trigonometric",
             "expr": "sin(2*x) = 2 * sin(x) * cos(x)",
             "type": "axiom"
@@ -1046,6 +1049,18 @@
                 "simplify"
             ],
             "category": "trigonometric",
+            "conds": [
+                "x >= -pi / 2",
+                "x <= pi / 2"
+            ],
+            "expr": "asin(sin(x)) = x",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
             "expr": "sin(acos(x)) = sqrt(1-x^2)",
             "type": "axiom"
         },
@@ -1079,6 +1094,22 @@
             ],
             "category": "trigonometric",
             "expr": "tan(asin(x)) = x / sqrt(1 - x ^ 2)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "cos(atan(x)) = 1 / sqrt(x ^ 2 + 1)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(atan(x)) = x / sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
         {
