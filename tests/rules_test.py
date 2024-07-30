@@ -263,26 +263,33 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(x) - sin(x) != 0"), ctx))
 
     def testCondCheck2(self):
-        ctx = context.Context()
+        file = compstate.CompFile("base", "test_rewriting1")
+        ctx = file.ctx
         ctx.load_book("base")
 
         e = parser.parse_expr("INT x. 1 / (2-3*x^2)")
-        ctx.add_condition("x != sqrt(2/3)")
-        ctx.add_condition("x != -sqrt(2/3)")
+        calc = file.add_calculation(e, conds=["x != sqrt(2/3)", "x != -sqrt(2/3)"])
 
         rule = rules.Substitution("u", "sqrt(3/2)*x")
-        e = rule.eval(e, ctx)
-        ctx2 = rule.update_context(e, ctx)
-
-        self.assertTrue(condprover.check_condition(parse_expr("u != 1"), ctx2))
-        self.assertTrue(condprover.check_condition(parse_expr("u != -1"), ctx2))
+        calc.perform_rule(rule)
+        ctx = context.Context(calc.ctx)
+        cur_e = calc.start
+        for step in calc.steps:
+            ctx = step.rule.update_context(cur_e, ctx)
+            cur_e = step.res
+        self.assertTrue(condprover.check_condition(parse_expr("u != 1"), ctx))
+        self.assertTrue(condprover.check_condition(parse_expr("u != -1"), ctx))
 
         rule = rules.SubstitutionInverse("u", "sin(v)")
-        ne = rule.eval(e, ctx2)
-        # using old expression to update context
-        ctx3 = rule.update_context(e, ctx2)
-        self.assertTrue(condprover.check_condition(parse_expr("v != pi/2"), ctx3))
-        self.assertTrue(condprover.check_condition(parse_expr("v != -pi/2"), ctx3))
+        calc.perform_rule(rule)
+        ctx = context.Context(calc.ctx)
+        cur_e = calc.start
+        for step in calc.steps:
+            ctx = step.rule.update_context(cur_e, ctx)
+            cur_e = step.res
+        self.assertTrue(condprover.check_condition(parse_expr("v != pi/2"), ctx))
+        self.assertTrue(condprover.check_condition(parse_expr("v != -pi/2"), ctx))
+        self.assertTrue(condprover.check_condition(parse_expr("cos(v) != 0"), ctx))
 
     def testCondCheck3(self):
         ctx = context.Context()

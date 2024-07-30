@@ -3295,13 +3295,15 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. 1 / (2-3*x^2) for x != sqrt(2/3)
+        calculate INT x. 1 / (2-3*x^2) for x != sqrt(2/3), x != -sqrt(2/3)
             substitute u for (sqrt(3/2)*x)
             substitute sin(v) for u
             rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
             simplify
-            // It needs to be derived that cos(v) ≠ 0.
-        sorry
+            apply integral identity
+            replace substitution
+            simplify
+        done
         
         calculate INT x. 1 / (2+3*x^2) for x != sqrt(2/3)
             substitute u for (sqrt(3/2)*x)
