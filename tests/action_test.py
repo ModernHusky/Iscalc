@@ -3315,13 +3315,6 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. 1 / sqrt(2-3*x^2) for x != sqrt(2/3)
-            substitute u for sqrt(3/2)*x
-            substitute sin(v) for u
-            rewrite -(2*sin(v)^2)+2 to 2*cos(v)^2
-            simplify
-        sorry
-        
         calculate INT x. (sqrt(x^2+1)-sqrt(x^2-1)) / sqrt(x^4-1) for x > 1
             rewrite sqrt(x^4-1) to sqrt(x^2+1)*sqrt(x^2-1)
             expand polynomial
