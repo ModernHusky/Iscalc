@@ -262,5 +262,27 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(x) > sin(x)"), ctx))
         self.assertTrue(condprover.check_condition(parse_expr("cos(x) - sin(x) != 0"), ctx))
 
+    def testCondCheck2(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parser.parse_expr("INT x. 1 / (2-3*x^2)")
+        ctx.add_condition("x != sqrt(2/3)")
+        ctx.add_condition("x != -sqrt(2/3)")
+
+        rule = rules.Substitution("u", "sqrt(3/2)*x")
+        e = rule.eval(e, ctx)
+        ctx2 = rule.update_context(e, ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("u != 1"), ctx2))
+        self.assertTrue(condprover.check_condition(parse_expr("u != -1"), ctx2))
+
+        rule = rules.SubstitutionInverse("u", "sin(v)")
+        ne = rule.eval(e, ctx2)
+        # using old expression to update context
+        ctx3 = rule.update_context(e, ctx2)
+        self.assertTrue(condprover.check_condition(parse_expr("v != pi/2"), ctx3))
+        self.assertTrue(condprover.check_condition(parse_expr("v != -pi/2"), ctx3))
+
 if __name__ == "__main__":
     unittest.main()

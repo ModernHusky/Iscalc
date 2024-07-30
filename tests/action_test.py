@@ -3425,5 +3425,6 @@ class ActionTest(unittest.TestCase):
         done
         """
         self.check_actions("base", "PostgraduateIndefinitePart1SectionB", actions)
+
 if __name__ == "__main__":
     unittest.main()

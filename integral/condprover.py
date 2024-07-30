@@ -460,6 +460,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["x >= 0", "x <= 1"], "asin(x) >= 0"),
         (["x < 0", "x >= -1"], "asin(x) < 0"),
         (["x <= 0", "x >= -1"], "asin(x) <= 0"),
+        (["x != -1"], "asin(x) != -pi/2"),
+        (["x != 1"], "asin(x) != pi/2"),
         (["x >= -1", "x <= 1"], "acos(x) >= 0"),
         (["x >= -1", "x <= 1"], "acos(x) <= pi"),
         (["x > 0", "x <= 1"], "acos(x) < pi / 2"),
@@ -491,7 +493,10 @@ def get_standard_inequalities() -> List[Identity]:
         (["x > 0"], "atan(x) > 0"),
         ([], "atan(x) > -pi/2"),
         ([], "atan(x) < pi/2"),
+
+        # Value comparison of trig functions in an interval
         (["x>0", "x<pi/4"], "cos(x) > sin(x)"),
+
         # Hyperbolic
         ([], "cosh(x) > 0"),
 
@@ -506,10 +511,15 @@ def get_standard_inequalities() -> List[Identity]:
         (["isInt(a)", "isInt(b)"], "isInt(a - b)"),
         (["isInt(a)", "isInt(b)"], "isInt(a * b)"),
 
+        # inequality of !=
         (["a > 0"], "a != 0"),
         (["a < 0"], "a != 0"),
         (["a > b"], "a - b != 0"),
         (["a > b"], "b - a != 0"),
+        (["x != t", "b != 0"], "x * b != t * b"),
+        (["x != t", "b != 0"], "b * x != b * t"),
+
+
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
         (["a = b", "a > c"], "b > c"),
