@@ -245,6 +245,22 @@ class RulesTest(unittest.TestCase):
         e = rules.IntegralIdentity().eval(e, ctx)
         self.assertEqual(e, parse_expr("1 - -([sin(x)]_x=0,pi / 2)"))
 
+    def testCondCheck(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parser.parse_expr("INT x. cos(2*x)/(cos(x)-sin(x))")
+        ctx.add_condition("x > 0")
+        ctx.add_condition("x < pi/4")
+
+        e = rules.Rewriting("cos(2*x)", "cos(x)^2-sin(x)^2").eval(e, ctx)
+        e = rules.Rewriting("cos(x)^2-sin(x)^2", "(cos(x)+sin(x))*(cos(x)-sin(x))").eval(e, ctx)
+        e = rules.Simplify().eval(e, ctx)
+        e = rules.IntegralIdentity().eval(e,ctx)
+        e = rules.Simplify().eval(e, ctx)
+
+        self.assertTrue(condprover.check_condition(parse_expr("cos(x) > sin(x)"), ctx))
+        self.assertTrue(condprover.check_condition(parse_expr("cos(x) - sin(x) != 0"), ctx))
 
 if __name__ == "__main__":
     unittest.main()

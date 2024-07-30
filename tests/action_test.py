@@ -3263,7 +3263,7 @@ class ActionTest(unittest.TestCase):
             simplify
             apply integral identity
             simplify
-        sorry
+        done
         
         calculate INT x. cos(2*x)/(cos(x)^2*sin(x)^2) for x > 0, x < pi/2
             rewrite cos(2*x) to cos(x)^2-sin(x)^2
