@@ -1303,6 +1303,8 @@ def arccsc(e):
 def sqrt(e):
     return Fun("sqrt", e)
 
+def abs(e):
+    return Fun("abs", e)
 
 def binom(e1: Expr, e2: Expr) -> Expr:
     """Binomial coefficients"""
