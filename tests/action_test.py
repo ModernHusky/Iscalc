@@ -3371,15 +3371,20 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. 1 / (exp(x)-exp(-x)) for x != 0
+        calculate INT x. 1 / (exp(x)-exp(-x)) for x > 0
             rewrite 1 / (exp(x)-exp(-x)) to exp(x)/(exp(2*x)-1)
             substitute u for exp(x)
             simplify
             substitute sec(v) for u
             rewrite sec(v)^2-1 to tan(v)^2
             simplify
-            // It need to be derived that tan(v) != 0
-        sorry
+            rewrite sec(v) to 1/cos(v)
+            rewrite tan(v) to sin(v)/cos(v)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
         
         calculate INT x. 1/sqrt(exp(2*x)+1)
             substitute u for exp(x)

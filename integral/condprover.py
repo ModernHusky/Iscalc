@@ -492,9 +492,8 @@ def get_standard_inequalities() -> List[Identity]:
         (["x > 0"], "atan(x) > 0"),
         ([], "atan(x) > -pi/2"),
         ([], "atan(x) < pi/2"),
-
         # Value comparison of trig functions in an interval
-        (["x>0", "x<pi/4"], "cos(x) > sin(x)"),
+        (["x > 0", "x < pi/4"], "cos(x) > sin(x)"),
 
         # Hyperbolic
         ([], "cosh(x) > 0"),
