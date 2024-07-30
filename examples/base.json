@@ -116,7 +116,15 @@
             "type": "axiom"
         },
         {
+            "expr": "(INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
             "expr": "(INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
         {
@@ -823,6 +831,30 @@
                 "bidirectional"
             ],
             "category": "trigonometric",
+            "expr": "sec(x)^2 = 1 + tan(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * sec(x)^2 = a * tan(x)^2 + a",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * sec(x)^2 = a + a * tan(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
             "conds": [
                 "cos(x) != 0"
             ],
@@ -851,6 +883,14 @@
         {
             "category": "trigonometric",
             "expr": "tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(x)^2 + cos(x)^2 = 1",
             "type": "axiom"
         },
         {
@@ -907,6 +947,30 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "tan(x)^2 = -1 + sec(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * tan(x)^2 = a * sec(x)^2 - a",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * tan(x)^2 = -a + a * sec(x)^2",
+            "type": "axiom"
+        },
+        {
             "category": "trigonometric",
             "conds": [
                 "n != 0"
@@ -932,10 +996,34 @@
         },
         {
             "attributes": [
-                "simplify"
+                "bidirectional"
             ],
             "category": "trigonometric",
-            "expr": "sin(x)^2 + cos(x)^2 = 1",
+            "expr": "sin(x)^2 = -cos(x)^2 + 1",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * sin(x)^2 = a - a * cos(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * sin(x)^2 = -a * cos(x)^2 + a",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * sin(x)^2 = -(a * cos(x)^2) + a",
             "type": "axiom"
         },
         {
@@ -944,6 +1032,38 @@
             ],
             "category": "trigonometric",
             "expr": "cos(x)^2 = 1 - sin(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "cos(x)^2 = -sin(x)^2 + 1",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * cos(x)^2 = a - a * sin(x)^2",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * cos(x)^2 = - a * sin(x)^2 + a",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "a * cos(x)^2 = -(a * sin(x)^2) + a",
             "type": "axiom"
         },
         {
@@ -1138,6 +1258,33 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "1+sin(x) = (sin(x/2)+cos(x/2))^2",
+            "reference": "",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(x)+1 = (sin(x/2)+cos(x/2))^2",
+            "reference": "",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(x)+cos(x) = sqrt(2)*sin(x+pi/4)",
+            "reference": "",
+            "type": "axiom"
+        },
+        {
             "level": 2,
             "name": "Factorial and binomial coefficient",
             "type": "header"
@@ -1325,6 +1472,18 @@
             "type": "problem"
         },
         {
+            "conds": ["a!=0"],
+            "expr": "(INT x. 1/(b-a*x)) = -log(abs(b-a*x)) / a + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": ["a!=0"],
+            "expr": "(INT x. 1/(b+a*x)) = log(abs(b+a*x)) / a + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
             "conds": [
                 "a != 0"
             ],
@@ -1334,9 +1493,27 @@
         },
         {
             "conds": [
-                "a != 0"
+                "a > 0"
             ],
             "expr": "(INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * atan(x / sqrt(a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > 0",
+                "b > 0"
+            ],
+            "expr": "(INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * atan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > 0",
+                "b > 0"
+            ],
+            "expr": "(INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * atan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
