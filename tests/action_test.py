@@ -1347,7 +1347,6 @@ class ActionTest(unittest.TestCase):
             calculate INT x:[0, 1]. 1 / (1 + exp(2*x))
                 rewrite 1 / (1 + exp(2*x)) to exp(-2*x) / (exp(-2*x) + 1)
                 substitute u for exp(-2*x) + 1
-                rewrite (u - 1) / (u * (2 * u - 2)) to 1/(2*u)
                 apply integral identity
                 simplify
             done

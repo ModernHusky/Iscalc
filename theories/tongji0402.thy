@@ -118,9 +118,6 @@ done
 
 calculate INT x. 1 / (asin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1
     substitute u for asin(x)
-    rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
-    rewrite 1 - sin(u)^2 to cos(u)^2
-    simplify
     apply integral identity
     replace substitution
     simplify
@@ -128,9 +125,6 @@ done
 
 calculate INT x. 10^(2*acos(x)) / sqrt(1 - x^2) for x > -1, x < 1
     substitute u for acos(x)
-    rewrite -(cos(u)^2) + 1 to 1 - cos(u)^2
-    rewrite 1 - cos(u)^2 to sin(u)^2
-    simplify
     substitute v for 2 * u
     apply integral identity
     replace substitution
@@ -146,9 +140,6 @@ done
 
 calculate INT x. atan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
     substitute u for atan(sqrt(x))
-    simplify
-    rewrite tan(u)^2 + 1 to sec(u)^2
-    simplify
     apply integral identity
     replace substitution
     simplify
