@@ -3275,7 +3275,7 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("base", "PostgraduateIndefinitePart1SectionA", actions)
 
-    def testPostgraduateIndefinitePart1SectionA(self):
+    def testPostgraduateIndefinitePart1SectionB(self):
         actions = """
         # Application of basic formulas
         # Section B
