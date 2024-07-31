@@ -3426,5 +3426,110 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("base", "PostgraduateIndefinitePart1SectionB", actions)
 
+    def testPostgraduateIndefinitePart2SectionA(self):
+        actions = """
+        # Substitution
+        # Section A
+        // page 171
+        
+        calculate INT x. exp(-5*x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. exp(sin(x))*cos(x)
+            substitute u for sin(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(x^2)*x
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(tan(x))*sec(x)^2
+            substitute u for tan(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(sqrt(x)) / sqrt(x)
+            substitute u for sqrt(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(sin(x))*cos(x)
+            substitute u for sin(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(log(x))/x
+            substitute u for log(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 172
+        
+        calculate INT x. sin(sqrt(x)) / sqrt(x)
+            substitute u for sqrt(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(exp(x))*exp(x)
+            substitute u for exp(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(sqrt(1+x^2))*x/sqrt(1+x^2) for x != 0
+            substitute u for sqrt(1+x^2)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(2-3*x)^(1/3)
+            substitute u for 2-3*x
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(x) / cos(x)^3
+            substitute u for cos(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x / sqrt(2-3*x^2)
+            substitute u for 2-3*x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (1+log(x))/(x*log(x))^2
+            // substitute u for x*log(x)
+        sorry
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart2SectionA", actions)
+
 if __name__ == "__main__":
     unittest.main()
