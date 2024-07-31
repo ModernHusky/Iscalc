@@ -1505,6 +1505,8 @@ class Substitution(Rule):
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
+        elif e.var not in normalize(body_subst, ctx).get_vars():
+            self.f = normalize(body_subst, ctx)
         else:
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)

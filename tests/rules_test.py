@@ -304,6 +304,14 @@ class RulesTest(unittest.TestCase):
 
         self.assertTrue(condprover.check_condition(parse_expr("u - 9 > 0"), ctx2))
 
+    def testSubstituion(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+        e = parser.parse_expr("INT x. (1+log(x))/(x*log(x))^2")
+        ctx.add_condition("x > exp(-1)")
+        rule = rules.Substitution("u", "x*log(x)")
+        rule.eval(e, ctx)
+
 
 if __name__ == "__main__":
     unittest.main()

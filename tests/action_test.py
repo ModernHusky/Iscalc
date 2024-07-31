@@ -3525,9 +3525,12 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. (1+log(x))/(x*log(x))^2
-            // substitute u for x*log(x)
-        sorry
+        calculate INT x. (1+log(x))/(x*log(x))^2 for x > exp(-1)
+            substitute u for x*log(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionA", actions)
 
