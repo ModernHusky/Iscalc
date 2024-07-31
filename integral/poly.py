@@ -495,9 +495,7 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif expr.is_fun(e) and e.func_name in ("asin", "acos", "atan", "acot", "acsc", "asec"):
         a, = e.args
-        if e.func_name in ("atan", "acot", "acos") and expr.is_fun(a) and a.func_name == e.func_name[1:]:
-            # TODO: determine domain range of cos(x)
-            # atan(tan(x)) = x
+        if e.func_name in ("asin", "atan", "acot", "acos") and expr.is_fun(a) and a.func_name == e.func_name[1:]:
             return to_poly(a.args[0], ctx)
         else:
             return singleton(expr.Fun(e.func_name, normalize(a, ctx)))
