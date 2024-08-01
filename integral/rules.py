@@ -1378,7 +1378,7 @@ class ApplyInductHyp(Rule):
         return e
 
 
-def normalize_divide(e1: Expr, e2: Expr, ctx):
+def normalize_divide(e1: Expr, e2: Expr):
     # First decompose into factors
     num_factors1, denom_factors1 = decompose_expr_factor2(e1)
     num_factors2, denom_factors2 = decompose_expr_factor2(e2)
@@ -1495,7 +1495,7 @@ class Substitution(Rule):
         # If body is a product and g(x)' is on one of the sides, then
         # the new body is the other side. Otherwise, the new body is
         # obtained by dividing the original body by g(x)'.
-        body = normalize_divide(e.body, dfx, ctx)
+        body = normalize_divide(e.body, dfx)
 
         # Now attempt to write the new body in the form of f(g(x)).
         # First substitute all appearances of g(x) by u. If this clears
@@ -1519,6 +1519,8 @@ class Substitution(Rule):
             self.f = normalize(body_subst, ctx)
         elif e.var not in body_subst2.get_vars():
             self.f = body_subst2
+        elif e.var not in normalize(body_subst2, ctx).get_vars():
+            self.f = normalize(body_subst2, ctx)
         else:
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)

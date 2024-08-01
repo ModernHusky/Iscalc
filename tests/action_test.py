@@ -3651,6 +3651,21 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. exp(asin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
+            rewrite sqrt(x-x^2) to sqrt(x) * sqrt(1-x)
+            substitute u for asin(sqrt(x))
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2
+            substitute u for tan(1/x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
 
