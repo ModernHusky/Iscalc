@@ -1502,11 +1502,23 @@ class Substitution(Rule):
         # all appearances of x, then we are done. Otherwise, we need
         # to solve x as a function of u, then replace x by that function.
         body_subst = body.replace(var_subst, var_name)
+        def prod(es):
+            es = list(es)
+            if len(es) == 0:
+                return Const(1)
+            else:
+                return functools.reduce(operator.mul, es[1:], es[0])
+        nf, df = decompose_expr_factor2(var_subst)
+        prod_nf, prod_df = prod(nf), prod(df)
+        var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
+        body_subst2 = body.replace(var_subst2, var_name)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
         elif e.var not in normalize(body_subst, ctx).get_vars():
             self.f = normalize(body_subst, ctx)
+        elif e.var not in body_subst2.get_vars():
+            self.f = body_subst2
         else:
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)
