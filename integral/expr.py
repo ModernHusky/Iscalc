@@ -1,6 +1,7 @@
 """Expressions."""
 import math
 import functools
+import operator
 from decimal import Decimal
 from fractions import Fraction
 from collections.abc import Iterable
@@ -999,6 +1000,78 @@ def collect_spec_expr(expr, symb):
     c = [p.args[0] for p, _, _ in find_pattern(expr, symb) if len(p.args) != 0]
     return c
 
+
+def term_decomposition(e:Expr) -> list[Expr]:
+    if e.is_plus():
+        a, b = e.args
+        return term_decomposition(a) + term_decomposition(b)
+    elif e.is_minus():
+        a, b = e.args
+        return term_decomposition(a) + [(item, -1*sign) for item, sign in term_decomposition(b)]
+    else:
+        return [(e,1)]
+
+def common_factor_extraction(e:Expr) -> tuple[list[Expr], list[Expr], Expr]:
+    term_list = term_decomposition(e)
+    num_factors_list = []
+    denom_factors_list = []
+    sign_list = []
+    for term, sign in term_list:
+        a, b = decompose_expr_factor(term)
+        num_factors_list.append(a)
+        denom_factors_list.append(b)
+        sign_list.append(sign)
+    def extraction(factors_list):
+        res = list()
+        for factor in factors_list[0]:
+            flag = True
+            for factors in factors_list[1:]:
+                if factor not in factors:
+                    flag = False
+                    break
+            if flag:
+                res.append(factor)
+        return res
+    denom_comm_factors = extraction(denom_factors_list)
+    num_common_factors = extraction(num_factors_list)
+    num_factors_list = [[factor for factor in num_factors if factor not in num_common_factors] for num_factors in num_factors_list]
+    denom_factors_list = [[factor for factor in denom_factors if factor not in denom_comm_factors] for denom_factors in denom_factors_list]
+    def prod(es):
+        es = list(es)
+        if len(es) == 0:
+            return Const(1)
+        else:
+            return functools.reduce(operator.mul, es[1:], es[0])
+    for i in range(len(num_factors_list)):
+        num = prod(num_factors_list[i])
+        denom = prod(denom_factors_list[i])
+        if i == 0:
+            s = num/denom if denom != Const(1) else num
+        else:
+            if sign_list[i] == 1:
+                s = s + num/denom if denom != Const(1) else s + num
+            else:
+                s = s - num/denom if denom != Const(1) else s - num
+    if s != Const(1):
+        return num_common_factors + [s], denom_comm_factors
+    else:
+        return num_common_factors, denom_comm_factors
+
+def decompose_expr_factor2(e:Expr) -> tuple[list[Expr], list[Expr]]:
+    if e.is_plus() or e.is_minus():
+        return common_factor_extraction(e)
+    elif e.is_times():
+        a, b = e.args
+        n1, d1 = decompose_expr_factor2(a)
+        n2, d2 = decompose_expr_factor2(b)
+        return n1+n2, d1+d2
+    elif e.is_divides():
+        a, b = e.args
+        n1, d1 = decompose_expr_factor2(a)
+        n2, d2 = decompose_expr_factor2(b)
+        return n1 + d2, d1 + n2
+    else:
+        return decompose_expr_factor(e)
 
 def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
     """Get production factors from expr."""

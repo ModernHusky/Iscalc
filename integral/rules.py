@@ -10,7 +10,7 @@ from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc
+    Product, SYMBOL, SkolemFunc, decompose_expr_factor2
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -1378,10 +1378,10 @@ class ApplyInductHyp(Rule):
         return e
 
 
-def normalize_divide(e1: Expr, e2: Expr):
+def normalize_divide(e1: Expr, e2: Expr, ctx):
     # First decompose into factors
-    num_factors1, denom_factors1 = decompose_expr_factor(e1)
-    num_factors2, denom_factors2 = decompose_expr_factor(e2)
+    num_factors1, denom_factors1 = decompose_expr_factor2(e1)
+    num_factors2, denom_factors2 = decompose_expr_factor2(e2)
 
     # Cancel out factors that are the same
     new_num_factors1 = []
@@ -1495,7 +1495,7 @@ class Substitution(Rule):
         # If body is a product and g(x)' is on one of the sides, then
         # the new body is the other side. Otherwise, the new body is
         # obtained by dividing the original body by g(x)'.
-        body = normalize_divide(e.body, dfx)
+        body = normalize_divide(e.body, dfx, ctx)
 
         # Now attempt to write the new body in the form of f(g(x)).
         # First substitute all appearances of g(x) by u. If this clears
@@ -1511,8 +1511,8 @@ class Substitution(Rule):
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)
             if gu is None:
-                raise RuleException("Substitution", "unable to solve equation %s = %s for %s" % (
-                    var_subst, var_name, e.var
+                raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
+                    var_subst, var_name, e.var, body_subst
                 ))
 
             gu = normalize(gu, ctx)

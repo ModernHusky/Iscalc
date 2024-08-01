@@ -3276,7 +3276,7 @@ class ActionTest(unittest.TestCase):
 
     def testPostgraduateIndefinitePart1SectionB(self):
         actions = """
-        # Application of basic formulas
+        # 4.1 Application of basic formulas
         # Section B
         // page 168
         
@@ -3427,7 +3427,7 @@ class ActionTest(unittest.TestCase):
 
     def testPostgraduateIndefinitePart2SectionA(self):
         actions = """
-        # Substitution
+        # 4.2 Substitution
         # Section A
         // page 171
         
@@ -3638,6 +3638,22 @@ class ActionTest(unittest.TestCase):
         done
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionA", actions)
+
+    def testPostgraduateIndefinitePart2SectionB(self):
+        actions = """
+        # 4.2 Substitution
+        # Section B
+        // page 175
+        
+        calculate INT x. exp(exp(x)*sin(x))*(sin(x)+cos(x))*exp(x) for cos(x) + sin(x) != 0
+            substitute u for exp(x)*sin(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
