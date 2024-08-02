@@ -2012,8 +2012,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
                 substitute u for cos(y)
-                rewrite -(u ^ 2) - 1 to -(u^2 + 1)
-                simplify
                 apply integral identity
                 simplify
             done
@@ -2575,8 +2573,6 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2) to pi * sin(x) / (a + b * cos(x) ^ 2)
                 substitute u for cos(x)
                 substitute x for sqrt(b / a) * u
-                rewrite -(a * x ^ 2) - a to -a * (x ^ 2 + 1)
-                simplify
                 apply integral identity
                 simplify
                 rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a))
@@ -3510,7 +3506,7 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. sin(x) / cos(x)^3
+        calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
             substitute u for cos(x)
             apply integral identity
             replace substitution
@@ -3660,8 +3656,15 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2
+        calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2 for sec(1/x) != 0, x != 0
             substitute u for tan(1/x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x))
+            substitute u for sqrt(1+sin(x))
             apply integral identity
             replace substitution
             simplify

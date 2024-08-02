@@ -1511,16 +1511,24 @@ class Substitution(Rule):
         nf, df = decompose_expr_factor2(var_subst)
         prod_nf, prod_df = prod(nf), prod(df)
         var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
-        body_subst2 = body.replace(var_subst2, var_name)
+        body_subst2 = normalize(body, ctx).replace(normalize(var_subst, ctx), var_name)
+        body_subst3 = body.replace(var_subst2, var_name)
+        body_subst4 = normalize(body, ctx).replace(normalize(var_subst2,ctx), var_name)
+        body_subst5 = normalize(body.replace(var_subst, var_name), ctx)
+        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
-        elif e.var not in normalize(body_subst, ctx).get_vars():
-            self.f = normalize(body_subst, ctx)
         elif e.var not in body_subst2.get_vars():
             self.f = body_subst2
-        elif e.var not in normalize(body_subst2, ctx).get_vars():
-            self.f = normalize(body_subst2, ctx)
+        elif e.var not in body_subst3.get_vars():
+            self.f = body_subst3
+        elif e.var not in body_subst4.get_vars():
+            self.f = body_subst4
+        elif e.var not in body_subst5.get_vars():
+            self.f = body_subst5
+        elif e.var not in body_subst6.get_vars():
+            self.f = body_subst6
         else:
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)
