@@ -2996,9 +2996,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
-                substitute t for -u + 1
-                apply integral identity
-                simplify
                 rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
                 rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1))
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
@@ -3822,6 +3819,46 @@ class ActionTest(unittest.TestCase):
             rewrite (1+x) / (x*(1+x*exp(x))) to ((1+x)*exp(x))/((x*exp(x)) * (1+x*exp(x)))
             substitute u for x*exp(x)
             partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 178
+        
+        calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1
+            substitute u for x*exp(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
+            rewrite exp(x)*(x-1)/(x-exp(x))^2 to (exp(x)*(x-1)/x^2) / (1 - exp(x)/x)^2
+            substitute u for exp(x)/x
+            substitute v for 1-u
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2
+            rewrite (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 to (x * (1/cos(x)^2) + sin(x)/cos(x)) / (1 - x * (sin(x)/cos(x)))^2
+            rewrite 1/cos(x)^2 to sec(x)^2
+            rewrite sin(x)/cos(x) to tan(x)
+            rewrite sin(x)/cos(x) to tan(x)
+            substitute u for x*tan(x)
+            substitute v for -u+1
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (1-log(x))/(x-log(x))^2
+            substitute u for log(x)
+            rewrite exp(u) * (-u + 1) / (exp(u) - u) ^ 2 to -exp(u) * (u-1)/u^2 / (exp(u)/u - 1) ^ 2
+            substitute v for exp(u) / u
+            substitute w for v-1
             apply integral identity
             replace substitution
             simplify
