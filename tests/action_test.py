@@ -3771,6 +3771,61 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        // page 177
+        
+        calculate INT x. sqrt(x/(1-x^3)) for  x != 0
+            rewrite x^3 to x^(3/2)^2
+            substitute u for x^(3/2)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(x/2) / (16-exp(x))     
+            rewrite exp(x) to exp(x/2)^2
+            substitute u for exp(x/2)
+            substitute v for u/4
+            rewrite 4 / (-(8 * v ^ 2) + 8) to 1/2 * (1 / (1-v^2))
+            apply integral identity
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. cos(x) / sqrt(2+cos(2*x))
+            rewrite cos(2*x) to cos(x)^2 - sin(x)^2
+            rewrite cos(x)^2 to 1-sin(x)^2
+            simplify
+            substitute u for sin(x)
+            apply integral identity
+            substitute v for sqrt(2)*u/sqrt(3)
+            rewrite sqrt(-(3 * v ^ 2) + 3) to sqrt(3) * sqrt(1-v^2)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/sqrt((x-a)*(x-b)) for a < b
+            rewrite (x-a)*(x-b) to (x-(a+b)/2)^2 - ((a-b)/2)^2
+            substitute u for (x-(a+b)/2)/((a-b)/2)
+            simplify
+            rewrite sqrt(u ^ 2 * (a - b) ^ 2 / 4 - (a - b) ^ 2 / 4) to (a-b)/2 * sqrt(u^2-1)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (1+x) / (x*(1+x*exp(x))) for x != -1, x != 0
+            rewrite (1+x) / (x*(1+x*exp(x))) to ((1+x)*exp(x))/((x*exp(x)) * (1+x*exp(x)))
+            substitute u for x*exp(x)
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
 
