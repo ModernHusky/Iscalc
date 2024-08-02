@@ -3669,6 +3669,42 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2))
+            substitute u for 2-3*x*exp(x^2)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(x)*cos(x)^3 / (1+cos(x)^2) for sin(x) != 0, cos(x) != 0
+            substitute u for cos(x)
+            substitute v for u^2
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (asin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
+            rewrite sqrt(x-x^2) to sqrt(x)*sqrt(1-x)
+            rewrite 1 / (asin(sqrt(x)) * (sqrt(x) * sqrt(1 - x))) to 1 / asin(sqrt(x)) / (sqrt(x) * sqrt(1 - x))
+            substitute u for asin(sqrt(x))
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (sqrt(1+x)+(1+x)^(3/2)) for x > -1
+            rewrite (1+x)^(3/2) to (1+x) * sqrt(1+x)
+            rewrite sqrt(1 + x) + (1 + x) * sqrt(1 + x) to sqrt(1+x)*(1+1+x)
+            substitute u for sqrt(1+x)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
 
