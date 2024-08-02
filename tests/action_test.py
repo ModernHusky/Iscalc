@@ -3687,6 +3687,8 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
+        // page 176
+        
         calculate INT x. 1 / (asin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
             rewrite sqrt(x-x^2) to sqrt(x)*sqrt(1-x)
             rewrite 1 / (asin(sqrt(x)) * (sqrt(x) * sqrt(1 - x))) to 1 / asin(sqrt(x)) / (sqrt(x) * sqrt(1 - x))
@@ -3701,6 +3703,70 @@ class ActionTest(unittest.TestCase):
             rewrite sqrt(1 + x) + (1 + x) * sqrt(1 + x) to sqrt(1+x)*(1+1+x)
             substitute u for sqrt(1+x)
             simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (exp(x)*(1+exp(2*x)))
+            rewrite exp(2*x) to exp(x)^2
+            substitute u for exp(x)
+            substitute tan(v) for u
+            rewrite tan(v)^2 + 1 to sec(v)^2
+            simplify
+            rewrite tan(v) to sin(v)/cos(v)
+            simplify
+            rewrite cos(v)^2 to 1 - sin(v)^2
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / ((2-x)*sqrt(1-x)) for x < 1
+            rewrite 2-x to 1 + (1-x)
+            substitute u for sqrt(1-x)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(a^2*sin(x)^2+b^2*cos(x)^2) for a != 0, b != 0
+            rewrite 1/(a^2*sin(x)^2+b^2*cos(x)^2) to (1/cos(x)^2) / (a^2*(sin(x)/cos(x))^2 + b^2)
+            rewrite 1/cos(x)^2 to sec(x)^2
+            rewrite sin(x)/cos(x) to tan(x) 
+            substitute u for tan(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(2+cos(x))
+            rewrite cos(x) to cos(2*(x/2))
+            rewrite cos(2*(x/2)) to cos(x/2)^2 - sin(x/2)^2
+            rewrite 2 + (cos(x / 2) ^ 2 - sin(x / 2) ^ 2) to  1 - sin(x/2)^2 + 1 + cos(x/2)^2
+            rewrite  1 - sin(x/2)^2 to cos(x/2)^2
+            simplify
+            rewrite 1 to sin(x/2)^2 + cos(x/2)^2 (at 2)
+            simplify
+            rewrite 1 / (3 * cos(x / 2) ^ 2 + sin(x / 2) ^ 2) to 1/cos(x/2)^2 / (3 + (sin(x/2)/cos(x/2))^2)
+            rewrite 1/cos(x/2)^2 to sec(x/2)^2
+            rewrite sin(x/2)/cos(x/2) to tan(x/2)
+            substitute u for tan(x/2)
+            rewrite u ^ 2 / 2 to (1/2) * u^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 2^x * 3^x / (9^x+4^x)
+            rewrite 2^x * 3^x to 6^x
+            rewrite 6 ^ x / (9 ^ x + 4 ^ x) to (6^x/4^x)/(9^x/4^x + 1)
+            rewrite 6^x/4^x to (3/2)^x
+            rewrite 9^x/4^x to (3/2)^2^x
+            rewrite (3/2)^2^x to (3/2)^x^2
+            substitute u for (3/2)^x
             apply integral identity
             replace substitution
             simplify
