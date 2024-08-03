@@ -3866,6 +3866,30 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
 
+    def testPostgraduateIndefinitePart3SectionA(self):
+        actions = """
+        # 4.3 Inverse Substitution
+        # Section A
+        // page 180
+        
+        calculate INT x. x^2 / sqrt(a^2-x^2) for a > 0, x > -a, x < a
+            substitute a*sin(u) for x
+            rewrite sqrt(a ^ 2 - (a * sin(u)) ^ 2) to a * sqrt(1-sin(u)^2)
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            integrate by parts with u=-sin(u), v=cos(u)
+            rewrite cos(u)^2 to 1-sin(u)^2
+            simplify
+            rewrite (INT u. sin(u) ^ 2) to 1/a^2 * (a ^ 2 * (INT u. sin(u) ^ 2))
+            solve integral a ^ 2 * (INT u. sin(u) ^ 2)
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
+
 
 if __name__ == "__main__":
     unittest.main()

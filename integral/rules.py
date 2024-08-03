@@ -2133,34 +2133,39 @@ class IntegrateByEquation(Rule):
         """Eliminate the lhs's integral in rhs by solving equation."""
         lhs = normalize(self.lhs, ctx)
 
-        def get_coeff(t: Expr):
+        def get_coeff(t: Expr, lhs:Expr):
             """Obtain the coefficient of lhs within t."""
             if t == lhs:
                 return Const(1)
 
             if t.is_plus():
-                return get_coeff(t.args[0]) + get_coeff(t.args[1])
+                return get_coeff(t.args[0], lhs) + get_coeff(t.args[1], lhs)
             elif t.is_minus():
-                return get_coeff(t.args[0]) - get_coeff(t.args[1])
+                return get_coeff(t.args[0], lhs) - get_coeff(t.args[1], lhs)
             elif expr.is_uminus(t):
-                return -get_coeff(t.args[0])
+                return -get_coeff(t.args[0], lhs)
             elif t.is_times():
-                return t.args[0] * get_coeff(t.args[1])
+                return t.args[0] * get_coeff(t.args[1], lhs)
             elif t.is_divides():
-                return get_coeff(t.args[0]) / t.args[1]
+                return get_coeff(t.args[0], lhs) / t.args[1]
             else:
                 return Const(0)
 
         norm_e = normalize(e, ctx)
-        coeff = normalize(get_coeff(norm_e), ctx)
+        coeff = normalize(get_coeff(norm_e, lhs), ctx)
+        lhs = self.lhs
+        coeff2 = normalize(get_coeff(e, lhs), ctx)
 
-        if coeff == Const(0):
+        if coeff == Const(0) and coeff2 == Const(0):
             raise RuleException("IntegrateByEquation", "lhs %s not found in integral" % self.lhs)
 
-        if coeff == Const(1):
+        if coeff == Const(1) or coeff2 == Const(1):
             raise RuleException("IntegrateByEquation", "lhs %s has coeff 1 in integral" % self.lhs)
 
+        if coeff == Const(0) or coeff == Const(1):
+            coeff = coeff2
         return normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
+
 
 
 class ElimInfInterval(Rule):
