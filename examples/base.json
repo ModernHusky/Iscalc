@@ -241,6 +241,13 @@
             "attributes": [
                 "simplify"
             ],
+            "expr": "x^(3/2) / (y * sqrt(x)) = x / y",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
             "conds": [
                 "x <= 0"
             ],
@@ -1083,6 +1090,11 @@
         },
         {
             "category": "trigonometric",
+            "expr": "cos(x) = cos(x/2)^2 - sin(x/2)^2",
+            "type": "axiom"
+        },
+        {
+            "category": "trigonometric",
             "expr": "cos(2*x) = 1 - 2 * sin(x) ^ 2",
             "type": "axiom"
         },
@@ -1092,6 +1104,14 @@
             ],
             "category": "trigonometric",
             "expr": "sin(2*x) = 2 * sin(x) * cos(x)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "bidirectional"
+            ],
+            "category": "trigonometric",
+            "expr": "sin(x) = 2 * sin(x/2) * cos(x/2)",
             "type": "axiom"
         },
         {
