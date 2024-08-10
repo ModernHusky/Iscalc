@@ -520,6 +520,13 @@ def get_standard_inequalities() -> List[Identity]:
         (["x != t", "b != 0"], "x * b != t * b"),
         (["x != t", "b != 0"], "b * x != b * t"),
         (["x != pi/2", "x != -pi/2"], "cos(x) != 0"),
+        (["x != 0"], "atan(x) != 0"),
+        (["x != 0"], "atan(x) > 0"),
+        (["x != 0"], "atan(x) > -pi/2"),
+        (["x != 0"], "atan(x) < pi /2 "),
+        (["x != 0"], "atan(x) < 0"),
+        (["x > 0", "x < pi/2"], "sin(x) > 0"),
+        (["x < 0", "x > -pi/2"], "sin(x) < 0"),
 
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
