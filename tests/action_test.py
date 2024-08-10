@@ -4185,5 +4185,58 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionA", actions)
 
+    def testPostgraduateIndefinitePart4SectionB(self):
+        actions = """
+        # page 186 
+        # integrate by parts
+        calculate INT x. atan(sqrt(x))
+            substitute u for sqrt(x)
+            integrate by parts with u=atan(u), v=u^2
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. atan(x)/x^2
+            integrate by parts with u=atan(x), v=-1/x
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. atan(exp(x))/exp(x)
+            substitute u for exp(x)
+            integrate by parts with u=atan(u), v=-1/u
+            partial fraction decomposition
+            apply integral identity
+            substitute v for u^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. atan(x) / (x^2*(1+x^2)) for x != 0
+            substitute tan(u) for x
+            simplify
+            rewrite tan(u)^2 + 1 to sec(u)^2
+            simplify
+            rewrite tan(u) to sin(u)/cos(u)
+            simplify
+            rewrite cos(u)^2 to 1-sin(u)^2
+            expand polynomial
+            simplify
+            apply integral identity
+            integrate by parts with u=-u, v=cot(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
+
 if __name__ == "__main__":
     unittest.main()
