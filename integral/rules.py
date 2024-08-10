@@ -2097,8 +2097,10 @@ class SplitRegion(Rule):
             if len(sep_ints) == 0:
                 return e
             else:
-                return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
-
+                try:
+                    return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
+                except RecursionError:
+                    raise RuleException("split region", "do not find a definite integral")
         x = Var("c")
         is_cpv = limits.reduce_inf_limit(e.body.subst(e.var, self.c + 1 / x), x.name, ctx) in [POS_INF, NEG_INF]
         if not is_cpv:
