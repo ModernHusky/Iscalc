@@ -1494,12 +1494,16 @@
             "type": "axiom"
         },
         {
-            "expr": "(INT x. tan(x)) = log(abs(sec(x))) + SKOLEM_CONST(C)",
+            "expr": "(INT x. tan(x)) = -log(abs(cos(x))) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. tan(-x)) = -log(abs(sec(-x))) + SKOLEM_CONST(C)",
+            "expr": "(INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C)",
+            "type": "axiom"
+        },
+        {
+            "expr": "(INT x. cot(x)) = -log(abs(sin(-x))) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
         {
