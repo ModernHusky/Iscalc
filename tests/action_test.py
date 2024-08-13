@@ -4235,6 +4235,75 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. atan(sqrt(x)) / (sqrt(x)+sqrt(x^3)) for x > 0
+            substitute u for sqrt(x)
+            simplify
+            rewrite u^3+u to u*(u^2+1)
+            simplify
+            substitute v for atan(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done    
+        // page 187
+        
+        calculate INT x. x*exp(x) / sqrt(exp(x)-1) for x > 0
+            integrate by parts with u=2*x, v=sqrt(exp(x)-1)
+            substitute u for sqrt(exp(x)-1)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*exp(x) / (1+x)^2 for x != -1
+            integrate by parts with u=-x*exp(x), v=1/(1+x)
+            rewrite -(x * exp(x)) - exp(x) to -exp(x) * (x+1)
+            simplify
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*exp(-x) / (1-x)^2 for x != 1
+            integrate by parts with u=x*exp(-x),v=1/(1-x)
+            rewrite -(x * exp(-x)) + exp(-x) to exp(-x) * (-x + 1)
+            simplify
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x^2*exp(x) / (x+2)^2 for x != -2
+            integrate by parts with u = -x^2*exp(x), v=1/(x+2)
+            rewrite -(x ^ 2 * exp(x)) - 2 * x * exp(x) to -x*exp(x) * (x+2)
+            simplify
+            integrate by parts with u=x, v=exp(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x * exp(x) / (1+exp(x))^2
+            integrate by parts with u=-x, v=1/(exp(x) + 1)
+            simplify
+            substitute u for exp(x)
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*exp(x) / sqrt(exp(x)-2) for exp(x)-2>0
+            integrate by parts with u=2*x, v=sqrt(exp(x)-2)
+            substitute u for sqrt(exp(x)-2)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            substitute v for u/sqrt(2)
+            apply integral identity 
+            replace substitution
+            simplify
+        done    
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
 
