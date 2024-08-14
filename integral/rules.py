@@ -129,22 +129,22 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return Const(0)
                 else:
                     return normal(rec(e.args[0] ^ Const(Fraction(1 / 2))))
-            elif e.func_name == "atan":
+            elif e.func_name == "arctan":
                 x, = e.args
                 return normal(rec(x) / (Const(1) + (x ^ Const(2))))
-            elif e.func_name == "asin":
+            elif e.func_name == "arcsin":
                 x, = e.args
                 return normal(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2))))
-            elif e.func_name == "acos":
+            elif e.func_name == "arccos":
                 x, = e.args
                 return normal(-(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2)))))
-            elif e.func_name == "acot":
+            elif e.func_name == "arccot":
                 x, = e.args
                 return normal(-rec(x)) / (Const(1) + x ^ Const(2))
-            elif e.func_name == "asec":
+            elif e.func_name == "arcsec":
                 x, = e.args
                 return normal(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1))))
-            elif e.func_name == "acsc":
+            elif e.func_name == "arccsc":
                 x, = e.args
                 return normal(-(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1)))))
             elif e.func_name == "binom":
@@ -293,7 +293,7 @@ def check_wellformed(e: Expr, ctx: Context) -> List[ProofObligation]:
                     branch1 = ProofObligationBranch([Op(">", e.args[0], Const(0))])
                     branch2 = ProofObligationBranch([Op("<", e.args[0], Const(0)), Fun("notInt", e.args[0])])
                     add_obligation([branch1, branch2], ctx)
-            if e.func_name == "acos" or e.func_name == "asin":
+            if e.func_name == "arccos" or e.func_name == "arcsin":
                 f1 = ctx.check_condition(Op(">=", e.args[0], Const(-1)))
                 f2 = ctx.check_condition(Op("<=", e.args[0], Const(1)))
                 if f1 and f2:

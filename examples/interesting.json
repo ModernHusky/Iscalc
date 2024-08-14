@@ -317,7 +317,7 @@
                 "a > 0",
                 "b > 0"
             ],
-            "expr": "(INT x:[0,oo]. (atan(a*x) - atan(b*x))/x) = 1/2 * pi * log(a) - 1/2 * pi * log(b)",
+            "expr": "(INT x:[0,oo]. (arctan(a*x) - arctan(b*x))/x) = 1/2 * pi * log(a) - 1/2 * pi * log(b)",
             "path": "FrullaniIntegral01",
             "type": "problem"
         },
@@ -678,7 +678,7 @@
             "type": "definition"
         },
         {
-            "expr": "(INT x:[0, 1]. atan(x) / x) = G",
+            "expr": "(INT x:[0, 1]. arctan(x) / x) = G",
             "path": "CatalanConstant01",
             "type": "problem"
         },
@@ -697,7 +697,7 @@
                 "a>0",
                 "b>0"
             ],
-            "expr": "(INT x:[0,pi]. x*sin(x)/(a+b*(cos(x))^2)) = pi/sqrt(a*b) * atan(sqrt(b/a))",
+            "expr": "(INT x:[0,pi]. x*sin(x)/(a+b*(cos(x))^2)) = pi/sqrt(a*b) * arctan(sqrt(b/a))",
             "path": "CatalanConstant03",
             "type": "problem"
         },
@@ -795,12 +795,12 @@
             "type": "header"
         },
         {
-            "expr": "(INT x:[0,1]. atan(sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2))) = 5*pi^2/96",
+            "expr": "(INT x:[0,1]. arctan(sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2))) = 5*pi^2/96",
             "path": "AhmedIntegral",
             "type": "problem"
         },
         {
-            "expr": "(INT x:[0,pi/2]. acos(cos(x) / (1 + 2 * cos(x)))) = 5*pi^2/24",
+            "expr": "(INT x:[0,pi/2]. arccos(cos(x) / (1 + 2 * cos(x)))) = 5*pi^2/24",
             "path": "coxeter",
             "type": "problem"
         }

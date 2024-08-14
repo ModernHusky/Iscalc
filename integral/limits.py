@@ -608,7 +608,7 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
     elif expr.is_fun(e) and e.func_name == 'exp':
         l = limit_of_expr(e.args[0], var_name, ctx)
         return limit_power(Limit(expr.E, side=AT_CONST), l, ctx)
-    elif expr.is_fun(e) and e.func_name == 'atan':
+    elif expr.is_fun(e) and e.func_name == 'arctan':
         l = limit_of_expr(e.args[0], var_name, ctx)
         if l.e is None:
             return Limit(None)
@@ -617,7 +617,7 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
         elif l.e == NEG_INF:
             return Limit(-expr.pi/2, side=FROM_ABOVE)
         else:
-            return Limit(expr.Fun('atan', l.e))
+            return Limit(expr.Fun('arctan', l.e))
     elif expr.is_fun(e) and e.func_name == 'log':
         l = limit_of_expr(e.args[0], var_name, ctx)
         if l.e is None or l.e == NEG_INF or ctx.is_negative(l.e) or \

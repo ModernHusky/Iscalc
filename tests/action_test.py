@@ -95,7 +95,7 @@ class ActionTest(unittest.TestCase):
                 replace substitution
             done
 
-            prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * atan(x / a) + SKOLEM_CONST(C) for a != 0
+            prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * arctan(x / a) + SKOLEM_CONST(C) for a != 0
             lhs:
                 substitute u for x / a
                 rewrite a ^ 2 * u ^ 2 + a ^ 2 to a ^ 2 * (u ^ 2 + 1)
@@ -398,8 +398,8 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            calculate INT x:[0, 1]. x * atan(x)
-                integrate by parts with u = atan(x) / 2, v = x ^ 2
+            calculate INT x:[0, 1]. x * arctan(x)
+                integrate by parts with u = arctan(x) / 2, v = x ^ 2
                 simplify
                 rewrite x^2 / (2 * x^2 + 2) to (1 - 1 / (x^2 + 1)) / 2
                 apply integral identity
@@ -722,8 +722,8 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            calculate INT x:[0, 1/3]. asin(3*x)
-                integrate by parts with u = asin(3*x), v = x
+            calculate INT x:[0, 1/3]. arcsin(3*x)
+                integrate by parts with u = arcsin(3*x), v = x
                 simplify
                 substitute u for -(9 * x ^ 2) + 1
                 apply integral identity
@@ -736,8 +736,8 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            calculate INT x:[0, 1]. 2*x*atan(x)
-                integrate by parts with u = atan(x), v = x^2
+            calculate INT x:[0, 1]. 2*x*arctan(x)
+                integrate by parts with u = arctan(x), v = x^2
                 simplify
                 rewrite x ^ 2 / (x ^ 2 + 1) to 1 - 1 / (x ^ 2 + 1)
                 apply integral identity
@@ -1538,7 +1538,7 @@ class ActionTest(unittest.TestCase):
     def testTrigSubstitution(self):
         actions = """
             calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
-                substitute u for asin(x)
+                substitute u for arcsin(x)
                 rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
                 rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
@@ -1548,7 +1548,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
-                substitute u for asec(x)
+                substitute u for arcsec(x)
                 rewrite sec(u)^2 - 1 to tan(u)^2
                 simplify
                 rewrite tan(u)^4 to tan(u)^2 * tan(u)^2
@@ -1564,7 +1564,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
-                substitute u for asin(x)
+                substitute u for arcsin(x)
                 rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
                 rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
@@ -1576,7 +1576,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. sqrt(x^2 + 1) / x
-                substitute u for atan(x)
+                substitute u for arctan(x)
                 rewrite tan(u)^2 + 1 to sec(u)^2
                 simplify
                 rewrite sec(u)^3 to sec(u) * sec(u)^2
@@ -1592,7 +1592,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
-                substitute u for asin(3*x/2)
+                substitute u for arcsin(3*x/2)
                 simplify
                 rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
                 rewrite 1 - sin(u)^2 to cos(u)^2
@@ -1610,7 +1610,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
-                substitute u for asin(x)
+                substitute u for arcsin(x)
                 rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
                 rewrite 1 - sin(u)^2 to cos(u)^2
                 simplify
@@ -1624,7 +1624,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
-                substitute u for asec(x/3)
+                substitute u for arcsec(x/3)
                 rewrite 9 * sec(u)^2 - 9 to 9 * (sec(u)^2 - 1)
                 rewrite sec(u)^2 - 1 to tan(u)^2
                 simplify
@@ -1638,7 +1638,7 @@ class ActionTest(unittest.TestCase):
             done
 
             calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
-                substitute u for atan(x)
+                substitute u for arctan(x)
                 rewrite tan(u)^2 + 1 to sec(u)^2
                 simplify
                 rewrite sec(u)^3 to sec(u) * sec(u)^2
@@ -1652,7 +1652,7 @@ class ActionTest(unittest.TestCase):
             done
             
             calculate INT x. sqrt(x^2+25)
-                substitute u for atan(x/5)
+                substitute u for arctan(x/5)
                 simplify
                 rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
                 rewrite tan(u)^2+1 to sec(u)^2
@@ -1669,7 +1669,7 @@ class ActionTest(unittest.TestCase):
             done
             
             calculate INT x. sqrt(x^2-4) for x > 2
-                substitute u for asec(x/2)
+                substitute u for arcsec(x/2)
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
                 rewrite sec(u) ^ 2 - 1 to tan(u)^2
                 simplify
@@ -1688,7 +1688,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. x / sqrt(x^4-16) for x > 2
                 substitute u for x^2
                 simplify
-                substitute v for asec(u/4)
+                substitute v for arcsec(u/4)
                 rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
                 rewrite sec(v)^2-1 to tan(v)^2
                 simplify
@@ -1699,7 +1699,7 @@ class ActionTest(unittest.TestCase):
             
             calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
                 rewrite x^2-4*x to (x-2)^2 - 4
-                substitute u for asec((x-2)/2)
+                substitute u for arcsec((x-2)/2)
                 rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
                 rewrite sec(u) ^ 2 - 1 to tan(u)^2
                 simplify
@@ -1711,7 +1711,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. x/sqrt(x^2 + 4*x + 5)
                 rewrite x^2+4*x+5 to (x+2)^2 + 1
                 substitute u for (x+2)
-                substitute v for atan(u)
+                substitute v for arctan(u)
                 rewrite tan(v)^2+1 to sec(v)^2
                 simplify
                 expand polynomial
@@ -1723,7 +1723,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. x * sqrt(10*x - x^2) for x > 0, x < 10
                 rewrite 10*x - x^2 to 25 - (x-5)^2
                 substitute u for (x-5) / 5
-                substitute v for asin(u)
+                substitute v for arcsin(u)
                 rewrite sqrt(-(25*sin(v)^2)+25) to 5*sqrt(1-sin(v)^2)
                 rewrite 1-sin(v)^2 to cos(v)^2
                 simplify
@@ -1739,7 +1739,7 @@ class ActionTest(unittest.TestCase):
             calculate INT x. sqrt((x-1) / x) for x > 1
                 substitute u for sqrt(x)
                 simplify
-                substitute v for asec(u)
+                substitute v for arcsec(u)
                 rewrite sec(v)^2-1 to tan(v)^2
                 simplify
                 integrate by parts with u=tan(v),v=sec(v)
@@ -1761,7 +1761,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (1-x)*(x+3) to 4 - (x+1)^2
                 substitute u for(x+1)/2
                 rewrite sqrt(-(4 * u ^ 2) + 4) to 2 * sqrt(1 - u ^ 2)
-                substitute v for asin(u)
+                substitute v for arcsin(u)
                 rewrite -(sin(v) ^ 2) + 1 to 1-sin(v)^2
                 rewrite 1-sin(v) ^ 2 to cos(v)^2
                 simplify
@@ -2448,8 +2448,8 @@ class ActionTest(unittest.TestCase):
 
     def testFrullaniIntegral01(self):
         actions = """
-            prove (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
-            define I(a,b) = (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) for a > 0, b > 0
+            prove (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
+            define I(a,b) = (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) for a > 0, b > 0
             subgoal 1: (D a. I(a,b)) = pi / (2 * a) for a > 0, b > 0
             lhs:
                 expand definition for I (all)
@@ -2485,7 +2485,7 @@ class ActionTest(unittest.TestCase):
     def testCatalanConstant01(self):
         actions = """
             define G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)
-            prove (INT x:[0,1]. atan(x) / x) = G
+            prove (INT x:[0,1]. arctan(x) / x) = G
             subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))
             arg:
                 simplify
@@ -2493,7 +2493,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
             lhs:
-                apply series expansion on atan(x) index n
+                apply series expansion on arctan(x) index n
                 rewrite x ^ (2 * n + 1) to x ^ (2 * n) * x
                 simplify
                 exchange integral and sum
@@ -2556,7 +2556,7 @@ class ActionTest(unittest.TestCase):
 
     def testCatalanConstant03(self):
         actions = """
-            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * atan(sqrt(b / a)) for a > 0, b > 0
+            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * arctan(sqrt(b / a)) for a > 0, b > 0
             define I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
             subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
             lhs:
@@ -2575,7 +2575,7 @@ class ActionTest(unittest.TestCase):
                 substitute x for sqrt(b / a) * u
                 apply integral identity
                 simplify
-                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a))
+                rewrite arctan(-(sqrt(b) / sqrt(a))) to -arctan(sqrt(b) / sqrt(a))
                 simplify
                 rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
                 rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
@@ -2659,13 +2659,13 @@ class ActionTest(unittest.TestCase):
 
     def testAhmedIntegral(self):
         actions = """
-            prove (INT x:[0,1]. atan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
-            define I(u) = (INT x:[0,1]. atan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
-            subgoal 1: I(1) = (INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
+            prove (INT x:[0,1]. arctan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
+            define I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
+            subgoal 1: I(1) = (INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
             lhs:
                 expand definition for I
             done
-            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * atan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
+            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * arctan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
             lhs:
                 expand definition for I (all)
                 exchange derivative and integral
@@ -2685,7 +2685,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand definition for I (at 1)
                 simplify
-                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2)) / 2
+                integrate by parts with u = 1, v = arctan(x / sqrt(2 + x ^ 2)) / 2
                 simplify
             done
             subgoal 4: (INT u:[1,oo]. D u. I(u)) = -(pi ^ 2 / 48) + I(1)
@@ -2699,12 +2699,12 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)
                 simplify
                 rewrite 1 / sqrt(x ^ 2 + 2) to sqrt(x ^ 2 + 2) ^ (-1)
-                rewrite atan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - atan(sqrt(x ^ 2 + 2))
+                rewrite arctan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - arctan(sqrt(x ^ 2 + 2))
                 expand polynomial
                 simplify
-                rewrite atan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
-                apply 1 on INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
-                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2))
+                rewrite arctan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                apply 1 on INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                integrate by parts with u = 1, v = arctan(x / sqrt(2 + x ^ 2))
                 apply integral identity
                 simplify
             done
@@ -3089,7 +3089,7 @@ class ActionTest(unittest.TestCase):
         
         calculate INT x. 1 / sqrt(x-x^2)
             rewrite x - x^2 to 1/4 - (x-1/2)^2
-            substitute u for asin(x-1/2)
+            substitute u for arcsin(x-1/2)
             substitute v for sin(u)
             apply integral identity
             replace substitution
@@ -3101,11 +3101,11 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. asin(2*x-1) for x > 0, x < 1
+        calculate INT x. arcsin(2*x-1) for x > 0, x < 1
             substitute u for 2*x-1
             simplify
-            integrate by parts with u=asin(u), v=u
-            substitute v for asin(u)
+            integrate by parts with u=arcsin(u), v=u
+            substitute v for arcsin(u)
             rewrite -sin(v)^2 + 1 to 1-sin(v)^2
             rewrite 1-sin(v)^2 to cos(v)^2
             simplify
@@ -3115,11 +3115,11 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. acos(1-2*x) for x > 0, x < 1
+        calculate INT x. arccos(1-2*x) for x > 0, x < 1
             substitute u for 1-2*x
             simplify
-            integrate by parts with u=acos(u), v=u
-            substitute v for asin(u)
+            integrate by parts with u=arccos(u), v=u
+            substitute v for arcsin(u)
             rewrite -sin(v)^2 + 1 to 1-sin(v)^2
             rewrite 1-sin(v)^2 to cos(v)^2
             simplify
@@ -3531,8 +3531,8 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. 1 / (asin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
-            substitute u for asin(x)
+        calculate INT x. 1 / (arcsin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
+            substitute u for arcsin(x)
             apply integral identity
             replace substitution
             simplify
@@ -3645,9 +3645,9 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. exp(asin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
+        calculate INT x. exp(arcsin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
             rewrite sqrt(x-x^2) to sqrt(x) * sqrt(1-x)
-            substitute u for asin(sqrt(x))
+            substitute u for arcsin(sqrt(x))
             apply integral identity
             replace substitution
             simplify
@@ -3686,10 +3686,10 @@ class ActionTest(unittest.TestCase):
         
         // page 176
         
-        calculate INT x. 1 / (asin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
+        calculate INT x. 1 / (arcsin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
             rewrite sqrt(x-x^2) to sqrt(x)*sqrt(1-x)
-            rewrite 1 / (asin(sqrt(x)) * (sqrt(x) * sqrt(1 - x))) to 1 / asin(sqrt(x)) / (sqrt(x) * sqrt(1 - x))
-            substitute u for asin(sqrt(x))
+            rewrite 1 / (arcsin(sqrt(x)) * (sqrt(x) * sqrt(1 - x))) to 1 / arcsin(sqrt(x)) / (sqrt(x) * sqrt(1 - x))
+            substitute u for arcsin(sqrt(x))
             apply integral identity
             replace substitution
             simplify
@@ -4039,7 +4039,7 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        // calculate INT x. exp(atan(x))
+        // calculate INT x. exp(arctan(x))
         
         // calculate INT x. 2/(3-x) * sqrt((5-x)/(x-1))
         
@@ -4061,8 +4061,8 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. asin(x) for x > -1, x < 1
-            integrate by parts with u=asin(x), v=x
+        calculate INT x. arcsin(x) for x > -1, x < 1
+            integrate by parts with u=arcsin(x), v=x
             substitute sin(u) for x
             rewrite -(sin(u)^2)+1 to cos(u)^2
             simplify
@@ -4102,8 +4102,8 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. x^2*atan(x)
-            integrate by parts with u=atan(x), v=x^3/3
+        calculate INT x. x^2*arctan(x)
+            integrate by parts with u=arctan(x), v=x^3/3
             simplify
             rewrite 3*x^2+3 to 3*(x^2+1)
             substitute tan(u) for x
@@ -4189,17 +4189,17 @@ class ActionTest(unittest.TestCase):
         actions = """
         # page 186 
         # integrate by parts
-        calculate INT x. atan(sqrt(x))
+        calculate INT x. arctan(sqrt(x))
             substitute u for sqrt(x)
-            integrate by parts with u=atan(u), v=u^2
+            integrate by parts with u=arctan(u), v=u^2
             partial fraction decomposition
             apply integral identity
             replace substitution
             simplify
         done
         
-        calculate INT x. atan(x)/x^2
-            integrate by parts with u=atan(x), v=-1/x
+        calculate INT x. arctan(x)/x^2
+            integrate by parts with u=arctan(x), v=-1/x
             partial fraction decomposition
             apply integral identity
             substitute u for x^2
@@ -4208,9 +4208,9 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. atan(exp(x))/exp(x)
+        calculate INT x. arctan(exp(x))/exp(x)
             substitute u for exp(x)
-            integrate by parts with u=atan(u), v=-1/u
+            integrate by parts with u=arctan(u), v=-1/u
             partial fraction decomposition
             apply integral identity
             substitute v for u^2
@@ -4219,7 +4219,7 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. atan(x) / (x^2*(1+x^2)) for x != 0
+        calculate INT x. arctan(x) / (x^2*(1+x^2)) for x != 0
             substitute tan(u) for x
             simplify
             rewrite tan(u)^2 + 1 to sec(u)^2
@@ -4236,12 +4236,12 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        calculate INT x. atan(sqrt(x)) / (sqrt(x)+sqrt(x^3)) for x > 0
+        calculate INT x. arctan(sqrt(x)) / (sqrt(x)+sqrt(x^3)) for x > 0
             substitute u for sqrt(x)
             simplify
             rewrite u^3+u to u*(u^2+1)
             simplify
-            substitute v for atan(u)
+            substitute v for arctan(u)
             apply integral identity
             replace substitution
             simplify

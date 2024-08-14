@@ -116,15 +116,15 @@ calculate INT x. 1 / (x * log(x) * log(log(x)))
     replace substitution
 done
 
-calculate INT x. 1 / (asin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1
-    substitute u for asin(x)
+calculate INT x. 1 / (arcsin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1
+    substitute u for arcsin(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 10^(2*acos(x)) / sqrt(1 - x^2) for x > -1, x < 1
-    substitute u for acos(x)
+calculate INT x. 10^(2*arccos(x)) / sqrt(1 - x^2) for x > -1, x < 1
+    substitute u for arccos(x)
     substitute v for 2 * u
     apply integral identity
     replace substitution
@@ -138,8 +138,8 @@ calculate INT x. tan(sqrt(1 + x^2)) * x / sqrt(1 + x^2)
     replace substitution
 done
 
-calculate INT x. atan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
-    substitute u for atan(sqrt(x))
+calculate INT x. arctan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
+    substitute u for arctan(sqrt(x))
     apply integral identity
     replace substitution
     simplify

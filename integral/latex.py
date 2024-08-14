@@ -135,27 +135,27 @@ def convert_expr(e: expr.Expr, mode: str = "large") -> str:
                 return "\\sqrt{%s}" % sx
             elif e.func_name == "abs":
                 return "\\left| %s \\right|" % sx
-            elif e.func_name == "atan":
+            elif e.func_name == "arctan":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\tan^{-1}{%s}" % sx
-            elif e.func_name == "asin":
+            elif e.func_name == "arcsin":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\sin^{-1}{%s}" % sx
-            elif e.func_name == "acos":
+            elif e.func_name == "arccos":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\cos^{-1}{%s}" % sx
-            elif e.func_name == "acot":
+            elif e.func_name == "arccot":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\cot^{-1}{%s}" % sx
-            elif e.func_name == "acsc":
+            elif e.func_name == "arccsc":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\csc^{-1}{%s}" % sx
-            elif e.func_name == "asec":
+            elif e.func_name == "arcsec":
                 if not expr.is_var(x):
                     sx = "(" + sx + ")"
                 return "\\sec^{-1}{%s}" % sx

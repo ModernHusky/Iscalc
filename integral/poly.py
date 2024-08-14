@@ -483,8 +483,8 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif expr.is_fun(e) and e.func_name in ("sin", "cos", "tan", "cot", "csc", "sec"):
         a = e.args[0]
-        if expr.is_fun(a) and a.func_name == "a" + e.func_name:
-            # sin(asin(x)) = x
+        if expr.is_fun(a) and a.func_name == "arc" + e.func_name:
+            # sin(arcsin(x)) = x
             return to_poly(a.args[0], ctx)
         else:
             tmp = normalize(a, ctx)
@@ -493,9 +493,9 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
             else:
                 return singleton(expr.Fun(e.func_name, tmp))
 
-    elif expr.is_fun(e) and e.func_name in ("asin", "acos", "atan", "acot", "acsc", "asec"):
+    elif expr.is_fun(e) and e.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec"):
         a, = e.args
-        if e.func_name in ("asin", "atan", "acot", "acos") and expr.is_fun(a) and a.func_name == e.func_name[1:]:
+        if e.func_name in ("arcsin", "arctan", "arccot", "arccos") and expr.is_fun(a) and a.func_name == e.func_name[3:]:
             return to_poly(a.args[0], ctx)
         else:
             return singleton(expr.Fun(e.func_name, normalize(a, ctx)))

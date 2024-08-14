@@ -84,7 +84,7 @@
             "type": "axiom"
         },
         {
-            "expr": "(INT x. 1 / (x^2 + 1)) = atan(x) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)",
             "type": "axiom"
         },
         {
@@ -148,7 +148,7 @@
             "conds": [
                 "abs(x) <= 1"
             ],
-            "expr": "atan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1))",
+            "expr": "arctan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1))",
             "type": "axiom"
         },
         {
@@ -696,7 +696,7 @@
             "type": "table"
         },
         {
-            "name": "asin",
+            "name": "arcsin",
             "table": {
                 "-(sqrt(3) / 2)": "-(pi / 3)",
                 "-(sqrt(2) / 2)": "-(pi / 4)",
@@ -711,7 +711,7 @@
             "type": "table"
         },
         {
-            "name": "acos",
+            "name": "arccos",
             "table": {
                 "-(sqrt(3) / 2)": "5 * pi / 6",
                 "-(sqrt(2) / 2)": "3 * pi / 4",
@@ -726,7 +726,7 @@
             "type": "table"
         },
         {
-            "name": "atan",
+            "name": "arctan",
             "table": {
                 "-sqrt(3)": "-(pi / 3)",
                 "-(sqrt(3) / 3)": "-(pi / 6)",
@@ -739,7 +739,7 @@
             "type": "table"
         },
         {
-            "name": "acot",
+            "name": "arccot",
             "table": {
                 "-sqrt(3)": "5 * pi / 6",
                 "-1": "3 * pi / 4",
@@ -752,7 +752,7 @@
             "type": "table"
         },
         {
-            "name": "acsc",
+            "name": "arccsc",
             "table": {
                 "-2": "-(pi / 6)",
                 "-sqrt(2)": "-(pi / 4)",
@@ -766,7 +766,7 @@
             "type": "table"
         },
         {
-            "name": "asec",
+            "name": "arcsec",
             "table": {
                 "-2": "2 * pi / 3",
                 "-sqrt(2)": "3 * pi / 4",
@@ -786,12 +786,12 @@
         },
         {
                 "category": "trigonometric",
-                "expr": "atan(A) - atan(B) = atan((A-B)/(1+A*B))",
+                "expr": "arctan(A) - arctan(B) = arctan((A-B)/(1+A*B))",
                 "type": "axiom"
             },
         {
             "category": "trigonometric",
-            "expr": "atan(sqrt((1-x)/(1+x))) = acos(x) / 2",
+            "expr": "arctan(sqrt((1-x)/(1+x))) = arccos(x) / 2",
             "type": "axiom"
         },
         {
@@ -913,7 +913,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "cos(2 * atan(z)) = (1 - z^2) / (1 + z^2)",
+            "expr": "cos(2 * arctan(z)) = (1 - z^2) / (1 + z^2)",
             "type": "axiom"
         },
         {
@@ -921,7 +921,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sin(2 * atan(z)) = (2 * z) / (1 + z^2)",
+            "expr": "sin(2 * arctan(z)) = (2 * z) / (1 + z^2)",
             "type": "axiom"
         },
         {
@@ -1181,7 +1181,7 @@
         },
         {
             "category": "trigonometric",
-            "expr": "atan(x ^ -1) = pi/2 - atan(x)",
+            "expr": "arctan(x ^ -1) = pi/2 - arctan(x)",
             "type": "axiom"
         },
         {
@@ -1193,7 +1193,7 @@
                 "x >= -pi / 2",
                 "x <= pi / 2"
             ],
-            "expr": "asin(sin(x)) = x",
+            "expr": "arcsin(sin(x)) = x",
             "type": "axiom"
         },
         {
@@ -1201,7 +1201,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sin(acos(x)) = sqrt(1-x^2)",
+            "expr": "sin(arccos(x)) = sqrt(1-x^2)",
             "type": "axiom"
         },
         {
@@ -1209,7 +1209,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "cos(asin(x)) = sqrt(1-x^2)",
+            "expr": "cos(arcsin(x)) = sqrt(1-x^2)",
             "type": "axiom"
         },
         {
@@ -1217,7 +1217,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sin(2*asin(x)) = 2 * x * sqrt(1 - x^2)",
+            "expr": "sin(2*arcsin(x)) = 2 * x * sqrt(1 - x^2)",
             "type": "axiom"
         },
         {
@@ -1225,7 +1225,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "tan(asec(x)) = sqrt(x ^ 2 - 1)",
+            "expr": "tan(arcsec(x)) = sqrt(x ^ 2 - 1)",
             "type": "axiom"
         },
         {
@@ -1233,7 +1233,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "tan(asin(x)) = x / sqrt(1 - x ^ 2)",
+            "expr": "tan(arcsin(x)) = x / sqrt(1 - x ^ 2)",
             "type": "axiom"
         },
         {
@@ -1241,7 +1241,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "cos(atan(x)) = 1 / sqrt(x ^ 2 + 1)",
+            "expr": "cos(arctan(x)) = 1 / sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
         {
@@ -1249,7 +1249,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sin(atan(x)) = x / sqrt(x ^ 2 + 1)",
+            "expr": "sin(arctan(x)) = x / sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
         {
@@ -1257,7 +1257,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sec(atan(x)) = sqrt(x ^ 2 + 1)",
+            "expr": "sec(arctan(x)) = sqrt(x ^ 2 + 1)",
             "type": "axiom"
         },
         {
@@ -1265,7 +1265,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "cot(atan(x)) = 1 / x",
+            "expr": "cot(arctan(x)) = 1 / x",
             "type": "axiom"
         },
         {
@@ -1273,7 +1273,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "csc(atan(x)) = sqrt(x^2 + 1) / x",
+            "expr": "csc(arctan(x)) = sqrt(x^2 + 1) / x",
             "type": "axiom"
         },
         {
@@ -1281,7 +1281,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "cot(asin(x)) = sqrt(1 - x^2) / x",
+            "expr": "cot(arcsin(x)) = sqrt(1 - x^2) / x",
             "type": "axiom"
         },
         {
@@ -1289,7 +1289,7 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "csc(asin(x)) = 1 / x",
+            "expr": "csc(arcsin(x)) = 1 / x",
             "type": "axiom"
         },
         {
@@ -1297,14 +1297,14 @@
                 "simplify"
             ],
             "category": "trigonometric",
-            "expr": "sin(asec(x)) = sqrt(x^2 - 1) / x",
+            "expr": "sin(arcsec(x)) = sqrt(x^2 - 1) / x",
             "type": "axiom"
         },
         {
             "attributes": [],
             "category": "trigonometric",
             "conds": [],
-            "expr": "atan(-x) = -atan(x)",
+            "expr": "arctan(-x) = -arctan(x)",
             "reference": "",
             "type": "axiom"
         },
@@ -1547,7 +1547,7 @@
             "conds": [
                 "a != 0"
             ],
-            "expr": "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * arctan(x / a) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
@@ -1555,7 +1555,7 @@
             "conds": [
                 "a > 0"
             ],
-            "expr": "(INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * atan(x / sqrt(a)) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * arctan(x / sqrt(a)) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
@@ -1564,7 +1564,7 @@
                 "a > 0",
                 "b > 0"
             ],
-            "expr": "(INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * atan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
@@ -1573,7 +1573,7 @@
                 "a > 0",
                 "b > 0"
             ],
-            "expr": "(INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * atan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
@@ -1638,44 +1638,44 @@
             "type": "axiom"
         },
         {
-            "expr": "(INT x. 1/sqrt(1-x^2)) = asin(x) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. 1/sqrt(-(x^2)+1)) = asin(x) + SKOLEM_CONST(C)",
-            "path": "standard",
-            "type": "problem"
-        },
-        {
-            "conds": ["a > 0"],
-            "expr": "(INT x. 1/sqrt(a-x^2)) = asin(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(-(x^2)+1)) = arcsin(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
             "conds": ["a > 0"],
-            "expr": "(INT x. 1/sqrt(-(x^2)+a)) = asin(x/sqrt(a))+ SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. 1/sqrt(x^2-1)) = acos(x) + SKOLEM_CONST(C)",
+            "conds": ["a > 0"],
+            "expr": "(INT x. 1/sqrt(-(x^2)+a)) = arcsin(x/sqrt(a))+ SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. 1/sqrt(-1+x^2)) = acos(x) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(x^2-1)) = arccos(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. 1/sqrt(x^2-a)) = acos(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(-1+x^2)) = arccos(x) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },
         {
-            "expr": "(INT x. 1/sqrt(-a+x^2)) = acos(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "expr": "(INT x. 1/sqrt(x^2-a)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C)",
+            "path": "standard",
+            "type": "problem"
+        },
+        {
+            "expr": "(INT x. 1/sqrt(-a+x^2)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C)",
             "path": "standard",
             "type": "problem"
         },

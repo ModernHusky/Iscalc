@@ -199,7 +199,7 @@ class Expr:
         return self.ty == FUN and self.func_name in ("sin", "cos", "tan", "cot", "csc", "sec")
 
     def is_inverse_trig(self):
-        return self.ty == FUN and self.func_name in ("asin", "acos", "atan", "acot", "acsc", "asec")
+        return self.ty == FUN and self.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec")
 
     def is_skolem_term(self):
         if self.get_vars() != set():
@@ -1393,22 +1393,22 @@ def exp(e):
     return Fun("exp", e)
 
 def arcsin(e):
-    return Fun("asin", e)
+    return Fun("arcsin", e)
 
 def arccos(e):
-    return Fun("acos", e)
+    return Fun("arccos", e)
 
 def arctan(e):
-    return Fun("atan", e)
+    return Fun("arctan", e)
 
 def arccot(e):
-    return Fun("acot", e)
+    return Fun("arccot", e)
 
 def arcsec(e):
-    return Fun("asec", e)
+    return Fun("arcsec", e)
 
 def arccsc(e):
-    return Fun("acsc", e)
+    return Fun("arccsc", e)
 
 def sqrt(e):
     return Fun("sqrt", e)
@@ -1681,11 +1681,11 @@ def eval_expr(e: Expr):
             return 1.0 / math.cos(eval_expr(e.args[0]))
         elif e.func_name == 'csc':
             return 1.0 / math.sin(eval_expr(e.args[0]))
-        elif e.func_name == 'asin':
+        elif e.func_name == 'arcsin':
             return math.asin(eval_expr(e.args[0]))
-        elif e.func_name == 'acos':
+        elif e.func_name == 'arccos':
             return math.acos(eval_expr(e.args[0]))
-        elif e.func_name == 'atan':
+        elif e.func_name == 'arctan':
             return math.atan(eval_expr(e.args[0]))
         elif e.func_name == 'log':
             return math.log(eval_expr(e.args[0]))
