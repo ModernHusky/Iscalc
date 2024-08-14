@@ -4303,6 +4303,32 @@ class ActionTest(unittest.TestCase):
             apply integral identity 
             replace substitution
             simplify
+        done
+        
+        calculate INT x. sqrt(a^2+x^2) for a > 0
+            integrate by parts with u=sqrt(a^2+x^2),v=x
+            rewrite x^2 to x^2 + a^2 - a^2 (at 2)
+            rewrite x^2 + a^2 to sqrt(x^2+a^2)^2
+            rewrite (sqrt(x ^ 2 + a ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 + x ^ 2) to sqrt(x^2+a^2) - a^2 / sqrt(a^2+x^2)
+            apply integral identity
+            substitute a*tan(u) for x (at 2)
+            rewrite a ^ 2 + (a * tan(u)) ^ 2 to a^2 * (tan(u)^2+1)
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            apply integral identity
+            solve integral INT x. sqrt(a^2+x^2)
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sqrt(a^2-x^2) for a > 0
+            integrate by parts with u=sqrt(a^2-x^2),v=x
+            simplify
+            rewrite x^2 to -(sqrt(a^2-x^2)^2 - a^2)
+            rewrite -(sqrt(a ^ 2 - x ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 - x ^ 2) to -sqrt(a^2-x^2)+a^2/sqrt(a^2-x^2)
+            apply integral identity
+            solve integral INT x. sqrt(a^2-x^2)
+            simplify
         done    
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
