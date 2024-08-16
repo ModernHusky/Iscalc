@@ -495,7 +495,7 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif expr.is_fun(e) and e.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec"):
         a, = e.args
-        if e.func_name in ("arcsin", "arctan", "arccot", "arccos") and expr.is_fun(a) and a.func_name == e.func_name[3:]:
+        if e.func_name in ("arcsin", "arctan", "arccot", "arccos") and expr.is_fun(a) and e.func_name == "arc" + a.func_name:
             return to_poly(a.args[0], ctx)
         else:
             return singleton(expr.Fun(e.func_name, normalize(a, ctx)))
