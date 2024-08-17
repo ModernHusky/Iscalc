@@ -112,7 +112,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return normal(-expr.csc(x) * expr.cot(x) * rec(x))
             elif e.func_name == "cot":
                 x, = e.args
-                return normal(-(expr.csc(x) ^ Const(2)))
+                return normal(-(expr.csc(x) ^ Const(2)) * rec(x))
             elif e.func_name == "cot":
                 x, = e.args
                 return normal(-(sin(x) ^ Const(-2)) * rec(x))
