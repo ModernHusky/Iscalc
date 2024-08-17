@@ -614,6 +614,28 @@ class Expr:
         else:
             return False
 
+    def contains_indefinite_integral(self) -> bool:
+        if is_var(self) or is_const(self) or is_skolem_func(self):
+            return False
+        elif is_integral(self):
+            return False
+        elif is_indefinite_integral(self):
+            return True
+        elif is_op(self) or is_fun(self):
+            return any(arg.contains_indefinite_integral() for arg in self.args)
+        else:
+            return False
+
+    def contains_skolem_func(self):
+        if is_skolem_func(self):
+            return True
+        elif is_integral(self) or is_indefinite_integral(self):
+            return False
+        elif is_op(self) or is_fun(self):
+            return any(arg.contains_skolem_func() for arg in self.args)
+        else:
+            return False
+
     def replace(self, e: "Expr", repl_e: "Expr") -> "Expr":
         """Replace occurrences of e with repl_e."""
         assert isinstance(e, Expr) and isinstance(repl_e, Expr)
