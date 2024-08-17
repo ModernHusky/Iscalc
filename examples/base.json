@@ -1099,6 +1099,11 @@
             "type": "axiom"
         },
         {
+            "category": "trigonometric",
+            "expr": "cos(x) = 1 - 2 * sin(x/2) ^ 2",
+            "type": "axiom"
+        },
+        {
             "attributes": [
                 "bidirectional"
             ],

@@ -4039,7 +4039,19 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        // calculate INT x. exp(arctan(x))
+        calculate INT x. exp(arctan(x))/(1+x^2)^(3/2)
+            substitute u for arctan(x)
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            simplify
+            integrate by parts with u=exp(u), v=sin(u)
+            integrate by parts with u=-exp(u), v=cos(u)
+            simplify
+            solve integral INT u. cos(u)*exp(u)
+            replace substitution
+            simplify
+        done
         
         // calculate INT x. 2/(3-x) * sqrt((5-x)/(x-1))
         
@@ -4091,8 +4103,7 @@ class ActionTest(unittest.TestCase):
             simplify
             solve integral INT x. exp(-x) * cos(x)
             simplify
-            // missing skolem variable
-        sorry
+        done
         
         calculate INT x. x*cos(x/2)
             integrate by parts with u=x, v=sin(x/2)*2
@@ -4329,7 +4340,59 @@ class ActionTest(unittest.TestCase):
             apply integral identity
             solve integral INT x. sqrt(a^2-x^2)
             simplify
-        done    
+        done
+        
+        calculate INT x. sec(x)^3
+            integrate by parts with u=sec(x), v=tan(x)
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. sec(x)^3
+            simplify
+        done
+        
+        calculate INT x. csc(x)^3
+            integrate by parts with u=-csc(x), v=cot(x)
+            rewrite cot(x)^2 to csc(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. csc(x)^3
+            simplify
+        done
+        
+        calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
+            integrate by parts with u=sin(b*x), v=exp(a*x)/a
+            simplify
+            integrate by parts with u=cos(b*x), v=exp(a*x)/a
+            simplify
+            solve integral INT x. exp(a*x)*sin(b*x)
+            expand polynomial
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. exp(a*x)*cos(b*x) for a > 0, b > 0
+            integrate by parts with u=cos(b*x), v=exp(a*x)/a
+            simplify
+            integrate by parts with u=sin(b*x), v=exp(a*x)/a
+            simplify
+            solve integral INT x. exp(a*x)*cos(b*x)
+            expand polynomial
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. exp(x) * ((1-x)/(1+x^2))^2
+            rewrite ((1-x)/(1+x^2))^2 to 1/(1+x^2) - 2*x/(1+x^2)^2
+            expand polynomial
+            simplify
+            integrate by parts with u=-exp(x)/2, v=1/(1+x^2)
+            simplify
+            rewrite exp(x) / (2 * x ^ 2 + 2) to exp(x)/(x^2+1) * (1/2)
+            simplify
+        done
+        
+        
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
 
