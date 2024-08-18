@@ -4467,6 +4467,134 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. arcsin(exp(x)) / exp(x)
+            substitute u for exp(x)
+            substitute sin(v) for u
+            simplify
+            integrate by parts with u=v, v=-1/sin(v)
+            rewrite 1/sin(v) to csc(v)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 190
+        
+        calculate INT x. arccos(x) / sqrt((1-x^2)^3) for x > -1, x < 1
+            substitute cos(u) for x
+            rewrite 1-cos(u)^2 to sin(u)^2
+            simplify
+            rewrite u/sin(u)^2 to u * (1/sin(u))^2
+            rewrite 1/sin(u) to csc(u)
+            integrate by parts with u=-u, v=cot(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*arccos(x)/sqrt(1-x^2) for x > -1, x < 1
+            substitute cos(u) for x
+            rewrite 1-cos(u)^2 to sin(u)^2
+            simplify
+            integrate by parts with u=u, v=sin(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x) / x^2 * (1+x^2) / sqrt(1-x^2) for x > 0, x < 1
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            expand polynomial
+            rewrite u/sin(u)^2 to u * (1/sin(u))^2
+            rewrite 1/sin(u) to csc(u)
+            apply integral identity
+            integrate by parts with u=u, v=-cot(u)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)-arccos(x) for x > -1, x < 1
+            simplify
+            integrate by parts with u=arccos(x), v=x
+            substitute sin(u) for x
+            rewrite -(sin(u)^2)+1 to cos(u)^2
+            simplify
+            apply integral identity
+            integrate by parts with u=arcsin(x), v=x
+            substitute sin(v) for x
+            rewrite -(sin(v)^2)+1 to cos(v)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)*arccos(x) for x>-1, x<1
+            integrate by parts with u=arcsin(x)*arccos(x), v=x
+            expand polynomial
+            simplify
+            substitute cos(u) for x
+            simplify
+            rewrite -(cos(u)^2)+1 to sin(u)^2
+            simplify
+            integrate by parts with u=u, v=sin(u) (at 2)
+            apply integral identity
+            substitute sin(v) for x
+            rewrite -(sin(v)^2)+1 to cos(v)^2
+            simplify
+            integrate by parts with u=-v,v=cos(v)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 191
+        
+        calculate INT x. log(1+x)/x^2
+            integrate by parts with u=-log(1+x), v=1/x
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(1+x^2)/x^2 for x!=0
+            integrate by parts with u=log(1+x^2), v=-1/x
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(x)^2/x^3 for x > 0
+            integrate by parts with u=log(x)^2, v=1/x^2/-2
+            integrate by parts with u=log(x), v=1/x^2/2
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*log(x)/(1+x^2)^2 for x>0
+            integrate by parts with u=log(x), v=1/(1+x^2)/-2
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // missing skolem variable
+        calculate INT x. log(log(x))+1/log(x)
+            substitute u for log(x)
+            expand polynomial
+            simplify
+            integrate by parts with u=log(u), v=exp(u)
+            simplify
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
 
