@@ -1753,6 +1753,13 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "simplify"
+            ],
+            "expr": "c * a / (b * a) = c / b",
+            "type": "axiom"
+        },
+        {
             "level": 1,
             "name": "summation split",
             "type": "header"

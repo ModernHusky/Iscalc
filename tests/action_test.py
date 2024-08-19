@@ -4595,6 +4595,57 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. log(x+sqrt(x^2+1)) for x > -1
+            integrate by parts with u=log(x+sqrt(x^2+1)), v=x
+            rewrite x/sqrt(x^2+1)+1 to (x+sqrt(x^2+1))/sqrt(x^2+1)
+            simplify
+            substitute tan(u) for x
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            apply integral identity
+            simplify
+        done
+        
+        // page 192
+        
+        calculate INT x. tan(x)^4
+            rewrite tan(x)^4 to tan(x)^2^2
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            integrate by parts with u=sec(x)^2,v=tan(x)
+            rewrite sec(x)^2 to tan(x)^2+1 (at 2)
+            expand polynomial
+            apply integral identity
+            rewrite tan(x)^2 to sec(x)^2-1
+            apply integral identity
+            solve integral INT x. tan(x)^4
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. 1/sin(x)^3 for x>0, x<pi
+            rewrite 1/sin(x)^3 to csc(x)^3
+            integrate by parts with u=csc(x), v=-cot(x)
+            rewrite cot(x)^2 to csc(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. csc(x)^3
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)^3 for x>-1, x<1
+            substitute sin(u) for x
+            simplify
+            integrate by parts with u=u^3,v=sin(u)
+            integrate by parts with u=3*u^2,v=-cos(u)
+            simplify
+            integrate by parts with u=u,v=sin(u)
+            apply integral identity
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
 
