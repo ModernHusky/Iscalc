@@ -4859,6 +4859,60 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("base", "PostgraduateIndefinitePart5SectionB", actions)
 
+    def testPostgraduateIndefinitePart6SectionA(self):
+        actions = """
+        # page 199
+        # partial fraction
+        
+        calculate INT x. 1/(x*(x^2+1))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x^4-1)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. (x^2+1)/((x+1)^2*(x-1))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x+1
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // find an error in the book's answer
+        // -1/2*log(1+x^2)+1/2*log(1+x+x^2)+1/sqrt(3)*arctan((2*x+1)/sqrt(3))
+        calculate INT x. 1/((x^2+1)*(x^2+x+1))
+            partial fraction decomposition
+            simplify
+            rewrite x^2+x+1 to (x+1)^2-(x+1)+1
+            substitute u for x+1
+            substitute v for u-1/2
+            expand polynomial
+            expand polynomial
+            simplify
+            substitute w for 2*v/sqrt(3)
+            rewrite sqrt(3) / (3 * w ^ 2 + 3) to 1/sqrt(3) * (1/(w^2+1))
+            simplify
+            apply integral identity
+            substitute t for v^2
+            apply integral identity
+            substitute o for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart6SectionA", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
