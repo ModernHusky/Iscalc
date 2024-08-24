@@ -4888,8 +4888,6 @@ class ActionTest(unittest.TestCase):
             simplify
         done
         
-        // find an error in the book's answer
-        // -1/2*log(1+x^2)+1/2*log(1+x+x^2)+1/sqrt(3)*arctan((2*x+1)/sqrt(3))
         calculate INT x. 1/((x^2+1)*(x^2+x+1))
             partial fraction decomposition
             simplify
@@ -4910,9 +4908,98 @@ class ActionTest(unittest.TestCase):
             replace substitution
             simplify
         done
+        
+        calculate INT x. (2*x+3)/(x^2+3*x-10)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. (x+1)/(x^2-2*x+5)
+            substitute u for x-1
+            expand polynomial
+            simplify
+            substitute v for u/2
+            rewrite 2 / (4 * v ^ 2 + 4) to 1/2 * (1/(v^2+1))
+            apply integral identity
+            substitute w for u^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
         """
         self.check_actions("base", "PostgraduateIndefinitePart6SectionA", actions)
 
+    def testPostgraduateIndefinitePart6SectionB(self):
+        actions = """
+        # page 200
+        # partial fraction
+
+        calculate INT x. (x^2+1)/((x-1)*(x+1)^2)
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x+1
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x/((x-1)*(x^2+1))
+            partial fraction decomposition
+            expand polynomial
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x^3/(x+3)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. 1/(x*(x^6+3))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^6
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x^2/(1+x^2)^2
+            partial fraction decomposition
+            apply integral identity
+            substitute tan(u) for x
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            simplify
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x*(1+x^4))
+            partial fraction decomposition
+            simplify
+            apply integral identity
+            substitute u for x^4
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x^4*(1+x^2))
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart6SectionB", actions)
 
 if __name__ == "__main__":
     unittest.main()
