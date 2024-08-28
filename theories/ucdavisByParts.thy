@@ -37,8 +37,8 @@ calculate INT x:[1, exp(1)]. log(x)/x^5
     simplify
 done
 
-calculate INT x:[0, 1/3]. asin(3*x)
-    integrate by parts with u = asin(3*x), v = x
+calculate INT x:[0, 1/3]. arcsin(3*x)
+    integrate by parts with u = arcsin(3*x), v = x
     simplify
     substitute u for -(9 * x ^ 2) + 1
     apply integral identity
@@ -51,8 +51,8 @@ calculate INT x:[1, exp(1)]. log(x)
     simplify
 done
 
-calculate INT x:[0, 1]. 2*x*atan(x)
-    integrate by parts with u = atan(x), v = x^2
+calculate INT x:[0, 1]. 2*x*arctan(x)
+    integrate by parts with u = arctan(x), v = x^2
     simplify
     rewrite x ^ 2 / (x ^ 2 + 1) to 1 - 1 / (x ^ 2 + 1)
     apply integral identity

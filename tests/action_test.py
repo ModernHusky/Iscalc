@@ -95,7 +95,7 @@ class ActionTest(unittest.TestCase):
                 replace substitution
             done
 
-            prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * atan(x / a) + SKOLEM_CONST(C) for a != 0
+            prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * arctan(x / a) + SKOLEM_CONST(C) for a != 0
             lhs:
                 substitute u for x / a
                 rewrite a ^ 2 * u ^ 2 + a ^ 2 to a ^ 2 * (u ^ 2 + 1)
@@ -503,8 +503,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
                 substitute u for cos(y)
-                rewrite -(u ^ 2) - 1 to -(u^2 + 1)
-                simplify
                 apply integral identity
                 simplify
             done
@@ -941,8 +939,8 @@ class ActionTest(unittest.TestCase):
 
     def testFrullaniIntegral01(self):
         actions = """
-            prove (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
-            define I(a,b) = (INT x:[0,oo]. (atan(a * x) - atan(b * x)) / x) for a > 0, b > 0
+            prove (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a > 0, b > 0
+            define I(a,b) = (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) for a > 0, b > 0
             subgoal 1: (D a. I(a,b)) = pi / (2 * a) for a > 0, b > 0
             lhs:
                 expand definition for I (all)
@@ -978,7 +976,7 @@ class ActionTest(unittest.TestCase):
     def testCatalanConstant01(self):
         actions = """
             define G = SUM(n, 0, oo, (-1)^n / (2*n+1)^2)
-            prove (INT x:[0,1]. atan(x) / x) = G
+            prove (INT x:[0,1]. arctan(x) / x) = G
             subgoal 1: converges(SUM(n, 0, oo, INT x:[0,1]. x ^ (2 * n) / (2 * n + 1)))
             arg:
                 simplify
@@ -986,7 +984,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
             lhs:
-                apply series expansion on atan(x) index n
+                apply series expansion on arctan(x) index n
                 rewrite x ^ (2 * n + 1) to x ^ (2 * n) * x
                 simplify
                 exchange integral and sum
@@ -1049,7 +1047,7 @@ class ActionTest(unittest.TestCase):
 
     def testCatalanConstant03(self):
         actions = """
-            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * atan(sqrt(b / a)) for a > 0, b > 0
+            prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * arctan(sqrt(b / a)) for a > 0, b > 0
             define I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
             subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2)) for a > 0, b > 0
             lhs:
@@ -1066,11 +1064,9 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sin(x) / (a + b * cos(x) ^ 2) + (pi - x) * sin(x) / (a + b * cos(x) ^ 2) to pi * sin(x) / (a + b * cos(x) ^ 2)
                 substitute u for cos(x)
                 substitute x for sqrt(b / a) * u
-                rewrite -(a * x ^ 2) - a to -a * (x ^ 2 + 1)
-                simplify
                 apply integral identity
                 simplify
-                rewrite atan(-(sqrt(b) / sqrt(a))) to -atan(sqrt(b) / sqrt(a))
+                rewrite arctan(-(sqrt(b) / sqrt(a))) to -arctan(sqrt(b) / sqrt(a))
                 simplify
                 rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
                 rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
@@ -1154,13 +1150,13 @@ class ActionTest(unittest.TestCase):
 
     def testAhmedIntegral(self):
         actions = """
-            prove (INT x:[0,1]. atan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
-            define I(u) = (INT x:[0,1]. atan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
-            subgoal 1: I(1) = (INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
+            prove (INT x:[0,1]. arctan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
+            define I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
+            subgoal 1: I(1) = (INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
             lhs:
                 expand definition for I
             done
-            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * atan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
+            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * arctan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
             lhs:
                 expand definition for I (all)
                 exchange derivative and integral
@@ -1180,7 +1176,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand definition for I (at 1)
                 simplify
-                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2)) / 2
+                integrate by parts with u = 1, v = arctan(x / sqrt(2 + x ^ 2)) / 2
                 simplify
             done
             subgoal 4: (INT u:[1,oo]. D u. I(u)) = -(pi ^ 2 / 48) + I(1)
@@ -1194,12 +1190,12 @@ class ActionTest(unittest.TestCase):
                 rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)
                 simplify
                 rewrite 1 / sqrt(x ^ 2 + 2) to sqrt(x ^ 2 + 2) ^ (-1)
-                rewrite atan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - atan(sqrt(x ^ 2 + 2))
+                rewrite arctan(sqrt(x ^ 2 + 2) ^ (-1)) to pi / 2 - arctan(sqrt(x ^ 2 + 2))
                 expand polynomial
                 simplify
-                rewrite atan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
-                apply 1 on INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
-                integrate by parts with u = 1, v = atan(x / sqrt(2 + x ^ 2))
+                rewrite arctan(sqrt(x ^ 2 + 2)) / (x ^ 2 * sqrt(x ^ 2 + 2) + sqrt(x ^ 2 + 2)) to arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                apply 1 on INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2))
+                integrate by parts with u = 1, v = arctan(x / sqrt(2 + x ^ 2))
                 apply integral identity
                 simplify
             done
@@ -1491,9 +1487,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 simplify
-                substitute t for -u + 1
-                apply integral identity
-                simplify
                 rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
                 rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1))
                 rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
@@ -1599,6 +1592,1257 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("base", "PostgraduateIndefinitePart2SectionB", actions)
 
+    def testPostgraduateIndefinitePart3SectionA(self):
+        actions = """
+        # 4.3 Inverse Substitution
+        # Section A
+        // page 180
+        
+        calculate INT x. x^2 / sqrt(a^2-x^2) for a > 0, x > -a, x < a
+            substitute a*sin(u) for x
+            rewrite sqrt(a ^ 2 - (a * sin(u)) ^ 2) to a * sqrt(1-sin(u)^2)
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            integrate by parts with u=-sin(u), v=cos(u)
+            rewrite cos(u)^2 to 1-sin(u)^2
+            simplify
+            rewrite (INT u. sin(u) ^ 2) to 1/a^2 * (a ^ 2 * (INT u. sin(u) ^ 2))
+            solve integral a ^ 2 * (INT u. sin(u) ^ 2)
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / sqrt(x^2 + 1)
+            substitute tan(u) for  x
+            rewrite tan(u)^2 + 1 to sec(u)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sqrt(x^2 - 9) / x for x > 3
+            substitute 3 * sec(u) for x
+            simplify
+            rewrite sqrt(9 * sec(u) ^ 2 - 9) to 3 * sqrt(sec(u)^2 - 1)
+            rewrite sec(u)^2 - 1 to tan(u)^2
+            simplify
+            rewrite tan(u)^2 to sec(u)^2 - 1
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (x * sqrt(1-x^2)) for x > 0, x < 1
+            substitute sin(u) for x
+            rewrite 1 - sin(u)^2 to cos(u)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(1+sqrt(2*x)) for x >= 0
+            substitute t for sqrt(2*x)
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x^2*sqrt(1-x^2)) for x > 0, x < 1
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 181
+        
+        calculate INT x. 1/((x^2+1)*sqrt(1-x^2)) for x>0, x<1
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite 1/(sin(u)^2+1) to (1/cos(u))^2 / ((sin(u)/cos(u))^2 + (1/cos(u))^2)
+            rewrite 1/cos(u) to sec(u)
+            rewrite 1/cos(u) to sec(u)
+            rewrite sin(u)/cos(u) to tan(u)
+            rewrite sec(u)^2 to 1+tan(u)^2 (at 2)
+            simplify
+            substitute v for tan(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/((x^2+1)*sqrt(x^2-1)) for x > 1
+            substitute sec(u) for x
+            rewrite sec(u)^2-1 to tan(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            rewrite sec(u) to 1/cos(u)
+            rewrite 1 / cos(u) / ((1 / cos(u)) ^ 2 + 1) to cos(u) / (1+cos(u)^2)
+            rewrite cos(u)^2 to 1-sin(u)^2
+            substitute v for sin(u)
+            substitute sqrt(2)*w for v
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x+sqrt(1-x^2)) for x > 0, x < 1
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite cos(u) / (cos(u) + sin(u)) to 1/2 * ((cos(u) + sin(u) + cos(u)-sin(u))/ (cos(u) + sin(u)))
+            rewrite (cos(u) + sin(u) + cos(u)-sin(u))/ (cos(u) + sin(u)) to 1 + (cos(u)-sin(u)) / (cos(u)+sin(u))
+            simplify
+            apply integral identity
+            substitute v for cos(u)+sin(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (x^3+1) / (x^2+1)^2
+            substitute tan(u) for x
+            rewrite tan(u)^2+1 to  sec(u)^2
+            simplify
+            rewrite tan(u) to sin(u)/cos(u)
+            rewrite sec(u) to 1/cos(u)
+            expand polynomial
+            simplify
+            rewrite sin(u)^3 to sin(u)^2 * sin(u)
+            rewrite sin(u)^2 to 1 - cos(u)^2
+            substitute v for cos(u)
+            simplify
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (sqrt(x)+x^(1/4)) for x > 0
+            substitute u for x^(1/4)
+            simplify
+            rewrite u^2+u to u*(u+1)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sqrt((1-x) / (x^2*(1+x))) for x > 0, x < 1
+            rewrite (1-x) / (x^2*(1+x)) to ((1-x)*(1+x)) / (x^2 * (1+x)^2)
+            rewrite (1-x)*(1+x) to 1-x^2
+            rewrite sqrt((1-x^2) / (x ^ 2 * (1 + x) ^ 2)) to sqrt(1-x^2) / (x*(1+x))
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite cos(u)^2 to 1-sin(u)^2
+            rewrite 1-sin(u)^2 to (1+sin(u))*(1-sin(u))
+            simplify
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1 / (exp(x/2) + exp(x))
+            substitute u for exp(x/2)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. exp(arctan(x))/(1+x^2)^(3/2)
+            substitute u for arctan(x)
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            simplify
+            integrate by parts with u=exp(u), v=sin(u)
+            integrate by parts with u=-exp(u), v=cos(u)
+            simplify
+            solve integral INT u. cos(u)*exp(u)
+            replace substitution
+            simplify
+        done
+        
+        // calculate INT x. 2/(3-x) * sqrt((5-x)/(x-1))
+        
+        
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart3SectionB", actions)
+
+    def testPostgraduateIndefinitePart4SectionA(self):
+        actions = """
+        calculate INT x. x*sin(x)
+            integrate by parts with u=-x, v=cos(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(x) for x > 0
+            integrate by parts with u=log(x), v=x
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. arcsin(x) for x > -1, x < 1
+            integrate by parts with u=arcsin(x), v=x
+            substitute sin(u) for x
+            rewrite -(sin(u)^2)+1 to cos(u)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*exp(-x)
+            integrate by parts with u=x, v=-exp(-x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*log(x)^2 for x > 0
+            integrate by parts with u=log(x)^2, v=1/2*x^2
+            integrate by parts with u=log(x), v=1/2*x^2
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. exp(-x) * cos(x)
+            integrate by parts with u = cos(x),  v=-exp(-x)
+            simplify
+            integrate by parts with u = sin(x), v = -exp(-x)
+            simplify
+            solve integral INT x. exp(-x) * cos(x)
+            simplify
+        done
+        
+        calculate INT x. x*cos(x/2)
+            integrate by parts with u=x, v=sin(x/2)*2
+            substitute u for x/2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x^2*arctan(x)
+            integrate by parts with u=arctan(x), v=x^3/3
+            simplify
+            rewrite 3*x^2+3 to 3*(x^2+1)
+            substitute tan(u) for x
+            rewrite tan(u)^2 + 1 to sec(u)^2
+            simplify
+            rewrite tan(u)^3 to tan(u)^2 * tan(u)
+            rewrite tan(u)^2 to sec(u)^2 - 1
+            expand polynomial
+            apply integral identity
+            substitute v for tan(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*tan(x)^2
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            integrate by parts with u=x,v=tan(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x^2*cos(x)
+            integrate by parts with u=x^2, v=sin(x)
+            integrate by parts with u=2*x, v=-cos(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(x)^2 for x>0
+            integrate by parts with u=log(x)^2, v=x
+            integrate by parts with u=2*log(x), v=x
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x^2*cos(x/2)^2
+            integrate by parts with u=cos(x/2)^2, v=x^3/3
+            rewrite cos(x/2)*sin(x/2) to sin(x)/2
+            simplify
+            integrate by parts with u=x^3, v=-cos(x)
+            simplify
+            integrate by parts with u=x^2, v=sin(x)
+            simplify
+            integrate by parts with u=x, v=-cos(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*log(x-1)
+            integrate by parts with u=log(x-1),v=x^2/2
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. cos(sqrt(x))^2
+            substitute u for sqrt(x)
+            integrate by parts with u=cos(u)^2, v=u^2
+            rewrite 2 * u ^ 2 * cos(u) * sin(u) to 2 * u^2 * (cos(u)*sin(u))
+            rewrite cos(u)*sin(u) to sin(2*u)/2
+            simplify
+            integrate by parts with u=u^2,v=-cos(2*u)/2
+            integrate by parts with u=-u, v=sin(2*u)/2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. log(x+2)/(x+1)^2
+            integrate by parts with u=log(x+2),v=-1/(x+1)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart4SectionA", actions)
+
+    def testPostgraduateIndefinitePart4SectionB(self):
+        actions = """
+        # page 186 
+        # integrate by parts
+        calculate INT x. arctan(sqrt(x))
+            substitute u for sqrt(x)
+            integrate by parts with u=arctan(u), v=u^2
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arctan(x)/x^2
+            integrate by parts with u=arctan(x), v=-1/x
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arctan(exp(x))/exp(x)
+            substitute u for exp(x)
+            integrate by parts with u=arctan(u), v=-1/u
+            partial fraction decomposition
+            apply integral identity
+            substitute v for u^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arctan(x) / (x^2*(1+x^2)) for x != 0
+            substitute tan(u) for x
+            simplify
+            rewrite tan(u)^2 + 1 to sec(u)^2
+            simplify
+            rewrite tan(u) to sin(u)/cos(u)
+            simplify
+            rewrite cos(u)^2 to 1-sin(u)^2
+            expand polynomial
+            simplify
+            apply integral identity
+            integrate by parts with u=-u, v=cot(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arctan(sqrt(x)) / (sqrt(x)+sqrt(x^3)) for x > 0
+            substitute u for sqrt(x)
+            simplify
+            rewrite u^3+u to u*(u^2+1)
+            simplify
+            substitute v for arctan(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done 
+           
+        // page 187
+        
+        calculate INT x. x*exp(x) / sqrt(exp(x)-1) for x > 0
+            integrate by parts with u=2*x, v=sqrt(exp(x)-1)
+            substitute u for sqrt(exp(x)-1)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*exp(x) / (1+x)^2 for x != -1
+            integrate by parts with u=-x*exp(x), v=1/(1+x)
+            rewrite -(x * exp(x)) - exp(x) to -exp(x) * (x+1)
+            simplify
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*exp(-x) / (1-x)^2 for x != 1
+            integrate by parts with u=x*exp(-x),v=1/(1-x)
+            rewrite -(x * exp(-x)) + exp(-x) to exp(-x) * (-x + 1)
+            simplify
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x^2*exp(x) / (x+2)^2 for x != -2
+            integrate by parts with u = -x^2*exp(x), v=1/(x+2)
+            rewrite -(x ^ 2 * exp(x)) - 2 * x * exp(x) to -x*exp(x) * (x+2)
+            simplify
+            integrate by parts with u=x, v=exp(x)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x * exp(x) / (1+exp(x))^2
+            integrate by parts with u=-x, v=1/(exp(x) + 1)
+            simplify
+            substitute u for exp(x)
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*exp(x) / sqrt(exp(x)-2) for exp(x)-2>0
+            integrate by parts with u=2*x, v=sqrt(exp(x)-2)
+            substitute u for sqrt(exp(x)-2)
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            substitute v for u/sqrt(2)
+            apply integral identity 
+            replace substitution
+            simplify
+        done
+        
+        // page 188
+        
+        calculate INT x. sqrt(a^2+x^2) for a > 0
+            integrate by parts with u=sqrt(a^2+x^2),v=x
+            rewrite x^2 to x^2 + a^2 - a^2 (at 2)
+            rewrite x^2 + a^2 to sqrt(x^2+a^2)^2
+            rewrite (sqrt(x ^ 2 + a ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 + x ^ 2) to sqrt(x^2+a^2) - a^2 / sqrt(a^2+x^2)
+            apply integral identity
+            substitute a*tan(u) for x (at 2)
+            rewrite a ^ 2 + (a * tan(u)) ^ 2 to a^2 * (tan(u)^2+1)
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            apply integral identity
+            solve integral INT x. sqrt(a^2+x^2)
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sqrt(a^2-x^2) for a > 0
+            integrate by parts with u=sqrt(a^2-x^2),v=x
+            simplify
+            rewrite x^2 to -(sqrt(a^2-x^2)^2 - a^2)
+            rewrite -(sqrt(a ^ 2 - x ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 - x ^ 2) to -sqrt(a^2-x^2)+a^2/sqrt(a^2-x^2)
+            apply integral identity
+            solve integral INT x. sqrt(a^2-x^2)
+            simplify
+        done
+        
+        calculate INT x. sec(x)^3
+            integrate by parts with u=sec(x), v=tan(x)
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. sec(x)^3
+            simplify
+        done
+        
+        calculate INT x. csc(x)^3
+            integrate by parts with u=-csc(x), v=cot(x)
+            rewrite cot(x)^2 to csc(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. csc(x)^3
+            simplify
+        done
+        
+        calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
+            integrate by parts with u=sin(b*x), v=exp(a*x)/a
+            simplify
+            integrate by parts with u=cos(b*x), v=exp(a*x)/a
+            simplify
+            solve integral INT x. exp(a*x)*sin(b*x)
+            expand polynomial
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. exp(a*x)*cos(b*x) for a > 0, b > 0
+            integrate by parts with u=cos(b*x), v=exp(a*x)/a
+            simplify
+            integrate by parts with u=sin(b*x), v=exp(a*x)/a
+            simplify
+            solve integral INT x. exp(a*x)*cos(b*x)
+            expand polynomial
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. exp(x) * ((1-x)/(1+x^2))^2
+            rewrite ((1-x)/(1+x^2))^2 to 1/(1+x^2) - 2*x/(1+x^2)^2
+            expand polynomial
+            simplify
+            integrate by parts with u=-exp(x)/2, v=1/(1+x^2)
+            simplify
+            rewrite exp(x) / (2 * x ^ 2 + 2) to exp(x)/(x^2+1) * (1/2)
+            simplify
+        done
+        
+        // missing skolem variable
+        calculate INT x. exp(-x) * (1+sin(x)) / (1-cos(x)) for x > 0, x < pi/2
+            rewrite sin(x) to 2*sin(x/2)*cos(x/2)
+            rewrite cos(x) to 1-2*sin(x/2)^2
+            rewrite 1 - (1 - 2 * sin(x / 2) ^ 2) to 2*sin(x/2)^2
+            rewrite exp(-x)*(1+2*sin(x/2)*cos(x/2))/(2*sin(x/2)^2) to exp(-x)/(2*sin(x/2)^2)+exp(-x)*cos(x/2)/sin(x/2)
+            simplify
+            rewrite exp(-x) / sin(x / 2) * cos(x / 2) to exp(-x) * (cos(x/2)/sin(x/2))
+            rewrite cos(x/2)/sin(x/2) to cot(x/2)
+            rewrite exp(-x)/sin(x/2)^2 to exp(-x) * (1/sin(x/2))^2
+            rewrite 1/sin(x/2) to csc(x/2)
+            integrate by parts with u=exp(-x), v=-cot(x/2)*2 (at 2)
+            simplify
+        done
+        
+        // page 189
+        
+        // missing skolem variable
+        calculate INT x. exp(sin(x))*(x*cos(x)^3-sin(x))/(cos(x)^2) for x > -pi/2, x < pi / 2
+            expand polynomial
+            simplify
+            integrate by parts with u=x, v=exp(sin(x)) (at 2)
+            simplify
+            integrate by parts with u=exp(sin(x)), v=1/cos(x)
+            simplify
+        done
+        
+        calculate INT x. sqrt(1-x^2)*arcsin(x) for x > -1, x < 1
+            substitute sin(u) for x
+            simplify
+            rewrite -(sin(u)^2)+1 to cos(u)^2
+            simplify
+            rewrite cos(u)^2 to (cos(2*u)+1)/2
+            expand polynomial
+            apply integral identity
+            integrate by parts with u=u,v=sin(2*u)/2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)^2 for x > -1, x < 1
+            substitute sin(u) for x
+            simplify
+            integrate by parts with u=u^2, v=sin(u)
+            integrate by parts with u=2*u, v=-cos(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)*x for x > -1, x < 1
+            substitute sin(u) for x
+            simplify
+            rewrite u*cos(u)*sin(u) to u*(sin(u)*cos(u))
+            rewrite sin(u)*cos(u) to sin(2*u)/2
+            simplify
+            integrate by parts with u=-u, v=cos(2*u)/2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(sqrt(x))/sqrt(x) for x > 0, x < 1
+            substitute u for sqrt(x)
+            substitute sin(v) for u
+            simplify
+            integrate by parts with u=v,v=sin(v)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(exp(x)) / exp(x)
+            substitute u for exp(x)
+            substitute sin(v) for u
+            simplify
+            integrate by parts with u=v, v=-1/sin(v)
+            rewrite 1/sin(v) to csc(v)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 190
+        
+        calculate INT x. arccos(x) / sqrt((1-x^2)^3) for x > -1, x < 1
+            substitute cos(u) for x
+            rewrite 1-cos(u)^2 to sin(u)^2
+            simplify
+            rewrite u/sin(u)^2 to u * (1/sin(u))^2
+            rewrite 1/sin(u) to csc(u)
+            integrate by parts with u=-u, v=cot(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x*arccos(x)/sqrt(1-x^2) for x > -1, x < 1
+            substitute cos(u) for x
+            rewrite 1-cos(u)^2 to sin(u)^2
+            simplify
+            integrate by parts with u=u, v=sin(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x) / x^2 * (1+x^2) / sqrt(1-x^2) for x > 0, x < 1
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            expand polynomial
+            rewrite u/sin(u)^2 to u * (1/sin(u))^2
+            rewrite 1/sin(u) to csc(u)
+            apply integral identity
+            integrate by parts with u=u, v=-cot(u)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)-arccos(x) for x > -1, x < 1
+            simplify
+            integrate by parts with u=arccos(x), v=x
+            substitute sin(u) for x
+            rewrite -(sin(u)^2)+1 to cos(u)^2
+            simplify
+            apply integral identity
+            integrate by parts with u=arcsin(x), v=x
+            substitute sin(v) for x
+            rewrite -(sin(v)^2)+1 to cos(v)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)*arccos(x) for x>-1, x<1
+            integrate by parts with u=arcsin(x)*arccos(x), v=x
+            expand polynomial
+            simplify
+            substitute cos(u) for x
+            simplify
+            rewrite -(cos(u)^2)+1 to sin(u)^2
+            simplify
+            integrate by parts with u=u, v=sin(u) (at 2)
+            apply integral identity
+            substitute sin(v) for x
+            rewrite -(sin(v)^2)+1 to cos(v)^2
+            simplify
+            integrate by parts with u=-v,v=cos(v)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 191
+        
+        calculate INT x. log(1+x)/x^2
+            integrate by parts with u=-log(1+x), v=1/x
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(1+x^2)/x^2 for x!=0
+            integrate by parts with u=log(1+x^2), v=-1/x
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. log(x)^2/x^3 for x > 0
+            integrate by parts with u=log(x)^2, v=1/x^2/-2
+            integrate by parts with u=log(x), v=1/x^2/2
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. x*log(x)/(1+x^2)^2 for x>0
+            integrate by parts with u=log(x), v=1/(1+x^2)/-2
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // missing skolem variable
+        calculate INT x. log(log(x))+1/log(x)
+            substitute u for log(x)
+            expand polynomial
+            simplify
+            integrate by parts with u=log(u), v=exp(u)
+            simplify
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. log(x+sqrt(x^2+1)) for x > -1
+            integrate by parts with u=log(x+sqrt(x^2+1)), v=x
+            rewrite x/sqrt(x^2+1)+1 to (x+sqrt(x^2+1))/sqrt(x^2+1)
+            simplify
+            substitute tan(u) for x
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        // page 192
+        
+        calculate INT x. tan(x)^4
+            rewrite tan(x)^4 to tan(x)^2^2
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            integrate by parts with u=sec(x)^2,v=tan(x)
+            rewrite sec(x)^2 to tan(x)^2+1 (at 2)
+            expand polynomial
+            apply integral identity
+            rewrite tan(x)^2 to sec(x)^2-1
+            apply integral identity
+            solve integral INT x. tan(x)^4
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. 1/sin(x)^3 for x>0, x<pi
+            rewrite 1/sin(x)^3 to csc(x)^3
+            integrate by parts with u=csc(x), v=-cot(x)
+            rewrite cot(x)^2 to csc(x)^2-1
+            expand polynomial
+            apply integral identity
+            solve integral INT x. csc(x)^3
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. arcsin(x)^3 for x>-1, x<1
+            substitute sin(u) for x
+            simplify
+            integrate by parts with u=u^3,v=sin(u)
+            integrate by parts with u=3*u^2,v=-cos(u)
+            simplify
+            integrate by parts with u=u,v=sin(u)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart4SectionB", actions)
+
+    def testPostgraduateIndefinitePart5SectionA(self):
+        actions = """
+        # page 195
+        # Trigonometric
+        calculate INT x. cos(x)^3 for x > 0, x < pi
+            integrate by parts with u=cos(x)^2,v=sin(x)
+            rewrite sin(x)^2 to 1-cos(x)^2
+            expand polynomial
+            simplify
+            solve integral INT x. cos(x)^3
+            apply integral identity
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. sin(x)^2
+            integrate by parts with u=sin(x), v=-cos(x)
+            rewrite cos(x)^2 to 1-sin(x)^2
+            simplify
+            apply integral identity
+            solve integral INT x. sin(x)^2
+            expand polynomial
+            simplify
+        done
+        
+        calculate INT x. cos(3*x)^2
+            integrate by parts with u=cos(3*x), v=sin(3*x)/3
+            rewrite sin(3*x)^2 to 1-cos(3*x)^2
+            simplify
+            apply integral identity
+            solve integral INT x. cos(3*x)^2
+            simplify
+        done
+        
+        calculate INT x. sin(x)^2*cos(x)^2
+            rewrite sin(x)^2*cos(x)^2 to (sin(x)*cos(x))^2
+            rewrite sin(x)*cos(x) to 1/2*sin(2*x)
+            simplify
+            integrate by parts with u=sin(2*x),v=-cos(2*x)/2
+            rewrite cos(2*x)^2 to 1-sin(2*x)^2
+            simplify
+            apply integral identity
+            solve integral (INT x. sin(2*x)^2)/4
+            simplify
+        done
+        
+        calculate INT x. sin(x)^2*cos(x)^3
+            rewrite cos(x)^3 to cos(x)^2 * cos(x)
+            rewrite cos(x)^2 to 1-sin(x)^2
+            substitute u for sin(x)
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(2*x)*cos(3*x)
+            rewrite sin(2*x)*cos(3*x) to (1/2)*(sin(5*x)-sin(x))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. cos(4*x)*cos(2*x)
+            rewrite cos(4*x)*cos(2*x) to 1/2 * (cos(2*x)+cos(6*x))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. sin(x)^4
+            rewrite sin(x)^4 to sin(x)^2^2
+            rewrite sin(x)^2 to 1/2*(1-cos(2*x))
+            expand polynomial
+            rewrite cos(2*x)^2 to 1/2 * (1+cos(4*x))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. tan(x)^4
+            rewrite tan(x)^4 to tan(x)^2^2
+            rewrite tan(x)^2 to sec(x)^2-1
+            expand polynomial
+            apply integral identity
+            integrate by parts with u=sec(x)^2, v=tan(x)
+            substitute u for tan(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart5SectionA", actions)
+
+    def testPostgraduateIndefinitePart5SectionB(self):
+        actions = """
+        # page 196
+        # Trigonometric
+        
+        // find an error in the book's answer
+        // 1/2*sin(x)^2+log(abs(csc(2*x)-cot(2*x))) + C
+        calculate INT x. 1/(cos(x)*sin(x)^3) for x > 0, x < pi/2
+            rewrite 1 to sin(x)^2+cos(x)^2
+            expand polynomial
+            simplify
+            rewrite cos(x)*sin(x) to 1/2*sin(2*x)
+            simplify
+            rewrite 1/sin(2*x) to csc(2*x)
+            substitute u for 2*x
+            apply integral identity
+            substitute v for sin(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (3*cos(x)-sin(x)) / (cos(x)+sin(x))
+            rewrite 3*cos(x)-sin(x) to (cos(x)+sin(x))+2*(cos(x)-sin(x))
+            rewrite (cos(x) + sin(x) + 2 * (cos(x) - sin(x))) / (cos(x) + sin(x)) to 1 + 2 * (cos(x) - sin(x)) / (cos(x) + sin(x))
+            simplify
+            substitute u for cos(x)+sin(x)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. tan(x)*cos(x)^6/sin(x)^4 for x > 0 , x < pi/2
+            rewrite tan(x) to sin(x)/cos(x)
+            simplify
+            rewrite cos(x)^5 to cos(x)^2^2*cos(x)
+            rewrite cos(x)^2 to 1-sin(x)^2
+            substitute u for sin(x)
+            expand polynomial
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. cos(x)*sin(x)^3 / (1+cos(x)^2) for x > 0, x < pi / 2
+            rewrite sin(x)^3 to sin(x)^2*sin(x)
+            rewrite sin(x)^2 to 1-cos(x)^2
+            substitute u for cos(x)
+            substitute v for u^2
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. sin(x)*cos(x)^3 / (1+sin(x)^2) for x > 0, x < pi / 2
+            rewrite cos(x)^3 to cos(x)^2*cos(x)
+            rewrite cos(x)^2 to 1-sin(x)^2
+            substitute u for sin(x)
+            substitute v for u^2
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(1+4*cos(x))
+            substitute t for tan(x/2)
+            rewrite (-(4 * t ^ 2) + 4) / (t ^ 2 + 1) + 1 to (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) 
+            rewrite (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) to (5-3*t^2)/(t^2+1)
+            simplify
+            substitute u for sqrt(3/5)*t
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            expand polynomial
+        done
+        
+        calculate INT x. 1/(sqrt(sin(x))*cos(x)) for x > 0, x < pi
+            substitute u for sqrt(sin(x))
+            simplify
+            partial fraction decomposition
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/sqrt(tan(x)^2+2) for x > -pi/2, x < pi/2
+            rewrite tan(x) to sin(x)/cos(x)
+            rewrite 1 / sqrt((sin(x) / cos(x)) ^ 2 + 2) to cos(x)/(cos(x)*sqrt((sin(x) / cos(x)) ^ 2 + 2))
+            rewrite cos(x)*sqrt((sin(x) / cos(x)) ^ 2 + 2) to sqrt(sin(x) ^ 2 + 2*cos(x)^2)
+            substitute u for sin(x)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(sin(x)^4+cos(x)^4)
+            rewrite 1/(sin(x)^4+cos(x)^4) to (1/cos(x))^4 / ((sin(x)/cos(x))^4+1)
+            rewrite 1/cos(x) to sec(x)
+            rewrite sin(x)/cos(x) to tan(x)
+            rewrite sec(x)^4 to sec(x)^2*sec(x)^2
+            rewrite sec(x)^2 to tan(x)^2+1
+            substitute u for tan(x)
+            rewrite (u ^ 2 + 1) / (u ^ 4 + 1) to (1 / u ^ 2 + 1)/(u^2+1/u^2)
+            rewrite u^2+1/u^2 to (u-1/u)^2+2
+            substitute v for u-1/u
+            substitute w for v/sqrt(2)
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart5SectionB", actions)
+
+    def testPostgraduateIndefinitePart6SectionA(self):
+        actions = """
+        # page 199
+        # partial fraction
+        
+        calculate INT x. 1/(x*(x^2+1))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x^4-1)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. (x^2+1)/((x+1)^2*(x-1))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x+1
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/((x^2+1)*(x^2+x+1))
+            partial fraction decomposition
+            simplify
+            rewrite x^2+x+1 to (x+1)^2-(x+1)+1
+            substitute u for x+1
+            substitute v for u-1/2
+            expand polynomial
+            expand polynomial
+            simplify
+            substitute w for 2*v/sqrt(3)
+            rewrite sqrt(3) / (3 * w ^ 2 + 3) to 1/sqrt(3) * (1/(w^2+1))
+            simplify
+            apply integral identity
+            substitute t for v^2
+            apply integral identity
+            substitute o for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. (2*x+3)/(x^2+3*x-10)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. (x+1)/(x^2-2*x+5)
+            substitute u for x-1
+            expand polynomial
+            simplify
+            substitute v for u/2
+            rewrite 2 / (4 * v ^ 2 + 4) to 1/2 * (1/(v^2+1))
+            apply integral identity
+            substitute w for u^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart6SectionA", actions)
+
+    def testPostgraduateIndefinitePart6SectionB(self):
+        actions = """
+        # page 200
+        # partial fraction
+
+        calculate INT x. (x^2+1)/((x-1)*(x+1)^2)
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x+1
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x/((x-1)*(x^2+1))
+            partial fraction decomposition
+            expand polynomial
+            apply integral identity
+            substitute u for x^2
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x^3/(x+3)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. 1/(x*(x^6+3))
+            partial fraction decomposition
+            apply integral identity
+            substitute u for x^6
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. x^2/(1+x^2)^2
+            partial fraction decomposition
+            apply integral identity
+            substitute tan(u) for x
+            rewrite tan(u)^2+1 to sec(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            simplify
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x*(1+x^4))
+            partial fraction decomposition
+            simplify
+            apply integral identity
+            substitute u for x^4
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        
+        calculate INT x. 1/(x^4*(1+x^2))
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x. (x^2+1)/(1+x^4) for x != 0
+            rewrite (x^2+1)/(1+x^4) to (1+1/x^2)/(1/x^2+x^2)
+            rewrite (1/x^2+x^2) to (x-1/x)^2+2
+            substitute u for x-1/x
+            substitute v for u/sqrt(2)
+            simplify
+            apply integral identity
+            replace substitution
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateIndefinitePart6SectionB", actions)
+
+    def testPostgraduateDefinitePart1SectionA(self):
+        actions = """
+        # page 209
+        
+        calculate INT phi:[0, pi/2].sin(phi)*cos(phi)^3
+            substitute u for cos(phi)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT theta:[0, pi]. 1-sin(theta)^3
+            apply integral identity
+            rewrite sin(theta)^3 to sin(theta)^2*sin(theta)
+            rewrite sin(theta)^2 to 1-cos(theta)^2
+            substitute u for cos(theta)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT u:[pi/6, pi/2]. cos(u)^2
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[0, sqrt(2)]. sqrt(2-x^2)
+            substitute sqrt(2)*sin(u) for x
+            rewrite 2 - (sqrt(2) * sin(u)) ^ 2 to 2 * (1-sin(u)^2)
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[sqrt(2)/2, 1]. sqrt(1-x^2)/x^2
+            substitute sin(u) for x
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite cos(u)^2 / sin(u)^2 to (cos(u)/sin(u))^2
+            rewrite cos(u)/sin(u) to cot(u)
+            rewrite cot(u)^2 to csc(u)^2-1
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[0, a]. x^2*sqrt(a^2-x^2) for a>0
+            substitute a*sin(u) for x
+            rewrite a^2-(a*sin(u))^2 to a^2*(1-sin(u)^2)
+            rewrite 1-sin(u)^2 to cos(u)^2
+            simplify
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            rewrite sin(u)^2 to 1/2*(1-cos(2*u))
+            expand polynomial
+            rewrite cos(2*u)^2 to 1/2*(1+cos(4*u))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[1, sqrt(3)]. 1/(x^2*sqrt(1+x^2))
+            substitute tan(u) for x
+            rewrite 1+tan(u)^2 to sec(u)^2
+            simplify
+            rewrite sec(u) to 1/cos(u)
+            rewrite tan(u) to sin(u)/cos(u)
+            simplify
+            substitute v for sin(u)
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[1, 4]. 1/(1+sqrt(x))
+            substitute u for sqrt(x)
+            partial fraction decomposition
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[1, exp(1)^2]. 1/(x*sqrt(1+log(x)))
+            substitute u for sqrt(1+log(x))
+            apply integral identity
+            simplify
+        done
+        
+        calculate INT x:[-2, 0]. (x+2)/(x^2+2*x+2)
+            substitute u for x+1
+            expand polynomial
+            apply integral identity
+            substitute v for u^2
+            simplify
+        done
+        
+        calculate INT theta:[-pi/2, pi/2]. 4*cos(theta)^4
+            split region at 0
+            substitute u for -theta
+            simplify
+            rewrite cos(u)^4 to cos(u)^2^2
+            rewrite cos(u)^2 to 1/2*(1+cos(2*u))
+            expand polynomial
+            rewrite cos(2*u)^2 to 1/2*(1+cos(4*u))
+            apply integral identity
+            simplify
+        done
+        """
+        self.check_actions("base", "PostgraduateDefinitePart1SectionA", actions)
 
 if __name__ == "__main__":
     unittest.main()

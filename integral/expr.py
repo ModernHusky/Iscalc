@@ -7,6 +7,8 @@ from fractions import Fraction
 from collections.abc import Iterable
 from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
+import sympy
+
 VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
 SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
@@ -197,7 +199,7 @@ class Expr:
         return self.ty == FUN and self.func_name in ("sin", "cos", "tan", "cot", "csc", "sec")
 
     def is_inverse_trig(self):
-        return self.ty == FUN and self.func_name in ("asin", "acos", "atan", "acot", "acsc", "asec")
+        return self.ty == FUN and self.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec")
 
     def is_skolem_term(self):
         if self.get_vars() != set():
@@ -612,6 +614,28 @@ class Expr:
         else:
             return False
 
+    def contains_indefinite_integral(self) -> bool:
+        if is_var(self) or is_const(self) or is_skolem_func(self):
+            return False
+        elif is_integral(self):
+            return False
+        elif is_indefinite_integral(self):
+            return True
+        elif is_op(self) or is_fun(self):
+            return any(arg.contains_indefinite_integral() for arg in self.args)
+        else:
+            return False
+
+    def contains_skolem_func(self):
+        if is_skolem_func(self):
+            return True
+        elif is_integral(self) or is_indefinite_integral(self):
+            return False
+        elif is_op(self) or is_fun(self):
+            return any(arg.contains_skolem_func() for arg in self.args)
+        else:
+            return False
+
     def replace(self, e: "Expr", repl_e: "Expr") -> "Expr":
         """Replace occurrences of e with repl_e."""
         assert isinstance(e, Expr) and isinstance(repl_e, Expr)
@@ -1008,6 +1032,8 @@ def term_decomposition(e:Expr) -> list[Expr]:
     elif e.is_minus():
         a, b = e.args
         return term_decomposition(a) + [(item, -1*sign) for item, sign in term_decomposition(b)]
+    elif is_uminus(e):
+        return [(item , -1*sign) for item, sign in term_decomposition(e.args[0])]
     else:
         return [(e,1)]
 
@@ -1016,26 +1042,41 @@ def common_factor_extraction(e:Expr) -> tuple[list[Expr], list[Expr], Expr]:
     num_factors_list = []
     denom_factors_list = []
     sign_list = []
+    is_all_negative = True
     for term, sign in term_list:
         a, b = decompose_expr_factor(term)
         num_factors_list.append(a)
         denom_factors_list.append(b)
         sign_list.append(sign)
-    def extraction(factors_list):
+        if sign == 1:
+            is_all_negative = False
+    def extraction(factors_list, flag_list):
         res = list()
-        for factor in factors_list[0]:
+        for i, factor in enumerate(factors_list[0]):
             flag = True
             for factors in factors_list[1:]:
                 if factor not in factors:
                     flag = False
                     break
             if flag:
+                flag_list[0][i] = False
+                for j, factors in enumerate(factors_list[1:]):
+                    for k, factor2 in enumerate(factors):
+                        if factor2 == factor:
+                            flag_list[j+1][k] = False
                 res.append(factor)
         return res
-    denom_comm_factors = extraction(denom_factors_list)
-    num_common_factors = extraction(num_factors_list)
-    num_factors_list = [[factor for factor in num_factors if factor not in num_common_factors] for num_factors in num_factors_list]
-    denom_factors_list = [[factor for factor in denom_factors if factor not in denom_comm_factors] for denom_factors in denom_factors_list]
+    denom_flag_list = [[True for _ in factors] for factors in denom_factors_list]
+    num_flag_list = [[True for _ in factors] for factors in num_factors_list]
+    denom_comm_factors = extraction(denom_factors_list, denom_flag_list)
+    num_common_factors = extraction(num_factors_list, num_flag_list)
+
+    if is_all_negative:
+        num_common_factors.append(Const(-1))
+        sign_list = [1 for item in sign_list]
+
+    num_factors_list = [[factor for j, factor in enumerate(num_factors) if num_flag_list[i][j] is True] for i, num_factors in enumerate(num_factors_list)]
+    denom_factors_list = [[factor for j, factor in enumerate(denom_factors) if denom_flag_list[i][j] is True] for i, denom_factors in enumerate(denom_factors_list)]
     def prod(es):
         es = list(es)
         if len(es) == 0:
@@ -1046,7 +1087,10 @@ def common_factor_extraction(e:Expr) -> tuple[list[Expr], list[Expr], Expr]:
         num = prod(num_factors_list[i])
         denom = prod(denom_factors_list[i])
         if i == 0:
-            s = num/denom if denom != Const(1) else num
+            if sign_list[0] == 1:
+                s = num/denom if denom != Const(1) else num
+            else:
+                s = - (num / denom) if denom != Const(1) else -num
         else:
             if sign_list[i] == 1:
                 s = s + num/denom if denom != Const(1) else s + num
@@ -1071,12 +1115,13 @@ def decompose_expr_factor2(e:Expr) -> tuple[list[Expr], list[Expr]]:
         n2, d2 = decompose_expr_factor2(b)
         return n1 + d2, d1 + n2
     else:
-        return decompose_expr_factor(e)
+        return [e],[]
 
 def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
     """Get production factors from expr."""
     num_factors, denom_factors = [], []
     def rec(e: Expr, sign):
+        nonlocal num_factors, denom_factors
         if e.is_times():
             rec(e.args[0], sign)
             rec(e.args[1], sign)
@@ -1086,6 +1131,20 @@ def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
         elif e.is_divides():
             rec(e.args[0], sign)
             rec(e.args[1], -1 * sign)
+        elif is_const(e) and isinstance(e.val, int):
+            res_list = []
+            if e.val > 0:
+                factor_dict = sympy.factorint(e.val)
+                for k, v in factor_dict.items():
+                    res_list = res_list + [Const(k)] * v
+            else:
+                factor_dict = sympy.factorint(e.val)
+                for k, v in factor_dict.items():
+                    res_list = res_list + [Const(k)] * v
+            if sign == 1:
+                num_factors = num_factors + res_list
+            else:
+                denom_factors = denom_factors + res_list
         elif sign == 1:
             num_factors.append(e)
         else:
@@ -1356,22 +1415,22 @@ def exp(e):
     return Fun("exp", e)
 
 def arcsin(e):
-    return Fun("asin", e)
+    return Fun("arcsin", e)
 
 def arccos(e):
-    return Fun("acos", e)
+    return Fun("arccos", e)
 
 def arctan(e):
-    return Fun("atan", e)
+    return Fun("arctan", e)
 
 def arccot(e):
-    return Fun("acot", e)
+    return Fun("arccot", e)
 
 def arcsec(e):
-    return Fun("asec", e)
+    return Fun("arcsec", e)
 
 def arccsc(e):
-    return Fun("acsc", e)
+    return Fun("arccsc", e)
 
 def sqrt(e):
     return Fun("sqrt", e)
@@ -1644,11 +1703,11 @@ def eval_expr(e: Expr):
             return 1.0 / math.cos(eval_expr(e.args[0]))
         elif e.func_name == 'csc':
             return 1.0 / math.sin(eval_expr(e.args[0]))
-        elif e.func_name == 'asin':
+        elif e.func_name == 'arcsin':
             return math.asin(eval_expr(e.args[0]))
-        elif e.func_name == 'acos':
+        elif e.func_name == 'arccos':
             return math.acos(eval_expr(e.args[0]))
-        elif e.func_name == 'atan':
+        elif e.func_name == 'arctan':
             return math.atan(eval_expr(e.args[0]))
         elif e.func_name == 'log':
             return math.log(eval_expr(e.args[0]))

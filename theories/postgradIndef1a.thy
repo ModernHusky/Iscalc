@@ -4,7 +4,7 @@
 
 calculate INT x. 1 / sqrt(x-x^2)
     rewrite x - x^2 to 1/4 - (x-1/2)^2
-    substitute u for asin(x-1/2)
+    substitute u for arcsin(x-1/2)
     substitute v for sin(u)
     apply integral identity
     replace substitution
@@ -16,11 +16,11 @@ calculate INT x. 1/x^2
     simplify
 done
 
-calculate INT x. asin(2*x-1) for x > 0, x < 1
+calculate INT x. arcsin(2*x-1) for x > 0, x < 1
     substitute u for 2*x-1
     simplify
-    integrate by parts with u=asin(u), v=u
-    substitute v for asin(u)
+    integrate by parts with u=arcsin(u), v=u
+    substitute v for arcsin(u)
     rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
@@ -30,11 +30,11 @@ calculate INT x. asin(2*x-1) for x > 0, x < 1
     simplify
 done
 
-calculate INT x. acos(1-2*x) for x > 0, x < 1
+calculate INT x. arccos(1-2*x) for x > 0, x < 1
     substitute u for 1-2*x
     simplify
-    integrate by parts with u=acos(u), v=u
-    substitute v for asin(u)
+    integrate by parts with u=arccos(u), v=u
+    substitute v for arcsin(u)
     rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify

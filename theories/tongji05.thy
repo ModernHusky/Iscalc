@@ -238,8 +238,8 @@ calculate INT x:[1, 4]. log(x) / sqrt(x)
     simplify
 done
 
-calculate INT x:[0, 1]. x * atan(x)
-    integrate by parts with u = atan(x) / 2, v = x ^ 2
+calculate INT x:[0, 1]. x * arctan(x)
+    integrate by parts with u = arctan(x) / 2, v = x ^ 2
     simplify
     rewrite x^2 / (2 * x^2 + 2) to (1 - 1 / (x^2 + 1)) / 2
     apply integral identity

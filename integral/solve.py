@@ -84,17 +84,17 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
             return solve_equation(f.args[0], expr.arcsec(a), x, ctx)
         elif f.func_name == "csc":
             return solve_equation(f.args[0], expr.arccsc(a), x, ctx)
-        elif f.func_name == "asin":
+        elif f.func_name == "arcsin":
             return solve_equation(f.args[0], expr.sin(a), x, ctx)
-        elif f.func_name == "acos":
+        elif f.func_name == "arccos":
             return solve_equation(f.args[0], expr.cos(a), x, ctx)
-        elif f.func_name == "atan":
+        elif f.func_name == "arctan":
             return solve_equation(f.args[0], expr.tan(a), x, ctx)
-        elif f.func_name == "acot":
+        elif f.func_name == "arccot":
             return solve_equation(f.args[0], expr.cot(a), x, ctx)
-        elif f.func_name == "asec":
+        elif f.func_name == "arcsec":
             return solve_equation(f.args[0], expr.sec(a), x, ctx)
-        elif f.func_name == "acsc":
+        elif f.func_name == "arccsc":
             return solve_equation(f.args[0], expr.csc(a), x, ctx)
         elif f.func_name == "sqrt":
             return solve_equation(f.args[0], a ^ 2, x, ctx)

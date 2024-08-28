@@ -112,7 +112,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return normal(-expr.csc(x) * expr.cot(x) * rec(x))
             elif e.func_name == "cot":
                 x, = e.args
-                return normal(-(expr.csc(x) ^ Const(2)))
+                return normal(-(expr.csc(x) ^ Const(2)) * rec(x))
             elif e.func_name == "cot":
                 x, = e.args
                 return normal(-(sin(x) ^ Const(-2)) * rec(x))
@@ -129,22 +129,22 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return Const(0)
                 else:
                     return normal(rec(e.args[0] ^ Const(Fraction(1 / 2))))
-            elif e.func_name == "atan":
+            elif e.func_name == "arctan":
                 x, = e.args
                 return normal(rec(x) / (Const(1) + (x ^ Const(2))))
-            elif e.func_name == "asin":
+            elif e.func_name == "arcsin":
                 x, = e.args
                 return normal(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2))))
-            elif e.func_name == "acos":
+            elif e.func_name == "arccos":
                 x, = e.args
                 return normal(-(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2)))))
-            elif e.func_name == "acot":
+            elif e.func_name == "arccot":
                 x, = e.args
                 return normal(-rec(x)) / (Const(1) + x ^ Const(2))
-            elif e.func_name == "asec":
+            elif e.func_name == "arcsec":
                 x, = e.args
                 return normal(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1))))
-            elif e.func_name == "acsc":
+            elif e.func_name == "arccsc":
                 x, = e.args
                 return normal(-(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1)))))
             elif e.func_name == "binom":
@@ -293,7 +293,7 @@ def check_wellformed(e: Expr, ctx: Context) -> List[ProofObligation]:
                     branch1 = ProofObligationBranch([Op(">", e.args[0], Const(0))])
                     branch2 = ProofObligationBranch([Op("<", e.args[0], Const(0)), Fun("notInt", e.args[0])])
                     add_obligation([branch1, branch2], ctx)
-            if e.func_name == "acos" or e.func_name == "asin":
+            if e.func_name == "arccos" or e.func_name == "arcsin":
                 f1 = ctx.check_condition(Op(">=", e.args[0], Const(-1)))
                 f2 = ctx.check_condition(Op("<=", e.args[0], Const(1)))
                 if f1 and f2:
@@ -1511,16 +1511,24 @@ class Substitution(Rule):
         nf, df = decompose_expr_factor2(var_subst)
         prod_nf, prod_df = prod(nf), prod(df)
         var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
-        body_subst2 = body.replace(var_subst2, var_name)
+        body_subst2 = normalize(body, ctx).replace(normalize(var_subst, ctx), var_name)
+        body_subst3 = body.replace(var_subst2, var_name)
+        body_subst4 = normalize(body, ctx).replace(normalize(var_subst2,ctx), var_name)
+        body_subst5 = normalize(body.replace(var_subst, var_name), ctx)
+        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
-        elif e.var not in normalize(body_subst, ctx).get_vars():
-            self.f = normalize(body_subst, ctx)
         elif e.var not in body_subst2.get_vars():
             self.f = body_subst2
-        elif e.var not in normalize(body_subst2, ctx).get_vars():
-            self.f = normalize(body_subst2, ctx)
+        elif e.var not in body_subst3.get_vars():
+            self.f = body_subst3
+        elif e.var not in body_subst4.get_vars():
+            self.f = body_subst4
+        elif e.var not in body_subst5.get_vars():
+            self.f = body_subst5
+        elif e.var not in body_subst6.get_vars():
+            self.f = body_subst6
         else:
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx)
@@ -2089,8 +2097,10 @@ class SplitRegion(Rule):
             if len(sep_ints) == 0:
                 return e
             else:
-                return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
-
+                try:
+                    return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
+                except RecursionError:
+                    raise RuleException("split region", "do not find a definite integral")
         x = Var("c")
         is_cpv = limits.reduce_inf_limit(e.body.subst(e.var, self.c + 1 / x), x.name, ctx) in [POS_INF, NEG_INF]
         if not is_cpv:
@@ -2125,34 +2135,44 @@ class IntegrateByEquation(Rule):
         """Eliminate the lhs's integral in rhs by solving equation."""
         lhs = normalize(self.lhs, ctx)
 
-        def get_coeff(t: Expr):
+        def get_coeff(t: Expr, lhs:Expr):
             """Obtain the coefficient of lhs within t."""
             if t == lhs:
                 return Const(1)
 
             if t.is_plus():
-                return get_coeff(t.args[0]) + get_coeff(t.args[1])
+                return get_coeff(t.args[0], lhs) + get_coeff(t.args[1], lhs)
             elif t.is_minus():
-                return get_coeff(t.args[0]) - get_coeff(t.args[1])
+                return get_coeff(t.args[0], lhs) - get_coeff(t.args[1], lhs)
             elif expr.is_uminus(t):
-                return -get_coeff(t.args[0])
+                return -get_coeff(t.args[0], lhs)
             elif t.is_times():
-                return t.args[0] * get_coeff(t.args[1])
+                return t.args[0] * get_coeff(t.args[1], lhs)
             elif t.is_divides():
-                return get_coeff(t.args[0]) / t.args[1]
+                return get_coeff(t.args[0], lhs) / t.args[1]
             else:
                 return Const(0)
 
         norm_e = normalize(e, ctx)
-        coeff = normalize(get_coeff(norm_e), ctx)
+        coeff = normalize(get_coeff(norm_e, lhs), ctx)
+        lhs = self.lhs
+        coeff2 = normalize(get_coeff(e, lhs), ctx)
 
-        if coeff == Const(0):
+        if coeff == Const(0) and coeff2 == Const(0):
             raise RuleException("IntegrateByEquation", "lhs %s not found in integral" % self.lhs)
 
-        if coeff == Const(1):
+        if coeff == Const(1) or coeff2 == Const(1):
             raise RuleException("IntegrateByEquation", "lhs %s has coeff 1 in integral" % self.lhs)
 
-        return normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
+        if coeff == Const(0) or coeff == Const(1):
+            coeff = coeff2
+        res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
+
+        if lhs.contains_indefinite_integral() and not lhs.contains_skolem_func():
+            res = res + SkolemFunc("C", tuple())
+
+        return res
+
 
 
 class ElimInfInterval(Rule):

@@ -6,7 +6,7 @@
 // URL: https://www.math.ucdavis.edu/~kouba/CalcTwoDIRECTORY/trigsubdirectory/TrigSub.html
 
 calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
-    substitute u for asin(x)
+    substitute u for arcsin(x)
     rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
@@ -16,7 +16,7 @@ calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
 done
 
 calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
-    substitute u for asec(x)
+    substitute u for arcsec(x)
     rewrite sec(u)^2 - 1 to tan(u)^2
     simplify
     rewrite tan(u)^4 to tan(u)^2 * tan(u)^2
@@ -32,7 +32,7 @@ calculate INT x. (x^2 - 1)^(3/2) / x for x > 1
 done
 
 calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
-    substitute u for asin(x)
+    substitute u for arcsin(x)
     rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
@@ -44,7 +44,7 @@ calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
 done
 
 calculate INT x. sqrt(x^2 + 1) / x
-    substitute u for atan(x)
+    substitute u for arctan(x)
     rewrite tan(u)^2 + 1 to sec(u)^2
     simplify
     rewrite sec(u)^3 to sec(u) * sec(u)^2
@@ -60,7 +60,7 @@ calculate INT x. sqrt(x^2 + 1) / x
 done
 
 calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
-    substitute u for asin(3*x/2)
+    substitute u for arcsin(3*x/2)
     simplify
     rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
     rewrite 1 - sin(u)^2 to cos(u)^2
@@ -78,7 +78,7 @@ calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
 done
 
 calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
-    substitute u for asin(x)
+    substitute u for arcsin(x)
     rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
@@ -92,7 +92,7 @@ calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
 done
 
 calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
-    substitute u for asec(x/3)
+    substitute u for arcsec(x/3)
     rewrite 9 * sec(u)^2 - 9 to 9 * (sec(u)^2 - 1)
     rewrite sec(u)^2 - 1 to tan(u)^2
     simplify
@@ -106,7 +106,7 @@ calculate INT x. sqrt(x^2 - 9) / x^2 for x > 3
 done
 
 calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
-    substitute u for atan(x)
+    substitute u for arctan(x)
     rewrite tan(u)^2 + 1 to sec(u)^2
     simplify
     rewrite sec(u)^3 to sec(u) * sec(u)^2
@@ -120,7 +120,7 @@ calculate INT x. sqrt(x^2 + 1) / x^2 for x > 0
 done
 
 calculate INT x. sqrt(x^2+25)
-    substitute u for atan(x/5)
+    substitute u for arctan(x/5)
     simplify
     rewrite sqrt(25 * tan(u) ^ 2 + 25) to 5 * sqrt(tan(u)^2+1)
     rewrite tan(u)^2+1 to sec(u)^2
@@ -137,7 +137,7 @@ calculate INT x. sqrt(x^2+25)
 done
 
 calculate INT x. sqrt(x^2-4) for x > 2
-    substitute u for asec(x/2)
+    substitute u for arcsec(x/2)
     rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
     rewrite sec(u) ^ 2 - 1 to tan(u)^2
     simplify
@@ -156,7 +156,7 @@ done
 calculate INT x. x / sqrt(x^4-16) for x > 2
     substitute u for x^2
     simplify
-    substitute v for asec(u/4)
+    substitute v for arcsec(u/4)
     rewrite sqrt(16 * sec(v) ^ 2 - 16) to 4*sqrt(sec(v)^2-1)
     rewrite sec(v)^2-1 to tan(v)^2
     simplify
@@ -167,7 +167,7 @@ done
 
 calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
     rewrite x^2-4*x to (x-2)^2 - 4
-    substitute u for asec((x-2)/2)
+    substitute u for arcsec((x-2)/2)
     rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
     rewrite sec(u) ^ 2 - 1 to tan(u)^2
     simplify
@@ -179,7 +179,7 @@ done
 calculate INT x. x/sqrt(x^2 + 4*x + 5)
     rewrite x^2+4*x+5 to (x+2)^2 + 1
     substitute u for (x+2)
-    substitute v for atan(u)
+    substitute v for arctan(u)
     rewrite tan(v)^2+1 to sec(v)^2
     simplify
     expand polynomial
@@ -191,7 +191,7 @@ done
 calculate INT x. x * sqrt(10*x - x^2) for x > 0, x < 10
     rewrite 10*x - x^2 to 25 - (x-5)^2
     substitute u for (x-5) / 5
-    substitute v for asin(u)
+    substitute v for arcsin(u)
     rewrite sqrt(-(25*sin(v)^2)+25) to 5*sqrt(1-sin(v)^2)
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
@@ -207,7 +207,7 @@ done
 calculate INT x. sqrt((x-1) / x) for x > 1
     substitute u for sqrt(x)
     simplify
-    substitute v for asec(u)
+    substitute v for arcsec(u)
     rewrite sec(v)^2-1 to tan(v)^2
     simplify
     integrate by parts with u=tan(v),v=sec(v)
@@ -229,7 +229,7 @@ calculate INT x. sqrt(1-x)*sqrt(x+3) for x < 1, x > -3
     rewrite (1-x)*(x+3) to 4 - (x+1)^2
     substitute u for(x+1)/2
     rewrite sqrt(-(4 * u ^ 2) + 4) to 2 * sqrt(1 - u ^ 2)
-    substitute v for asin(u)
+    substitute v for arcsin(u)
     rewrite -(sin(v) ^ 2) + 1 to 1-sin(v)^2
     rewrite 1-sin(v) ^ 2 to cos(v)^2
     simplify

@@ -81,7 +81,7 @@ calculate INT x. 1/(2-3*x)^(1/3)
     simplify
 done
 
-calculate INT x. sin(x) / cos(x)^3
+calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
     substitute u for cos(x)
     apply integral identity
     replace substitution
@@ -109,8 +109,8 @@ calculate INT x. tan(x)^9*sec(x)^2
     simplify
 done
 
-calculate INT x. 1 / (asin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
-    substitute u for asin(x)
+calculate INT x. 1 / (arcsin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
+    substitute u for arcsin(x)
     apply integral identity
     replace substitution
     simplify
