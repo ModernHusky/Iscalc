@@ -17,8 +17,8 @@ calculate INT x. log(x) for x > 0
     simplify
 done
 
-calculate INT x. asin(x)
-    integrate by parts with u = asin(x), v = x
+calculate INT x. arcsin(x)
+    integrate by parts with u = arcsin(x), v = x
     substitute u for -(x^2) + 1
     apply integral identity
     replace substitution
@@ -63,8 +63,8 @@ calculate INT x. x * cos(x/2)
     simplify
 done
 
-calculate INT x. x^2 * atan(x)
-    integrate by parts with u = atan(x), v = 1/3*x^3
+calculate INT x. x^2 * arctan(x)
+    integrate by parts with u = arctan(x), v = 1/3*x^3
     partial fraction decomposition
     apply integral identity
     simplify
@@ -179,10 +179,10 @@ calculate INT x. cos(log(x)) for x > 0
     solve integral INT x. cos(log(x))
 done
 
-calculate INT x. asin(x)^2 for x > -1, x < 1
-    integrate by parts with u = asin(x)^2, v = x
+calculate INT x. arcsin(x)^2 for x > -1, x < 1
+    integrate by parts with u = arcsin(x)^2, v = x
     simplify
-    integrate by parts with u = asin(x), v = -sqrt(-(x^2) + 1)
+    integrate by parts with u = arcsin(x), v = -sqrt(-(x^2) + 1)
     simplify
     apply integral identity
     simplify
