@@ -248,6 +248,13 @@
             "attributes": [
                 "simplify"
             ],
+            "expr": "a * b / b = a",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
             "conds": [
                 "x <= 0"
             ],
