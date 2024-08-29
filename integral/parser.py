@@ -31,7 +31,6 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
-        | "[" expr ("," expr)* "]" -> vector_expr
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -277,15 +276,6 @@ class ExprTransformer(Transformer):
 
     def limit_r_expr(self, var, lim, body):
         return expr.Limit(str(var), lim, body, "+")
-
-    def vector_expr(self, *args):
-        data = []
-        for arg in args:
-            if isinstance(arg, expr.Matrix):
-                data.append(arg.data)
-            else:
-                data.append(arg)
-        return expr.Matrix(tuple(data))
     
     def conditions(self, *exprs: Expr) -> Tuple[Expr]:
         return tuple(exprs)
