@@ -26,6 +26,18 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("5 * x"))
         self.assertEqual(rule.eval(t, ctx), parse_expr("INT u:[0, pi]. sin(u) / 5"))
 
+    def testSubstitutionDefinite2(self):
+        ctx = context.Context()
+
+        t = parse_expr("INT x:[pi/2,pi]. sec(x)^2*tan(x)")
+        rule = rules.Substitution("u", parse_expr("tan(x)"))
+        t1 = rule.eval(t, ctx)
+        print(rules.Simplify().eval(t1,ctx))
+        t2 = rules.Simplify().eval(parse_expr("tan(pi)"), ctx)
+        print(t2)
+        t3 = rules.Simplify().eval(parse_expr("1*pi/2"), ctx)
+        print(t3)
+
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
         # u ^ 2 - 5 >= 0, so simplify abs(u ^ 2 - 5) to u ^ 2 - 5.
