@@ -43,6 +43,7 @@ calculate INT x. exp(-x) * cos(x)
     integrate by parts with u = exp(-x), v = -cos(x)
     simplify
     solve integral INT x. exp(-x) * cos(x)
+    apply integral identity
     simplify
 done
 
@@ -52,6 +53,7 @@ calculate INT x. exp(-2*x) * sin(x/2)
     integrate by parts with u = exp(-2*x), v = 2*sin(x/2)
     simplify
     solve integral INT x. exp(-2*x) * sin(x/2)
+    apply integral identity
     simplify
 done
 
@@ -177,6 +179,8 @@ calculate INT x. cos(log(x)) for x > 0
     integrate by parts with u = sin(log(x)), v = x
     simplify
     solve integral INT x. cos(log(x))
+    apply integral identity
+    simplify
 done
 
 calculate INT x. arcsin(x)^2 for x > -1, x < 1
