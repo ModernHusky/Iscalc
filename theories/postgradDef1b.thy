@@ -48,3 +48,39 @@ calculate INT x:[0, -log(2)]. sqrt(1-exp(2*x))
     apply integral identity
     simplify
 done
+
+calculate INT x:[0, pi]. 1/(1+sin(x)^2)
+    rewrite 1 to sin(x)^2+cos(x)^2 (at 2)
+    simplify
+    rewrite 2*sin(x)^2+cos(x)^2 to cos(x)^2*(2*(sin(x)/cos(x))^2+1)
+    rewrite sin(x)/cos(x) to tan(x)
+    rewrite 1 / (cos(x) ^ 2 * (2 * tan(x) ^ 2 + 1)) to (1/cos(x))^2 * 1/(2 * tan(x) ^ 2 + 1)
+    rewrite 1/cos(x) to sec(x)
+    split region at pi/2
+    substitute u for tan(x)
+    apply integral identity
+    simplify
+    // bug
+    substitute u for tan(x)
+sorry
+
+calculate INT x:[0, 3]. arcsin(sqrt(x/(1+x)))
+    substitute (tan(t))^2 for x
+    rewrite tan(t) to sin(t)/cos(t)
+    rewrite tan(t) to sin(t)/cos(t)
+    rewrite (sin(t) / cos(t)) ^ 2 / (1 + (sin(t) / cos(t)) ^ 2) to sin(t)^2 / (sin(t)^2+cos(t)^2)
+    rewrite sin(t)^2+cos(t)^2 to 1
+    simplify
+    substitute u for tan(t)
+    integrate by parts with u=arctan(u), v=1/2*u^2
+    partial fraction decomposition
+    apply integral identity
+    simplify
+done
+
+calculate INT x:[0, 1]. arcsin(sqrt(x))/sqrt(x*(1-x))
+    substitute u for sqrt(x)
+    substitute v for arcsin(u)
+    apply integral identity
+    simplify
+done
