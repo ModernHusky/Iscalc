@@ -1632,6 +1632,11 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("base", "PostgraduateDefinitePart1SectionA", actions)
 
+    def testPostgraduateDefinitePart1SectionB(self):
+        with open('theories/postgradDef1b.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "PostgraduateDefinitePart1SectionB", actions)
+
 
 if __name__ == "__main__":
     unittest.main()
