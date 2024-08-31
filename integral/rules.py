@@ -2168,9 +2168,6 @@ class IntegrateByEquation(Rule):
             coeff = coeff2
         res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
 
-        if lhs.contains_indefinite_integral() and not lhs.contains_skolem_func():
-            res = res + SkolemFunc("C", tuple())
-
         return res
 
 
