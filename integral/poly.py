@@ -11,6 +11,11 @@ from integral import expr, context
 from integral.context import Context, apply_subterm
 
 
+def contains_indefinite_integral_factor(v):
+    for e, _ in v:
+        if expr.is_indefinite_integral(e):
+            return True
+    return False
 
 def collect_pairs(ps, ctx:Context):
     """
@@ -29,10 +34,22 @@ def collect_pairs(ps, ctx:Context):
     """
     res = {}
     for v, c in ps:
-        if v in res:
-            res[v] += c
+        """
+        Check if there is an indefinite integral factor in v. If so, special treatment is required.
+        """
+        if contains_indefinite_integral_factor(v):
+            is_equal_key_found = False
+            for k in res:
+                if v == k:
+                    res[k] += c
+                    is_equal_key_found = True
+                    break
+            if not is_equal_key_found: res[v] = c
         else:
-            res[v] = c
+            if v in res:
+                res[v] += c
+            else:
+                res[v] = c
     
     def zero_for(v):
         if isinstance(v, expr.Expr):
@@ -48,6 +65,9 @@ def collect_pairs(ps, ctx:Context):
     for k, v in res.items():
         if v != zero_for(v):
             res_list.append((k, v))
+        elif contains_indefinite_integral_factor(k):
+            tmp = expr.IndefiniteIntegral('x', expr.Const(0), tuple())
+            res_list.append((((tmp, 1),), 1))
     try:
         res = tuple(sorted(res_list))
     except:
