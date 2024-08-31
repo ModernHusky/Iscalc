@@ -312,6 +312,25 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", "x*log(x)")
         rule.eval(e, ctx)
 
+    def testSubtractionOfEqualIndefiniteIntegrals(self):
+        from integral import poly
+        e = parser.parse_expr("(INT x. x)-(INT y. y)")
+        ctx = context.Context()
+        ctx.load_book("base")
+        e = poly.normalize(e, ctx)
+        print(e)
+        assert str(e) == "INT x. 0"
+
+    def testSubtractionOfEqualIndefiniteIntegrals2(self):
+        from integral import poly, rules
+        e = parser.parse_expr("a * (INT y. y) * b - a * b * (INT z. z)")
+        ctx = context.Context()
+        ctx.load_book("base")
+        e = poly.normalize(e, ctx)
+        assert str(e) == "INT x. 0"
+        e = rules.IntegralIdentity().eval(e, ctx)
+        print(e)
+
 
 if __name__ == "__main__":
     unittest.main()
