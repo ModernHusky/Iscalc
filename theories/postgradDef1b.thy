@@ -60,9 +60,11 @@ calculate INT x:[0, pi]. 1/(1+sin(x)^2)
     substitute u for tan(x)
     apply integral identity
     simplify
-    // bug
     substitute u for tan(x)
-sorry
+    substitute v for -u
+    apply integral identity
+    simplify
+done
 
 calculate INT x:[0, 3]. arcsin(sqrt(x/(1+x)))
     substitute (tan(t))^2 for x

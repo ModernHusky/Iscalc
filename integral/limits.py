@@ -650,8 +650,11 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
         return res
     elif expr.is_fun(e) and e.func_name == 'tan':
         l = limit_of_expr(e.args[0], var_name, ctx)
-        if normalize(l.e, ctx) == expr.Fun('pi')/Const(2) and l.side == FROM_BELOW:
+        limit_v = normalize(l.e, ctx)
+        if limit_v == expr.Fun('pi')/Const(2) and l.side == FROM_BELOW:
             return Limit(POS_INF)
+        if limit_v == expr.Fun('pi')/Const(2) and l.side == FROM_ABOVE:
+            return Limit(NEG_INF)
         else:
             # TODO: miss many cases
             return Limit(expr.Fun(e.func_name, l.e))

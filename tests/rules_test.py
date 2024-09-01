@@ -28,15 +28,24 @@ class RulesTest(unittest.TestCase):
 
     def testSubstitutionDefinite2(self):
         ctx = context.Context()
-
+        ctx.load_book("base")
         t = parse_expr("INT x:[pi/2,pi]. sec(x)^2*tan(x)")
         rule = rules.Substitution("u", parse_expr("tan(x)"))
         t1 = rule.eval(t, ctx)
-        print(rules.Simplify().eval(t1,ctx))
+        assert str(t1) == "INT u:[-oo,0]. u"
         t2 = rules.Simplify().eval(parse_expr("tan(pi)"), ctx)
-        print(t2)
+        assert str(t2) == "0"
         t3 = rules.Simplify().eval(parse_expr("1*pi/2"), ctx)
-        print(t3)
+        assert str(t3) == "pi / 2"
+
+    def testLimit(self):
+        from integral import limits
+        ctx = context.Context()
+        ctx.load_book("base")
+        res = limits.reduce_inf_limit(parse_expr("tan(1/x+pi/2)"), "x", ctx)
+        assert str(res) == "-oo"
+        res = limits.reduce_inf_limit(parse_expr("tan(pi-1/x)"), "x", ctx)
+        assert str(res) == "tan(pi)"
 
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
