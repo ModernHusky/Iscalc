@@ -39,7 +39,6 @@ calculate INT x:[1/2, 2/3]. 1/sqrt(x*(1-x))
     simplify
 done
 
-// could further optimize the simplification
 // exp(-(2 * log(2))) = exp(-2*log(2)) = exp(log(2))^(-2) = 2 ^ (-2) = 1/4
 calculate INT x:[0, -log(2)]. sqrt(1-exp(2*x))
     substitute 1/2*log(1-t^2) for x

@@ -517,17 +517,6 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "category": "exp-log",
-            "conds": [
-                "b > 0"
-            ],
-            "expr": "exp(a * log(b)) = b ^ a",
-            "type": "axiom"
-        },
-        {
             "category": "exp-log",
             "conds": [
                 "a > 0",
