@@ -90,7 +90,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 elif var not in y.get_vars():
                     return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
-                    return normal(rec(expr.exp(y * expr.log(x))))
+                    return normal(e * rec(y * expr.log(x)))
 
             else:
                 raise NotImplementedError
