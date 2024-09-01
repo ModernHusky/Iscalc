@@ -47,6 +47,27 @@ class RulesTest(unittest.TestCase):
         res = limits.reduce_inf_limit(parse_expr("tan(pi-1/x)"), "x", ctx)
         assert str(res) == "tan(pi)"
 
+    def testExpNormalize(self):
+        from integral import poly
+
+        ctx = context.Context()
+        ctx.load_book("base")
+        t = parse_expr("exp(2*log(2))")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "4"
+        t = parse_expr("exp(-2*log(2))")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "1/4"
+        t = parse_expr("exp(-2*log(2)*x/y)")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "2 ^ -(2 * x / y)"
+
+    def testDeriv(self):
+        ctx = context.Context()
+        e = parse_expr("(3/2)^x")
+        e = rules.deriv("x", e, ctx)
+        assert str(e) == "(3/2) ^ x * (-log(2) + log(3))"
+
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
         # u ^ 2 - 5 >= 0, so simplify abs(u ^ 2 - 5) to u ^ 2 - 5.
