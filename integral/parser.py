@@ -117,6 +117,7 @@ grammar = r"""
         | "apply" "series" "expansion" "on" expr "index" CNAME -> apply_series_expansion_rule
         | "apply" "series" "evaluation" -> apply_series_evaluation_rule
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
+        | "exchange" "integral" "and" "integral" -> exchange_integral_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "linearity" -> apply_linearity_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
@@ -481,6 +482,10 @@ class ExprTransformer(Transformer):
     def exchange_integral_sum_rule(self):
         from integral import rules
         return rules.IntSumExchange()
+
+    def exchange_integral_rule(self):
+        from integral import rules
+        return rules.IntExchange()
 
     def apply_induction_hypothesis_rule(self):
         from integral import rules

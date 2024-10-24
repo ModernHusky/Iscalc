@@ -2686,6 +2686,29 @@ class IntSumExchange(Rule):
             "name": self.name,
             "str": str(self)
         }
+     
+     
+class IntExchange(Rule):
+    """Exchange integral and integral"""
+
+    def __init__(self):
+        self.name = "IntExchange"
+
+    def __str__(self):
+        return "exchange integral and integral"
+
+    def eval(self, e: Expr, ctx: Context):
+        if expr.is_integral(e) and expr.is_integral(e.body):
+            ctx2 = body_conds(e, body_conds(e.body, ctx))
+            s = e.body
+            return Integral(s.var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+        return e
+
+    def export(self):
+        return {
+            "name": self.name,
+            "str": str(self)
+        }
 
 
 class VarSubsOfEquation(Rule):
