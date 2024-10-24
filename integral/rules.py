@@ -2642,43 +2642,43 @@ class IntSumExchange(Rule):
     def __str__(self):
         return "exchange integral and sum"
 
-    def test_converge(self, svar, sl, su, ivar, il, iu, body, ctx: Context):
-        if ctx.is_not_negative(body):
-            return True
-        if ctx.is_not_positive(body):
-            return True
-        if su != expr.POS_INF:
-            return True
+    # def test_converge(self, svar, sl, su, ivar, il, iu, body, ctx: Context):
+    #     if ctx.is_not_negative(body):
+    #         return True
+    #     if ctx.is_not_positive(body):
+    #         return True
+    #     if su != expr.POS_INF:
+    #         return True
 
-        abs_body = normalize(Fun("abs", body), ctx)
-        goal1 = Fun("converges", Summation(svar, sl, su, Integral(ivar, il, iu, abs_body)))
+    #     abs_body = normalize(Fun("abs", body), ctx)
+    #     goal1 = Fun("converges", Summation(svar, sl, su, Integral(ivar, il, iu, abs_body)))
 
-        abs_int = normalize(Fun("abs", Integral(ivar, il, iu, body)), ctx)
-        goal2 = Fun("converges", Summation(svar, sl, su, abs_int))
+    #     abs_int = normalize(Fun("abs", Integral(ivar, il, iu, body)), ctx)
+    #     goal2 = Fun("converges", Summation(svar, sl, su, abs_int))
 
-        for lemma in ctx.get_lemmas():
-            if normalize(lemma.expr, ctx) == normalize(goal1, ctx):
-                return True
-            if normalize(lemma.expr, ctx) == normalize(goal2, ctx):
-                return True
-        for _, subgoal in ctx.get_all_subgoals().items():
-            if normalize(subgoal.expr, ctx) == normalize(goal1, ctx):
-                return True
-            if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
-                return True
-        return False
+    #     for lemma in ctx.get_lemmas():
+    #         if normalize(lemma.expr, ctx) == normalize(goal1, ctx):
+    #             return True
+    #         if normalize(lemma.expr, ctx) == normalize(goal2, ctx):
+    #             return True
+    #     for _, subgoal in ctx.get_all_subgoals().items():
+    #         if normalize(subgoal.expr, ctx) == normalize(goal1, ctx):
+    #             return True
+    #         if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
+    #             return True
+    #     return False
 
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_summation(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
-                return Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
+            return Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
         elif expr.is_summation(e) and expr.is_integral(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             i = e.body
-            if self.test_converge(e.index_var, e.lower, e.upper, i.var, i.lower, i.upper, e.body.body, ctx2):
-                return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
+            # if self.test_converge(e.index_var, e.lower, e.upper, i.var, i.lower, i.upper, e.body.body, ctx2):
+            return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
         return e
 
     def export(self):
@@ -2696,7 +2696,8 @@ class IntExchange(Rule):
 
     def __str__(self):
         return "exchange integral and integral"
-
+    
+    #未考虑到积分号中存在积分变量的情况
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_integral(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
