@@ -2696,13 +2696,121 @@ class IntExchange(Rule):
 
     def __str__(self):
         return "exchange integral and integral"
-    
-    #未考虑到积分号中存在积分变量的情况
+
+    def solve_var(self, f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
+        from integral.expr import exprify   #  exprify 函数将非 Expr对象转换为 Expr
+
+        if expr.is_var(f):
+            if f.name == x:
+                return a
+
+        if f.is_plus():
+            u, v = f.args
+            if not u.contains_var(x):
+                return self.solve_var(v, a - exprify(u), x, ctx)
+            if not v.contains_var(x):
+                return self.solve_var(u, a - exprify(v), x, ctx)
+
+        if expr.is_uminus(f):
+            u, = f.args
+            return self.solve_var(u, -exprify(a), x, ctx)
+
+        if f.is_minus():
+            u, v = f.args
+            if not u.contains_var(x):
+                return self.solve_var(v, exprify(u) - a, x, ctx)
+            if not v.contains_var(x):
+                return self.solve_var(u, exprify(v) + a, x, ctx)
+
+        if f.is_times():
+            u, v = f.args
+            if not u.contains_var(x) and ctx.is_nonzero(u):
+                return self.solve_var(v, a / exprify(u), x, ctx)
+            if not v.contains_var(x) and ctx.is_nonzero(v):
+                return self.solve_var(u, a / exprify(v), x, ctx)
+
+        if f.is_divides():
+            u, v = f.args
+            if not u.contains_var(x):
+                rhs = exprify(u) / a
+                if u.is_constant() and a in (POS_INF, NEG_INF):
+                    rhs = Const(0)
+                return self.solve_var(v, rhs, x, ctx)
+            if not v.contains_var(x):
+                return self.solve_var(u, exprify(v) * a, x, ctx)
+
+        if f.is_power():
+            u, v = f.args
+            if not v.contains_var(x):
+                return self.solve_var(u, a ^ (1 / exprify(v)), x, ctx)
+
+    def exchange_int(self, evar: VAR, el, eu, svar: VAR, sl, su, sb, ctx: Context):
+        from integral.expr import exprify
+        if sl.contains_var(evar) and not su.contains_var(evar):
+            te1 = sl.subst(evar,el)
+            te2 = sl.subst(evar,eu)
+            s1 = normalize(te1, ctx)
+            s2 = normalize(te2, ctx)
+            print(s1,s2,type(te1))
+            if s1 == su or s2 == su:
+                print("true")
+                ns_u = self.solve_var(exprify(sl), exprify(svar), evar, ctx)
+                ns_l = exprify(el)
+                t = sl.subst(evar, el)
+                ne_u = su
+                ne_l = t
+                return Integral(svar, ne_l, ne_u, Integral(evar, ns_l, ns_u, sb))
+
+        elif not sl.contains_var(evar) and su.contains_var(evar):
+            te1 = su.subst(evar,el)
+            te2 = su.subst(evar,eu)
+            s1 = normalize(te1, ctx)
+            s2 = normalize(te2, ctx)
+            print(te1,te2)
+            if s1 == sl or s2 == sl:
+                ns_u = exprify(eu)
+                ns_l = self.solve_var(exprify(su), exprify(svar), evar, ctx)
+                t = su.subst(evar, eu)
+                ne_u = t
+                ne_l = sl
+                return Integral(svar, ne_l, ne_u, Integral(evar, ns_l, ns_u, sb))
+        else:
+            self.exchange_complex_int(evar, el, eu, svar, sl, su, sb, ctx)
+
+        print("sorry,i don't know how to exchange both of they.")
+        return Integral(evar, el, eu, Integral(svar, sl, su, sb))
+
+    def exchange_complex_int(self, evar: VAR, el, eu, svar: VAR, sl, su, sb, ctx: Context) -> List[Expr]:
+        result = []
+        list = []
+        t1 = normalize(sl.subst(evar, el),ctx)
+        if t1 not in list:
+            list.append(t1)
+        t2 = normalize(su.subst(evar, el),ctx)
+        if t2 not in list:
+            list.append(t2)
+        t3 = normalize(sl.subst(evar, eu),ctx)
+        if t3 not in list:
+            list.append(t3)
+        t4 = normalize(su.subst(evar, eu),ctx)
+        if t4 not in list:
+            list.append(t4)
+        list.sort()
+        l = len(list) - 1
+        for i in range(0, l):
+            print(i,i+1)
+            result.append(Integral(svar,list[i],list[i+1],Integral(evar,el,sl,sb)))
+            # TODO 算交换后积分上下限
+
+
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_integral(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            return Integral(s.var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            if is_const(e.lower) and is_const(e.upper) and is_const(s.lower) and is_const(s.upper):
+                return Integral(s.var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            else:
+                return self.exchange_int(e.var, e.lower, e.upper, s.var, s.lower, s.upper, s.body,ctx)
         return e
 
     def export(self):

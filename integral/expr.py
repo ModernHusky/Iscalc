@@ -807,6 +807,20 @@ class Expr:
         else:
             raise NotImplementedError
 
+def exprify(value):
+    # judge whether the value is Expr
+
+    if isinstance(value, Expr):
+        return value
+
+    if isinstance(value, (int, float)):
+        return Const(value)
+
+    if isinstance(value, str):
+        return Var(value)
+    # 对于其他类型的输入，抛出异常
+    raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
+
 
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
@@ -1245,6 +1259,10 @@ class Op(Expr):
     def __repr__(self):
         return "Op(%s,%s)" % (self.op, ",".join(repr(arg) for arg in self.args))
 
+    def contains_var(self, x: str) -> bool:
+        """Whether self contains variable x."""
+        assert isinstance(x, str)
+        return x in self.get_vars()
 
 class Fun(Expr):
     """Functions."""
