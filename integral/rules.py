@@ -1,5 +1,5 @@
 """Rules for integration."""
-
+import re
 from decimal import Decimal
 from fractions import Fraction
 from typing import Optional, Dict, Tuple, Union, List, Set
@@ -10,7 +10,7 @@ from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc, decompose_expr_factor2
+    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -196,7 +196,7 @@ class ProofObligationBranch:
 class ProofObligation:
     """Represents a proof obligation to prove e using the conditions
     in conds.
-    
+
     """
 
     def __init__(self, branches: List['ProofObligationBranch'], conds: Conditions):
@@ -238,7 +238,7 @@ class ProofObligation:
 def check_wellformed(e: Expr, ctx: Context) -> List[ProofObligation]:
     """Check whether an expression e is wellformed, and return
     a set of wellformed-ness conditions if otherwise.
-    
+
     """
     obligations: List[ProofObligation] = list()
 
@@ -398,7 +398,7 @@ class Rule:
     def export(self):
         """Returns the JSON representation of the rule."""
         raise NotImplementedError
-    
+
     def update_context(self, e: Expr, ctx: Context) -> Context:
         """Produce the updated context after performing this rule."""
         return ctx
@@ -572,7 +572,7 @@ class PartialFractionDecomposition(Rule):
 
 class ApplyIdentity(Rule):
     """Apply identities (trigonometric, etc) to the current term.
-    
+
     The term that is rewritten to is always supplied, because there may
     be multiple options.
 
@@ -914,7 +914,7 @@ class IntegralIdentity(Rule):
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
             return Op("=", lhs, rhs)
-        
+
         # Apply linearity first
         integrals = e.separate_integral()
         for _, loc in integrals:
@@ -1015,7 +1015,7 @@ class OnSubterm(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' (all)'
         return res
-    
+
     def update_context(self, e: Expr, ctx: Context) -> Context:
         return self.rule.update_context(e, ctx)
 
@@ -1042,7 +1042,7 @@ class OnLocation(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' at ' + str(self.loc)
         return res
-    
+
     def update_context(self, e: Expr, ctx: Context) -> Context:
         return self.rule.update_context(e, ctx)
 
@@ -1145,7 +1145,7 @@ class OnCount(Rule):
 
     def __str__(self):
         return "%s (at %s)" % (self.rule, self.n)
-    
+
     def export(self):
         res = self.rule.export()
         res['str'] += ' (at %s)' % str(self.n)
@@ -1153,7 +1153,7 @@ class OnCount(Rule):
         if 'latex_str' in res:
             res['latex_str'] += ' (at %s)' + str(self.n)
         return res
-    
+
     def update_context(self, e: Expr, ctx: Context) -> Context:
         return self.rule.update_context(e, ctx)
 
@@ -1441,7 +1441,7 @@ class Substitution(Rule):
             "latex_str": "substitute \\(%s\\) for \\(%s\\)" % \
                          (self.var_name, latex.convert_expr(self.var_subst))
         }
-    
+
     def update_context(self, e: Expr, ctx: Context) -> Context:
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e)):
             sep_ints = e.separate_integral()
@@ -1628,10 +1628,10 @@ class SubstitutionInverse(Rule):
         new_vars = self.var_subst.get_vars() - set(ctx.get_vars()) - {e.var}
         if len(new_vars) >= 2:
             return ctx
-        
+
         if not new_vars:
             return ctx
-        
+
         new_var = new_vars.pop()
 
         if isinstance(e, IndefiniteIntegral):
@@ -1649,10 +1649,10 @@ class SubstitutionInverse(Rule):
                 raise RuleException("SubstitutionInverse", "no integral found in expression")
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
-            
+
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             raise RuleException("SubstitutionInverse", "input is not integral")
-        
+
         if e.var != self.old_var:
             raise RuleException("SubstitutionInverse", "incorrect old variable %s, should be %s" % (
                 self.old_var, e.var))
@@ -1660,10 +1660,10 @@ class SubstitutionInverse(Rule):
         new_vars = self.var_subst.get_vars() - set(ctx.get_vars()) - {e.var}
         if len(new_vars) >= 2:
             raise RuleException("SubstitutionInverse", "more than one new variable: %s" % str(new_vars))
-        
+
         if not new_vars:
             raise RuleException("SubstitutionInverse", "no new variable found in substitution")
-        
+
         new_var = new_vars.pop()
 
         try:
@@ -1725,12 +1725,12 @@ class ExpandPolynomial(Rule):
             for i in range(n - 1):
                 res = res * base
             return from_poly(res.reduce(ctx))
-        
+
         # Case of product: carry out the multiplication
         elif e.is_times():
             s1, s2 = self.eval(e.args[0], ctx), self.eval(e.args[1], ctx)
             return from_poly((to_poly(s1, ctx) * to_poly(s2, ctx)).reduce(ctx))
-        
+
         # Case of divide: if denominator is monomial, expand fully, otherwise
         # expand the numerator only.
         elif e.is_divides():
@@ -1740,13 +1740,13 @@ class ExpandPolynomial(Rule):
                 return from_poly((p1 / p2).reduce(ctx))
             else:
                 return from_poly((p1 / poly.singleton(from_poly(p2))).reduce(ctx))
-            
+
         # Case of plus and minus: expand on both sides
         elif e.is_plus() or e.is_minus():
             e = OnLocation(self, "0").eval(e, ctx)
             e = OnLocation(self, "1").eval(e, ctx)
             return e
-        
+
         # Case of uminus, expand subterm
         elif expr.is_uminus(e):
             return OnLocation(self, "0").eval(e, ctx)
@@ -2603,7 +2603,7 @@ class ChangeSummationIndex(Rule):
 
 class LimitEquation(Rule):
     """Apply limit to both sides of the equation.
-    
+
         A = B -> LIM {x -> a}. A = LIM {x -> a}. B
 
     """
@@ -2686,8 +2686,22 @@ class IntSumExchange(Rule):
             "name": self.name,
             "str": str(self)
         }
-     
-     
+
+def is_negative_var(s: str, var: str) -> bool:
+    # 将空格替换为空
+    s = s.replace(" ", "")
+
+    # 判断负号是否直接与变量相邻，或者负号在括号外作用于括号内的变量
+    # 1. 负号与变量直接相邻：'-' + var
+    # 2. 括号内的负号作用于变量，忽略括号
+    pattern = r'(?<!\w)-' + re.escape(var) + r'(?!\w)|-\((.*' + re.escape(var) + r'.*)\)'
+
+    # 使用正则表达式搜索
+    match = re.search(pattern, s)
+
+    # 如果匹配到符合条件的负号与变量相邻的情况，返回True
+    return bool(match)
+
 class IntExchange(Rule):
     """Exchange integral and integral"""
 
@@ -2744,64 +2758,148 @@ class IntExchange(Rule):
             if not v.contains_var(x):
                 return self.solve_var(u, a ^ (1 / exprify(v)), x, ctx)
 
-    def exchange_int(self, evar: VAR, el, eu, svar: VAR, sl, su, sb, ctx: Context):
-        from integral.expr import exprify
-        if sl.contains_var(evar) and not su.contains_var(evar):
-            te1 = sl.subst(evar,el)
-            te2 = sl.subst(evar,eu)
-            s1 = normalize(te1, ctx)
-            s2 = normalize(te2, ctx)
-            print(s1,s2,type(te1))
-            if s1 == su or s2 == su:
-                print("true")
-                ns_u = self.solve_var(exprify(sl), exprify(svar), evar, ctx)
-                ns_l = exprify(el)
-                t = sl.subst(evar, el)
-                ne_u = su
-                ne_l = t
-                return Integral(svar, ne_l, ne_u, Integral(evar, ns_l, ns_u, sb))
+    def exchange_int(self, evar, el, eu, svar, sl, su, sb, ctx: Context) -> List[Expr]:
+        res_list = []
+        simplify = Simplify()
+        # 初始化不等式列表和边界点数组
+        inequality_list = []
+        bp = []
 
-        elif not sl.contains_var(evar) and su.contains_var(evar):
-            te1 = su.subst(evar,el)
-            te2 = su.subst(evar,eu)
-            s1 = normalize(te1, ctx)
-            s2 = normalize(te2, ctx)
-            print(te1,te2)
-            if s1 == sl or s2 == sl:
-                ns_u = exprify(eu)
-                ns_l = self.solve_var(exprify(su), exprify(svar), evar, ctx)
-                t = su.subst(evar, eu)
-                ne_u = t
-                ne_l = sl
-                return Integral(svar, ne_l, ne_u, Integral(evar, ns_l, ns_u, sb))
+        # 第一步：构建不等式列表
+        # 添加外层积分上下限的不等式
+        inequality_list.append(Op('<', Var(evar), eu))
+        inequality_list.append(Op('>', Var(evar), el))
+
+        # 添加内层积分上下限的不等式
+        # 处理 sl < svar < su
+        if is_const(sl):
+            if Op('<', sl, Var(evar)) and Op('>', Var(evar), sl) not in inequality_list:
+                inequality_list.append(Op('<', sl, Var(evar)))
         else:
-            self.exchange_complex_int(evar, el, eu, svar, sl, su, sb, ctx)
+            evar_expr = self.solve_var(sl, exprify(svar), evar, ctx)  # sl = y, svar = x, evar = y ==> y = x ==> y < x
+            # 判断反解中变量是否有负号
+            evar_expr_str = str(evar_expr)
+            if is_negative_var(evar_expr_str, svar):
+                inequality_list.append(Op('>', Var(evar), exprify(evar_expr)))  # 如果有负号，反转不等式方向
+            else:
+                inequality_list.append(Op('<', Var(evar), exprify(evar_expr)))
 
-        print("sorry,i don't know how to exchange both of they.")
-        return Integral(evar, el, eu, Integral(svar, sl, su, sb))
+        if is_const(su):
+            if Op('<', Var(evar), su) and Op('>', Var(evar), su) not in inequality_list:
+                inequality_list.append(Op('<', Var(evar), su))
+        else:
+            evar_expr = self.solve_var(su, exprify(svar), evar, ctx)  # su = -y + 4, svar = x, evar = y ==> y = -x+4 ==> y < -x+4
+            # 判断反解中变量是否有负号
+            evar_expr_str = str(evar_expr)
+            print(evar_expr_str)
+            if is_negative_var(evar_expr_str, svar):
+                inequality_list.append(Op('>', exprify(evar_expr), Var(evar)))  # 如果有负号，反转不等式方向
+            else:
+                inequality_list.append(Op('<', exprify(evar_expr), Var(evar)))
 
-    def exchange_complex_int(self, evar: VAR, el, eu, svar: VAR, sl, su, sb, ctx: Context) -> List[Expr]:
-        result = []
-        list = []
-        t1 = normalize(sl.subst(evar, el),ctx)
-        if t1 not in list:
-            list.append(t1)
-        t2 = normalize(su.subst(evar, el),ctx)
-        if t2 not in list:
-            list.append(t2)
-        t3 = normalize(sl.subst(evar, eu),ctx)
-        if t3 not in list:
-            list.append(t3)
-        t4 = normalize(su.subst(evar, eu),ctx)
-        if t4 not in list:
-            list.append(t4)
-        list.sort()
-        l = len(list) - 1
-        for i in range(0, l):
-            print(i,i+1)
-            result.append(Integral(svar,list[i],list[i+1],Integral(evar,el,sl,sb)))
-            # TODO 算交换后积分上下限
+        points_to_check = [
+            simplify.eval(sl.subst(evar, el), ctx),
+            simplify.eval(sl.subst(evar, eu), ctx),
+            simplify.eval(su.subst(evar, el), ctx),
+            simplify.eval(su.subst(evar, eu), ctx)
+        ]
+        for point in points_to_check:
+            if point not in bp:  # 确保不重复添加
+                bp.append(point)
+        # 排序边界点
+        bp = sorted(bp)
+        print(-1)
+        print(bp)
+        # 第三步：生成新的积分上下限
+        # 遍历bp计算积分式
+        for i in range(len(bp) - 1):
+            # 外层积分上下限
+            new_el = bp[i]
+            new_eu = bp[i + 1]
 
+            # 计算中位数 mid
+            mid = simplify.eval((new_el + new_eu) / 2, ctx)
+
+            # 求解内层积分上下限
+            filtered_inequalities = []  # 用于存储mid替换后的不等式结果
+            print(0)
+            print(inequality_list)
+            for condition in inequality_list:
+                op = condition.op
+                lhs = condition.args[0]
+                rhs = condition.args[1]
+
+                # 替换svar并检查条件
+                if lhs == Var(evar):  # 左侧包含evar
+                    if is_const(rhs):
+                        filtered_inequalities.append((Op(op,lhs,rhs), Op(op,lhs,rhs)))
+                    else:
+                        # 将 evar 替换成 mid
+                        evaluated_rhs = simplify.eval(exprify(rhs).subst(svar, mid), ctx)
+                        # 创建新的不等式
+                        new_condition = Op(op, Var(evar), evaluated_rhs)
+                        filtered_inequalities.append((new_condition, Op(op,lhs,rhs)))
+                elif rhs == Var(evar):  # 右侧包含evar
+                    if is_const(lhs):
+                        filtered_inequalities.append((Op(op,lhs,rhs), Op(op,lhs,rhs)))
+                    else:
+                        # 将 evar 替换成 mid
+                        evaluated_lhs = simplify.eval(exprify(lhs).subst(svar, mid),ctx)
+                        # 创建新的不等式
+                        new_condition = Op(op, evaluated_lhs, Var(evar))
+                        filtered_inequalities.append((new_condition, Op(op,lhs,rhs)))
+
+            print(3)
+            print(filtered_inequalities)
+            # 取交集，找到满足条件的上下限
+            lower_bound = None
+            upper_bound = None
+            lower_source = None
+            upper_source = None
+
+            for new_condition, original_condition in filtered_inequalities:
+                op = new_condition.op
+                lhs = new_condition.args[0]
+                rhs = new_condition.args[1]
+                print(4)
+                print(lhs, op, rhs, original_condition)
+                if op == "<":
+                    if lhs == Var(evar):
+                        # 更新上限
+                        if upper_bound is None or rhs < upper_bound:
+                            upper_bound = rhs
+                            upper_source = original_condition.args[1]  # 保存原始不等式
+                            print("wwww<.up")
+                    else:
+                        # 更新下限
+                        if lower_bound is None or lhs > lower_bound:
+                            lower_bound = lhs
+                            lower_source = original_condition.args[0]  # 保存原始不等式
+                            print("wwww<.low")
+                elif op == ">":
+                    if lhs == Var(evar):
+                        # 更新下限
+                        if lower_bound is None or rhs > lower_bound:
+                            lower_bound = rhs
+                            lower_source = original_condition.args[1]  # 保存原始不等式
+                            print("wwww>.low")
+                    else:
+                        # 更新上限
+                        if upper_bound is None or lhs < upper_bound:
+                            upper_bound = lhs
+                            upper_source = original_condition.args[0]  # 保存原始不等式
+                            print("wwww>.up")
+
+            print(5)
+            print(lower_source,upper_source)
+            print(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb)))
+            print("------")
+            res_list.append(exprify(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb))))
+            print(res_list)
+            print("------")
+
+        # 返回积分列表
+        return res_list
 
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_integral(e.body):
