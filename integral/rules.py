@@ -2758,7 +2758,7 @@ class IntExchange(Rule):
             if not v.contains_var(x):
                 return self.solve_var(u, a ^ (1 / exprify(v)), x, ctx)
 
-    def exchange_int(self, evar, el, eu, svar, sl, su, sb, ctx: Context) -> List[Expr]:
+    def exchange_int(self, evar, el, eu, svar, sl, su, sb, ctx: Context) -> Expr:
         res_list = []
         simplify = Simplify()
         # 初始化不等式列表和边界点数组
@@ -2894,12 +2894,17 @@ class IntExchange(Rule):
             print(lower_source,upper_source)
             print(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb)))
             print("------")
-            res_list.append(exprify(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb))))
+            res_list.append(normalize(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb)),ctx))
             print(res_list)
             print("------")
 
-        # 返回积分列表
-        return res_list
+        res = res_list[0]
+        if len(res_list) == 1:
+            return res_list[0]
+        else:
+            for arg in res_list[1:]:
+                res = Op('+', arg,res)
+        return res
 
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_integral(e.body):
