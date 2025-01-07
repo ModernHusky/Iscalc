@@ -2791,7 +2791,6 @@ class IntExchange(Rule):
             evar_expr = self.solve_var(su, exprify(svar), evar, ctx)  # su = -y + 4, svar = x, evar = y ==> y = -x+4 ==> y < -x+4
             # 判断反解中变量是否有负号
             evar_expr_str = str(evar_expr)
-            print(evar_expr_str)
             if is_negative_var(evar_expr_str, svar):
                 inequality_list.append(Op('>', exprify(evar_expr), Var(evar)))  # 如果有负号，反转不等式方向
             else:
@@ -2808,8 +2807,6 @@ class IntExchange(Rule):
                 bp.append(point)
         # 排序边界点
         bp = sorted(bp)
-        print(-1)
-        print(bp)
         # 第三步：生成新的积分上下限
         # 遍历bp计算积分式
         for i in range(len(bp) - 1):
@@ -2822,8 +2819,6 @@ class IntExchange(Rule):
 
             # 求解内层积分上下限
             filtered_inequalities = []  # 用于存储mid替换后的不等式结果
-            print(0)
-            print(inequality_list)
             for condition in inequality_list:
                 op = condition.op
                 lhs = condition.args[0]
@@ -2849,8 +2844,6 @@ class IntExchange(Rule):
                         new_condition = Op(op, evaluated_lhs, Var(evar))
                         filtered_inequalities.append((new_condition, Op(op,lhs,rhs)))
 
-            print(3)
-            print(filtered_inequalities)
             # 取交集，找到满足条件的上下限
             lower_bound = None
             upper_bound = None
@@ -2861,42 +2854,30 @@ class IntExchange(Rule):
                 op = new_condition.op
                 lhs = new_condition.args[0]
                 rhs = new_condition.args[1]
-                print(4)
-                print(lhs, op, rhs, original_condition)
                 if op == "<":
                     if lhs == Var(evar):
                         # 更新上限
                         if upper_bound is None or rhs < upper_bound:
                             upper_bound = rhs
                             upper_source = original_condition.args[1]  # 保存原始不等式
-                            print("wwww<.up")
                     else:
                         # 更新下限
                         if lower_bound is None or lhs > lower_bound:
                             lower_bound = lhs
                             lower_source = original_condition.args[0]  # 保存原始不等式
-                            print("wwww<.low")
                 elif op == ">":
                     if lhs == Var(evar):
                         # 更新下限
                         if lower_bound is None or rhs > lower_bound:
                             lower_bound = rhs
                             lower_source = original_condition.args[1]  # 保存原始不等式
-                            print("wwww>.low")
                     else:
                         # 更新上限
                         if upper_bound is None or lhs < upper_bound:
                             upper_bound = lhs
                             upper_source = original_condition.args[0]  # 保存原始不等式
-                            print("wwww>.up")
 
-            print(5)
-            print(lower_source,upper_source)
-            print(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb)))
-            print("------")
             res_list.append(normalize(Integral(svar,new_el,new_eu,Integral(evar,lower_source,upper_source,sb)),ctx))
-            print(res_list)
-            print("------")
 
         res = res_list[0]
         if len(res_list) == 1:
