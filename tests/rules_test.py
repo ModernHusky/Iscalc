@@ -312,6 +312,21 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", "x*log(x)")
         rule.eval(e, ctx)
 
+    def testExchangeIntegrals(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+
+        e = parser.parse_expr("INT y:[0,3]. INT x:[y,y+2]. x")
+        e = rules.IntExchange().eval(e,ctx)
+        self.assertEqual(e, parse_expr("(INT x:[3,5]. INT y:[x - 2,3]. x) + ((INT x:[2,3]. INT y:[x - 2,x]. x) + (INT x:[0,2]. INT y:[0,x]. x))"))
+
+        e = parser.parse_expr("INT x:[1,2]. INT y:[1,x]. x*y")
+        e = rules.IntExchange().eval(e,ctx)
+        self.assertEqual(e, parse_expr("INT y:[1,2]. INT x:[y,2]. x * y"))
+
+        e = parser.parse_expr("INT y:[1,2]. INT x:[y,-y+4]. x*y")
+        e = rules.IntExchange().eval(e, ctx)
+        self.assertEqual(e, parse_expr("(INT x:[2,3]. INT y:[1,-x + 4]. x * y) + (INT x:[1,2]. INT y:[1,x]. x * y)"))
 
 if __name__ == "__main__":
     unittest.main()
