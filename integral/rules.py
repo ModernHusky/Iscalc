@@ -6,6 +6,8 @@ from typing import Optional, Dict, Tuple, Union, List, Set
 import functools
 import operator
 
+from sympy import false
+
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
@@ -2887,14 +2889,47 @@ class IntExchange(Rule):
                 res = Op('+', arg,res)
         return res
 
+    def judge_novar(self,value,evar = None,svar = None):
+        # judge whether contain oo or algebraic constant and no var
+        value = str(value)
+        if value == 'oo':
+            return True
+        elif evar is None and svar is None:
+            return True
+        elif evar is None and svar in value:
+            return True
+        elif evar is not None and svar is not None and \
+                evar not in value and svar not in value:
+            return True
+        else:
+            return False
+
+    def judge_contains_var_and_letters(self,value,evar = None,svar = None):
+        # judge whether contain var and algebraic constant
+        value = str(value)
+        contains_svar_or_evar = (svar is not None and svar in value) or (evar is not None and evar in value)
+        contains_other_letters = any(c.isalpha() for c in value if c not in {svar, evar})
+
+        if contains_svar_or_evar and contains_other_letters:
+            return True
+        else:
+            return False
+
     def eval(self, e: Expr, ctx: Context):
         if expr.is_integral(e) and expr.is_integral(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            if is_const(e.lower) and is_const(e.upper) and is_const(s.lower) and is_const(s.upper):
+            if not self.judge_novar(e.upper,e.var,s.var) or not self.judge_novar(e.lower,e.var,s.var) or \
+                    self.judge_novar(s.upper,None,s.var) or self.judge_novar(s.lower,None,s.var):
+                raise TypeError("Integral format error")
+            elif self.judge_contains_var_and_letters(s.upper,e.var,None) or self.judge_contains_var_and_letters(s.lower,e.var,None):
+                raise NotImplementedError("Contain algebraic constant and var")
+            # judge whether contain oo or Algebraic Constant and no var
+            elif self.judge_novar(e.upper) and self.judge_novar(e.lower) and \
+                    self.judge_novar(s.upper,e.var,s.var) and self.judge_novar(s.lower,e.var,s.var):
                 return Integral(s.var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
             else:
-                return self.exchange_int(e.var, e.lower, e.upper, s.var, s.lower, s.upper, s.body,ctx)
+                return self.exchange_int(e.var, e.lower, e.upper, s.var, s.lower, s.upper, s.body,ctx2)
         return e
 
     def export(self):
