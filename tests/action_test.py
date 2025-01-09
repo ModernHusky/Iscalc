@@ -474,10 +474,7 @@ class ActionTest(unittest.TestCase):
             lhs:
                 expand definition for cosh (all)
                 substitute t for exp(x)
-                rewrite -log(t) to log(1 / t)
-                simplify
-                rewrite 1 / (t * (1 / t + t)) to 1 / (1 + t ^ 2)
-                simplify
+                rewrite t * (1 / t + t) to 1 + t ^ 2
                 apply integral identity
                 simplify
             done
@@ -503,6 +500,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
                 substitute u for cos(y)
+                rewrite -(1 / (-(u ^ 2) - 1)) to 1/(u^2+1)
                 apply integral identity
                 simplify
             done
@@ -1430,11 +1428,11 @@ class ActionTest(unittest.TestCase):
                 substitute u for cos(x)
                 substitute x for sqrt(b / a) * u
                 apply integral identity
+                rewrite 1 / (-(a * x ^ 2) - a) to -1/a * (1/(x^2+1))
+                apply integral identity
                 simplify
                 rewrite arctan(-(sqrt(b) / sqrt(a))) to -arctan(sqrt(b) / sqrt(a))
                 simplify
-                rewrite sqrt(a) * sqrt(b) to sqrt(a * b)
-                rewrite sqrt(b) / sqrt(a) to sqrt(b / a)
             done
         """
         self.check_actions("interesting", "CatalanConstant03", actions)
@@ -2250,6 +2248,11 @@ class ActionTest(unittest.TestCase):
         with open('theories/postgradDef1a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
         self.check_actions("base", "PostgraduateDefinitePart1SectionA", actions)
+
+    def testPostgraduateDefinitePart1SectionB(self):
+        with open('theories/postgradDef1b.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "PostgraduateDefinitePart1SectionB", actions)
 
 
 if __name__ == "__main__":

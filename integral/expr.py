@@ -1129,7 +1129,7 @@ def decompose_expr_factor2(e:Expr) -> tuple[list[Expr], list[Expr]]:
         n2, d2 = decompose_expr_factor2(b)
         return n1 + d2, d1 + n2
     else:
-        return [e],[]
+        return decompose_expr_factor(e)
 
 def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
     """Get production factors from expr."""

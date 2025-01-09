@@ -212,6 +212,8 @@ calculate INT x. exp(x) * sin(x)
     simplify
     integrate by parts with u = exp(x), v = sin(x)
     solve integral INT x. exp(x) * sin(x)
+    apply integral identity
+    simplify
 done
 
 calculate INT x. cos(4 * x) * sin(3 * x)
@@ -220,6 +222,8 @@ calculate INT x. cos(4 * x) * sin(3 * x)
     integrate by parts with u = cos(3 * x), v = -cos(4 * x) / 4
     simplify
     solve integral INT x. cos(4 * x) * sin(3 * x)
+    apply integral identity
+    simplify
 done
 
 calculate INT x. sec(x) * sqrt(sec(x) + tan(x))

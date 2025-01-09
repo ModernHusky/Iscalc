@@ -241,20 +241,6 @@
             "attributes": [
                 "simplify"
             ],
-            "expr": "x^(3/2) / (y * sqrt(x)) = x / y",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "a * b / b = a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
             "conds": [
                 "x <= 0"
             ],
@@ -380,11 +366,6 @@
                 "simplify"
             ],
             "category": "power",
-            "conds": [
-                "a < 0",
-                "type(x, 1)",
-                "type(y, 1)"
-            ],
             "expr": "a ^ x ^ y = a ^ (x * y)",
             "type": "axiom"
         },
@@ -450,17 +431,7 @@
             ],
             "category": "power",
             "expr": "x^a * x^b = x^(a+b)",
-            "type": "axiom",
-            "conds": ["a>0", "b>0", "type(a,1)", "type(b,1)", "type(x,0)"]
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "category": "power",
-            "expr": "x^a * x^b = x^(a+b)",
-            "type": "axiom",
-            "conds": ["x<0", "type(a,1)", "type(b,1)"]
+            "type": "axiom"
         },
         {
             "attributes": [
@@ -543,17 +514,6 @@
                 "b > 0"
             ],
             "expr": "exp(log(b)) = b",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "category": "exp-log",
-            "conds": [
-                "b > 0"
-            ],
-            "expr": "exp(a * log(b)) = b ^ a",
             "type": "axiom"
         },
         {
@@ -1759,25 +1719,6 @@
             "level": 1,
             "name": "simplify",
             "type": "header"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "category": "unknown",
-            "conds": [
-                "a != 0"
-            ],
-            "expr": "a * b / a = b",
-            "reference": "",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "c * a / (b * a) = c / b",
-            "type": "axiom"
         },
         {
             "level": 1,

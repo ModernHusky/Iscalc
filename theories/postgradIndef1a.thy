@@ -143,6 +143,7 @@ calculate INT x. cos(x/2)^2
     simplify
     apply integral identity
     solve integral INT x. cos(x/2)^2
+    apply integral identity
     simplify
 done
 

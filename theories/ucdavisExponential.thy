@@ -65,9 +65,9 @@ done
 
 calculate INT x. 30 * exp(-3 * x) * (1 + 3 * exp(-x)) ^ 5
     substitute u for 3 * exp(-x) + 1
+    rewrite 9*u-9 to 9*(u-1)
     simplify
-    rewrite u ^ 5 * (u - 1) ^ 2 to u ^ 7 - 2 * u ^ 6 + u ^ 5
-    simplify
+    partial fraction decomposition
     apply integral identity
     replace substitution
     simplify
