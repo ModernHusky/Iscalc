@@ -328,5 +328,9 @@ class RulesTest(unittest.TestCase):
         e = rules.IntExchange().eval(e, ctx)
         self.assertEqual(e, parse_expr("(INT x:[2,3]. INT y:[1,-x + 4]. x * y) + (INT x:[1,2]. INT y:[1,x]. x * y)"))
 
+        e = parser.parse_expr("INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))")
+        e = rules.IntExchange().eval(e, ctx)
+        self.assertEqual(e, parse_expr("INT s:[a,b]. (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))"))
+
 if __name__ == "__main__":
     unittest.main()
