@@ -7,6 +7,8 @@ from integral import compstate
 from integral import action
 from integral import parser
 
+import os
+os.chdir('E:\\=graduatelife======\\learn-git\\iscalc')
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file, current_file, actions: str,
@@ -878,7 +880,7 @@ class ActionTest(unittest.TestCase):
             """
         self.check_actions("interesting", "leibniz03_new", actions)
 
-    def testGaussianPowerExp(self):
+    def testGaussianPowerExp(self):# ?
         # Inside interesting integrals, Section 2.3
         # apply integral identity无法计算 (INT x:[0,oo]. x ^ (-1/2) * exp(-x))
         actions = """
