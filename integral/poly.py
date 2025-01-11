@@ -11,6 +11,11 @@ from integral import expr, context
 from integral.context import Context, apply_subterm
 from integral.expr import Complex, Op, Const, Expr
 
+def contains_indefinite_integral_factor(v):
+    for e, _ in v:
+        if expr.is_indefinite_integral(e):
+            return True
+    return False
 
 def collect_pairs(ps, ctx:Context):
     """
@@ -29,10 +34,22 @@ def collect_pairs(ps, ctx:Context):
     """
     res = {}
     for v, c in ps:
-        if v in res:
-            res[v] += c
+        """
+        Check if there is an indefinite integral factor in v. If so, special treatment is required.
+        """
+        if contains_indefinite_integral_factor(v):
+            is_equal_key_found = False
+            for k in res:
+                if v == k:
+                    res[k] += c
+                    is_equal_key_found = True
+                    break
+            if not is_equal_key_found: res[v] = c
         else:
-            res[v] = c
+            if v in res:
+                res[v] += c
+            else:
+                res[v] = c
     
     def zero_for(v):
         if isinstance(v, expr.Expr):
@@ -48,6 +65,9 @@ def collect_pairs(ps, ctx:Context):
     for k, v in res.items():
         if v != zero_for(v):
             res_list.append((k, v))
+        elif contains_indefinite_integral_factor(k):
+            tmp = expr.IndefiniteIntegral('x', expr.Const(0), tuple())
+            res_list.append((((tmp, 1),), 1))
     try:
         res = tuple(sorted(res_list))
     except:
@@ -858,6 +878,39 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
         return expr.Integral(e.var, simplify_skolem(e.lower,ctx), simplify_skolem(e.upper,ctx), simplify_skolem(e.body,ctx))
     return e
 
+def simplify_exp(e:expr.Expr, ctx:Context):
+    if expr.is_skolem_func(e) or expr.is_const(e) or expr.is_var(e) or expr.is_inf(e):
+        return e
+    elif expr.is_op(e):
+        return expr.Op(e.op, *[simplify_exp(arg, ctx) for arg in e.args])
+    elif expr.is_fun(e):
+        args = [simplify_exp(arg, ctx) for arg in e.args]
+        if e.func_name == "exp":
+            nf, df = expr.decompose_expr_factor2(args[0])
+            log_pos = None
+            for i in range(len(nf)):
+                if expr.is_fun(nf[i]) and nf[i].func_name == "log":
+                    log_pos = i
+                    break
+            if log_pos is not None:
+                b = nf[log_pos].args[0]
+                pd = prod(df)
+                if len(nf)-1 > 0:
+                    pn = prod(nf[:log_pos]+nf[log_pos+1:])
+                    return expr.Op("^", b, pn / pd)
+                else:
+                    pn = prod([])
+                    return expr.Op("^", b, pn / pd)
+        return expr.Fun(e.func_name, *args)
+    elif expr.is_summation(e):
+        return expr.Summation(e.index_var, simplify_exp(e.lower,ctx), simplify_exp(e.upper,ctx), simplify_exp(e.body,ctx))
+    elif expr.is_limit(e):
+        return expr.Limit(e.var, simplify_exp(e.lim, ctx), simplify_exp(e.body, ctx))
+    elif expr.is_integral(e):
+        e:expr.Integral
+        return expr.Integral(e.var, simplify_exp(e.lower,ctx), simplify_exp(e.upper,ctx), simplify_exp(e.body,ctx))
+    return e
+
 def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Complex, ctx: Context) -> expr.Expr:
     """
     常数与复数的乘除法
@@ -995,6 +1048,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_inf, ctx)
         e = apply_subterm(e, simplify_sum, ctx)
         e = apply_subterm(e, simplify_skolem, ctx)
+        e = apply_subterm(e, simplify_exp, ctx)
         if e == old_e:
             break
     return e
@@ -1019,6 +1073,12 @@ def display_large(e: expr.Expr) -> bool:
     def pred(e: expr.Expr) -> bool:
         return expr.is_integral(e) or e.is_divides() or (expr.is_fun(e) and e.func_name == "binom")
     return len(e.find_subexpr_pred(pred)) > 0
+
+def prod(factors):
+    if len(factors) == 0:
+        return expr.Const(1)
+    else:
+        return functools.reduce(operator.mul, factors[1:], factors[0])
 
 def from_mono(m: Monomial) -> expr.Expr:
     """Convert a monomial to an expression."""
@@ -1077,12 +1137,6 @@ def from_mono(m: Monomial) -> expr.Expr:
 
     large_num_factors = [factor for factor in num_factors if display_large(factor)]
     num_factors = [factor for factor in num_factors if not display_large(factor)]
-
-    def prod(factors):
-        if len(factors) == 0:
-            return expr.Const(1)
-        else:
-            return functools.reduce(operator.mul, factors[1:], factors[0])
 
     res = prod(num_factors)
     if len(denom_factors) != 0:

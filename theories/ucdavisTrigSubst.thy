@@ -130,6 +130,7 @@ calculate INT x. sqrt(x^2+25)
     expand polynomial
     apply integral identity
     solve integral 25 * (INT u. sec(u)^3)
+    apply integral identity
     expand polynomial
     simplify
     replace substitution

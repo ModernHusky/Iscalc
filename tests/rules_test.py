@@ -26,6 +26,48 @@ class RulesTest(unittest.TestCase):
         rule = rules.Substitution("u", parse_expr("5 * x"))
         self.assertEqual(rule.eval(t, ctx), parse_expr("INT u:[0, pi]. sin(u) / 5"))
 
+    def testSubstitutionDefinite2(self):
+        ctx = context.Context()
+        ctx.load_book("base")
+        t = parse_expr("INT x:[pi/2,pi]. sec(x)^2*tan(x)")
+        rule = rules.Substitution("u", parse_expr("tan(x)"))
+        t1 = rule.eval(t, ctx)
+        assert str(t1) == "INT u:[-oo,0]. u"
+        t2 = rules.Simplify().eval(parse_expr("tan(pi)"), ctx)
+        assert str(t2) == "0"
+        t3 = rules.Simplify().eval(parse_expr("1*pi/2"), ctx)
+        assert str(t3) == "pi / 2"
+
+    def testLimit(self):
+        from integral import limits
+        ctx = context.Context()
+        ctx.load_book("base")
+        res = limits.reduce_inf_limit(parse_expr("tan(1/x+pi/2)"), "x", ctx)
+        assert str(res) == "-oo"
+        res = limits.reduce_inf_limit(parse_expr("tan(pi-1/x)"), "x", ctx)
+        assert str(res) == "tan(pi)"
+
+    def testExpNormalize(self):
+        from integral import poly
+
+        ctx = context.Context()
+        ctx.load_book("base")
+        t = parse_expr("exp(2*log(2))")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "4"
+        t = parse_expr("exp(-2*log(2))")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "1/4"
+        t = parse_expr("exp(-2*log(2)*x/y)")
+        t = poly.normalize(t, ctx)
+        assert str(t) == "2 ^ -(2 * x / y)"
+
+    def testDeriv(self):
+        ctx = context.Context()
+        e = parse_expr("(3/2)^x")
+        e = rules.deriv("x", e, ctx)
+        assert str(e) == "(3/2) ^ x * (-log(2) + log(3))"
+
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
         # u ^ 2 - 5 >= 0, so simplify abs(u ^ 2 - 5) to u ^ 2 - 5.
@@ -331,6 +373,26 @@ class RulesTest(unittest.TestCase):
         e = parser.parse_expr("INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))")
         e = rules.IntExchange().eval(e, ctx)
         self.assertEqual(e, parse_expr("INT s:[a,b]. (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))"))
+
+    def testSubtractionOfEqualIndefiniteIntegrals(self):
+        from integral import poly
+        e = parser.parse_expr("(INT x. x)-(INT y. y)")
+        ctx = context.Context()
+        ctx.load_book("base")
+        e = poly.normalize(e, ctx)
+        print(e)
+        assert str(e) == "INT x. 0"
+
+    def testSubtractionOfEqualIndefiniteIntegrals2(self):
+        from integral import poly, rules
+        e = parser.parse_expr("a * (INT y. y) * b - a * b * (INT z. z)")
+        ctx = context.Context()
+        ctx.load_book("base")
+        e = poly.normalize(e, ctx)
+        assert str(e) == "INT x. 0"
+        e = rules.IntegralIdentity().eval(e, ctx)
+        print(e)
+
 
 if __name__ == "__main__":
     unittest.main()
