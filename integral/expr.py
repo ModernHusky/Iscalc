@@ -9,8 +9,8 @@ from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
 import sympy
 
-VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
-SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
+VAR, CONST, IMAG, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
+SKOLEMFUNC, SUMMATION, PRODUCT, COMPLEX = range(16)
 
 op_priority = {
     "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
@@ -150,6 +150,8 @@ class Expr:
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
         elif is_product(self):
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
+        elif is_complex(self):
+            return 1 + self.real.size() + self.imag.size()
         else:
             raise NotImplementedError
 
@@ -263,6 +265,12 @@ class Expr:
             return (self.name, self.dependent_vars) <= (other.name, other.dependent_vars)
         elif is_limit(self):
             return (self.var, self.lim, self.body, self.drt) <= (other.var, other.lim, other.body, other.drt)
+        elif is_complex(self) and is_complex(other):
+            # 比较复数的实部
+            if self.real != other.real:
+                return self.real <= other.real
+            # 实部相同，比较虚部
+            return self.imag <= other.imag
         else:
             print(type(self))
             raise NotImplementedError
@@ -515,6 +523,7 @@ class Expr:
             return Product(self.index_var, self.lower.subst(var, e), self.upper.subst(var, e),
                              self.body.subst(var, e))
         else:
+            # TODO Complex
             print('subst on', self)
             raise NotImplementedError
 
@@ -588,6 +597,9 @@ class Expr:
             elif t.is_equals():
                 rec(t.lhs, bd_vars)
                 rec(t.rhs, bd_vars)
+            elif is_complex(t):  # 添加对复数的处理
+                rec(t.real, bd_vars)  # 递归处理实部
+                rec(t.imag, bd_vars)  # 递归处理虚部
             elif is_skolem_func(t):
                 t:SkolemFunc
                 for var in t.dependent_vars:
@@ -670,6 +682,7 @@ class Expr:
         elif is_limit(self):
             return Limit(self.var, self.lim.replace(e, repl_e), self.body.replace(e, repl_e), self.drt)
         else:
+            # TODO Complex
             print(self, e, repl_e)
             raise NotImplementedError
 
@@ -783,6 +796,7 @@ class Expr:
         elif is_limit(self):
             return Limit(self.var, self.lim.inst_pat(mapping), self.body.inst_pat(mapping), self.drt)
         else:
+            # TODO Complex
             print(type(self))
             raise NotImplementedError
 
@@ -821,6 +835,8 @@ def exprify(value):
     # 对于其他类型的输入，抛出异常
     raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
+def is_complex(e: Expr) -> TypeGuard["Complex"]:
+    return e.ty == COMPLEX
 
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
@@ -964,6 +980,7 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
             res2 = rec(exp.body, pattern.body, bd_vars)
             return res1 and res2
         else:
+            # TODO Complex
             # Currently not implemented
             print("Match Failed for type:", type(exp))
             return False
@@ -1211,7 +1228,6 @@ class Const(Expr):
     def __repr__(self):
         return "Const(%s)" % str(self.val)
 
-
 class Op(Expr):
     """Operators."""
     def __init__(self, op: str, *args):
@@ -1396,6 +1412,120 @@ class SkolemFunc(Expr):
 
     def __hash__(self):
         return hash((self.name, tuple(self.dependent_vars), self.ty))
+
+
+class Complex(Expr):
+    """Complex number expression: z = x + y * i
+
+    - real: real part (x)
+    - imag: imaginary part (y)
+    """
+
+    def __init__(self, real: Expr, imag: Expr):
+        assert isinstance(real, Expr) and isinstance(imag, Expr), \
+            "Both real and imaginary parts must be Expr"
+        self.ty = COMPLEX  # 将复数视为一种特殊的操作符
+        self.real = real
+        self.imag = imag
+
+    def __str__(self):
+        f_real = self.evaluate_expression(str(self.real))
+        f_imag = self.evaluate_expression(str(self.imag))
+
+        if f_imag == 1:
+            return "(%s + i)" % self.real
+        elif f_imag == -1:
+            return "(%s - i)" % self.real
+        elif f_imag < 0 and f_real > 0:
+            return "(%s%s*i)" % (self.real, self.imag)
+        elif f_imag < 0 and f_real < 0:
+            return "(%s%s*i)" % (self.real, self.imag)
+        elif f_imag == 0 and f_real > 0:
+            return "(%s)" % self.real
+        elif f_imag == 0 and f_real < 0:
+            return "(%s)" % self.real
+        elif f_imag > 0 and f_real == 0:
+            return "(%s*i)" % self.imag
+        elif f_imag < 0 and f_real == 0:
+            return "(%s*i)" % self.imag
+        elif f_imag == 0 and f_real == 0:
+            return "0"
+        else:
+            return "(%s + %s*i)" % (self.real, self.imag)
+
+    def __repr__(self):
+        return "Complex(%s, %s)" % (self.real, self.imag)
+
+    def __eq__(self, other):
+        return isinstance(other, Complex) and self.real == other.real and self.imag == other.imag
+
+    def __hash__(self):
+        return hash((COMPLEX, self.real, self.imag))
+
+    def evaluate_expression(self, expr):
+        # 假设 expr 是一个表达式，例如 '1 + 1 + 1'
+        # 这里可以使用 eval 函数来计算表达式的值，但要注意安全问题
+        try:
+            return eval(expr)
+        except:
+            return expr  # 如果表达式无法计算，返回原表达式
+
+    def priority(self) -> int:
+        """Return the priority of the complex expression."""
+        return 75  # 复数的优先级与^相同
+
+    def size(self) -> int:
+        return self.real.size() + self.imag.size() + 1  # +1 表示复数操作
+
+    def conjugate(self):
+        """Return the conjugate of the complex number."""
+        return Complex(self.real, Op("-", self.imag))
+
+    def magnitude(self):
+        """Return the magnitude of the complex number."""
+        return Fun("sqrt", Op("+", Op("^", self.real, Const(2)), Op("^", self.imag, Const(2))))
+
+    def angle(self):
+        """Return the angle of the complex number."""
+        return Fun("atan2", self.imag, self.real)
+
+    def __add__(self, other):
+        if isinstance(other, Complex):
+            return Complex(Op("+", self.real, other.real), Op("+", self.imag, other.imag))
+        elif isinstance(other, Expr):
+            return Complex(Op("+", self.real, other), self.imag)
+        else:
+            return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Complex):
+            return Complex(Op("-", self.real, other.real), Op("-", self.imag, other.imag))
+        elif isinstance(other, Expr):
+            return Complex(Op("-", self.real, other), self.imag)
+        else:
+            return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(other, Complex):
+            real_part = Op("-", Op("*", self.real, other.real), Op("*", self.imag, other.imag))
+            imag_part = Op("+", Op("*", self.real, other.imag), Op("*", self.imag, other.real))
+            return Complex(real_part, imag_part)
+        elif isinstance(other, Expr):
+            return Complex(Op("*", self.real, other), Op("*", self.imag, other))
+        else:
+            return NotImplemented
+
+    def __truediv__(self, other):
+        if isinstance(other, Complex):
+            denominator = Op("+", Op("^", other.real, Const(2)), Op("^", other.imag, Const(2)))
+            real_part = Op("/", Op("+", Op("*", self.real, other.real), Op("*", self.imag, other.imag)), denominator)
+            imag_part = Op("/", Op("-", Op("*", self.imag, other.real), Op("*", self.real, other.imag)), denominator)
+            return Complex(real_part, imag_part)
+        elif isinstance(other, Expr):
+            return Complex(Op("/", self.real, other), Op("/", self.imag, other))
+        else:
+            return NotImplemented
+
 
 
 NEG_INF = Inf(Decimal('-inf'))
