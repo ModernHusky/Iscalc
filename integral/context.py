@@ -600,6 +600,10 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             upper = rec(e.upper, ctx)
             body = rec(e.body, body_conds(e, ctx))
             return f(expr.Product(e.index_var, lower, upper, body), ctx)
+        elif expr.is_complex(e):
+            real = rec(e.real, ctx)
+            imag = rec(e.imag, ctx)
+            return f(expr.Complex(real,imag), ctx)
         elif expr.is_symbol(e):
             return e
         else:
