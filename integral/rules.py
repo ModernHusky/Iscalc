@@ -12,7 +12,7 @@ from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify
+    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify, Complex
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -155,6 +155,12 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return Const(0)
             else:
                 return Deriv(var, e)
+        elif isinstance(e, Complex):
+            # For a complex expression z = x + i * y
+            # dz/dt = dx/dt + i * dy/dt
+            real_deriv = rec(e.real)
+            imag_deriv = rec(e.imag)
+            return Complex(real_deriv, imag_deriv)
         elif expr.is_integral(e):
             if e.lower.is_constant():
                 return normal(Integral(e.var, e.lower, e.upper, rec(e.body))
@@ -434,10 +440,14 @@ class Linearity(Rule):
                 return Const(1)
             else:
                 return functools.reduce(operator.mul, es[1:], es[0])
-
         def rec(e: Expr):
             if expr.is_integral(e):
-                if e.body.is_plus():
+                if isinstance(e.body, Complex):
+                    # 分离实部和虚部进行线性积分
+                    real_part = expr.Integral(e.var, e.lower, e.upper, e.body.real)
+                    imag_part = expr.Integral(e.var, e.lower, e.upper, e.body.imag)
+                    return Complex(rec(real_part), rec(imag_part))
+                elif e.body.is_plus():
                     return rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0])) + \
                            rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[1]))
                 elif expr.is_uminus(e.body):
@@ -464,6 +474,11 @@ class Linearity(Rule):
                 else:
                     return e
             elif expr.is_indefinite_integral(e):
+                if isinstance(e.body, Complex):
+                    # 分离实部和虚部进行线性积分
+                    real_part = expr.IndefiniteIntegral(e.var, e.body.real, e.skolem_args)
+                    imag_part = expr.IndefiniteIntegral(e.var, e.body.imag, e.skolem_args)
+                    return Complex(rec(real_part), rec(imag_part))
                 if e.body.is_plus():
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) + \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
@@ -531,6 +546,35 @@ class Linearity(Rule):
                     return normalize(c * Summation(e.index_var, e.lower, e.upper, b), ctx)
                 else:
                     return e
+            elif expr.is_complex(e):
+                # 提取复数的实部和虚部
+                real_part = e.real
+                imag_part = e.imag
+
+                # 对实部进行化简
+                if isinstance(real_part, Op) and real_part.op == "+":
+                    # 如果实部是加法，递归化简
+                    simplified_real = sum([rec(arg) for arg in real_part.args])
+                elif isinstance(real_part, Op) and real_part.op == "-":
+                    # 如果实部是减法，递归化简
+                    simplified_real = rec(real_part.args[0]) - rec(real_part.args[1])
+                else:
+                    # 如果实部不是加法或减法，直接使用原实部
+                    simplified_real = rec(real_part)
+
+                # 对虚部进行化简
+                if isinstance(imag_part, Op) and imag_part.op == "+":
+                    # 如果虚部是加法，递归化简
+                    simplified_imag = sum([rec(arg) for arg in imag_part.args])
+                elif isinstance(imag_part, Op) and imag_part.op == "-":
+                    # 如果虚部是减法，递归化简
+                    simplified_imag = rec(imag_part.args[0]) - rec(imag_part.args[1])
+                else:
+                    # 如果虚部不是加法或减法，直接使用原虚部
+                    simplified_imag = rec(imag_part)
+
+                # 返回简化后的复数表达式
+                return Complex(simplified_real, simplified_imag)
             else:
                 return e
 
