@@ -860,9 +860,9 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
 
 def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Complex, ctx: Context) -> expr.Expr:
     """
-    处理常数与复数的乘法和除法。
-    如果 op 是 "*"，则执行常数与复数的乘法；
-    如果 op 是 "/"，则执行常数与复数的除法。
+    常数与复数的乘除法
+    如果 op 是 "*"，则执行常数与复数的乘法
+    如果 op 是 "/"，则执行常数与复数的除法
     """
     # 对常数和复数的实部和虚部分别进行操作
     const = normalize(const, ctx)  # 化简常数
@@ -870,64 +870,60 @@ def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Comp
     complex_expr_imag = normalize(complex_expr.imag, ctx)
 
     if op == "*":
-        # 常数与复数相乘：展开为 real + imag * i
         new_real = Op("*", const, complex_expr_real)
         new_imag = Op("*", const, complex_expr_imag)
         return Complex(new_real, new_imag)
-
     elif op == "/":
-        # 常数与复数相除
-        new_real = Op("/", complex_expr_real, const)
-        new_imag = Op("/", complex_expr_imag, const)
-        return Complex(new_real, new_imag)
+        print("simplify_const_complex_op")
+        if expr.is_const(const) and isinstance(complex_expr, Complex):
+            # 常数除以复数：乘以复数的共轭
+            conjugate_real = complex_expr.real
+            conjugate_imag = Op("-", expr.Const(0), complex_expr.imag)  # 共轭：a - bi
+            # 分子为常数1，分母为复数
+            denominator = Op("+", Op("^", complex_expr.real, expr.Const(2)),
+                             Op("^", complex_expr.imag, expr.Const(2)))  # a^2 + b^2
+            numerator = Op("*", const, conjugate_real)
+            num_imag = Op("*", const, conjugate_imag)
+
+            new_real = Op("/", numerator, denominator)
+            new_imag = Op("/", num_imag, denominator)
+            return Complex(new_real, new_imag)
     elif op == "^":
-        # 复数的幂次计算：将复数展开为乘法形式然后使用乘法运算
+        # 幂次计算，将复数展开为乘法形式然后使用乘法运算
         # 获取复数的实部和虚部
         real = normalize(complex_expr_real, ctx)
         imag = normalize(complex_expr_imag, ctx)
-
-        # 初始化结果
         result_real = real
         result_imag = imag
-
-        # 如果幂次是大于1的整数，则我们进行多次乘法
-        for _ in range(1, int(str(const))):  # const 是幂次
+        for _ in range(1, int(str(const))):
             result_real, result_imag = multiply_complex(result_real, result_imag, real, imag)
-
         # 返回最终的复数结果
         return Complex(result_real, result_imag)
     else:
         raise ValueError(f"Unsupported operation: {op}")
 
 def multiply_complex(real1, imag1, real2, imag2):
-    """
-    计算两个复数的乘积 (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
-    """
+    # (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
     new_real = Op("-", Op("*", real1, real2), Op("*", imag1, imag2))
     new_imag = Op("+", Op("*", real1, imag2), Op("*", imag1, real2))
     return new_real, new_imag
 
 def simplify_op(e: expr.Expr, ctx: Context) -> expr.Expr:
-    """
-    遍历并递归化简 Op 类型的表达式，直到最内层表达式。
-    对于常数与复数的运算，先化简内层表达式，再应用乘法或除法运算。
-    """
+    # 遍历并递归化简 Op 类型表达式，直到最内层表达式
     if isinstance(e, Op):
-        # 如果是乘法或者除法，先化简最内层的 Op
-        # 对操作数进行递归化简
+        # 对操作数递归化简
         left = normalize(e.args[0], ctx)
         right = normalize(e.args[1], ctx)
+        # 如果是乘法或者除法，先化简最内层的 Op
         if e.op in ("*", "/"):
-
-            # 检查是否有常数与复数的运算，先化简
+            print(e)
             if expr.is_const(left) and expr.is_complex(right):
-                # 常数与复数相乘或相除，直接化简
                 return simplify_const_complex_op(e.op, left, right, ctx)
+            # 可能没用---------
             elif expr.is_const(right) and expr.is_complex(left):
-                # 常数与复数相乘或相除，直接化简
                 return simplify_const_complex_op(e.op, right, left, ctx)
             else:
-                # 对乘法和除法中的操作数进行递归化简
+                # 对乘法和除法中的操作数递归化简
                 new_left = simplify_op(left, ctx)
                 new_right = simplify_op(right, ctx)
                 return Op(e.op, new_left, new_right)
@@ -942,14 +938,10 @@ def simplify_op(e: expr.Expr, ctx: Context) -> expr.Expr:
                 mi_new_left = simplify_op(mi_left, ctx)
                 mi_new_right = simplify_op(mi_right, ctx)
                 return Op(right.op, mi_new_left, mi_new_right)
-
-        # 如果是加法或减法等，递归化简每个操作数
         else:
             new_left = simplify_op(e.args[0], ctx)
             new_right = simplify_op(e.args[1], ctx)
             return Op(e.op, new_left, new_right)
-
-    # 返回化简后的表达式
     return e
 
 def normal_const(e:expr.Expr, ctx:Context):
@@ -980,12 +972,13 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         return e
 
     if expr.is_complex(e):
+        print("is_complex")
         new_real = normalize(e.real,ctx)
         new_imag = normalize(e.imag,ctx)
         return Complex(new_real,new_imag)
 
+    print("normalize:",e)
     for i in range(5):
-        print("normalize===3")
         old_e = e
         e = from_poly(to_poly(e, ctx))
         e = apply_subterm(e, simplify_op, ctx)
@@ -1004,8 +997,6 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_skolem, ctx)
         if e == old_e:
             break
-    print(e)
-    print("normalize===4")
     return e
 
 """

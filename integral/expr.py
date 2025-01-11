@@ -1477,18 +1477,6 @@ class Complex(Expr):
     def size(self) -> int:
         return self.real.size() + self.imag.size() + 1  # +1 表示复数操作
 
-    def conjugate(self):
-        """Return the conjugate of the complex number."""
-        return Complex(self.real, Op("-", self.imag))
-
-    def magnitude(self):
-        """Return the magnitude of the complex number."""
-        return Fun("sqrt", Op("+", Op("^", self.real, Const(2)), Op("^", self.imag, Const(2))))
-
-    def angle(self):
-        """Return the angle of the complex number."""
-        return Fun("atan2", self.imag, self.real)
-
     def __add__(self, other):
         if isinstance(other, Complex):
             return Complex(Op("+", self.real, other.real), Op("+", self.imag, other.imag))

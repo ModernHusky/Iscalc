@@ -547,10 +547,8 @@ class Linearity(Rule):
                 else:
                     return e
             elif expr.is_complex(e):
-                # 提取复数的实部和虚部
                 real_part = e.real
                 imag_part = e.imag
-
                 # 对实部进行化简
                 if isinstance(real_part, Op) and real_part.op == "+":
                     # 如果实部是加法，递归化简
@@ -561,19 +559,14 @@ class Linearity(Rule):
                 else:
                     # 如果实部不是加法或减法，直接使用原实部
                     simplified_real = rec(real_part)
-
                 # 对虚部进行化简
                 if isinstance(imag_part, Op) and imag_part.op == "+":
-                    # 如果虚部是加法，递归化简
                     simplified_imag = sum([rec(arg) for arg in imag_part.args])
                 elif isinstance(imag_part, Op) and imag_part.op == "-":
-                    # 如果虚部是减法，递归化简
                     simplified_imag = rec(imag_part.args[0]) - rec(imag_part.args[1])
                 else:
-                    # 如果虚部不是加法或减法，直接使用原虚部
                     simplified_imag = rec(imag_part)
 
-                # 返回简化后的复数表达式
                 return Complex(simplified_real, simplified_imag)
             else:
                 return e
