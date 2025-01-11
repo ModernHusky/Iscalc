@@ -925,7 +925,7 @@ def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Comp
     if op == "*":
         new_real = Op("*", const, complex_expr_real)
         new_imag = Op("*", const, complex_expr_imag)
-        return Complex(new_real, new_imag)
+        return Complex(normalize(new_real,ctx), normalize(new_imag,ctx))
     elif op == "/":
         print("simplify_const_complex_op")
         if expr.is_const(const) and isinstance(complex_expr, Complex):
@@ -940,7 +940,7 @@ def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Comp
 
             new_real = Op("/", numerator, denominator)
             new_imag = Op("/", num_imag, denominator)
-            return Complex(new_real, new_imag)
+            return Complex(normalize(new_real, ctx), normalize(new_imag, ctx))
     elif op == "^":
         # 幂次计算，将复数展开为乘法形式然后使用乘法运算
         # 获取复数的实部和虚部
@@ -951,7 +951,7 @@ def simplify_const_complex_op(op: str, const: expr.Expr, complex_expr: expr.Comp
         for _ in range(1, int(str(const))):
             result_real, result_imag = multiply_complex(result_real, result_imag, real, imag)
         # 返回最终的复数结果
-        return Complex(result_real, result_imag)
+        return Complex(normalize(result_real, ctx), normalize(result_imag, ctx))
     else:
         raise ValueError(f"Unsupported operation: {op}")
 
@@ -964,22 +964,29 @@ def multiply_complex(real1, imag1, real2, imag2):
 def simplify_op(e: expr.Expr, ctx: Context) -> expr.Expr:
     # 遍历并递归化简 Op 类型表达式，直到最内层表达式
     if isinstance(e, Op):
+        print("simplify_op:",e.__repr__())
         # 对操作数递归化简
         left = normalize(e.args[0], ctx)
         right = normalize(e.args[1], ctx)
         # 如果是乘法或者除法，先化简最内层的 Op
         if e.op in ("*", "/"):
-            print(e)
-            if expr.is_const(left) and expr.is_complex(right):
-                return simplify_const_complex_op(e.op, left, right, ctx)
+            if e.op == "*":
+                if expr.is_const(left) and expr.is_complex(right):
+                    return simplify_const_complex_op(e.op, left, right, ctx)
+                if expr.is_const(right) and expr.is_complex(left):
+                    return simplify_const_complex_op(e.op, right, left, ctx)
             # 可能没用---------
-            elif expr.is_const(right) and expr.is_complex(left):
-                return simplify_const_complex_op(e.op, right, left, ctx)
+            elif e.op == "/" and expr.is_const(right) and expr.is_complex(left):
+                print(left.__truediv__(right).__repr__())
+                return left.__truediv__(right)
+            elif e.op == "/" and expr.is_const(left) and expr.is_complex(right):
+                print(right.__truediv__(left).__repr__())
+                return simplify_const_complex_op(e.op, left, right, ctx)
             else:
                 # 对乘法和除法中的操作数递归化简
                 new_left = simplify_op(left, ctx)
                 new_right = simplify_op(right, ctx)
-                return Op(e.op, new_left, new_right)
+                return Op(e.op, normalize(new_left,ctx), normalize(new_right,ctx))
         elif e.op == "^" and isinstance(left, Complex):
             if expr.is_const(right):
                 # 幂次是常数
@@ -990,11 +997,11 @@ def simplify_op(e: expr.Expr, ctx: Context) -> expr.Expr:
                 mi_right = normalize(e.args[1], ctx)
                 mi_new_left = simplify_op(mi_left, ctx)
                 mi_new_right = simplify_op(mi_right, ctx)
-                return Op(right.op, mi_new_left, mi_new_right)
+                return Op(right.op, normalize(mi_new_left, ctx), normalize(mi_new_right, ctx))
         else:
             new_left = simplify_op(e.args[0], ctx)
             new_right = simplify_op(e.args[1], ctx)
-            return Op(e.op, new_left, new_right)
+            return Op(e.op, normalize(new_left,ctx), normalize(new_right,ctx))
     return e
 
 def normal_const(e:expr.Expr, ctx:Context):
@@ -1026,11 +1033,12 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
 
     if expr.is_complex(e):
         print("is_complex")
+        print("is_complex:",e.__repr__())
         new_real = normalize(e.real,ctx)
         new_imag = normalize(e.imag,ctx)
         return Complex(new_real,new_imag)
 
-    print("normalize:",e)
+    print("normalize:",e.__repr__())
     for i in range(5):
         old_e = e
         e = from_poly(to_poly(e, ctx))
