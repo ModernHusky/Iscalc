@@ -4,7 +4,7 @@ from copy import copy
 from typing import Dict, List
 
 from integral import expr
-from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var
+from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var, Fun
 from integral.conditions import Conditions
 from integral.context import Context, Identity
 from integral.parser import parse_expr
@@ -24,6 +24,9 @@ def subject_of(cond: Expr) -> Expr:
         return cond.args[0]
     if cond.is_less() or cond.is_less_eq():
         return cond.args[0]
+    if expr.is_fun(cond):
+        if cond.func_name in ('isInt', 'isEven', 'isComplex'):  # 添加isComplex
+            return cond.args[0]
     # if cond.is_fun() and cond.func_name == 'isInt':
     #     return cond.args[0]
     # if cond.is_fun() and cond.func_name == 'isEven':
@@ -127,6 +130,31 @@ def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Ex
     # Trivial case
     if x in all_conds and cond in all_conds[x]:
         return [inst]
+
+    # 复数的处理
+    if expr.is_fun(cond) and cond.func_name == 'isComplex':
+        # 检查变量是否已经被标记为复数
+        x = subject_of(cond)
+        if x in all_conds:
+            for c in all_conds[x]:
+                if (expr.is_fun(c) and c.func_name == 'isComplex' and c.args[0] == x) or \
+                   (expr.is_op(x) and (x.is_plus() or x.is_minus() or x.is_times() or x.is_divides())):
+                    return [inst]
+        # 检查复数运算规则
+        if expr.is_op(x):
+            if x.is_plus() or x.is_minus():
+                # complex(a) ± complex(b) = complex(a ± b)
+                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+                    return [inst]
+            elif x.is_times():
+                # complex(a) * complex(b) = complex(a * b)
+                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+                    return [inst]
+            elif x.is_divides():
+                # complex(a) / complex(b) = complex(a / b)
+                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+                    return [inst]
+        return []
 
     # If subject of cond is a constant
     if x.is_constant():
@@ -531,6 +559,22 @@ def get_standard_inequalities() -> List[Identity]:
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
         (["a = b", "a > c"], "b > c"),
+
+        # Complex number rules
+        (["isComplex(a)", "isComplex(b)"], "isComplex(a + b)"),
+        (["isComplex(a)", "isComplex(b)"], "isComplex(a - b)"),
+        (["isComplex(a)", "isComplex(b)"], "isComplex(a * b)"),
+        (["isComplex(a)", "isComplex(b)"], "isComplex(a / b)"),
+        (["isComplex(a)", "isInt(b)"], "isComplex(a + b)"),
+        (["isComplex(a)", "isInt(b)"], "isComplex(a - b)"),
+        (["isComplex(a)", "isInt(b)"], "isComplex(a * b)"),
+        (["isComplex(a)", "isInt(b)"], "isComplex(a / b)"),
+        (["isInt(a)", "isComplex(b)"], "isComplex(a + b)"),
+        (["isInt(a)", "isComplex(b)"], "isComplex(a - b)"),
+        (["isInt(a)", "isComplex(b)"], "isComplex(a * b)"),
+        (["isInt(a)", "isComplex(b)"], "isComplex(a / b)"),
+        (["isComplex(a)"], "isComplex(-a)"),
+
     ]
 
     ineqs = []
@@ -577,3 +621,36 @@ def check_condition(e: Expr, ctx: Context) -> bool:
 
     saturate(subject_of(e), ineqs, all_conds, ctx)
     return len(check_cond(e, all_conds, dict())) == 1
+
+# 添加复数运算的规则
+def check_complex_rules(e: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Expr]) -> List[Dict[str, Expr]]:
+    """Check rules for complex number operations."""
+    if not e.is_fun() or e.func_name != 'isComplex':
+        return []
+    
+    x = e.args[0]
+    # 检查变量是否已经被标记为复数
+    if x in all_conds:
+        for cond in all_conds[x]:
+            if cond.is_fun() and cond.func_name == 'isComplex':
+                return [inst]
+    
+    # 检查复数运算规则
+    if x.is_plus():
+        # complex(a) + complex(b) = complex(a + b)
+        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+            return [inst]
+    elif x.is_minus():
+        # complex(a) - complex(b) = complex(a - b)
+        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+            return [inst]
+    elif x.is_times():
+        # complex(a) * complex(b) = complex(a * b)
+        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+            return [inst]
+    elif x.is_divides():
+        # complex(a) / complex(b) = complex(a / b)
+        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
+            return [inst]
+    
+    return []

@@ -6,7 +6,7 @@ from decimal import Decimal
 from fractions import Fraction
 
 from integral import expr
-from integral.expr import Expr
+from integral.expr import Expr, Fun, Var
 
 
 grammar = r"""
@@ -31,6 +31,10 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
+        | "Re" "(" expr ")" -> re_expr
+        | "Im" "(" expr ")" -> im_expr
+        | "conj" "(" expr ")" -> conj_expr
+        | "abs" "(" expr ")" -> complex_abs_expr
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -124,6 +128,9 @@ grammar = r"""
         | "replace" "substitution" -> replace_substitution_rule
         | "l'Hopital's" "rule" -> lhopitals_rule
         | "simplify" -> full_simplify_rule
+        | "let" CNAME "be" expr -> let_complex_rule
+        | "let" "Re" "(" CNAME ")" "be" expr -> let_re_rule
+        | "let" "Im" "(" CNAME ")" "be" expr -> let_im_rule
 
     ?rule: atomic_rule
         | atomic_rule "(at" INT ")" -> on_count_rule
@@ -518,6 +525,31 @@ class ExprTransformer(Transformer):
     def rule_action(self, rule):
         from integral import action
         return action.RuleAction(rule)
+
+    def let_complex_rule(self, var_name: Token, expr: Expr):
+        from integral import rules
+        return rules.LetComplexRule(str(var_name), expr)
+
+    def let_re_rule(self, var_name: Token, expr: Expr):
+        from integral import rules
+        return rules.LetReRule(str(var_name), expr)
+
+    def let_im_rule(self, var_name: Token, expr: Expr):
+        from integral import rules
+        return rules.LetImRule(str(var_name), expr)
+
+    def re_expr(self, expr: Expr):
+        return Fun("Re", expr)
+
+    def im_expr(self, expr: Expr):
+        return Fun("Im", expr)
+
+    def conj_expr(self, expr: Expr):
+        print("conj_expr:", expr)
+        return Fun("conj", expr)
+
+    def complex_abs_expr(self, expr: Expr):
+        return Fun("abs", expr)
 
 
 transformer = ExprTransformer()
