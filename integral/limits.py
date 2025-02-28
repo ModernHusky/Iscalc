@@ -711,6 +711,10 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 + l2, ctx)
+        elif l1 in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
+            return l1+l2    
+        elif l1 not in (POS_INF, NEG_INF) and l2 in (POS_INF, NEG_INF):
+            return l1+l2
         else:
             return expr.Limit(var_name, POS_INF, e)
     elif e.is_minus():
@@ -718,8 +722,18 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 - l2, ctx)
+        elif l1 in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
+            return l1-l2    
+        elif l1 not in (POS_INF, NEG_INF) and l2 in (POS_INF, NEG_INF):
+            return l1-l2
         else:
             return expr.Limit(var_name, POS_INF, e)
+    elif expr.is_uminus(e):
+        inner = reduce_inf_limit(e.args[0], var_name, ctx)
+        if inner not in (POS_INF, NEG_INF):
+            return normalize(-inner, ctx)
+        else:
+            return -expr.Limit(var_name, POS_INF, e.args[0])
     elif e.is_times():
         if not e.args[0].contains_var(var_name):
             return normalize(e.args[0] * reduce_inf_limit(e.args[1], var_name, ctx), ctx)

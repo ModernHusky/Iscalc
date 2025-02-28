@@ -1796,7 +1796,6 @@ class Rewriting(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        # If old_expr is given, try to find it within e
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
@@ -3132,75 +3131,3 @@ class LimRewrite(Rule):
             if res != None and normalize(res, ctx) == normalize(self.target, ctx):
                 return self.target
         return e
-
-class LetComplexRule(Rule):
-    """设置复数变量的值"""
-    def __init__(self, var_name: str, value: Expr):
-        self.var_name = var_name
-        self.value = value
-
-    def __str__(self):
-        return "let %s be %s" % (self.var_name, self.value)
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        ctx2 = Context(ctx)
-        var = Var(self.var_name)
-        if not ctx.check_condition(Fun("isComplex", var)):
-            raise RuleException("LetComplexRule", "变量 %s 不是复数" % self.var_name)
-        ctx2.add_condition(Fun("isComplex", var))
-        ctx2.add_definition(Op("=", var, self.value), Conditions([]))
-        # 替换表达式中的变量
-        result = e.subst(self.var_name, self.value)
-        return normalize(result, ctx2)
-
-
-class LetReRule(Rule):
-    """设置复数变量的实部"""
-    def __init__(self, var_name: str, value: Expr):
-        self.var_name = var_name
-        self.value = value
-
-    def __str__(self):
-        return "let Re(%s) be %s" % (self.var_name, self.value)
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        ctx2 = Context(ctx)
-        var = Var(self.var_name)
-        if not ctx.check_condition(Fun("isComplex", var)):
-            raise RuleException("LetReRule", "变量 %s 不是复数" % self.var_name)
-        re_part = Fun("Re", var)
-        ctx2.add_definition(Op("=", re_part, self.value), Conditions([]))
-        
-        # 如果值是代数常数,则替换为 value + b*i 的形式
-        if self.value.is_constant():
-            result = e.replace(var, self.value + Var('b') * Var('i'))
-        else:
-            # 否则只替换Re(var)
-            result = e.replace(re_part, self.value)
-        return normalize(result, ctx2)
-
-
-class LetImRule(Rule):
-    """设置复数变量的虚部"""
-    def __init__(self, var_name: str, value: Expr):
-        self.var_name = var_name
-        self.value = value
-
-    def __str__(self):
-        return "let Im(%s) be %s" % (self.var_name, self.value)
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        ctx2 = Context(ctx)
-        var = Var(self.var_name)
-        if not ctx.check_condition(Fun("isComplex", var)):
-            raise RuleException("LetImRule", "变量 %s 不是复数" % self.var_name)
-        im_part = Fun("Im", var)
-        ctx2.add_definition(Op("=", im_part, self.value), Conditions([]))
-        
-        # 如果值是代数常数,则替换为 a + value*i 的形式
-        if self.value.is_constant():
-            result = e.replace(var, Var('a') + self.value * Var('i'))
-        else:
-            # 否则只替换Im(var)
-            result = e.replace(im_part, self.value)
-        return normalize(result, ctx2)

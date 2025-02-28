@@ -25,7 +25,7 @@ def subject_of(cond: Expr) -> Expr:
     if cond.is_less() or cond.is_less_eq():
         return cond.args[0]
     if expr.is_fun(cond):
-        if cond.func_name in ('isInt', 'isEven', 'isComplex'):  # 添加isComplex
+        if cond.func_name in ('isInt', 'isEven', 'isReal', 'isComplex'):  # 添加isComplex
             return cond.args[0]
     # if cond.is_fun() and cond.func_name == 'isInt':
     #     return cond.args[0]
@@ -40,47 +40,120 @@ tol = 1e-15
 
 # Comparison of floating-point numbers up to rounding error
 def approx_equal(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return abs(a - b) < tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        return abs(a_val - b_val) < tol
+    except:
+        return False
 
 def approx_not_equal(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return abs(a - b) > tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        return abs(a_val - b_val) > tol
+    except:
+        return True
 
 def approx_greater(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return a - b > tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        # 对于复数，我们只比较实部，如果实部相等则比较虚部
+        if abs(a_val.real - b_val.real) > tol:
+            return a_val.real - b_val.real > tol
+        return a_val.imag - b_val.imag > tol
+    except:
+        return False
 
 def approx_greater_eq(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return a - b > -tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        # 对于复数，我们只比较实部，如果实部相等则比较虚部
+        if abs(a_val.real - b_val.real) > tol:
+            return a_val.real - b_val.real > -tol
+        return a_val.imag - b_val.imag > -tol
+    except:
+        return False
 
 def approx_less(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return b - a > tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        # 对于复数，我们只比较实部，如果实部相等则比较虚部
+        if abs(b_val.real - a_val.real) > tol:
+            return b_val.real - a_val.real > tol
+        return b_val.imag - a_val.imag > tol
+    except:
+        return False
 
 def approx_less_eq(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return b - a > -tol
+    try:
+        a_val = complex(eval_expr(a))
+        b_val = complex(eval_expr(b))
+        # 对于复数，我们只比较实部，如果实部相等则比较虚部
+        if abs(b_val.real - a_val.real) > tol:
+            return b_val.real - a_val.real > -tol
+        return b_val.imag - a_val.imag > -tol
+    except:
+        return False
 
 def approx_integer(a: Expr) -> bool:
-    a = eval_expr(a)
-    return abs(round(a) - a) < tol
+    try:
+        a_val = complex(eval_expr(a))
+        # 对于复数，检查实部和虚部是否都是整数
+        return abs(round(a_val.real) - a_val.real) < tol and \
+               abs(round(a_val.imag) - a_val.imag) < tol
+    except:
+        return False
 
 def approx_even(a: Expr) -> bool:
-    if approx_integer(a):
-        return eval_expr(a) % 2 == 0
-    else:
+    try:
+        if approx_integer(a):
+            a_val = complex(eval_expr(a))
+            # 对于复数，检查实部是否为偶数且虚部为0
+            return round(a_val.real) % 2 == 0 and abs(a_val.imag) < tol
+        return False
+    except:
+        return False
+    
+def approx_real(a: Expr) -> bool:
+    try:
+        a_val = complex(eval_expr(a))
+        return abs(a_val.imag) < tol
+    except:
+        return False
+    
+def approx_complex(a: Expr) -> bool:
+    try:
+        a_val = complex(eval_expr(a))
+        return abs(a_val.imag) > tol
+    except:
         return False
 
 def init_all_conds(conds: Conditions) -> Dict[Expr, List[Expr]]:
     """Initialize all_conds from a condition object."""
     all_conds: Dict[Expr, List[Expr]] = dict()
+    
+    # 收集所有变量
+    all_vars = set()
+    vars_with_type = set()
+    
+    # 首先处理现有条件
     for cond in conds.data:
         x = subject_of(cond)
         if x not in all_conds:
             all_conds[x] = list()
         all_conds[x].append(cond)
+        
+        # 收集所有变量和已声明类型的变量
+        if expr.is_var(x):
+            all_vars.add(x)
+        if expr.is_fun(cond) and cond.func_name in ('isInt', 'isEven', 'isComplex', 'isReal'):
+            vars_with_type.add(cond.args[0])
+            
+        # 处理绝对值条件
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less():
             if x.args[0] not in all_conds:
                 all_conds[x.args[0]] = list()
@@ -91,6 +164,13 @@ def init_all_conds(conds: Conditions) -> Dict[Expr, List[Expr]]:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
             all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))
+
+    # 为未声明类型的变量添加isReal条件
+    for var in all_vars:
+        if var not in vars_with_type:
+            if var not in all_conds:
+                all_conds[var] = list()
+            all_conds[var].append(Fun('isReal', var))
 
     # add simple condition transition
     for k in all_conds:
@@ -131,30 +211,6 @@ def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Ex
     if x in all_conds and cond in all_conds[x]:
         return [inst]
 
-    # 复数的处理
-    if expr.is_fun(cond) and cond.func_name == 'isComplex':
-        # 检查变量是否已经被标记为复数
-        x = subject_of(cond)
-        if x in all_conds:
-            for c in all_conds[x]:
-                if (expr.is_fun(c) and c.func_name == 'isComplex' and c.args[0] == x) or \
-                   (expr.is_op(x) and (x.is_plus() or x.is_minus() or x.is_times() or x.is_divides())):
-                    return [inst]
-        # 检查复数运算规则
-        if expr.is_op(x):
-            if x.is_plus() or x.is_minus():
-                # complex(a) ± complex(b) = complex(a ± b)
-                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-                    return [inst]
-            elif x.is_times():
-                # complex(a) * complex(b) = complex(a * b)
-                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-                    return [inst]
-            elif x.is_divides():
-                # complex(a) / complex(b) = complex(a / b)
-                if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-                    return [inst]
-        return []
 
     # If subject of cond is a constant
     if x.is_constant():
@@ -181,6 +237,12 @@ def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Ex
                 return [inst]
         elif expr.is_fun(cond) and cond.func_name == 'isEven':
             if approx_even(x):
+                return [inst]
+        elif expr.is_fun(cond) and cond.func_name == 'isReal':
+            if approx_real(x):
+                return [inst]
+        elif expr.is_fun(cond) and cond.func_name == 'isComplex':
+            if approx_complex(x):
                 return [inst]
 
     # If subject of cond appears in all_conds
@@ -561,19 +623,51 @@ def get_standard_inequalities() -> List[Identity]:
         (["a = b", "a > c"], "b > c"),
 
         # Complex number rules
+        (["isReal(a)", "b = i"], "isComplex(a + b)"),
+        (["isReal(a)", "b = i"], "isComplex(a - b)"),
+        (["isReal(a)", "b = i"], "isComplex(a * b)"),
+        (["isReal(a)", "b = i"], "isComplex(a / b)"),
+
+        (["isReal(a)"], "isReal(cos(a))"),
+        (["isReal(a)"], "isReal(sin(a))"),
+        (["isReal(a)"], "isReal(tan(a))"),
+        (["isReal(a)"], "isReal(cot(a))"),
+        (["isReal(a)"], "isReal(csc(a))"),
+        (["isReal(a)"], "isReal(sec(a))"),
+
+        (["isReal(a)"], "isReal(arcsin(a))"),
+        (["isReal(a)"], "isReal(arccos(a))"),
+        (["isReal(a)"], "isReal(arctan(a))"),
+        (["isReal(a)"], "isReal(arcsec(a))"),
+        (["isReal(a)"], "isReal(arccsc(a))"),
+        (["isReal(a)"], "isReal(arccot(a))"),
+
+        (["isReal(a)", "a > 0"], "isReal(log(a))"),
+        (["isReal(a)"], "isReal(exp(a))"),
+        (["isReal(a)"], "exp(a) > 0"),
+        (["isReal(a)"], "isReal(abs(a))"),
+        (["isReal(a)"], "isReal(sqrt(a))"),
+
         (["isComplex(a)", "isComplex(b)"], "isComplex(a + b)"),
         (["isComplex(a)", "isComplex(b)"], "isComplex(a - b)"),
         (["isComplex(a)", "isComplex(b)"], "isComplex(a * b)"),
-        (["isComplex(a)", "isComplex(b)"], "isComplex(a / b)"),
-        (["isComplex(a)", "isInt(b)"], "isComplex(a + b)"),
-        (["isComplex(a)", "isInt(b)"], "isComplex(a - b)"),
-        (["isComplex(a)", "isInt(b)"], "isComplex(a * b)"),
-        (["isComplex(a)", "isInt(b)"], "isComplex(a / b)"),
-        (["isInt(a)", "isComplex(b)"], "isComplex(a + b)"),
-        (["isInt(a)", "isComplex(b)"], "isComplex(a - b)"),
-        (["isInt(a)", "isComplex(b)"], "isComplex(a * b)"),
-        (["isInt(a)", "isComplex(b)"], "isComplex(a / b)"),
+        (["isComplex(a)", "isComplex(b)","b != 0"], "isComplex(a / b)"),
         (["isComplex(a)"], "isComplex(-a)"),
+
+        (["isEven(a)"], "isInt(a)"),
+        (["isInt(a)"], "isReal(a)"),
+        (["isReal(a)"], "isComplex(a)"),
+
+        (["isReal(a)", "isReal(b)"], "isReal(a + b)"),
+        (["isReal(a)", "isReal(b)"], "isReal(a - b)"),
+        (["isReal(a)", "isReal(b)"], "isReal(a * b)"),
+        (["isReal(a)", "isReal(b)","b != 0"], "isReal(a / b)"),
+        
+        (["isReal(a)"], "isReal(-a)"),
+
+        # Real number power rules
+        (["isReal(x)"], "isReal(x ^ n)"),
+        (["isReal(x)", "isReal(y)"], "isReal(x ^ y)"),
 
     ]
 
@@ -622,35 +716,3 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     saturate(subject_of(e), ineqs, all_conds, ctx)
     return len(check_cond(e, all_conds, dict())) == 1
 
-# 添加复数运算的规则
-def check_complex_rules(e: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Expr]) -> List[Dict[str, Expr]]:
-    """Check rules for complex number operations."""
-    if not e.is_fun() or e.func_name != 'isComplex':
-        return []
-    
-    x = e.args[0]
-    # 检查变量是否已经被标记为复数
-    if x in all_conds:
-        for cond in all_conds[x]:
-            if cond.is_fun() and cond.func_name == 'isComplex':
-                return [inst]
-    
-    # 检查复数运算规则
-    if x.is_plus():
-        # complex(a) + complex(b) = complex(a + b)
-        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-            return [inst]
-    elif x.is_minus():
-        # complex(a) - complex(b) = complex(a - b)
-        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-            return [inst]
-    elif x.is_times():
-        # complex(a) * complex(b) = complex(a * b)
-        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-            return [inst]
-    elif x.is_divides():
-        # complex(a) / complex(b) = complex(a / b)
-        if all(check_complex_rules(Fun('isComplex', arg), all_conds, inst) for arg in x.args):
-            return [inst]
-    
-    return []

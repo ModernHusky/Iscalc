@@ -1469,6 +1469,7 @@ def factorial(e: Expr) -> Expr:
 pi = Fun("pi")
 E = Fun("exp", Const(1))
 G = Fun("G")
+i = Fun("i")
 
 
 def Eq(s: Expr, t: Expr) -> Expr:
@@ -1705,6 +1706,8 @@ def eval_expr(e: Expr):
             return math.sqrt(eval_expr(e.args[0]))
         elif e.func_name == 'exp':
             return math.exp(eval_expr(e.args[0]))
+        elif e.func_name == 'i':
+            return 1j  # 返回Python的复数单位
         elif e.func_name == 'abs':
             return abs(eval_expr(e.args[0]))
         elif e.func_name == 'pi':
