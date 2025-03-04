@@ -95,6 +95,11 @@ def reduce_power(n: expr.Expr, e: "Polynomial") -> Tuple[Tuple[expr.Expr, "Polyn
     it is factored to simplify the representation.
 
     """
+    # 特殊处理 i 的幂
+    if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
+        # 直接返回 i^e，让 simplify_power 处理
+        return ((n, e),)
+        
     if expr.is_const(n) and isinstance(n.val, int) and e.is_fraction():
         if n.val >= 0:
             # Compute factors of n. Let n = (n_1 ^ e_1) * ... * (n_k ^ e_k), then
@@ -129,6 +134,12 @@ def extract_frac(ps: Tuple[Tuple[expr.Expr, "Polynomial"]]) -> Tuple[Tuple[Tuple
     coeff = 1
 
     for n, e in ps:
+        # 特殊处理 i 的幂
+        if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
+            # 对于 i^(-1)，应该保留为 i^(-1)，而不是提取系数
+            res.append((n, e))
+            continue
+            
         if expr.is_const(n) and e.is_fraction():
             bval = n.val
             val = e.get_fraction()
@@ -255,17 +266,30 @@ class Monomial:
                 else:
                     new_factors.append((n, e))
 
-            # 处理i的幂
+            # 处理i的幂，包括负数幂
             new_coeff = self.coeff * other.coeff
-            if i_count > 0:
-                remainder = i_count % 4
-                if remainder == 1:
-                    new_factors.append((expr.i, expr.Const(1)))
-                elif remainder == 2:
-                    new_coeff = -new_coeff
-                elif remainder == 3:
-                    new_coeff = -new_coeff
-                    new_factors.append((expr.i, expr.Const(1)))
+            if i_count != 0:
+                # 对于负数幂，我们需要特殊处理
+                if i_count < 0:
+                    # 对于负数幂，i^(-n) = (i^n)^(-1)
+                    remainder = (-i_count) % 4
+                    if remainder == 0:
+                        pass  # i^(-4k) = 1
+                    elif remainder == 1:
+                        new_factors.append((expr.i, expr.Const(-1)))  # i^(-4k-1) = -i
+                    elif remainder == 2:
+                        new_coeff = -new_coeff  # i^(-4k-2) = -1
+                    else:  # remainder == 3
+                        new_factors.append((expr.i, expr.Const(1)))  # i^(-4k-3) = i
+                else:
+                    remainder = i_count % 4
+                    if remainder == 1:
+                        new_factors.append((expr.i, expr.Const(1)))
+                    elif remainder == 2:
+                        new_coeff = -new_coeff
+                    elif remainder == 3:
+                        new_coeff = -new_coeff
+                        new_factors.append((expr.i, expr.Const(1)))
             return Monomial(new_coeff, tuple(new_factors))
         else:
             raise NotImplementedError
@@ -726,6 +750,7 @@ def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
         return e.body
 
     if e.lim == expr.POS_INF:
+        print("simplify_limit:", e)
         return limits.reduce_inf_limit(e.body, e.var, ctx)
     elif e.lim == expr.NEG_INF:
         raise limits.reduce_neg_inf_limit(e.body, e.var, ctx)
@@ -764,15 +789,30 @@ def simplify_power(e: expr.Expr, ctx: Context) -> expr.Expr:
         # i^n 的处理
         power = e.args[1].val
         if isinstance(power, int):
-            remainder = power % 4
-            if remainder == 0:
-                return expr.Const(1)
-            elif remainder == 1:
-                return expr.i
-            elif remainder == 2:
-                return expr.Const(-1)
-            else:  # remainder == 3
-                return -expr.i
+            # 处理负数幂的情况
+            if power < 0:
+                # 对于负数幂，i^(-n) = (i^n)^(-1)
+                # 先计算i^n，然后取倒数
+                remainder = power % 4
+                if remainder == 0:
+                    return expr.Const(1)  # i^(-4k) = 1
+                elif remainder == -3 or remainder == 1:
+                    return -expr.i  # i^(-4k-3) = i^(-3) = -i
+                elif remainder == -2 or remainder == 2:
+                    return expr.Const(-1)  # i^(-4k-2) = i^(-2) = -1
+                else:  # remainder == -1 or remainder == 3
+                    return -expr.i  # i^(-4k-1) = i^(-1) = -i
+            else:
+                # 处理正数幂的情况
+                remainder = power % 4
+                if remainder == 0:
+                    return expr.Const(1)
+                elif remainder == 1:
+                    return expr.i
+                elif remainder == 2:
+                    return expr.Const(-1)
+                else:  # remainder == 3
+                    return -expr.i
                 
     # 处理包含 i 的复数表达式的幂
     if e.args[0].is_plus() or e.args[0].is_minus():

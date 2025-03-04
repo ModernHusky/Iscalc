@@ -164,6 +164,17 @@ def init_all_conds(conds: Conditions) -> Dict[Expr, List[Expr]]:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
             all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))
+        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_greater():
+            if x.args[0] not in all_conds:
+                all_conds[x.args[0]] = list()
+            all_conds[x.args[0]].append(Op(">", x.args[0], cond.args[1]))
+            all_conds[x.args[0]].append(Op("<", x.args[0], -cond.args[1]))
+        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_greater_eq():
+            if x.args[0] not in all_conds:
+                all_conds[x.args[0]] = list()
+            all_conds[x.args[0]].append(Op(">=", x.args[0], cond.args[1]))
+            all_conds[x.args[0]].append(Op("<=", x.args[0], -cond.args[1]))
+        
 
     # 为未声明类型的变量添加isReal条件
     for var in all_vars:
