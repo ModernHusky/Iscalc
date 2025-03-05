@@ -1812,6 +1812,52 @@ class Rewriting(Rule):
         if r1 == r2:
             return self.new_expr
 
+        # Handle infinity cases with products
+        if expr.is_op(e) and e.op == '*':
+            # If new_expr is a limit
+            if expr.is_limit(self.new_expr):
+                lim = self.new_expr
+                # Check if all factors in the product are exponential functions
+                all_exp = all(expr.is_fun(arg) and arg.func_name == 'exp' for arg in e.args)
+                if all_exp:
+                    # Check if the exponents contain infinity
+                    has_inf = any(expr.is_inf(arg.args[0]) or (expr.is_op(arg.args[0]) and 
+                                any(expr.is_inf(term) for term in arg.args[0].args))
+                                for arg in e.args)
+                    if has_inf:
+                        # Replace infinity with limit variable in each factor
+                        new_args = []
+                        for arg in e.args:
+                            if expr.is_fun(arg) and arg.func_name == 'exp':
+                                new_body = arg.args[0]
+                                if expr.is_inf(new_body):
+                                    new_body = Var(lim.var)
+                                elif expr.is_op(new_body):
+                                    for i, term in enumerate(new_body.args):
+                                        if expr.is_inf(term):
+                                            new_body = new_body.replace(term, Var(lim.var))
+                                new_args.append(Fun('exp', new_body))
+                        expected = Limit(lim.var, expr.POS_INF, functools.reduce(lambda x, y: Op('*', x, y), new_args))
+                        if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                            return self.new_expr
+
+        # Handle single exponential function
+        if expr.is_fun(e) and e.func_name == 'exp':
+            if len(e.args) == 1 and expr.is_op(e.args[0]) and e.args[0].op == '*':
+                if any(expr.is_inf(arg) for arg in e.args[0].args):
+                    # Check if new_expr is a limit expression
+                    if expr.is_limit(self.new_expr):
+                        lim = self.new_expr
+                        if expr.is_fun(lim.body) and lim.body.func_name == 'exp':
+                            # Replace infinity with limit variable
+                            new_body = e.args[0]
+                            for i, arg in enumerate(new_body.args):
+                                if expr.is_inf(arg):
+                                    new_body = new_body.replace(arg, Var(lim.var))
+                            expected = Limit(lim.var, expr.POS_INF, Fun('exp', new_body))
+                            if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                                return self.new_expr
+
         # Rewriting 1 to sin(x)^2 + cos(x)^2
         x = Symbol("x", [VAR, CONST, OP, FUN])
         p = expr.sin(x) ** 2 + expr.cos(x) ** 2

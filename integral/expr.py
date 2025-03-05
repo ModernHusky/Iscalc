@@ -532,6 +532,8 @@ class Expr:
             self: Fun
             if self.func_name in ('inv', 'unit_matrix', 'zero_matrix'):
                 return False
+            elif self.func_name == 'i':
+                return True
             return all(arg.is_constant() for arg in self.args)
         else:
             return False

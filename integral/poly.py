@@ -750,7 +750,6 @@ def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
         return e.body
 
     if e.lim == expr.POS_INF:
-        print("simplify_limit:", e)
         return limits.reduce_inf_limit(e.body, e.var, ctx)
     elif e.lim == expr.NEG_INF:
         raise limits.reduce_neg_inf_limit(e.body, e.var, ctx)
