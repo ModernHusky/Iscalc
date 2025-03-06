@@ -1551,17 +1551,25 @@ class Substitution(Rule):
             if e.lower == expr.NEG_INF:
                 lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
             else:
-                x = Var(e.var)
-                lower = self.var_subst
-                lower = limits.reduce_inf_limit(lower.subst(e.var, (1 / x) + e.lower), e.var, ctx)
-                lower = normalize(lower, ctx)
+                # 计算替换后的下限
+                try:
+                    lower = normalize(var_subst.subst(e.var, e.lower), ctx)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx)
+            
             if e.upper == expr.POS_INF:
                 upper = limits.reduce_inf_limit(var_subst, e.var, ctx)
             else:
-                x = Var(e.var)
-                upper = self.var_subst
-                upper = limits.reduce_inf_limit(upper.subst(e.var, e.upper - (1 / x)), e.var, ctx)
-                upper = normalize(upper, ctx)
+                # 计算替换后的上限
+                try:
+                    upper = normalize(var_subst.subst(e.var, e.upper), ctx)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx)
+
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
                 return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx)
             else:

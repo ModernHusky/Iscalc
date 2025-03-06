@@ -410,6 +410,26 @@
                 "simplify"
             ],
             "conds": [
+                
+            ],
+            "expr": "exp(b * x * i) = i * sin(b * x) + cos(b * x)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "conds": [
+                
+            ],
+            "expr": "exp(-(b * x * i)) = -(i * sin(b * x)) + cos(b * x)",
+            "type": "axiom"
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "conds": [
                 "x >= 0",
                 "isReal(x)"
             ],
