@@ -565,7 +565,7 @@ def limit_power(a: Limit, b: Limit, ctx: Context) -> Limit:
 
 def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
     """Compute the limit of an expression as variable goes to infinity."""
-    if expr.is_const(e) or (expr.is_fun(e) and e.func_name == 'i'):
+    if expr.is_const(e) or (expr.is_fun(e) and (len(e.args) == 0 or e.func_name == 'i')):
         return Limit(e, side=AT_CONST)
     elif expr.is_inf(e):
         return Limit(e)
