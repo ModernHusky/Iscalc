@@ -716,8 +716,42 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     if (e.is_less() or e.is_less_eq()) and expr.is_pos_inf(e.args[1]):
         return True
 
+    # INT Real Condition
+    def contains_i(e):
+        if expr.is_fun(e) and e.func_name == 'i':
+            return True
+        if e.ty in (expr.VAR, expr.CONST, expr.SYMBOL, expr.INF):
+            return False
+        if e.ty in (expr.OP, expr.FUN):
+            return any(contains_i(arg) for arg in e.args)
+        if e.ty == expr.INTEGRAL:
+            return contains_i(e.body) or contains_i(e.lower) or contains_i(e.upper)
+        return False
+
+    def add_integral_real_cond(e, all_conds):
+        if expr.is_integral(e):
+            if not contains_i(e.body) and not contains_i(e.lower) and not contains_i(e.upper):
+                if e not in all_conds:
+                    all_conds[e] = []
+                all_conds[e].append(Fun('isReal', e))
+
     conds = ctx.get_conds()
     all_conds = init_all_conds(conds)
+    
+    # Check all subexpressions of e
+    def check_subexpr(e):
+        if expr.is_integral(e):
+            add_integral_real_cond(e, all_conds)
+        if e.ty in (expr.OP, expr.FUN):
+            for arg in e.args:
+                check_subexpr(arg)
+        if expr.is_integral(e):
+            check_subexpr(e.body)
+            check_subexpr(e.lower)
+            check_subexpr(e.upper)
+    
+    check_subexpr(e)
+    
     ineqs = copy(standard_inequalities)
     ineqs.extend(ctx.get_inequalities())
     for lemma in ctx.get_lemmas():
