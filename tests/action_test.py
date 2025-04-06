@@ -1,7 +1,6 @@
 """Unit test for integrals using internal language."""
 
 import unittest
-import lark
 
 from integral import compstate
 from integral import action
@@ -25,7 +24,7 @@ class ActionTest(unittest.TestCase):
         if print_state:
             print(state)
         if not print_state and not isinstance(state, action.InitialState):
-            raise AssertionError("Does not end in initial state")
+            raise AssertionError("Does not end in initial state (add print_state=True to debug)")
         
     def testCalculationFinished(self):
         file = compstate.CompFile("base", "standard")
@@ -270,6 +269,8 @@ class ActionTest(unittest.TestCase):
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
     def testWallis(self):
+        # Reference:
+        # Irresistable Integrals, Section 2.3
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
             define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
@@ -610,6 +611,8 @@ class ActionTest(unittest.TestCase):
         self.check_actions("interesting", "Trick2e", actions)
 
     def testPartialFraction(self):
+        # Reference
+        # Inside interesting integrals, Section 2.3, example 2
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
             lhs:
@@ -629,12 +632,41 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "partialFraction", actions)
 
-    def testPartialFraction03(self):#?
-        # 输出<integral.action.CaseAnalysisState object at 0x0000021C0BB3A3B0>
+    def testPartialFraction03(self):
         # Inside interesting integrals, Section 2.3, example 3
         actions = """
-            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a)!=0
-            subgoal 1:(INT x:[0,oo]. x^2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1)) = (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a) != 0
+
+            subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
+            case analysis on x != 0
+                case true:
+                lhs:
+                    rewrite to (x^2 - 1)^2 + 2*x^2*(1 + cos(2*a))
+                    rewrite cos(2*a) to 2*cos(a)^2 - 1
+                    simplify
+                done
+                case false:
+                lhs:
+                    simplify                    
+                done
+            done
+
+            subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0 for cos(a) != 0
+            case analysis on x != 0
+                case true:
+                lhs:
+                    expand polynomial
+                    rewrite sin(a)^2 to 1 - cos(a)^2
+                    simplify
+                    rewrite to (x^2 - 1) ^ 2 + 4*x^2*(cos(a)^2)
+                done
+                case false:
+                lhs:
+                    simplify
+                done
+            done
+
+            subgoal 1: (INT x:[0,oo]. x^2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1)) = (INT x:[0,oo]. 1 / (x^4+2*x^2*cos(2*a)+1))
             rhs:
                 substitute y for 1/x
                 rewrite 1 / (y ^ 2 * (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)) to (1/y ^ 2)/ (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)
@@ -643,7 +675,7 @@ class ActionTest(unittest.TestCase):
                 substitute x for y
             done
 
-            subgoal 2:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/2*(INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+            subgoal 2: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/2*(INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
             rhs:
                 rewrite (1 + x^2)/(x^4+2*x^2*cos(2*a)+1) to (1/(x^4+2*x^2*cos(2*a)+1) + x^2/(x^4+2*x^2*cos(2*a)+1))
                 simplify
@@ -652,8 +684,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-
-            subgoal 3:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/4*(INT x:[-oo,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+            subgoal 3: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/4*(INT x:[-oo,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
             rhs:
                 split region at 0
                 substitute u for -x
@@ -664,12 +695,14 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite to (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
             done
-            subgoal 4:(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+
+            subgoal 4: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             lhs:
                 substitute u for -x
                 substitute x for u
                 rewrite (INT x:[-oo,oo]. -(2 * x * sin(a) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))) to -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             done
+
             subgoal 5:(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = 0
             lhs:
                 rewrite to 1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))+1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
@@ -677,7 +710,8 @@ class ActionTest(unittest.TestCase):
                 rewrite to 1/2*((INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) - (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))))
                 simplify
             done
-            subgoal 6:(INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = (INT x:[-oo,oo]. (1 + 2*x*sin(a) + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+
+            subgoal 6: (INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = (INT x:[-oo,oo]. (1 + 2*x*sin(a) + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             rhs:
                 expand polynomial
                 rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
@@ -689,7 +723,8 @@ class ActionTest(unittest.TestCase):
                 rewrite x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to (1 + x ^ 2) / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)
                 rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
             done
-            subgoal 7:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)>0
+
+            subgoal 7: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)>0
             lhs:
                 apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
                 rewrite cos(2*a) to 1 - 2*(sin(a))^2
@@ -710,7 +745,8 @@ class ActionTest(unittest.TestCase):
                 rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
                 simplify
             done
-            subgoal 8:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)<0
+
+            subgoal 8: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = -pi/(4*cos(a)) for cos(a)<0
             lhs:
                 apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
                 rewrite cos(2*a) to 1 - 2*(sin(a))^2
@@ -731,14 +767,20 @@ class ActionTest(unittest.TestCase):
                 rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
                 simplify
             done
+
             case analysis on cos(a)
-            case negative:
-            lhs:
-                apply 7 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
-            done
-            case positive:
-            lhs:
-                apply 8 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                case negative:
+                lhs:
+                    apply 8 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                rhs:
+                    simplify
+                done
+                case positive:
+                lhs:
+                    apply 7 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                rhs:
+                    simplify
+                done
             done
             """
         self.check_actions("interesting", "partialFraction03", actions)
@@ -941,7 +983,7 @@ class ActionTest(unittest.TestCase):
             """
         self.check_actions("interesting", "gaussianPowerExp", actions)
 
-    def testEulerLogSineIntegral(self):#?+
+    def testEulerLogSineIntegral(self):
         # Inside interesting integrals, Section 2.4
         actions = """
             prove (INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2) for a>0

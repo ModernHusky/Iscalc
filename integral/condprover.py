@@ -29,7 +29,7 @@ def subject_of(cond: Expr) -> Expr:
         return cond.args[0]
     if expr.is_fun(cond):
         return cond.args[0]
-    raise TypeError
+    raise NotImplementedError(f"subject_of: {cond}")
 
 # Tolerance for floating-point rounding errors
 tol = 1e-15
