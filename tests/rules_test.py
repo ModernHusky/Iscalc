@@ -12,6 +12,13 @@ from integral.rules import RuleException
 
 
 class RulesTest(unittest.TestCase):
+    def testCheckWellformed(self):
+        data = ["tan(pi)"]
+        ctx = context.Context()
+        for e in data:
+            e = parse_expr(e)
+            assert len(rules.check_wellformed(e, ctx) == 0)
+
     def testSubstitutionIndefinite(self):
         ctx = context.Context()
 

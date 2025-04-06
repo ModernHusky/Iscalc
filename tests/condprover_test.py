@@ -142,13 +142,6 @@ class CondProverTest(unittest.TestCase):
             ctx.extend_condition(conds)
             self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
 
-    def testCheckWellformed(self):
-        from integral import rules
-        data = [("tan(pi)", 'e'),]
-        ctx = Context()
-        for e, f in data:
-            e = parse_expr(e)
-            print(rules.check_wellformed(e, ctx))
 
 if __name__ == "__main__":
     unittest.main()
