@@ -1297,7 +1297,8 @@ class ApplyEquation(Rule):
                 found = True
                 found_eq = self.eq
                 conds = []
-        assert found, "ApplyEquation: lemma %s not found" % self.eq
+        if not found:
+            raise RuleException("ApplyEquation", "lemma {self.eq} not found")
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)
@@ -3042,7 +3043,7 @@ class SolveEquation(Rule):
 
         res = solve_for_term(e, self.solve_for, ctx)
         if not res:
-            raise AssertionError("SolveEquation: cannot solve")
+            raise RuleException("SolveEquation", f"cannot solve for {self.solve_for} in {e}")
         return Op("=", self.solve_for, normalize(res, ctx))
 
     def __str__(self):

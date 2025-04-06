@@ -1081,11 +1081,11 @@ class CompFile:
         else:
             self.ctx = ctx
         self.name: str = name
-        self.content: List[StateItem] = []
+        self.content: list[StateItem] = []
 
     def __eq__(self, other):
         return isinstance(other, CompFile) and \
-               self.name == other.name and self.content == other.content
+            self.name == other.name and self.content == other.content
 
     def __str__(self):
         res = "File %s\n" % self.name
