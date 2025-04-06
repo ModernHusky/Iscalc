@@ -579,20 +579,20 @@
             "type": "header"
         },
         {
-                "name": "sin",
-                "table": {
-                    "0": "0",
-                    "pi / 6": "1/2",
-                    "pi / 4": "sqrt(2) / 2",
-                    "pi / 3": "sqrt(3) / 2",
-                    "pi / 2": "1",
-                    "2 * pi / 3": "sqrt(3) / 2",
-                    "3 * pi / 4": "sqrt(2) / 2",
-                    "5 * pi / 6": "1/2",
-                    "pi": "0"
-                },
-                "type": "table"
+            "name": "sin",
+            "table": {
+                "0": "0",
+                "pi / 6": "1/2",
+                "pi / 4": "sqrt(2) / 2",
+                "pi / 3": "sqrt(3) / 2",
+                "pi / 2": "1",
+                "2 * pi / 3": "sqrt(3) / 2",
+                "3 * pi / 4": "sqrt(2) / 2",
+                "5 * pi / 6": "1/2",
+                "pi": "0"
             },
+            "type": "table"
+        },
         {
             "name": "cos",
             "table": {
@@ -752,10 +752,10 @@
             "type": "header"
         },
         {
-                "category": "trigonometric",
-                "expr": "arctan(A) - arctan(B) = arctan((A-B)/(1+A*B))",
-                "type": "axiom"
-            },
+            "category": "trigonometric",
+            "expr": "arctan(A) - arctan(B) = arctan((A-B)/(1+A*B))",
+            "type": "axiom"
+        },
         {
             "category": "trigonometric",
             "expr": "arctan(sqrt((1-x)/(1+x))) = arccos(x) / 2",
@@ -1354,6 +1354,36 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(x) = 1",
+            "type": "axiom",
+            "conds": [
+                "x > 0"
+            ]
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(x) = -1",
+            "type": "axiom",
+            "conds": [
+                "x < 0"
+            ]
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(0) = 0",
+            "type": "axiom"
+        },
+        {
             "level": 1,
             "name": "Derived integrals",
             "type": "header"
@@ -1582,7 +1612,7 @@
         },
         {
             "conds": [
-                "y > 0"
+                "y >= 0", "a != 0"
             ],
             "expr": "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)",
             "path": "standard",

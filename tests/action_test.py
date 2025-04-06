@@ -1188,11 +1188,10 @@ class ActionTest(unittest.TestCase):
 
     def testDirichletIntegral(self):#?
         # Inside interesting integrals, Section 3.2
-        # 未实现sgn功能
         actions = """
             prove (INT x:[0,oo]. sin(a*x)/x) = pi/2 * sgn(a)
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y>0
-            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y>0,a!=0
+            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y >= 0
+            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y >= 0, a != 0
             lhs:
                 expand definition for g(all)
                 exchange derivative and integral
@@ -1201,52 +1200,67 @@ class ActionTest(unittest.TestCase):
             rhs:
                 simplify
             done
-            subgoal 2:g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y>0,a>0
+            subgoal 2: g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y >= 0, a > 0
             from 1:
                 integrate both sides
                 apply integral identity
                 simplify
             done
-            subgoal 3:g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y>0,a<0
+            subgoal 3: g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y >= 0, a < 0
             from 1:
                 integrate both sides
                 apply integral identity
                 simplify
             done
-            subgoal 4:(LIM {y -> oo}. g(y, a)) = 0 for y>0
+            subgoal 4: (LIM {y -> oo}. g(y, a)) = 0 for y >= 0
             lhs:
                 expand definition for g(all)
                 simplify
             done
-            subgoal 5:SKOLEM_FUNC(C(a)) = pi / 2 for a>0
+            subgoal 5: SKOLEM_FUNC(C(a)) = pi / 2 for a > 0
             from 2:
                 apply limit y -> oo both sides
                 apply 4 on LIM {y -> oo}. g(y,a)
                 simplify
                 solve equation for SKOLEM_FUNC(C(a))
             done
-            subgoal 6:SKOLEM_FUNC(C(a)) = -pi / 2 for a<0
+            subgoal 6: SKOLEM_FUNC(C(a)) = -pi / 2 for a < 0
             from 3:
                 apply limit y -> oo both sides
                 apply 4 on LIM {y -> oo}. g(y,a)
                 simplify
                 solve equation for SKOLEM_FUNC(C(a))
             done
-            subgoal 7:g(y,a) = pi / 2 for a>0,y=0
+            subgoal 7: g(0,a) = pi / 2 for a > 0
             from 2:
-                apply 5 on SKOLEM_FUNC(C(a)) 
+                apply limit y -> 0 both sides
                 simplify
+                apply 5 on SKOLEM_FUNC(C(a))
             done
-            subgoal 8:g(y,a) = -pi / 2 for a<0,y=0
+            subgoal 8: g(0,a) = -pi / 2 for a < 0
             from 3:
+                apply limit y -> 0 both sides
+                simplify
                 apply 6 on SKOLEM_FUNC(C(a)) 
-                simplify
             done
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y=0
-            subgoal 9:g(y,a) = 0 for a=0,y=0
-            lhs:
-                expand definition for g(all)
-                simplify
+            case analysis on a
+            case positive:
+                lhs:
+                    rewrite sin(a*x)/x to exp(-x*0)*sin(a*x)/x
+                    fold definition for g
+                    apply 7 on g(0,a)
+                done
+            case zero:
+                lhs:
+                    simplify
+                done
+            case negative:
+                lhs:
+                    rewrite sin(a*x)/x to exp(-x*0)*sin(a*x)/x
+                    fold definition for g
+                    apply 8 on g(0,a)
+                done
+            done
             """
         self.check_actions("interesting", "dirichletIntegral", actions)
 
