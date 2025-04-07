@@ -566,11 +566,6 @@
                 "simplify"
             ],
             "category": "power",
-            "conds": [
-                "a < 0",
-                "type(x, 1)",
-                "type(y, 1)"
-            ],
             "expr": "a ^ x ^ y = a ^ (x * y)",
             "type": "axiom"
         },
@@ -636,17 +631,7 @@
             ],
             "category": "power",
             "expr": "x^a * x^b = x^(a+b)",
-            "type": "axiom",
-            "conds": ["a>0", "b>0", "type(a,1)", "type(b,1)", "type(x,0)"]
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "category": "power",
-            "expr": "x^a * x^b = x^(a+b)",
-            "type": "axiom",
-            "conds": ["x<0", "type(a,1)", "type(b,1)"]
+            "type": "axiom"
         },
         {
             "attributes": [
@@ -732,17 +717,6 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "category": "exp-log",
-            "conds": [
-                "b > 0"
-            ],
-            "expr": "exp(a * log(b)) = b ^ a",
-            "type": "axiom"
-        },
-        {
             "category": "exp-log",
             "conds": [
                 "a > 0",
@@ -805,20 +779,20 @@
             "type": "header"
         },
         {
-                "name": "sin",
-                "table": {
-                    "0": "0",
-                    "pi / 6": "1/2",
-                    "pi / 4": "sqrt(2) / 2",
-                    "pi / 3": "sqrt(3) / 2",
-                    "pi / 2": "1",
-                    "2 * pi / 3": "sqrt(3) / 2",
-                    "3 * pi / 4": "sqrt(2) / 2",
-                    "5 * pi / 6": "1/2",
-                    "pi": "0"
-                },
-                "type": "table"
+            "name": "sin",
+            "table": {
+                "0": "0",
+                "pi / 6": "1/2",
+                "pi / 4": "sqrt(2) / 2",
+                "pi / 3": "sqrt(3) / 2",
+                "pi / 2": "1",
+                "2 * pi / 3": "sqrt(3) / 2",
+                "3 * pi / 4": "sqrt(2) / 2",
+                "5 * pi / 6": "1/2",
+                "pi": "0"
             },
+            "type": "table"
+        },
         {
             "name": "cos",
             "table": {
@@ -978,10 +952,10 @@
             "type": "header"
         },
         {
-                "category": "trigonometric",
-                "expr": "arctan(A) - arctan(B) = arctan((A-B)/(1+A*B))",
-                "type": "axiom"
-            },
+            "category": "trigonometric",
+            "expr": "arctan(A) - arctan(B) = arctan((A-B)/(1+A*B))",
+            "type": "axiom"
+        },
         {
             "category": "trigonometric",
             "expr": "arctan(sqrt((1-x)/(1+x))) = arccos(x) / 2",
@@ -1580,6 +1554,36 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(x) = 1",
+            "type": "axiom",
+            "conds": [
+                "x > 0"
+            ]
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(x) = -1",
+            "type": "axiom",
+            "conds": [
+                "x < 0"
+            ]
+        },
+        {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(0) = 0",
+            "type": "axiom"
+        },
+        {
             "level": 1,
             "name": "Derived integrals",
             "type": "header"
@@ -1808,7 +1812,7 @@
         },
         {
             "conds": [
-                "y > 0"
+                "y >= 0", "a != 0"
             ],
             "expr": "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)",
             "path": "standard",
@@ -1945,25 +1949,6 @@
             "level": 1,
             "name": "simplify",
             "type": "header"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "category": "unknown",
-            "conds": [
-                "a != 0"
-            ],
-            "expr": "a * b / a = b",
-            "reference": "",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "c * a / (b * a) = c / b",
-            "type": "axiom"
         },
         {
             "level": 1,

@@ -6,7 +6,7 @@ from integral import expr
 from integral.expr import Expr
 from integral.rules import Rule, IntegrateByEquation, RuleException
 from integral import compstate
-from integral.compstate import Calculation, Goal, CompFile
+from integral.compstate import Calculation, Goal, CompFile, StateException
 from integral.conditions import Conditions
 from integral import poly
 
@@ -179,15 +179,6 @@ class RuleAction(Action):
 """State machine for processing the actions."""
 
 
-class StateException(Exception):
-    """Exception resulting from applying action to a state."""
-    def __init__(self, msg: str):
-        self.msg = msg
-
-    def __str__(self):
-        return self.msg
-
-
 class State:
     """Base class for states."""
 
@@ -289,10 +280,7 @@ class ProveState(State):
         # Done with current subgoal
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
-                if not self.goal.is_finished():
-                    print("Current goal is:")
-                    print(self.goal)
-                    raise StateException("Use done when goal is not finished")
+                self.goal.check_finished(stack=tuple())
                 if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
                 elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
@@ -415,6 +403,9 @@ class CaseAnalysisState(State):
     def __init__(self, past: State, case_proof: compstate.CaseProof):
         self.past = past
         self.case_proof = case_proof
+
+    def __str__(self):
+        return str(self.case_proof)
 
     def process_action(self, action: Action) -> State:
         if isinstance(action, CaseAction):

@@ -68,14 +68,14 @@ grammar = r"""
     ?calculate_action: "calculate" expr -> calculate_action
         | "calculate" expr "for" conditions -> calculate_with_condition_action
 
-    ?subgoal_action: "subgoal" INT ":" expr -> subgoal_action
-        | "subgoal" INT ":" expr "for" conditions -> subgoal_with_condition_action
+    ?subgoal_action: "subgoal" (INT | CNAME) ":" expr -> subgoal_action
+        | "subgoal" (INT | CNAME) ":" expr "for" conditions -> subgoal_with_condition_action
 
     ?done_action: "done" -> done_action
 
     ?sorry_action: "sorry" -> sorry_action
 
-    ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
+    ?rewrite_goal_action: "from" (INT | CNAME) ":" -> rewrite_goal_action
 
     ?induction_action: "induction" "on" CNAME -> induction_action
         | "induction" "on" CNAME "starting" "from" expr -> induction_starting_action

@@ -6,8 +6,6 @@ from typing import Optional, Dict, Tuple, Union, List, Set
 import functools
 import operator
 
-from sympy import false
-
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
@@ -23,6 +21,7 @@ from integral import poly
 from integral.poly import from_poly, to_poly, normalize
 from integral.conditions import Conditions
 from integral import sympywrapper
+from integral import utils
 
 
 class RuleException(Exception):
@@ -92,7 +91,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 elif var not in y.get_vars():
                     return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
-                    return normal(rec(expr.exp(y * expr.log(x))))
+                    return normal(e * rec(y * expr.log(x)))
 
             else:
                 raise NotImplementedError
@@ -175,7 +174,8 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
 
 
 class ProofObligationBranch:
-    def __init__(self, exprs: List[Expr], flags: List[bool] = None):
+    """Represents a single branch of proof obligation."""
+    def __init__(self, exprs: list[Expr], flags: list[bool] = None):
         self.exprs = exprs  # satisfy all expressions
         if flags is None or len(flags) != len(exprs):
             self.need_to_be_satisfied = [True for i in range(len(exprs))]
@@ -183,10 +183,7 @@ class ProofObligationBranch:
             self.need_to_be_satisfied = flags
 
     def __str__(self):
-        res = ", ".join([str(e) for e in self.exprs])
-        res += "\n"
-        res += ", ".join([str(b) for b in self.need_to_be_satisfied])
-        return res
+        return ", ".join(f"{e} ({b})" for e, b in zip(self.exprs, self.need_to_be_satisfied))
 
     def export(self):
         res = {
@@ -201,26 +198,21 @@ class ProofObligation:
 
     """
 
-    def __init__(self, branches: List['ProofObligationBranch'], conds: Conditions):
-        self.branches = branches  # if any branch is satisfied then the proof obligation is carried out
+    def __init__(self, branches: list[ProofObligationBranch], conds: Conditions):
+        # if any branch is satisfied then the proof obligation is carried out
+        self.branches = branches
         self.conds = conds
 
-    def __eq__(self, other: "ProofObligation"):
-        return self.branches == other.branches
-
-    def __le__(self, other: "ProofObligation"):
-        if len(self.branches) < other.branches:
-            return True
-        elif len(self.branches > other.branches):
-            return False
-        return all(a < b for a, b in zip(self.branches, other.branches))
+    def __eq__(self, other):
+        return isinstance(other, ProofObligation) and \
+            self.branches == other.branches and self.conds == other.conds
 
     def __str__(self):
         res = ""
-        for i, b in enumerate(self.branches):
-            res += "branch " + str(i) + ":\n"
-            res += str(b) + '\n'
-        res += str(self.conds) + "\n"
+        for i, branch in enumerate(self.branches, 1):
+            res += "Branch " + str(i) + ":\n"
+            res += utils.indent(str(branch)) + '\n'
+        res += "Conds: " + str(self.conds)
         return res
 
     def __repr__(self):
@@ -237,7 +229,7 @@ class ProofObligation:
         return res
 
 
-def check_wellformed(e: Expr, ctx: Context) -> List[ProofObligation]:
+def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
     """Check whether an expression e is wellformed, and return
     a set of wellformed-ness conditions if otherwise.
 
@@ -1305,7 +1297,8 @@ class ApplyEquation(Rule):
                 found = True
                 found_eq = self.eq
                 conds = []
-        assert found, "ApplyEquation: lemma %s not found" % self.eq
+        if not found:
+            raise RuleException("ApplyEquation", "lemma {self.eq} not found")
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)
@@ -1338,7 +1331,7 @@ class ApplyEquation(Rule):
                     flag = flag and ctx.check_condition(cond)
                 if flag:
                     return tmp
-        # print("solve equation %s for %s"%(self.eq, e))
+
         # Finally, try to solve for e in the equation.
         res = solve_for_term(found_eq, e, ctx)
         if res is not None:
@@ -1602,11 +1595,19 @@ class Substitution(Rule):
 class SubstitutionInverse(Rule):
     """Apply substitution x = f(u).
 
-    var_name - str: name of the new variable u.
-    var_subst - Expr: expression containing the new variable.
+    Grammar
+    -------
+
+        "substitute" expr "for" CNAME
+    
+    Attributes
+    ----------
+    old_var: str
+        name of the original variable of integration.
+    var_subst: Expr
+        expression containing the new variable.
 
     """
-
     def __init__(self, old_var: str, var_subst: Union[Expr, str]):
         self.name = "SubstitutionInverse"
         self.old_var = old_var
@@ -1807,8 +1808,8 @@ class Rewriting(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                print(e)
-                raise RuleException("Rewriting", "old expression %s not found" % self.old_expr)
+                raise RuleException(
+                    "Rewriting", f"old expression {self.old_expr} not found in {e}")
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -2222,9 +2223,6 @@ class IntegrateByEquation(Rule):
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
         res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
-
-        if lhs.contains_indefinite_integral() and not lhs.contains_skolem_func():
-            res = res + SkolemFunc("C", tuple())
 
         return res
 
@@ -3098,7 +3096,7 @@ class SolveEquation(Rule):
 
         res = solve_for_term(e, self.solve_for, ctx)
         if not res:
-            raise AssertionError("SolveEquation: cannot solve")
+            raise RuleException("SolveEquation", f"cannot solve for {self.solve_for} in {e}")
         return Op("=", self.solve_for, normalize(res, ctx))
 
     def __str__(self):

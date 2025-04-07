@@ -1,9 +1,10 @@
 import unittest
 
-import integral.context
+from integral import context
+from integral import expr
 from integral.parser import parse_expr
-from integral.condprover import init_all_conds, check_cond, saturate_expr, check_condition, \
-    subject_of, print_all_conds
+from integral.condprover import init_all_conds, check_cond, saturate_expr, \
+    check_condition, subject_of
 from integral.conditions import Conditions
 from integral.context import Identity, Context
 
@@ -79,7 +80,7 @@ class CondProverTest(unittest.TestCase):
             (["x >= -pi / 2", "x <= pi / 2"], True),
             (["x >= 0", "x <= pi"], False),
         ]
-        ctx = integral.context.Context()
+        ctx = context.Context()
         for conds, res in test_data:
             conds = Conditions(conds)
             all_conds = init_all_conds(conds)
@@ -94,7 +95,7 @@ class CondProverTest(unittest.TestCase):
             (["x > 1"], True),
             (["x > 0"], False),
         ]
-        ctx = integral.context.Context()
+        ctx = context.Context()
         for conds, res in test_data:
             conds = Conditions(conds)
             all_conds = init_all_conds(conds)
@@ -108,7 +109,7 @@ class CondProverTest(unittest.TestCase):
         test_data = [
             ("k + 1 != 0", ["k != -1"], True),
         ]
-        ctx = integral.context.Context()
+        ctx = context.Context()
         for s, conds, res in test_data:
             e = parse_expr(s)
             conds = Conditions(conds)
@@ -118,6 +119,8 @@ class CondProverTest(unittest.TestCase):
             self.assertEqual(len(check_cond(e, all_conds, inst)) == 1, res, "%s [%s]" % (e, conds))
 
     def testCheckCondition(self):
+        # For each triple (s, conds, res), res equals whether s can be
+        # derived from conds.
         test_data = [
             ("cos(x) >= 0", ["x > 0", "x < pi / 2"], True),
             ("log(x) >= 0", ["x > 1"], True),
@@ -142,13 +145,6 @@ class CondProverTest(unittest.TestCase):
             ctx.extend_condition(conds)
             self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
 
-    def testCheckWellformed(self):
-        from integral import rules
-        data = [("tan(pi)", 'e'),]
-        ctx = Context()
-        for e, f in data:
-            e = parse_expr(e)
-            print(rules.check_wellformed(e, ctx))
 
 if __name__ == "__main__":
     unittest.main()

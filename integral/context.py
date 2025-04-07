@@ -249,6 +249,7 @@ class Context:
         return res
 
     def get_subgoal(self, name: str) -> Optional[Identity]:
+        """Obtain subgoal with the given name."""
         res = self.parent.get_subgoal(name) if self.parent is not None else None
         if res:
             return res
@@ -257,7 +258,8 @@ class Context:
         else:
             return None
         
-    def get_all_subgoals(self) -> Dict[str, Identity]:
+    def get_all_subgoals(self) -> dict[str, Identity]:
+        """Obtain all subgoals in the context."""
         res = self.parent.get_all_subgoals() if self.parent is not None else dict()
         for name, identity in self.subgoals.items():
             res[name] = identity

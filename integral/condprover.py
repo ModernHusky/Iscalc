@@ -13,27 +13,23 @@ from integral.poly import normalize
 
 def subject_of(cond: Expr) -> Expr:
     """Return the subject of a condition.
-    
-    This is usually the left side of an inequality, or the (only)
-    argument of a predicate.
+
+    The following rules are used to determine subject:
+
+    - For equality and comparisons, left side of the operator
+    - For predicates with a single argument (such as isEven), its only
+      argument.
     
     """
-    if cond.is_equals() or cond.is_not_equals():
+    if expr.is_equals(cond) or expr.is_not_equals(cond):
         return cond.args[0]
-    if cond.is_greater() or cond.is_greater_eq():
+    if expr.is_greater(cond) or expr.is_greater_eq(cond):
         return cond.args[0]
-    if cond.is_less() or cond.is_less_eq():
+    if expr.is_less(cond) or expr.is_less_eq(cond):
         return cond.args[0]
     if expr.is_fun(cond):
-        if cond.func_name in ('isInt', 'isEven', 'isReal', 'isComplex'):  # 添加isComplex
-            return cond.args[0]
-    # if cond.is_fun() and cond.func_name == 'isInt':
-    #     return cond.args[0]
-    # if cond.is_fun() and cond.func_name == 'isEven':
-    #     return cond.args[0]
-    if expr.is_fun(cond):
         return cond.args[0]
-    raise TypeError
+    raise NotImplementedError(f"subject_of: {cond}")
 
 # Tolerance for floating-point rounding errors
 tol = 1e-15
@@ -132,9 +128,12 @@ def approx_complex(a: Expr) -> bool:
     except:
         return False
 
-def init_all_conds(conds: Conditions) -> Dict[Expr, List[Expr]]:
-    """Initialize all_conds from a condition object."""
-    all_conds: Dict[Expr, List[Expr]] = dict()
+def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
+    """Initialize mapping from subject to list of facts from a given
+    condition object.
+    
+    """
+    all_conds: dict[Expr, list[Expr]] = dict()
     
     # 收集所有变量
     all_vars = set()
@@ -196,51 +195,69 @@ def init_all_conds(conds: Conditions) -> Dict[Expr, List[Expr]]:
                             all_conds[k].append(Op('<', k, y.args[1]))
     return all_conds
 
-def update_inst(k: str, v: Expr, inst: Dict[str, Expr]) -> Dict[str, Expr]:
+def update_inst(k: str, v: Expr, inst: dict[str, Expr]) -> dict[str, Expr]:
     """Update instantiation without changing the original."""
     res = copy(inst)
     res[k] = v
     return res
 
-def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Expr]) -> List[Dict[str, Expr]]:
-    """Determine whether cond is implied by the existing set of conditions.
+def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
+               inst: dict[str, Expr]) -> list[dict[str, Expr]]:
+    """Determine whether cond is implied by the existing set of
+    conditions. There may be uninstantiated symbols in cond. The
+    list of valid instantiations are returned.
     
     The following checks are performed:
 
     - If subject of cond is a constant, and the right side is also constant,
-      compare using eval_expr.
+      compare using numerical calculations.
 
     - If subject of cond appears in all_conds, try to use the conditions
       available to verify cond.
 
     - Perform pattern matching.
 
+    Parameters
+    ----------
+    cond: Expr
+        the condition to be checked
+    all_conds: dict[Expr, list[Expr]]
+        mapping from subject to list of conditions on the subject
+    inst: dict[str, Expr]
+        current instantiation
+
+    Returns
+    -------
+    list[dict[str, Expr]]
+        list of new instantiations 
+
     """
+    # Get subject of the cond
     x = subject_of(cond)
 
-    # Trivial case
+    # Trivial case: cond already appears as a fact.
     if x in all_conds and cond in all_conds[x]:
         return [inst]
 
-
-    # If subject of cond is a constant
+    # If subject of cond is a constant, evaluate using numerical
+    # calculations (TODO: this is not guaranteed to be correct).
     if x.is_constant():
-        if cond.is_equals() and cond.args[1].is_constant():
+        if expr.is_equals(cond) and cond.args[1].is_constant():
             if approx_equal(x, cond.args[1]):
                 return [inst]
-        elif cond.is_not_equals() and cond.args[1].is_constant():
+        elif expr.is_not_equals(cond) and cond.args[1].is_constant():
             if approx_not_equal(x, cond.args[1]):
                 return [inst]
-        elif cond.is_greater() and cond.args[1].is_constant():
+        elif expr.is_greater(cond) and cond.args[1].is_constant():
             if approx_greater(x, cond.args[1]):
                 return [inst]
-        elif cond.is_greater_eq() and cond.args[1].is_constant():
+        elif expr.is_greater_eq(cond) and cond.args[1].is_constant():
             if approx_greater_eq(x, cond.args[1]):
                 return [inst]
-        elif cond.is_less() and cond.args[1].is_constant():
+        elif expr.is_less(cond) and cond.args[1].is_constant():
             if approx_less(x, cond.args[1]):
                 return [inst]
-        elif cond.is_less_eq() and cond.args[1].is_constant():
+        elif expr.is_less_eq(cond) and cond.args[1].is_constant():
             if approx_less_eq(x, cond.args[1]):
                 return [inst]
         elif expr.is_fun(cond) and cond.func_name == 'isInt':
@@ -256,89 +273,95 @@ def check_cond(cond: Expr, all_conds: Dict[Expr, List[Expr]], inst: Dict[str, Ex
             if approx_complex(x):
                 return [inst]
 
-    # If subject of cond appears in all_conds
-    if cond.is_compare() and x in all_conds and cond.args[1].is_constant():
+    # If the goal is of form x ?= c, where c is a constant, try to
+    # apply transitivity with facts in all_conds.
+    if expr.is_compare(cond) and x in all_conds and cond.args[1].is_constant():
         for fact in all_conds[x]:
-            if not (fact.is_compare() and fact.args[1].is_constant()):
+            if not (expr.is_compare(fact) and fact.args[1].is_constant()):
                 continue
-            if cond.is_greater_eq():
+            if expr.is_greater_eq(cond):
                 # x >= b --> b >= a --> x >= a
-                if fact.is_greater() or fact.is_greater_eq():
+                if expr.is_greater(fact) or expr.is_greater_eq(fact):
                     if approx_greater_eq(fact.args[1], cond.args[1]):
                         return [inst]
-            if cond.is_greater():
+            if expr.is_greater(cond):
                 # x >= b --> b > a --> x > a
-                if fact.is_greater_eq() and approx_greater(fact.args[1], cond.args[1]):
+                if expr.is_greater_eq(fact) and approx_greater(fact.args[1], cond.args[1]):
                     return [inst]
                 # x > b --> b >= a --> x > a
-                if fact.is_greater() and approx_greater_eq(fact.args[1], cond.args[1]):
+                if expr.is_greater(fact) and approx_greater_eq(fact.args[1], cond.args[1]):
                     return [inst]
-            if cond.is_less_eq():
+            if expr.is_less_eq(cond):
                 # x <= b --> b <= a --> x <= a
-                if fact.is_less() or fact.is_less_eq():
+                if expr.is_less(fact) or expr.is_less_eq(fact):
                     if approx_less_eq(fact.args[1], cond.args[1]):
                         return [inst]
-            if cond.is_less():
+            if expr.is_less(cond):
                 # x <= b --> b < a --> x < a
-                if fact.is_less_eq() and approx_less(fact.args[1], cond.args[1]):
+                if expr.is_less_eq(fact) and approx_less(fact.args[1], cond.args[1]):
                     return [inst]
                 # x < b --> b <= a --> x < a
-                if fact.is_less() and approx_less_eq(fact.args[1], cond.args[1]):
+                if expr.is_less(fact) and approx_less_eq(fact.args[1], cond.args[1]):
                     return [inst]
-            if cond.is_equals():
-                if fact.is_equals() and approx_equal(fact.args[1], cond.args[1]):
+            if expr.is_equals(cond):
+                if expr.is_equals(fact) and approx_equal(fact.args[1], cond.args[1]):
                     return [inst]
-            if cond.is_not_equals():
-                if fact.is_not_equals() and approx_equal(fact.args[1], cond.args[1]):
+            if expr.is_not_equals(cond):
+                if expr.is_not_equals(fact) and approx_equal(fact.args[1], cond.args[1]):
                     return [inst]
                 # x < a --> a <= b --> x != b
-                if fact.is_less() and approx_less_eq(fact.args[1], cond.args[1]):
+                if expr.is_less(fact) and approx_less_eq(fact.args[1], cond.args[1]):
                     return [inst]
                 # x <= a --> a < b --> x != b
-                if fact.is_less_eq() and approx_less(fact.args[1], cond.args[1]):
+                if expr.is_less_eq(fact) and approx_less(fact.args[1], cond.args[1]):
                     return [inst]
                 # x > a --> a >= b --> x != b
-                if fact.is_greater() and approx_greater_eq(fact.args[1], cond.args[1]):
+                if expr.is_greater(fact) and approx_greater_eq(fact.args[1], cond.args[1]):
                     return [inst]
                 # x >= a --> a > b --> x != b
-                if fact.is_greater_eq() and approx_greater(fact.args[1], cond.args[1]):
+                if expr.is_greater_eq(fact) and approx_greater(fact.args[1], cond.args[1]):
                     return [inst]
                 # x = a --> a != b --> x != b
-                if fact.is_equals() and approx_not_equal(fact.args[1], cond.args[1]):
+                if expr.is_equals(fact) and approx_not_equal(fact.args[1], cond.args[1]):
                     return [inst]
         
-    # If the other side of cond is a pattern
-    if cond.is_compare() and x in all_conds and expr.is_symbol(cond.args[1]):
+    # If the other side of cond is a symbol, update with appropriate
+    # instantiation.
+    if expr.is_compare(cond) and x in all_conds and expr.is_symbol(cond.args[1]):
         symb = cond.args[1].name
         res = []
         for fact in all_conds[x]:
-            if not fact.is_compare():
+            if not expr.is_compare(fact):
                 continue
-            if cond.is_greater_eq():
-                if fact.is_greater_eq() or fact.is_greater():
+            if expr.is_greater_eq(cond):
+                if expr.is_greater_eq(fact) or expr.is_greater(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
-            if cond.is_greater():
-                if fact.is_greater():
+            if expr.is_greater(cond):
+                if expr.is_greater(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
-            if cond.is_less_eq():
-                if fact.is_less_eq() or fact.is_less():
+            if expr.is_less_eq(cond):
+                if expr.is_less_eq(fact) or expr.is_less(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
-            if cond.is_less():
-                if fact.is_less():
+            if expr.is_less(cond):
+                if expr.is_less(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
-            if cond.is_equals():
-                if fact.is_equals():
+            if expr.is_equals(cond):
+                if expr.is_equals(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
-            if cond.is_not_equals():
-                if fact.is_not_equals():
+            if expr.is_not_equals(cond):
+                if expr.is_not_equals(fact):
                     res.append(update_inst(symb, fact.args[1], inst))
         return res
 
     # Not found
     return list()
 
-def saturate_expr(e: Expr, ineq: Identity, all_conds: Dict[Expr, List[Expr]], ctx: Context):
-    """Use the rule ineq to saturate facts about e, add to all_conds."""
+def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
+                  ctx: Context):
+    """Use the rule `ineq` to saturate facts about `e`. New facts are
+    added to all_conds.
+    
+    """
     pat = subject_of(ineq.expr)
     inst = match(e, pat)
     if inst is not None:
@@ -351,37 +374,36 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: Dict[Expr, List[Expr]], ct
             old_list = new_list
         for mapping in old_list:
             res = ineq.expr.inst_pat(mapping)
-            res_norm = Op(res.op ,res.args[0], normalize(res.args[1], ctx)) if res.is_compare() else res
-            # if check_cond(res, all_conds, mapping) == [mapping]:
-            #     continue
             if e not in all_conds:
                 all_conds[e] = list()
             if res not in all_conds[e]:
                 all_conds[e].append(res)
-            if res_norm not in all_conds[e]:
-                all_conds[e].append(res_norm)
+            if expr.is_compare(res):
+                res_norm = Op(res.op, res.args[0], normalize(res.args[1], ctx))
+                if res_norm not in all_conds[e]:
+                    all_conds[e].append(res_norm)
     return
 
-def saturate_once(e: Expr, ineqs: List[Identity], all_conds: Dict[Expr, List[Expr]], ctx: Context):
+def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], ctx: Context):
     """Perform one round of saturation"""
     all_subs = e.find_all_subexpr()
     for sube, _ in all_subs:
         for ineq in ineqs:
             saturate_expr(sube, ineq, all_conds, ctx)
 
-def all_conds_size(all_conds: Dict[Expr, List[Expr]]) -> int:
+def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
     """Return number of facts in all_conds."""
     res = 0
     for _, conds in all_conds.items():
         res += len(conds)
-    return res        
+    return res
 
-def saturate(e: Expr, ineqs: List[Identity], all_conds: Dict[Expr, List[Expr]], ctx: Context, *,
-             round_limit: int = 5, size_limit: int = 1000):
+def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
+             ctx: Context, *, round_limit: int = 5, size_limit: int = 1000):
     """Saturate up to given number of rounds and size limits.
     
     If number of rounds and size limits have been reached without
-    saturation, assertion is thrown to alert possible problems.
+    saturation, warning is printed to alert possible problems.
     
     """
     i = 0
@@ -391,17 +413,22 @@ def saturate(e: Expr, ineqs: List[Identity], all_conds: Dict[Expr, List[Expr]], 
         i += 1
         next_size = all_conds_size(all_conds)
         if prev_size == next_size:
+            # No new facts are added
             return
-        if next_size > size_limit or i > round_limit:
-            # print_all_conds(all_conds)
+        if next_size > size_limit:
+            print(f"Warning: size limit reached during saturation, size = {next_size}, limit = {size_limit}")
             return
-            # raise AssertionError("saturate: limit reached")
+        if i > round_limit:
+            print(f"Warning: round limit reached during saturation")
+            return
 
-def print_all_conds(all_conds: Dict[Expr, List[Expr]]):
+def print_all_conds(all_conds: dict[Expr, list[Expr]]):
+    """Print all conditions (for debugging)."""
     for x, conds in all_conds.items():
         print("%s: %s" % (x, ', '.join(str(cond) for cond in conds)))
 
-def get_standard_inequalities() -> List[Identity]:
+def get_standard_inequalities() -> list[Identity]:
+    """List of standard inequalities."""
     data = [
         # Addition
         (["c > 0"], "a + c > a"),
@@ -694,17 +721,23 @@ standard_inequalities = get_standard_inequalities()
 def check_condition(e: Expr, ctx: Context) -> bool:
     """Check whether e holds under the given context."""
 
-    # Some special checks
-    if e.is_greater_eq() and expr.is_integral(e.args[0]) and e.args[1] == Const(0):
+    ### Some special checks ###
+
+    # If integrand is non-negative, then the integral is non-negative
+    if expr.is_greater_eq(e) and expr.is_integral(e.args[0]) and e.args[1] == Const(0):
         ctx2 = Context(ctx)
         ctx2.add_condition(Op(">", Var(e.args[0].var), e.args[0].lower))
         ctx2.add_condition(Op("<", Var(e.args[0].var), e.args[0].upper))
         return check_condition(Op(">=", e.args[0].body, Const(0)), ctx2)
-    if e.is_less() and expr.is_fun(e.args[0]) and e.args[0].func_name == 'abs':
+    
+    # abs(s) < t <-- -t < s < t &&
+    if expr.is_less(e) and expr.is_fun(e.args[0]) and e.args[0].func_name == 'abs':
         arg = e.args[0].args[0]
         e1 = Op("<", arg, e.args[1])
         e2 = Op(">", arg, -e.args[1])
         return check_condition(e1, ctx) and check_condition(e2,ctx)
+
+    # Substitute for equations in the context
     if ctx.get_substs():
         new_e = e
         for var, subst_e in reversed(ctx.get_substs()):
@@ -712,8 +745,9 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         if new_e != e:
             if check_condition(new_e, ctx):
                 return True
+
     # a <= inf or a < inf
-    if (e.is_less() or e.is_less_eq()) and expr.is_pos_inf(e.args[1]):
+    if (expr.is_less(e) or expr.is_less_eq(e)) and expr.is_pos_inf(e.args[1]):
         return True
 
     # INT Real Condition
@@ -734,7 +768,8 @@ def check_condition(e: Expr, ctx: Context) -> bool:
                 if e not in all_conds:
                     all_conds[e] = []
                 all_conds[e].append(Fun('isReal', e))
-
+                
+    # Otherwise, perform saturation search
     conds = ctx.get_conds()
     all_conds = init_all_conds(conds)
     

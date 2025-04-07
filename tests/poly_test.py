@@ -32,6 +32,15 @@ class PolyTest(unittest.TestCase):
         # Test i * i = -1
         t1 = parser.parse_expr("i * i")
         self.assertEqual(poly.normalize(t1, ctx), parser.parse_expr("-1"))
+    def testSimplifyAbs(self):
+        t = parser.parse_expr("pi / abs(4 * cos(a))")
+        ctx = context.Context()
+        ctx.load_book("base")
+        ctx.add_condition("cos(a) < 0")
+        ctx.add_condition("cos(a) != 0")
+        simp_t = poly.normalize(t, ctx)
+        self.assertEqual(simp_t, parser.parse_expr("-(pi / (4 * cos(a)))"))
+
 
 if __name__ == "__main__":
     unittest.main()

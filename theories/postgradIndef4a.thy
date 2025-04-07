@@ -42,6 +42,7 @@ calculate INT x. exp(-x) * cos(x)
     integrate by parts with u = sin(x), v = -exp(-x)
     simplify
     solve integral INT x. exp(-x) * cos(x)
+    apply integral identity
     simplify
 done
 

@@ -2,7 +2,7 @@
 
 from typing import List, Union
 
-from integral.expr import Expr, Var
+from integral.expr import Expr
 from integral import latex
 from integral import parser
 

@@ -1,14 +1,33 @@
 """State of computation"""
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from integral.expr import Expr, Var, Const
 from integral import rules, expr
 from integral.rules import Rule, check_wellformed
 from integral.conditions import Conditions
+from integral import condprover
 from integral.context import Context, Identity
 from integral import latex
 from integral import parser
 from integral.poly import normalize
+from integral import utils
+
+
+class CheckFinishedException(Exception):
+    def __init__(self, stack: tuple[str], msg: str):
+        self.msg = '\n'.join(stack + (msg,))
+
+    def __str__(self):
+        return self.msg
+
+
+class StateException(Exception):
+    """Exception resulting from applying action to a state."""
+    def __init__(self, msg: str):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
 
 
 class Label:
@@ -49,8 +68,8 @@ class Label:
     def __eq__(self, other):
         return isinstance(other, Label) and self.data == other.data
 
-    def append(self, i: int) -> "Location":
-        return Label(self.data + [i, ])
+    def append(self, i: int) -> "Label":
+        return Label(self.data + [i])
 
 
 class StateItem:
@@ -151,31 +170,45 @@ class FuncDef(StateItem):
 
 
 class Goal(StateItem):
-    """Goal to be proved."""
+    """Goal to be proved.
+    
+    Attributes
+    ----------
+    parent: CompFile | StateItem
+        parent of the goal
+    ctx: Context
+        initial context of the goal. Note this may be different from context
+        in parent, as earlier subgoals and definitions in the parent are added.
+    goal: Expr
+        statement to be proved
+    conds: Optional[Conditions]
+        additional conditions of the goal
 
+    """
     def __init__(self, parent: Union['CompFile', StateItem], ctx: Context, goal: Expr, *,
                  conds: Optional[Conditions] = None):
         self.parent = parent
 
         # Statement to be proved
         self.goal = goal
+
         # List of assumptions for the goal
         if conds is None:
             conds = Conditions()
         self.conds = conds
 
         self.proof = None
-        self.ctx = ctx
+        self.ctx = Context(ctx)
 
         self.ctx.extend_vars(goal.get_vars())
         self.ctx.extend_condition(self.conds)
 
         # Check well-formedness of the goal
         proof_obligations_raw = check_wellformed(goal, self.ctx)
-        self.proof_obligations = []
+        self.proof_obligations: list[rules.ProofObligation] = []
         for oblig in proof_obligations_raw:
             found = False
-            for _, subgoal in self.ctx.subgoals.items():
+            for _, subgoal in self.ctx.get_all_subgoals().items():
                 if subgoal.covers_obligation(oblig):
                     found = True
                     break
@@ -183,18 +216,21 @@ class Goal(StateItem):
                 self.proof_obligations.append(oblig)
         self.wellformed = (len(self.proof_obligations) == 0)
 
-        # List of subgoals
-        self.subgoals: List[Tuple[str, Goal]] = list()
+        # List of subgoals, as (name, goal) pairs
+        self.subgoals: list[tuple[str, Goal]] = list()
 
         # List of temporary definitions
-        self.definitions: List[FuncDef] = list()
+        self.definitions: list[FuncDef] = list()
 
     def __str__(self):
         if self.is_finished():
             res = "Goal (finished)\n"
         else:
             res = "Goal\n"
-        res += "  %s\n" % self.goal
+        res += "  %s" % self.goal
+        if self.conds.data:
+            res += " for %s" % (", ".join(str(cond) for cond in self.conds.data))
+        res += "\n"
         for n, subgoal in self.subgoals:
             res += "subgoal %s\n" % n
             res += str(subgoal)
@@ -234,16 +270,27 @@ class Goal(StateItem):
         return self.proof == other.proof
 
     def is_finished(self):
-        # all conds are satisfied under context of proof
-        if self.proof == None:
+        if self.proof is None:
             return False
         if not self.wellformed:
-            print("%s, %s" % (self.goal, self.wellformed))
             return False
-        for n, subgoal in self.subgoals:
+        for _, subgoal in self.subgoals:
             if not subgoal.is_finished():
                 return False
         return self.proof.is_finished()
+
+    def check_finished(self, stack: tuple[str]):
+        if self.proof is None:
+            raise CheckFinishedException(stack, f"goal {self.goal} has no proof")
+        if not self.wellformed:
+            msg = f"goal {self.goal} is not wellformed."
+            for i, obligation in enumerate(self.proof_obligations, 1):
+                msg += f"\nObligation {i}\n"
+                msg += utils.indent(str(obligation))
+            raise CheckFinishedException(stack, msg)
+        for n, subgoal in self.subgoals:
+            subgoal.check_finished(stack + (f"subgoal {n}: {subgoal.goal}",))
+        self.proof.check_finished(stack + (f"proof of {self.goal}",))
 
     def clear(self):
         self.proof = None
@@ -294,7 +341,11 @@ class Goal(StateItem):
         return False
 
     def add_subgoal(self, name: str, expr: Union[str, Expr],
-                    conds: Optional[List[Union[str, Expr]]] = None) -> "Goal":
+                    conds: Optional[list[Union[str, Expr]]] = None) -> "Goal":
+        """Add subgoal with given name and expression."""
+
+        # Form context of the subgoal by adding existing subgoal and definitions
+        # in the current goal.
         ctx = Context(self.ctx)
         for n, subgoal in self.subgoals:
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
@@ -302,8 +353,7 @@ class Goal(StateItem):
             ctx.add_definition(funcdef.eq, funcdef.conds)
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
-        goal = Goal(self, ctx, expr, conds=Conditions(conds))
-        self.subgoals.append((name, goal))
+        self.subgoals.append((name, Goal(self, ctx, expr, conds=Conditions(conds))))
 
         # Recheck wellformedness conditions
         ctx = Context(ctx)
@@ -329,7 +379,7 @@ class Goal(StateItem):
         self.definitions.append(FuncDef(self, self.ctx, expr, conds=Conditions(conds)))
         return self.definitions[-1]
 
-    def proof_by_rewrite_goal(self, *, begin):
+    def proof_by_rewrite_goal(self, *, begin: str):
         if not isinstance(begin, str):
             raise AssertionError("RewriteGoalProof: begin should be a string")
         ctx = Context(self.ctx)
@@ -537,31 +587,28 @@ class CalculationProof(StateItem):
     The proof consists of calculation of left and right sides.
 
     """
-
     def __init__(self, parent, ctx: Context, goal: Expr):
         self.parent = parent
         self.goal = goal
         self.ctx = ctx
-        self.calcs = []
-        if goal.is_compare():
+        self.calcs: list[Calculation] = []
+        if expr.is_compare(goal):
             self.predicate = goal.op
             if isinstance(parent, Goal):
-                self.calcs.append(Calculation(self, self.ctx, self.goal.args[0]))
-                self.calcs.append(Calculation(self, self.ctx, self.goal.args[1]))
+                self.calcs.append(Calculation(self, self.ctx, goal.args[0], conds=parent.conds))
+                self.calcs.append(Calculation(self, self.ctx, goal.args[1], conds=parent.conds))
             else:
                 raise NotImplementedError
         elif expr.is_fun(goal) and goal.func_name == "converges":
             self.predicate = goal.func_name
             assert isinstance(parent, Goal)
-            goal = parent
-            self.calcs.append(Calculation(self, self.ctx, self.goal.args[0], conds=goal.conds))
+            self.calcs.append(Calculation(self, self.ctx, goal.args[0], conds=parent.conds))
         else:
             raise AssertionError("CalculationProof: unknown form of goal.")
 
     def __eq__(self, other):
-        if not isinstance(other, CalculationProof):
-            return False
-        return self.calcs == other.calcs and self.goal == other.goal
+        return isinstance(other, CalculationProof) and \
+            self.calcs == other.calcs and self.goal == other.goal
 
     def __str__(self):
         if self.is_finished():
@@ -620,7 +667,30 @@ class CalculationProof(StateItem):
             return self.ctx.is_not_equal(self.lhs_calc.last_expr, self.rhs_calc.last_expr)
         elif self.predicate == 'converges':
             return rules.check_converge(self.arg_calc.last_expr, self.ctx)
-        raise NotImplementedError
+        raise NotImplementedError(f"predicate: {self.predicate}")
+
+    def check_finished(self, stack: tuple[str]):
+        if self.predicate in ('=', '>', '<', '<=', '>=', '!='):
+            lhs = normalize(self.lhs_calc.last_expr, self.ctx)
+            rhs = normalize(self.rhs_calc.last_expr, self.ctx)
+            if self.predicate == '=' and lhs != rhs:
+                raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
+            if self.predicate == '>' and not self.ctx.is_greater(lhs, rhs):
+                raise CheckFinishedException(stack, f"calculation: {lhs} > {rhs}")
+            if self.predicate == '<' and not self.ctx.is_less(lhs, rhs):
+                raise CheckFinishedException(stack, f"calculation: {lhs} < {rhs}")
+            if self.predicate == '<=' and not self.ctx.is_less_eq(lhs, rhs):
+                raise CheckFinishedException(stack, f"calculation: {lhs} <= {rhs}")
+            if self.predicate == '>=' and not self.ctx.is_greater_eq(lhs, rhs):
+                raise CheckFinishedException(stack, f"calculation: {lhs} >= {rhs}")
+            if self.predicate == '!=' and not self.ctx.is_not_equal(lhs, rhs):
+                raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
+        elif self.predicate == 'converges':
+            e = normalize(self.arg_calc.last_expr, self.ctx)
+            if not rules.check_converge(e, self.ctx):
+                raise CheckFinishedException(stack, f"calculation: {e} does not converge")
+        else:
+            raise NotImplementedError(f"predicate: {self.predicate}")
 
     def export(self):
         return {
@@ -725,6 +795,10 @@ class InductionProof(StateItem):
     def is_finished(self):
         return self.base_case.is_finished() and self.induct_case.is_finished()
 
+    def check_finished(self, stack: tuple[str]):
+        self.base_case.check_finished(stack + ("base case",))
+        self.induct_case.check_finished(stack + ("induct case",))
+
     def export(self):
         return {
             "type": "InductionProof",
@@ -762,8 +836,7 @@ class CaseProof(StateItem):
     a > 0, a = 0, and a < 0.
 
     """
-
-    def __init__(self, parent, ctx, goal: Expr, *, split_cond: Expr):
+    def __init__(self, parent: Goal, ctx: Context, goal: Expr, *, split_cond: Expr):
         self.parent = parent
         self.goal = goal
         self.ctx = ctx
@@ -776,40 +849,35 @@ class CaseProof(StateItem):
             self.split_type = "two-way"
             # Case 1:
             conds1 = Conditions()
-            case1_ctx = self.ctx
             conds1.add_condition(split_cond)
             conds1.update(parent.conds)
-            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1))
+            self.cases.append(Goal(self, self.ctx, goal, conds=conds1))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = self.ctx
             conds2.add_condition(expr.neg_expr(split_cond))
             conds2.update(parent.conds)
-            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2))
+            self.cases.append(Goal(self, self.ctx, goal, conds=conds2))
 
         else:
             self.split_type = "three-way"
             # Case 1:
             conds1 = Conditions()
             conds1.add_condition(expr.Op("<", split_cond, Const(0)))
-            case1_ctx = self.ctx
             conds1.update(parent.conds)
-            self.cases.append(Goal(self, case1_ctx, goal, conds=conds1))
+            self.cases.append(Goal(self, self.ctx, goal, conds=conds1))
 
             # Case 2:
             conds2 = Conditions()
-            case2_ctx = self.ctx
             conds2.add_condition(expr.Op("=", split_cond, Const(0)))
             conds2.update(parent.conds)
-            self.cases.append(Goal(self, case2_ctx, goal, conds=conds2))
+            self.cases.append(Goal(self, self.ctx, goal, conds=conds2))
 
             # Case 3:
             conds3 = Conditions()
-            case3_ctx = self.ctx
             conds3.add_condition(expr.Op(">", split_cond, Const(0)))
             conds3.update(parent.conds)
-            self.cases.append(Goal(self, case3_ctx, goal, conds=conds3))
+            self.cases.append(Goal(self, self.ctx, goal, conds=conds3))
 
     def __eq__(self, other):
         if not isinstance(other, CaseProof):
@@ -840,7 +908,7 @@ class CaseProof(StateItem):
                 self.cases[2].print_entry(is_toplevel=False)
             print("done")
         else:
-            raise AssertionError
+            raise NotImplementedError(f"split_type = {self.split_type}")
 
     def __str__(self):
         if self.is_finished():
@@ -848,15 +916,44 @@ class CaseProof(StateItem):
         else:
             res = "Proof by cases\n"
         for i, case in enumerate(self.cases):
-            res += "case%d: %s for %s\n" % (i + 1, case.goal, case.conds)
+            res += "case %d: %s for %s\n" % (i + 1, case.goal, case.conds)
             res += str(case)
         return res
 
     def is_finished(self):
-        for case in self.cases:
-            if not case.is_finished():
+        if self.split_type == "two-way":
+            return self.cases[0].is_finished() and self.cases[1].is_finished()
+        elif self.split_type == "three-way":
+            all_conds = condprover.init_all_conds(self.parent.conds)
+            if not condprover.check_cond(expr.Op(">=", self.split_cond, Const(0)), all_conds, dict()) and \
+                not self.cases[0].is_finished():
                 return False
-        return True
+            if not condprover.check_cond(expr.Op("!=", self.split_cond, Const(0)), all_conds, dict()) and \
+                not self.cases[1].is_finished():
+                return False
+            if not condprover.check_cond(expr.Op("<=", self.split_cond, Const(0)), all_conds, dict()) and \
+                not self.cases[2].is_finished():
+                return False
+            return True
+        else:
+            raise NotImplementedError(f"split_type = {self.split_type}")
+
+    def check_finished(self, stack: tuple[str]):
+        if self.split_type == "two-way":
+            self.cases[0].check_finished(stack + (f"{self.split_cond} true branch",))
+            self.cases[1].check_finished(stack + (f"{self.split_cond} false branch",))
+
+        elif self.split_type == "three-way":
+            all_conds = condprover.init_all_conds(self.parent.conds)
+            if not condprover.check_cond(expr.Op(">=", self.split_cond, Const(0)), all_conds, dict()):
+                self.cases[0].check_finished(stack + (f"{self.split_cond} < 0 case",))
+            if not condprover.check_cond(expr.Op("!=", self.split_cond, Const(0)), all_conds, dict()):
+                self.cases[1].check_finished(stack + (f"{self.split_cond} = 0 case",))
+            if not condprover.check_cond(expr.Op("<=", self.split_cond, Const(0)), all_conds, dict()):
+                self.cases[2].check_finished(stack + (f"{self.split_cond} > 0 case",))
+
+        else:
+            raise NotImplementedError(f"split_type = {self.split_type}")
 
     def export(self):
         return {
@@ -884,8 +981,19 @@ class CaseProof(StateItem):
 
 class RewriteGoalProof(StateItem):
     """Prove an equation by transforming an initial equation.
-    """
 
+    Attributes
+    ----------
+    parent: StateItem
+        parent of the proof
+    ctx: Context
+        context of the proof
+    goal: Expr
+        goal to be proved
+    start: str
+        start of rewriting, should be the name of a previous subgoal
+        
+    """
     def __init__(self, parent: StateItem, ctx: Context, goal: Expr, *, start: str):
         if not goal.is_equals():
             raise AssertionError("RewriteGoalProof: goal is not an equality.")
@@ -895,7 +1003,7 @@ class RewriteGoalProof(StateItem):
         self.start = start
         start_goal = ctx.get_subgoal(start)
         if not start_goal:
-            raise AssertionError("RewriteGoalProof: start %s not found" % start)
+            raise StateException(f"RewriteGoalProof: start {start} not found")
         self.begin = Calculation(self, ctx, start_goal.expr, connection_symbol='==>',
                                  conds=start_goal.conds)
 
@@ -914,6 +1022,17 @@ class RewriteGoalProof(StateItem):
         f1 = normalize(self.begin.last_expr.lhs, self.ctx) == normalize(self.goal.lhs, self.ctx)
         f2 = normalize(self.begin.last_expr.rhs, self.ctx) == normalize(self.goal.rhs, self.ctx)
         return f1 and f2
+    
+    def check_finished(self, stack: tuple[str]):
+        calc_lhs = normalize(self.begin.last_expr.lhs, self.ctx)
+        goal_lhs = normalize(self.goal.lhs, self.ctx)
+        if calc_lhs != goal_lhs:
+            raise CheckFinishedException(stack, f"rewrite goal lhs: {calc_lhs} != {goal_lhs}")
+
+        calc_rhs = normalize(self.begin.last_expr.rhs, self.ctx)
+        goal_rhs = normalize(self.goal.rhs, self.ctx)
+        if calc_rhs != goal_rhs:
+            raise CheckFinishedException(stack, f"rewrite goal rhs: {calc_rhs} != {goal_rhs}")
 
     def export(self):
         res = {
@@ -962,11 +1081,11 @@ class CompFile:
         else:
             self.ctx = ctx
         self.name: str = name
-        self.content: List[StateItem] = []
+        self.content: list[StateItem] = []
 
     def __eq__(self, other):
         return isinstance(other, CompFile) and \
-               self.name == other.name and self.content == other.content
+            self.name == other.name and self.content == other.content
 
     def __str__(self):
         res = "File %s\n" % self.name

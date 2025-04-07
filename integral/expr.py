@@ -475,7 +475,7 @@ class Expr:
         find(self, Location(""))
         return results
 
-    def find_all_subexpr(self) -> List[Tuple["Expr", Location]]:
+    def find_all_subexpr(self) -> list[tuple["Expr", Location]]:
         return self.find_subexpr_pred(lambda t: True)
 
     def subst(self, var: str, e: "Expr") -> "Expr":
@@ -875,6 +875,27 @@ def is_neg_inf(e: Expr) -> TypeGuard["Inf"]:
 def is_uminus(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '-' and len(e.args) == 1
 
+def is_less(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '<'
+
+def is_greater(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '>'
+
+def is_less_eq(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '<='
+
+def is_greater_eq(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '>='
+
+def is_equals(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '='
+
+def is_not_equals(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '!='
+
+def is_compare(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op in ('<', '>', '<=', '>=', '=', '!=')
+
 def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     """Match expr with given pattern.
 
@@ -1131,7 +1152,7 @@ def decompose_expr_factor2(e:Expr) -> tuple[list[Expr], list[Expr]]:
         n2, d2 = decompose_expr_factor2(b)
         return n1 + d2, d1 + n2
     else:
-        return [e],[]
+        return decompose_expr_factor(e)
 
 def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
     """Get production factors from expr."""
@@ -1192,9 +1213,10 @@ class Var(Expr):
 class Const(Expr):
     """Constants."""
 
-    def __init__(self, val: Union[int, Fraction, Decimal]):
-        assert isinstance(val, (int, Fraction, Decimal))
-        if isinstance(val, Decimal): val = Fraction(val)
+    def __init__(self, val: Union[bool, int, Fraction, Decimal]):
+        assert isinstance(val, (bool, int, Fraction, Decimal))
+        if isinstance(val, Decimal):
+            val = Fraction(val)
         self.ty = CONST
         if isinstance(val, Fraction) and val.denominator == 1:
             self.val = val.numerator
@@ -1335,14 +1357,14 @@ class Limit(Expr):
         return hash((LIMIT, self.var, self.lim, self.body, self.drt))
 
     def __str__(self):
-        if self.lim == inf() or self.lim == neg_inf():
+        if self.lim == POS_INF or self.lim == NEG_INF:
             return "LIM {%s -> %s}. %s" % (self.var, self.lim, self.body)
         else:
             return "LIM {%s -> %s %s}. %s" % (
                 self.var, self.lim, self.drt if self.drt != None else "", self.body)
 
     def __repr__(self):
-        if self.lim == inf() or self.lim == neg_inf():
+        if self.lim == POS_INF or self.lim == NEG_INF:
             return "Limit(%s, %s, %s)" % (self.var, self.lim, self.body)
         else:
             return "Limit(%s, %s%s, %s)" % (
@@ -1403,17 +1425,14 @@ class SkolemFunc(Expr):
 NEG_INF = Inf(Decimal('-inf'))
 POS_INF = Inf(Decimal('inf'))
 ZERO = Const(0)
+TRUE = Const(True)
+FALSE = Const(False)
 
-def inf():
-    return Inf(Decimal("inf"))
 
-def neg_inf():
-    return Inf(Decimal("-inf"))
-
-def sin(e):
+def sin(e: Expr) -> Expr:
     return Fun("sin", e)
 
-def cos(e):
+def cos(e: Expr) -> Expr:
     return Fun("cos", e)
 
 def tan(e):
