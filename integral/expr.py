@@ -673,11 +673,11 @@ class Expr:
             print(self, e, repl_e)
             raise NotImplementedError
 
-    def separate_integral(self) -> List[Tuple["Expr", Location]]:
+    def separate_integral(self) -> list[tuple[Union["Integral", "IndefiniteIntegral"], Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_integral(e) or is_indefinite_integral(e))
 
-    def separate_limits(self) -> List[Tuple["Expr", Location]]:
+    def separate_limits(self) -> list[tuple["Limit", Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
 
@@ -870,8 +870,20 @@ def is_pos_inf(e: Expr) -> TypeGuard["Inf"]:
 def is_neg_inf(e: Expr) -> TypeGuard["Inf"]:
     return e.ty == INF and e.t == Decimal("-inf")
 
+def is_plus(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '+' and len(e.args) == 2
+
+def is_minus(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '-' and len(e.args) == 2
+
 def is_uminus(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '-' and len(e.args) == 1
+
+def is_times(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '*' and len(e.args) == 2
+
+def is_divides(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '/' and len(e.args) == 2
 
 def is_less(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op == '<'
@@ -1401,10 +1413,10 @@ class Inf(Expr):
 
 class SkolemFunc(Expr):
     """Skolem variable or function"""
-    def __init__(self, name: str, dep_vars: Iterable[Expr]):
+    def __init__(self, name: str, dep_vars: Iterable[Var]):
         self.ty = SKOLEMFUNC
         self.name = name
-        self.dependent_vars: Tuple[Expr] = tuple(dep_vars)
+        self.dependent_vars: tuple[Var] = tuple(dep_vars)
 
     def __eq__(self, other):
         return isinstance(other, SkolemFunc) and \

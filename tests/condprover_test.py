@@ -145,6 +145,20 @@ class CondProverTest(unittest.TestCase):
             ctx.extend_condition(conds)
             self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
 
+    def testCheckTransitivity(self):
+        test_data = [
+            ("s > 0", ["s > a", "a > 0"], True),
+            ("s != 0", ["s > a", "a > 0"], True),
+        ]
+
+        for s, conds, res in test_data:
+            e = parse_expr(s)
+            ctx = Context()
+            ctx.load_book("base")
+            conds = Conditions(conds)
+            ctx.extend_condition(conds)
+            self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
+
 
 if __name__ == "__main__":
     unittest.main()
