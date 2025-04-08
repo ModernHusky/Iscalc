@@ -429,15 +429,15 @@ class Linearity(Rule):
 
         def rec(e: Expr):
             if expr.is_integral(e):
-                if e.body.is_plus():
+                if expr.is_plus(e.body):
                     return rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0])) + \
                            rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[1]))
                 elif expr.is_uminus(e.body):
                     return -rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0]))
-                elif e.body.is_minus():
+                elif expr.is_minus(e.body):
                     return rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0])) - \
                            rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[1]))
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b = prod(f for f in num_factors if f.contains_var(e.var))
                     c = prod(f for f in num_factors if not f.contains_var(e.var))
@@ -456,15 +456,15 @@ class Linearity(Rule):
                 else:
                     return e
             elif expr.is_indefinite_integral(e):
-                if e.body.is_plus():
+                if expr.is_plus(e.body):
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) + \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
                 elif expr.is_uminus(e.body):
                     return -rec(IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args))
-                elif e.body.is_minus():
+                elif expr.is_minus(e.body):
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) - \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b = prod(f for f in num_factors if f.contains_var(e.var))
                     c = prod(f for f in num_factors if not f.contains_var(e.var))
@@ -483,7 +483,7 @@ class Linearity(Rule):
             elif expr.is_limit(e):
                 if expr.is_uminus(e.body):
                     return -Limit(e.var, e.lim, e.body.args[0])
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b, c = Const(1), Const(1)
                     for f in num_factors:
@@ -501,11 +501,11 @@ class Linearity(Rule):
                     return e
             elif expr.is_summation(e):
                 v, l, u, body = e.index_var, e.lower, e.upper, e.body
-                if e.body.is_minus():
+                if expr.is_minus(e.body):
                     return Summation(v, l, u, body.args[0]) - Summation(v, l, u, body.args[1])
                 elif expr.is_uminus(e.body):
                     return -Summation(v, l, u, body.args[0])
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b, c = Const(1), Const(1)
                     for f in num_factors:
@@ -782,14 +782,14 @@ class IndefiniteIntegralIdentity(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
-        def apply(e: Expr):
+        def apply(e: IndefiniteIntegral):
             for indef in ctx.get_indefinite_integrals():
                 inst = expr.match(e, indef.lhs)
                 if inst is None:
                     continue
 
                 inst['x'] = Var(e.var)
-                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1])
                 return indef.rhs.args[0].inst_pat(inst)
 
             # No matching identity found
@@ -807,13 +807,15 @@ class IndefiniteIntegralIdentity(Rule):
         skolem_args = set()
         for sub_e, loc in integrals:
             if expr.is_integral(sub_e):
-                raise RuleException("apply indefinite integral", "Attempting to apply indefinite integral methods to a definite integral expression will not work")
+                raise RuleException(
+                    "apply indefinite integral",
+                    "Attempting to apply indefinite integral to a definite integral expression")
             new_e = apply(sub_e)
             if new_e != sub_e:
                 e = e.replace_expr(loc, new_e)
                 skolem_args = skolem_args.union(set(sub_e.skolem_args))
 
-        if e.is_plus() and expr.is_skolem_func(e.args[1]):
+        if expr.is_plus(e) and expr.is_skolem_func(e.args[1]):
             # If already has Skolem variable at right
             skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
             e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
@@ -880,6 +882,7 @@ class EvaluateDefiniteIntegral(Rule):
                 cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
+                    # print(f"Warning: unable to check condition {cond}")
                     satisfied = False
             if satisfied:
                 return normalize(identity.rhs.inst_pat(inst), ctx)
@@ -930,7 +933,7 @@ class IntegralIdentity(Rule):
                 raise AssertionError
 
         if exist_indefinite_integral:
-            if e.is_plus() and expr.is_skolem_func(e.args[1]):
+            if expr.is_plus(e) and expr.is_skolem_func(e.args[1]):
                 # If already has Skolem variable at right
                 skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
                 e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
@@ -1298,7 +1301,7 @@ class ApplyEquation(Rule):
                 found_eq = self.eq
                 conds = []
         if not found:
-            raise RuleException("ApplyEquation", "lemma {self.eq} not found")
+            raise RuleException("ApplyEquation", f"lemma {self.eq} not found")
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)

@@ -1313,100 +1313,47 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "flipside04", actions)
 
-    def testFlipside05(self):#? new_done
-        # 报错StateException: Use done when goal is not finished
+    def testFlipside05(self):
         actions = """
-            prove (INT x:[0, oo]. exp(- (t * x))*(( cos(a * x) - cos(b * x) ) / x)) = log(sqrt((t^2+b^2)/(t^2+a^2))) for (t^2+b^2)/(t^2+a^2) > 0
-            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x
+            prove (INT x:[0, oo]. exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x) = log(sqrt((t^2+b^2)/(t^2+a^2))) for a>0, b>0, t>=0
+            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x for x>0
             lhs:
                 apply integral identity
                 simplify
                 rewrite cos(a * x) / x - cos(b * x) / x to (cos(a*x)-cos(b*x))/x
             done
-            subgoal 2: (INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = -(t ^ 2 / s ^ 2 * (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))) + 1 / s for t>0,s>0
-            lhs:
-                integrate by parts with u=exp(-(t * x)),v=-1/s*cos(s*x)
-                simplify
-                integrate by parts with u=exp(-(t * x)),v=1/s*sin(s*x)
-                simplify
-            done
-            subgoal 3:(INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = s / (t ^ 2 + s ^ 2)
-            from 2:
-                solve equation for INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                rewrite 1 / (s * (t ^ 2 / s ^ 2 + 1)) to s/(t^2+s^2)
-            done
-            subgoal 4:log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
+            subgoal 2: log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
             lhs:
                 rewrite sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2)) to ((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))^(1/2)
                 simplify
             done
             lhs:
+                rewrite exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x to exp(-(t*x)) * ((cos(a*x) - cos(b*x)) / x)
                 apply 1 on (cos(a*x)-cos(b*x))/x
                 rewrite INT x:[0,oo]. exp(-(t * x)) * (INT s:[a,b]. sin(x * s)) to INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))
                 exchange integral and integral
-                apply 3 on INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                substitute u for t^2+s^2
+                rewrite -(t*x) to -(x*t)
+                apply integral identity
+                substitute u for s^2 + t^2
                 apply integral identity
                 simplify
                 rewrite -(log(a ^ 2 + t ^ 2) / 2) + log(b ^ 2 + t ^ 2) / 2 to -1/2*log(a ^ 2 + t ^ 2) + 1/2*log(b ^ 2 + t ^ 2)
                 rewrite to 1/2*(log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2))
                 rewrite log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2) to log((b ^ 2 + t ^ 2)/(a ^ 2 + t ^ 2))
-                apply 4 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
+                apply 2 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
                 simplify
                 rewrite to log(sqrt((t^2+b^2)/(t^2+a^2)))
             done
-            """
+        """
         self.check_actions("interesting", "flipside05", actions)
 
-    def testFlipside06(self):#? new_done
-        # 报错StateException: Use done when goal is not finished
+    def testFlipside06(self):
         actions = """
-            prove (INT x:[0,oo]. (cos(a*x)-cos(b*x)) / x) = log(abs(b/a)) for a!=0,b!=0
-            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x for a!=0,b!=0
-            lhs:
-                apply integral identity
-                simplify
-                rewrite cos(a * x) / x - cos(b * x) / x to (cos(a*x)-cos(b*x))/x
-            done
-            subgoal 2: (INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = -(t ^ 2 / s ^ 2 * (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))) + 1 / s for t>0,s>0
-            lhs:
-                integrate by parts with u=exp(-(t * x)),v=-1/s*cos(s*x)
-                simplify
-                integrate by parts with u=exp(-(t * x)),v=1/s*sin(s*x)
-                simplify
-            done
-            subgoal 3:(INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = s / (t ^ 2 + s ^ 2)
-            from 2:
-                solve equation for INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                rewrite 1 / (s * (t ^ 2 / s ^ 2 + 1)) to s/(t^2+s^2)
-            done
-            subgoal 4:log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
-            lhs:
-                rewrite sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2)) to ((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))^(1/2)
-                simplify
-            done
-
-            subgoal 5: (INT x:[0, oo]. exp(-(t * x))*((cos(a*x)-cos(b*x))/x)) = log(sqrt((t^2+b^2)/(t^2+a^2))) for (t^2+b^2)/(t^2+a^2) > 0
-            lhs:
-                apply 1 on (cos(a*x)-cos(b*x))/x
-                rewrite INT x:[0,oo]. exp(-(t * x)) * (INT s:[a,b]. sin(x * s)) to INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))
-                exchange integral and integral
-                apply 3 on INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                substitute u for t^2+s^2
-                apply integral identity
-                simplify
-                rewrite -(log(a ^ 2 + t ^ 2) / 2) + log(b ^ 2 + t ^ 2) / 2 to -1/2*log(a ^ 2 + t ^ 2) + 1/2*log(b ^ 2 + t ^ 2)
-                rewrite to 1/2*(log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2))
-                rewrite log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2) to log((b ^ 2 + t ^ 2)/(a ^ 2 + t ^ 2))
-                apply 4 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
-                simplify
-                rewrite to log(sqrt((t^2+b^2)/(t^2+a^2)))
-            done
+            prove (INT x:[0,oo]. (cos(a*x)-cos(b*x)) / x) = log(b/a) for a>0, b>0
             lhs:
                 rewrite (cos(a*x)-cos(b*x)) / x to exp(-(0 * x))*((cos(a*x)-cos(b*x))/x)
-                apply 5 on INT x:[0,oo]. exp(-(0 * x)) * ((cos(a * x) - cos(b * x)) / x)
+                apply integral identity
                 simplify
-                rewrite log(abs(b) / abs(a)) to log(abs(b / a))
             done
             """
         self.check_actions("interesting", "flipside06", actions)

@@ -550,6 +550,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x <= 1", "x > 0"], "log(x) <= 0"),
         (["x < 1", "x > 0"], "log(x) < 0"),
         (["x != 1"], "log(x) != 0"),
+        (["a > b", "b > 0"], "log(a) > log(b)"),
 
         # Absolute value
         (["x != 0"], "abs(x) > 0"),
@@ -578,6 +579,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["cos(x) != 0"], "sin(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sec(x) >= 1"),
         (["x > pi / 4", " x < pi / 2"], "sec(x) < sqrt(2)"),
+
         # Inverse trigonometric
         (["x >= -1", "x <= 1"], "arcsin(x) >= -pi / 2"),
         (["x >= -1", "x <= 1"], "arcsin(x) <= pi / 2"),
@@ -624,8 +626,6 @@ def get_standard_inequalities() -> list[Identity]:
         # Value comparison of trig functions in an interval
         (["x > 0", "x < pi/4"], "cos(x) > sin(x)"),
 
-        (["a > b", "b > 0"], "log(a) > log(b)"),
-
         # Hyperbolic
         ([], "cosh(x) > 0"),
 
@@ -659,6 +659,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
         (["a = b", "a > c"], "b > c"),
+        (["a > b", "b > c"], "a > c"),
 
         # Complex number rules
         (["isReal(a)", "b = i"], "isComplex(a + b)"),
