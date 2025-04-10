@@ -15,10 +15,10 @@ from integral import utils
 
 class CheckFinishedException(Exception):
     def __init__(self, stack: tuple[str], msg: str):
-        self.msg = '\n'.join(stack + (msg,))
+        self.stack = stack + (msg,)
 
     def __str__(self):
-        return self.msg
+        return "Use done when goal is not finished, goal stack:\n" + '\n'.join(self.stack)
 
 
 class StateException(Exception):
