@@ -1558,6 +1558,14 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply series evaluation
             done
+            subgoal 5: SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2) = pi^2/12
+            lhs:
+                apply series evaluation
+            done
+            subgoal 6: SUM(k, 0, oo, 1 / (k + 1) ^ 2) = pi^2/6
+            lhs:
+                apply series evaluation
+            done
             lhs:
                 substitute t for cos(x)
                 simplify
@@ -1571,8 +1579,10 @@ class ActionTest(unittest.TestCase):
                 rewrite log(y) * SUM(k, 0, oo, y ^ k * (-1) ^ k) to SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k)
                 apply 3 on (INT y:[0,1]. (SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k)))
                 apply 4 on (INT y:[0,1]. SUM(k, 0, oo, log(y) * y ^ k))
-                apply series evaluation
+                apply 5 on SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2)
+                apply 6 on SUM(k, 0, oo, 1 / (k + 1) ^ 2)
                 simplify
+            done
             """
         self.check_actions("interesting", "LogFunction02", actions)
 
@@ -1581,18 +1591,12 @@ class ActionTest(unittest.TestCase):
         # Inside interesting integrals, Section 5.2, example #3 (5.2.2)
         actions = """
             prove (INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)
-            subgoal 1:converges(-SUM(n,1,oo,INT x:[0,1]. x^n/(x*n)))
-            arg:
-                simplify
-                apply integral identity
-                simplify
-            done
-            subgoal 2:(INT x:[0,1]. -(x ^ n / (n + 1))) = -(1/(n+1)^2) for n>=0
+            subgoal 1:(INT x:[0,1]. -(x ^ n / (n + 1))) = -(1/(n+1)^2) for n>=0
             lhs:
                 apply integral identity
                 simplify
             done
-            subgoal 3:SUM(n, 0, oo, 1 / (n + 1) ^ 2) = pi ^ 2 / 6
+            subgoal 2:SUM(n, 0, oo, 1 / (n + 1) ^ 2) = pi ^ 2 / 6
             lhs:
                 apply series evaluation
             done
@@ -1606,12 +1610,12 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite -(INT x:[0,1]. SUM(n, 0, oo, x ^ n / (n + 1))) to INT x:[0,1]. SUM(n, 0, oo, -(x ^ n / (n + 1)))
                 exchange integral and sum
-                apply 2 on (INT x:[0,1]. -(x ^ n / (n + 1)))
+                apply 1 on (INT x:[0,1]. -(x ^ n / (n + 1)))
                 simplify
-                apply 3 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
+                apply 2 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
             done
             """
-        self.check_actions("interesting", "LogFunction03(不存在)", actions)
+        self.check_actions("interesting", "LogFunction03", actions)
 
     def testBernoulliIntegral(self):
         actions = """
