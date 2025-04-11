@@ -115,6 +115,11 @@ def reduce_power(n: expr.Expr, e: "Polynomial") -> Tuple[Tuple[expr.Expr, "Polyn
     it is factored to simplify the representation.
 
     """
+    # 特殊处理 i 的幂
+    if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
+        # 直接返回 i^e，让 simplify_power 处理
+        return ((n, e),)
+        
     if expr.is_const(n) and isinstance(n.val, int) and e.is_fraction():
         if n.val >= 0:
             # Compute factors of n. Let n = (n_1 ^ e_1) * ... * (n_k ^ e_k), then
@@ -123,12 +128,17 @@ def reduce_power(n: expr.Expr, e: "Polynomial") -> Tuple[Tuple[expr.Expr, "Polyn
         else:
             # If n is negative, the denominator of e must be odd.
             # If the numerator of e is also odd, add an extra -1 factor.
-            assert Fraction(e.get_fraction()).denominator % 2 == 1, \
-                'reduce_power: exponent has even denominator'
-            if Fraction(e.get_fraction()).numerator % 2 == 0:
-                return tuple((expr.Const(ni), e * ei) for ni, ei in sympy.factorint(-n.val).items())
-            else:
-                return ((expr.Const(-1), constant(1)),) + tuple((expr.Const(ni), e * ei) for ni, ei in sympy.factorint(-n.val).items())
+             
+            # Handle negative integers
+            abs_n = -n.val
+            factors_abs = sympy.factorint(abs_n)
+            factors_abs_tuples = tuple((expr.Const(ni), e * ei) for ni, ei in factors_abs.items())
+            
+            # Create the (-1)^e factor
+            e_twice = e * 2
+            factor_neg = (expr.i, e_twice)
+            
+            return (factor_neg,) + factors_abs_tuples
     else:
         return ((n, e),)
 
@@ -144,6 +154,12 @@ def extract_frac(ps: Tuple[Tuple[expr.Expr, "Polynomial"]]) -> Tuple[Tuple[Tuple
     coeff = 1
 
     for n, e in ps:
+        # 特殊处理 i 的幂
+        if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
+            # 对于 i^(-1)，应该保留为 i^(-1)，而不是提取系数
+            res.append((n, e))
+            continue
+            
         if expr.is_const(n) and e.is_fraction():
             bval = n.val
             val = e.get_fraction()
@@ -183,6 +199,8 @@ class Monomial:
             assert isinstance(base, expr.Expr)
             if isinstance(power, (int, Fraction)):
                 power = constant(power)
+            elif isinstance(power, expr.Expr):
+                power = to_poly(power, Context())
             assert isinstance(power, Polynomial), "Unexpected power: %s" % str(power)
             self.factors.append((base, power))
         self.factors = tuple(self.factors)
@@ -250,7 +268,49 @@ class Monomial:
         if isinstance(other, (int, Fraction)):
             return Monomial(self.coeff * other, self.factors)
         elif isinstance(other, Monomial):
-            return Monomial(self.coeff * other.coeff, self.factors + other.factors)
+            # 检查是否有i相乘的情况
+            i_count = 0
+            new_factors = []
+            for n, e in self.factors + other.factors:
+                if expr.is_fun(n) and n.func_name == 'i':
+                    # 处理指数可能是Polynomial的情况
+                    if isinstance(e, Polynomial):
+                        if e.is_constant():
+                            i_count += e.get_constant()
+                        else:
+                            new_factors.append((n, e))
+                    elif expr.is_const(e):
+                        i_count += e.val
+                    else:
+                        i_count += 1
+                else:
+                    new_factors.append((n, e))
+
+            # 处理i的幂，包括负数幂
+            new_coeff = self.coeff * other.coeff
+            if i_count != 0:
+                # 对于负数幂，我们需要特殊处理
+                if i_count < 0:
+                    # 对于负数幂，i^(-n) = (i^n)^(-1)
+                    remainder = (-i_count) % 4
+                    if remainder == 0:
+                        pass  # i^(-4k) = 1
+                    elif remainder == 1:
+                        new_factors.append((expr.i, expr.Const(-1)))  # i^(-4k-1) = -i
+                    elif remainder == 2:
+                        new_coeff = -new_coeff  # i^(-4k-2) = -1
+                    else:  # remainder == 3
+                        new_factors.append((expr.i, expr.Const(1)))  # i^(-4k-3) = i
+                else:
+                    remainder = i_count % 4
+                    if remainder == 1:
+                        new_factors.append((expr.i, expr.Const(1)))
+                    elif remainder == 2:
+                        new_coeff = -new_coeff
+                    elif remainder == 3:
+                        new_coeff = -new_coeff
+                        new_factors.append((expr.i, expr.Const(1)))
+            return Monomial(new_coeff, tuple(new_factors))
         else:
             raise NotImplementedError
 
@@ -270,9 +330,32 @@ class Monomial:
         elif isinstance(exp, Fraction) and exp.denominator % 2 == 0:
             sqrt_factors = []
             for n, e in self.factors:
-                if isinstance(n, expr.Expr) and e.is_fraction() and e.get_fraction() % 2 == 0:
-                    sqrt_factors.append((expr.Fun('abs', n), e * exp))
+                if isinstance(n, expr.Expr):
+                    if e.is_fraction():
+                        if e.get_fraction() % 2 == 0:
+                            # 偶数次幂的情况
+                            sqrt_factors.append((expr.Fun('abs', n), e * exp))
+                        else:
+                            # 奇数次幂的情况，将负数分解为 -1 * 正数
+                            # 提取 sqrt(-1) 作为复数单位
+                            sqrt_neg_one = expr.Fun('sqrt', expr.Const(-1))
+                            if expr.is_const(n) and n.val < 0:
+                                # 如果是负常数，分解为 (-1 * |n|)^e
+                                abs_n = expr.Const(-n.val)
+                                sqrt_factors.append((abs_n, e * exp))
+                                sqrt_factors.append((sqrt_neg_one, e * exp))
+                            elif expr.is_uminus(n):
+                                # 如果是负号表达式，分解为 (-1 * 正部分)^e
+                                sqrt_factors.append((n.args[0], e * exp))
+                                sqrt_factors.append((sqrt_neg_one, e * exp))
+                            else:
+                                # 其他情况直接添加
+                                sqrt_factors.append((n, e * exp))
+                    else:
+                        # 非分数幂次，直接添加
+                        sqrt_factors.append((n, e * exp))
                 else:
+                    # 非表达式类型，直接添加
                     sqrt_factors.append((n, e * exp))
             if self.coeff == 1:
                 return Monomial(1, sqrt_factors)
@@ -315,6 +398,20 @@ class Polynomial:
     def __init__(self, monomials: Tuple[Monomial]):
         self.monomials = tuple(monomials)
         assert all(isinstance(mono, Monomial) for mono in self.monomials)
+
+    def is_constant(self) -> bool:
+        """判断多项式是否为常数"""
+        if len(self.monomials) == 0:
+            return True
+        return len(self.monomials) == 1 and self.monomials[0].is_constant()
+
+    def get_constant(self) -> Union[int, Fraction]:
+        """获取多项式的常数值，如果不是常数则抛出异常"""
+        if not self.is_constant():
+            raise AssertionError("Polynomial is not constant")
+        if len(self.monomials) == 0:
+            return 0
+        return self.monomials[0].get_constant()
 
     def reduce(self, ctx: Context) -> "Polynomial":
         for mono in self.monomials:
@@ -453,6 +550,11 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
         return -to_poly(e.args[0], ctx)
 
     elif e.is_minus():
+        # 特殊处理 SKOLEM_CONST 相减的情况
+        if expr.is_skolem_func(e.args[0]) and expr.is_skolem_func(e.args[1]):
+            if e.args[0].name == e.args[1].name and len(e.args[0].dependent_vars) == len(e.args[1].dependent_vars) == 0:
+                # 如果是相同的 SKOLEM_CONST，返回第一个的多项式表示
+                return singleton(e.args[0])
         return to_poly(e.args[0], ctx) - to_poly(e.args[1], ctx)
 
     elif e.is_times():
@@ -686,8 +788,117 @@ def simplify_integral(e: expr.Expr, ctx: Context) -> expr.Expr:
         return e
 
 def simplify_power(e: expr.Expr, ctx: Context) -> expr.Expr:
+    # 处理 sqrt(-1) 转换为 i
+    if expr.is_fun(e) and e.func_name == 'sqrt' and \
+       expr.is_const(e.args[0]) and e.args[0].val == -1:
+        return expr.i
+    
+    # 处理 i * i = -1
+    if e.is_times() and len(e.args) == 2:
+        if (expr.is_fun(e.args[0]) and e.args[0].func_name == 'i') and \
+           (expr.is_fun(e.args[1]) and e.args[1].func_name == 'i'):
+            return expr.Const(-1)
+            
     if not e.is_power():
         return e
+        
+    # 处理 i 的幂
+    if expr.is_fun(e.args[0]) and e.args[0].func_name == 'i' and \
+       expr.is_const(e.args[1]):
+        # i^n 的处理
+        power = e.args[1].val
+        if isinstance(power, int):
+            # 处理负数幂的情况
+            if power < 0:
+                # 对于负数幂，i^(-n) = (i^n)^(-1)
+                # 先计算i^n，然后取倒数
+                remainder = power % 4
+                if remainder == 0:
+                    return expr.Const(1)  # i^(-4k) = 1
+                elif remainder == -3 or remainder == 1:
+                    return -expr.i  # i^(-4k-3) = i^(-3) = -i
+                elif remainder == -2 or remainder == 2:
+                    return expr.Const(-1)  # i^(-4k-2) = i^(-2) = -1
+                else:  # remainder == -1 or remainder == 3
+                    return -expr.i  # i^(-4k-1) = i^(-1) = -i
+            else:
+                # 处理正数幂的情况
+                remainder = power % 4
+                if remainder == 0:
+                    return expr.Const(1)
+                elif remainder == 1:
+                    return expr.i
+                elif remainder == 2:
+                    return expr.Const(-1)
+                else:  # remainder == 3
+                    return -expr.i
+                
+    # 处理包含 i 的复数表达式的幂
+    if e.args[0].is_plus() or e.args[0].is_minus():
+        # 检查是否包含 i
+        has_i = False
+        real_part = None
+        imag_part = None
+        
+        if e.args[0].is_plus():
+            args = e.args[0].args
+            for arg in args:
+                if expr.is_fun(arg) and arg.func_name == 'i':
+                    has_i = True
+                    imag_part = expr.Const(1)
+                elif arg.is_times() and len(arg.args) == 2 and \
+                     ((expr.is_fun(arg.args[0]) and arg.args[0].func_name == 'i') or \
+                      (expr.is_fun(arg.args[1]) and arg.args[1].func_name == 'i')):
+                    has_i = True
+                    if expr.is_fun(arg.args[0]) and arg.args[0].func_name == 'i':
+                        imag_part = arg.args[1]
+                    else:
+                        imag_part = arg.args[0]
+                else:
+                    real_part = arg
+                    
+        if has_i and expr.is_const(e.args[1]):
+            power = e.args[1].val
+            if isinstance(power, int) and power > 0:
+                # 使用二项式展开计算 (a + b*i)^n
+                real_result = expr.Const(0)
+                imag_result = expr.Const(0)
+                
+                # 计算二项式系数和各项
+                for k in range(power + 1):
+                    coef = math.comb(power, k)
+                    real_term = expr.Const(1)
+                    imag_term = expr.Const(1)
+                    
+                    if power - k > 0:
+                        real_term = real_part ^ expr.Const(power - k)
+                    
+                    if k > 0:
+                        imag_term = imag_part ^ expr.Const(k)
+                    
+                    # 计算 i^k 的结果
+                    i_power = k % 4
+                    if i_power == 0:
+                        term = evaluate_const_expr(expr.Const(coef) * real_term * imag_term)
+                        real_result = real_result + term
+                    elif i_power == 1:
+                        term = evaluate_const_expr(expr.Const(coef) * real_term * imag_term)
+                        imag_result = imag_result + term
+                    elif i_power == 2:
+                        term = evaluate_const_expr(expr.Const(-coef) * real_term * imag_term)
+                        real_result = real_result + term
+                    else:  # i_power == 3
+                        term = evaluate_const_expr(expr.Const(-coef) * real_term * imag_term)
+                        imag_result = imag_result + term
+                
+                # 构造最终结果
+                if expr.is_const(imag_result) and imag_result.val == 0:
+                    return real_result
+                elif expr.is_const(real_result) and real_result.val == 0:
+                    return imag_result * expr.i
+                else:
+                    return real_result + imag_result * expr.i
+                    
     if e.args[1].is_plus() and expr.is_const(e.args[0]) and expr.is_const(e.args[1].args[1]):
         # c1 ^ (a + c2) => c1 ^ c2 * c1 ^ a
         return (e.args[0] ^ e.args[1].args[1]) * (e.args[0] ^ e.args[1].args[0])
@@ -910,6 +1121,7 @@ def simplify_exp(e:expr.Expr, ctx:Context):
         e:expr.Integral
         return expr.Integral(e.var, simplify_exp(e.lower,ctx), simplify_exp(e.upper,ctx), simplify_exp(e.body,ctx))
     return e
+
 def normal_const(e:expr.Expr, ctx:Context):
     if e.is_constant():
         return normalize(e, ctx)
@@ -956,6 +1168,61 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         if e == old_e:
             break
 
+    return e
+
+
+def evaluate_const_expr(e: expr.Expr) -> expr.Expr:
+    """尝试计算常量表达式的值"""
+    if expr.is_const(e):
+        return e
+    elif expr.is_op(e):
+        args = [evaluate_const_expr(arg) for arg in e.args]
+        if e.is_plus():
+            a, b = args[0], args[1]
+            if expr.is_const(a) and expr.is_const(b):
+                return expr.Const(a.val + b.val)
+            return expr.Op("+", a, b)
+        elif e.is_minus() and len(e.args) == 2:
+            a, b = args[0], args[1]
+            if expr.is_const(a) and expr.is_const(b):
+                return expr.Const(a.val - b.val)
+            return expr.Op("-", a, b)
+        elif e.is_times():
+            a, b = args[0], args[1]
+            if expr.is_const(a) and expr.is_const(b):
+                return expr.Const(a.val * b.val)
+            # 处理平方根的乘法
+            if expr.is_fun(a) and a.func_name == 'sqrt' and expr.is_fun(b) and b.func_name == 'sqrt':
+                return expr.sqrt(a.args[0] * b.args[0])
+            return expr.Op("*", a, b)
+        elif e.is_divides():
+            a, b = args[0], args[1]
+            if expr.is_const(a) and expr.is_const(b):
+                from fractions import Fraction
+                new_val = Fraction(a.val) / Fraction(b.val)
+                return expr.Const(new_val)
+            return expr.Op("/", a, b)
+        elif e.is_power():
+            a, b = args[0], args[1]
+            if expr.is_const(a) and expr.is_const(b):
+                return expr.Const(a.val ** b.val)
+            return expr.Op("^", a, b)
+        else:
+            return expr.Op(e.op, *args)
+    elif expr.is_fun(e):
+        args = [evaluate_const_expr(arg) for arg in e.args]
+        if all(expr.is_const(arg) for arg in args):
+            if e.func_name == "sqrt":
+                if expr.is_const(args[0]) and args[0].val == -1:
+                    return expr.i
+                from math import sqrt
+                val = args[0].val
+                result = sqrt(val)
+                if result.is_integer():
+                    return expr.Const(int(result))
+                else:
+                    return expr.Fun("sqrt", expr.Const(val))
+        return expr.Fun(e.func_name, *args)
     return e
 
 """
@@ -1017,7 +1284,23 @@ def from_mono(m: Monomial) -> expr.Expr:
     for base, power in m.factors:
         if isinstance(power, Polynomial) and power.is_fraction():
             power = power.get_fraction()
-        if isinstance(base, expr.Expr) and base == expr.E:
+        # 检查是否是 sqrt(-1)
+        if expr.is_fun(base) and base.func_name == 'sqrt' and \
+           expr.is_const(base.args[0]) and base.args[0].val == -1:
+            if power == 1:
+                num_factors.append(expr.i)
+            else:
+                # 处理 sqrt(-1)^n 的情况
+                remainder = power % 4
+                if remainder == 0:
+                    num_factors.append(expr.Const(1))
+                elif remainder == 1:
+                    num_factors.append(expr.i)
+                elif remainder == 2:
+                    num_factors.append(expr.Const(-1))
+                else:  # remainder == 3
+                    num_factors.append(-expr.i)
+        elif isinstance(base, expr.Expr) and base == expr.E:
             if isinstance(power, Polynomial):
                 num_factors.append(expr.exp(from_poly(power)))
             else:

@@ -345,6 +345,39 @@
         },
         {
             "conds": [
+                "a > 0",
+                "b > 0",
+                "t >= 0"
+            ],
+            "expr": "(INT x:[0, oo]. exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x) = log(sqrt((t^2+b^2)/(t^2+a^2)))",
+            "path": "flipside05",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > 0",
+                "b > 0"
+            ],
+            "expr": "(INT x:[0,oo]. (cos(a*x)-cos(b*x)) / x) = log(b/a)",
+            "path": "flipside06",
+            "type": "problem"
+        },
+        {
+            "conds": [
+            ],
+            "expr": "(INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24",
+            "path": "LogFunction02",
+            "type": "problem"
+        },
+        {
+            "conds": [
+            ],
+            "expr": "(INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)",
+            "path": "LogFunction03",
+            "type": "problem"
+        },
+        {
+            "conds": [
                 "a > -1"
             ],
             "expr": "(INT x:[0,1]. x^a*(log(x))^2) = 2/(a+1)^3",

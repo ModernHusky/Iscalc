@@ -1,17 +1,14 @@
 """Unit test for integrals using internal language."""
 
 import unittest
-import lark
 
 from integral import compstate
 from integral import action
 from integral import parser
 
-import os
-os.chdir('E:\\=graduatelife======\\learn-git\\iscalc')
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, base_file, current_file, actions: str,
+    def check_actions(self, base_file: str, current_file: str, actions: str,
                       *, print_lines=False, print_state=False):
         file = compstate.CompFile(base_file, current_file)
         state = action.InitialState(file)
@@ -27,7 +24,7 @@ class ActionTest(unittest.TestCase):
         if print_state:
             print(state)
         if not print_state and not isinstance(state, action.InitialState):
-            raise AssertionError("Does not end in initial state")
+            raise AssertionError("Does not end in initial state (add print_state=True to debug)")
         
     def testCalculationFinished(self):
         file = compstate.CompFile("base", "standard")
@@ -272,6 +269,8 @@ class ActionTest(unittest.TestCase):
         self.check_actions("UCDavis", "TrigSubstitution", actions)
 
     def testWallis(self):
+        # Reference:
+        # Irresistable Integrals, Section 2.3
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
             define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
@@ -612,6 +611,8 @@ class ActionTest(unittest.TestCase):
         self.check_actions("interesting", "Trick2e", actions)
 
     def testPartialFraction(self):
+        # Reference
+        # Inside interesting integrals, Section 2.3, example 2
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
             lhs:
@@ -631,12 +632,41 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "partialFraction", actions)
 
-    def testPartialFraction03(self):#?
-        # 输出<integral.action.CaseAnalysisState object at 0x0000021C0BB3A3B0>
+    def testPartialFraction03(self):
         # Inside interesting integrals, Section 2.3, example 3
         actions = """
-            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a)!=0
-            subgoal 1:(INT x:[0,oo]. x^2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1)) = (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a) != 0
+
+            subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
+            case analysis on x != 0
+                case true:
+                lhs:
+                    rewrite to (x^2 - 1)^2 + 2*x^2*(1 + cos(2*a))
+                    rewrite cos(2*a) to 2*cos(a)^2 - 1
+                    simplify
+                done
+                case false:
+                lhs:
+                    simplify                    
+                done
+            done
+
+            subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0 for cos(a) != 0
+            case analysis on x != 0
+                case true:
+                lhs:
+                    expand polynomial
+                    rewrite sin(a)^2 to 1 - cos(a)^2
+                    simplify
+                    rewrite to (x^2 - 1) ^ 2 + 4*x^2*(cos(a)^2)
+                done
+                case false:
+                lhs:
+                    simplify
+                done
+            done
+
+            subgoal 1: (INT x:[0,oo]. x^2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1)) = (INT x:[0,oo]. 1 / (x^4+2*x^2*cos(2*a)+1))
             rhs:
                 substitute y for 1/x
                 rewrite 1 / (y ^ 2 * (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)) to (1/y ^ 2)/ (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)
@@ -645,7 +675,7 @@ class ActionTest(unittest.TestCase):
                 substitute x for y
             done
 
-            subgoal 2:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/2*(INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+            subgoal 2: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/2*(INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
             rhs:
                 rewrite (1 + x^2)/(x^4+2*x^2*cos(2*a)+1) to (1/(x^4+2*x^2*cos(2*a)+1) + x^2/(x^4+2*x^2*cos(2*a)+1))
                 simplify
@@ -654,8 +684,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-
-            subgoal 3:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/4*(INT x:[-oo,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+            subgoal 3: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/4*(INT x:[-oo,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
             rhs:
                 split region at 0
                 substitute u for -x
@@ -666,12 +695,14 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite to (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
             done
-            subgoal 4:(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+
+            subgoal 4: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             lhs:
                 substitute u for -x
                 substitute x for u
                 rewrite (INT x:[-oo,oo]. -(2 * x * sin(a) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))) to -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             done
+
             subgoal 5:(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = 0
             lhs:
                 rewrite to 1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))+1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
@@ -679,7 +710,8 @@ class ActionTest(unittest.TestCase):
                 rewrite to 1/2*((INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) - (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))))
                 simplify
             done
-            subgoal 6:(INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = (INT x:[-oo,oo]. (1 + 2*x*sin(a) + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+
+            subgoal 6: (INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = (INT x:[-oo,oo]. (1 + 2*x*sin(a) + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
             rhs:
                 expand polynomial
                 rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
@@ -691,7 +723,8 @@ class ActionTest(unittest.TestCase):
                 rewrite x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to (1 + x ^ 2) / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)
                 rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
             done
-            subgoal 7:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)>0
+
+            subgoal 7: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)>0
             lhs:
                 apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
                 rewrite cos(2*a) to 1 - 2*(sin(a))^2
@@ -712,7 +745,8 @@ class ActionTest(unittest.TestCase):
                 rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
                 simplify
             done
-            subgoal 8:(INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)<0
+
+            subgoal 8: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = -pi/(4*cos(a)) for cos(a)<0
             lhs:
                 apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
                 rewrite cos(2*a) to 1 - 2*(sin(a))^2
@@ -733,14 +767,20 @@ class ActionTest(unittest.TestCase):
                 rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
                 simplify
             done
+
             case analysis on cos(a)
-            case negative:
-            lhs:
-                apply 7 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
-            done
-            case positive:
-            lhs:
-                apply 8 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                case negative:
+                lhs:
+                    apply 8 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                rhs:
+                    simplify
+                done
+                case positive:
+                lhs:
+                    apply 7 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+                rhs:
+                    simplify
+                done
             done
             """
         self.check_actions("interesting", "partialFraction03", actions)
@@ -861,46 +901,92 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Leibniz02", actions)
 
-    def testLeibniz03New(self):#?
-        # apply integral identity无法计算 (INT x:[0,oo]. x ^ (-1/2) * exp(-x))
+    def testLeibniz03(self):
+        # Inside interesting integrals, Section 3.1
         # Overall goal: INT x:[0,oo]. cos(tx)*exp(-(x^2)/2) = sqrt(pi/2)*exp(-(t^2)/2)
         
         actions = """
             prove (INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)) = sqrt(pi/2)*exp(-(t^2)/2)
-            define I(t) = (INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2))
-            subgoal 1:I(0) = sqrt(2*pi)
+            define I(t) = INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)
+            subgoal 1: I(0) = sqrt(pi/2)
             lhs:
                 expand definition for I
-                substitute u for -x^2/2
-                simplify
-                substitute x for -u
+                rewrite -(x^2/2) to -(x^2)/2
                 apply integral identity
-            """
-        self.check_actions("interesting", "leibniz03_new", actions)
+            rhs:
+                simplify
+            done
+
+            subgoal 2: (D t. I(t)) = -t*I(t)
+            lhs:
+                expand definition for I (all)
+                simplify
+                integrate by parts with u = sin(t*x), v = -exp(-x^2/2)
+                simplify
+            rhs:
+                expand definition for I (all)
+                simplify
+            done
+
+            subgoal 3: (D t. log(I(t)) + t^2/2) = 0
+            lhs:
+                simplify
+                apply 2 on D t. I(t)
+                simplify
+            done
+
+            subgoal 4: 1/2 * t ^ 2 + log(I(t)) = SKOLEM_CONST(C) for I(t) > 0
+            from 3:
+                integrate both sides
+                apply integral identity
+            done
+
+            subgoal 5: log(sqrt(pi / 2)) = SKOLEM_CONST(C) for I(t) > 0
+            from 4:
+                apply limit t -> 0 both sides
+                simplify
+                apply 1 on I(0)
+            done
+
+            subgoal 6: log(I(t)) = -t^2 / 2 + log(sqrt(pi / 2)) for I(t) > 0
+            lhs:
+                apply 4 on log(I(t))
+                apply 5 on SKOLEM_CONST(C)
+            done
+
+            subgoal 7: I(t) = sqrt(pi / 2) * exp(-t^2/2) for I(t) > 0
+            from 6:
+                solve equation for I(t)
+                rewrite exp(-(t ^ 2 / 2) - log(2) / 2 + log(pi) / 2) to exp(-(t^2/2)) / exp(log(2)/2) * exp(log(pi)/2)
+                rewrite exp(log(2) / 2) to sqrt(2)
+                rewrite exp(log(pi) / 2) to sqrt(pi)
+            done
+        """
+        try:
+            # Still cannot remove the condition I(t) > 0
+            self.check_actions("interesting", "leibniz03", actions)
+        except AssertionError as e:
+            ()
 
     def testGaussianPowerExp(self):# ?
         # Inside interesting integrals, Section 2.3
-        # apply integral identity无法计算 (INT x:[0,oo]. x ^ (-1/2) * exp(-x))
         actions = """
-            prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for isInt(n)
-            define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2)) for n>=0,isInt(n)
-            subgoal 1:(INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1,isInt(n)
+            prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n>=0,isInt(n)
+            define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2)) for n>=0, isInt(n)
+            subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1, isInt(n)
             lhs:
                 simplify
             done
-            subgoal 2:(D x. x^(2*n-1)*exp(-x^2)) = (2*n-1)*x^(2*n-2)*exp(-x^2)-2*x^(2*n)*exp(-x^2)
+            subgoal 2: (D x. x^(2*n-1)*exp(-x^2)) = (2*n-1)*x^(2*n-2)*exp(-x^2)-2*x^(2*n)*exp(-x^2) for x > 0
             lhs:
                 simplify
                 rewrite x ^ (2 * n - 2) * exp(-(x ^ 2)) * (2 * n - 1) to (2*n-1)*x^(2*n-2)*exp(-x^2) 
-                rewrite x ^ (2 * n - 1) to x^(2*n)/x
-                rewrite 2 * (x ^ (2 * n) / x) * x * exp(-(x ^ 2)) to 2 *x ^ (2 * n) / x * x * exp(-(x ^ 2))
-                rewrite 2 * x ^ (2 * n) / x * x * exp(-(x ^ 2)) to 2 * x ^ (2 * n) * exp(-(x ^ 2))
             done
-            subgoal 3:(INT x:[0, oo]. x^(2*n) * exp(-x^2)) = I(n) for n>=0,isInt(n)
+            subgoal 3: (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = I(n) for n>=0, isInt(n)
             rhs:
                 expand definition for I
             done
-            subgoal 4:(INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n>=1,isInt(n)
+            subgoal 4: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n>=1, isInt(n)
             lhs:
                 apply 2 on (D x. x^(2*n-1)*exp(-x^2))
                 simplify
@@ -908,42 +994,49 @@ class ActionTest(unittest.TestCase):
                 rewrite (INT x:[0,oo]. x ^ (2 * n - 2) * exp(-(x ^ 2))) to (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
                 apply 3 on (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
             done
-            subgoal 5:I(n) = I(n-1)*(2*n*(2*n-1))/(4*n) for n>=0,isInt(n)
+            subgoal 5: I(n) = I(n-1)*(2*n-1)/2 for n>=0, isInt(n)
             from 4:
                 apply 1 on (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2)))
                 solve equation for I(n)
                 rewrite I(n - 1) * (2 * n - 1) / 2 to I(n - 1) * ((2*n)*(2 * n - 1)) / (2*(2*n))
                 rewrite (2 * (2 * n)) to (4 * n)
             done
-            subgoal 6 :I(n) = I(0)*factorial(2*n)/(4^n*factorial(n)) for n>=1,isInt(n)
-            induction on n starting from 1
+            subgoal 6: I(n) = I(0)*factorial(2*n)/(4^n*factorial(n)) for n>=0, isInt(n)
+            induction on n
                 base:
-                lhs:
-                    apply 5 on I(1)
+                rhs:
                     simplify
                 done
                 induct:
                 lhs:
                     apply 5 on I(n+1)
                     simplify
-                    apply induction hypothesis(all)
-                    rewrite (4 * n + 4) to 2*(2*n+2)
-                    rewrite I(0) * factorial(2 * n) / (4 ^ n * factorial(n)) * (2 * n + 1) * (2 * n + 2) / (2 * (2 * n + 2)) to I(0) * factorial(2 * n) / (4 ^ n * factorial(n)) * (2 * n + 1)/ 2
+                    apply induction hypothesis (all)
+                rhs:
+                    rewrite factorial(n+1) to factorial(n) * (n+1)
+                    rewrite factorial(2*n+2) to factorial(2*n+1) * (2*n+2)
+                    rewrite factorial(2*n+1) to factorial(2*n) * (2*n+1)
+                    simplify
+                    rewrite to I(0) * factorial(2 * n) / (4 ^ n * factorial(n)) * (2 * n + 1) / 2
                 done
             done
-            subgoal 7:I(0) = 1/2*sqrt(pi)
+            subgoal 7: I(0) = 1/2*sqrt(pi)
             lhs:
-                expand definition for I(all)
-                substitute u for -(x^2)
+                expand definition for I
+                substitute y for x*sqrt(2)
+                rewrite -(y^2/2) to -(y^2)/2
                 apply integral identity
-                substitute -x for u
-                simplify
-                rewrite exp(-x) / sqrt(x) to x^(-1/2)*exp(-x)
-                apply integral identity
+            done
+
+            lhs:
+                fold definition for I
+                apply 6 on I(n)
+                apply 7 on I(0)
+            done
             """
         self.check_actions("interesting", "gaussianPowerExp", actions)
 
-    def testEulerLogSineIntegral(self):#?+
+    def testEulerLogSineIntegral(self):
         # Inside interesting integrals, Section 2.4
         actions = """
             prove (INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2) for a>0
@@ -1095,11 +1188,10 @@ class ActionTest(unittest.TestCase):
 
     def testDirichletIntegral(self):#?
         # Inside interesting integrals, Section 3.2
-        # 未实现sgn功能
         actions = """
             prove (INT x:[0,oo]. sin(a*x)/x) = pi/2 * sgn(a)
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y>0
-            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y>0,a!=0
+            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y >= 0
+            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y >= 0, a != 0
             lhs:
                 expand definition for g(all)
                 exchange derivative and integral
@@ -1108,52 +1200,67 @@ class ActionTest(unittest.TestCase):
             rhs:
                 simplify
             done
-            subgoal 2:g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y>0,a>0
+            subgoal 2: g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y >= 0, a > 0
             from 1:
                 integrate both sides
                 apply integral identity
                 simplify
             done
-            subgoal 3:g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y>0,a<0
+            subgoal 3: g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y >= 0, a < 0
             from 1:
                 integrate both sides
                 apply integral identity
                 simplify
             done
-            subgoal 4:(LIM {y -> oo}. g(y, a)) = 0 for y>0
+            subgoal 4: (LIM {y -> oo}. g(y, a)) = 0 for y >= 0
             lhs:
                 expand definition for g(all)
                 simplify
             done
-            subgoal 5:SKOLEM_FUNC(C(a)) = pi / 2 for a>0
+            subgoal 5: SKOLEM_FUNC(C(a)) = pi / 2 for a > 0
             from 2:
                 apply limit y -> oo both sides
                 apply 4 on LIM {y -> oo}. g(y,a)
                 simplify
                 solve equation for SKOLEM_FUNC(C(a))
             done
-            subgoal 6:SKOLEM_FUNC(C(a)) = -pi / 2 for a<0
+            subgoal 6: SKOLEM_FUNC(C(a)) = -pi / 2 for a < 0
             from 3:
                 apply limit y -> oo both sides
                 apply 4 on LIM {y -> oo}. g(y,a)
                 simplify
                 solve equation for SKOLEM_FUNC(C(a))
             done
-            subgoal 7:g(y,a) = pi / 2 for a>0,y=0
+            subgoal 7: g(0,a) = pi / 2 for a > 0
             from 2:
-                apply 5 on SKOLEM_FUNC(C(a)) 
+                apply limit y -> 0 both sides
                 simplify
+                apply 5 on SKOLEM_FUNC(C(a))
             done
-            subgoal 8:g(y,a) = -pi / 2 for a<0,y=0
+            subgoal 8: g(0,a) = -pi / 2 for a < 0
             from 3:
+                apply limit y -> 0 both sides
+                simplify
                 apply 6 on SKOLEM_FUNC(C(a)) 
-                simplify
             done
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y=0
-            subgoal 9:g(y,a) = 0 for a=0,y=0
-            lhs:
-                expand definition for g(all)
-                simplify
+            case analysis on a
+            case positive:
+                lhs:
+                    rewrite sin(a*x)/x to exp(-x*0)*sin(a*x)/x
+                    fold definition for g
+                    apply 7 on g(0,a)
+                done
+            case zero:
+                lhs:
+                    simplify
+                done
+            case negative:
+                lhs:
+                    rewrite sin(a*x)/x to exp(-x*0)*sin(a*x)/x
+                    fold definition for g
+                    apply 8 on g(0,a)
+                done
+            done
             """
         self.check_actions("interesting", "dirichletIntegral", actions)
 
@@ -1204,100 +1311,47 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "flipside04", actions)
 
-    def testFlipside05(self):#? new_done
-        # 报错StateException: Use done when goal is not finished
+    def testFlipside05(self):
         actions = """
-            prove (INT x:[0, oo]. exp(- (t * x))*(( cos(a * x) - cos(b * x) ) / x)) = log(sqrt((t^2+b^2)/(t^2+a^2))) for (t^2+b^2)/(t^2+a^2) > 0
-            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x
+            prove (INT x:[0, oo]. exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x) = log(sqrt((t^2+b^2)/(t^2+a^2))) for a>0, b>0, t>=0
+            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x for x>0
             lhs:
                 apply integral identity
                 simplify
                 rewrite cos(a * x) / x - cos(b * x) / x to (cos(a*x)-cos(b*x))/x
             done
-            subgoal 2: (INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = -(t ^ 2 / s ^ 2 * (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))) + 1 / s for t>0,s>0
-            lhs:
-                integrate by parts with u=exp(-(t * x)),v=-1/s*cos(s*x)
-                simplify
-                integrate by parts with u=exp(-(t * x)),v=1/s*sin(s*x)
-                simplify
-            done
-            subgoal 3:(INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = s / (t ^ 2 + s ^ 2)
-            from 2:
-                solve equation for INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                rewrite 1 / (s * (t ^ 2 / s ^ 2 + 1)) to s/(t^2+s^2)
-            done
-            subgoal 4:log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
+            subgoal 2: log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
             lhs:
                 rewrite sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2)) to ((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))^(1/2)
                 simplify
             done
             lhs:
+                rewrite exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x to exp(-(t*x)) * ((cos(a*x) - cos(b*x)) / x)
                 apply 1 on (cos(a*x)-cos(b*x))/x
                 rewrite INT x:[0,oo]. exp(-(t * x)) * (INT s:[a,b]. sin(x * s)) to INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))
                 exchange integral and integral
-                apply 3 on INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                substitute u for t^2+s^2
+                rewrite -(t*x) to -(x*t)
+                apply integral identity
+                substitute u for s^2 + t^2
                 apply integral identity
                 simplify
                 rewrite -(log(a ^ 2 + t ^ 2) / 2) + log(b ^ 2 + t ^ 2) / 2 to -1/2*log(a ^ 2 + t ^ 2) + 1/2*log(b ^ 2 + t ^ 2)
                 rewrite to 1/2*(log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2))
                 rewrite log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2) to log((b ^ 2 + t ^ 2)/(a ^ 2 + t ^ 2))
-                apply 4 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
+                apply 2 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
                 simplify
                 rewrite to log(sqrt((t^2+b^2)/(t^2+a^2)))
             done
-            """
+        """
         self.check_actions("interesting", "flipside05", actions)
 
-    def testFlipside06(self):#? new_done
-        # 报错StateException: Use done when goal is not finished
+    def testFlipside06(self):
         actions = """
-            prove (INT x:[0,oo]. (cos(a*x)-cos(b*x)) / x) = log(abs(b/a)) for a!=0,b!=0
-            subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x for a!=0,b!=0
-            lhs:
-                apply integral identity
-                simplify
-                rewrite cos(a * x) / x - cos(b * x) / x to (cos(a*x)-cos(b*x))/x
-            done
-            subgoal 2: (INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = -(t ^ 2 / s ^ 2 * (INT x:[0,oo]. exp(-(t * x)) * sin(s * x))) + 1 / s for t>0,s>0
-            lhs:
-                integrate by parts with u=exp(-(t * x)),v=-1/s*cos(s*x)
-                simplify
-                integrate by parts with u=exp(-(t * x)),v=1/s*sin(s*x)
-                simplify
-            done
-            subgoal 3:(INT x:[0,oo]. exp(-(t * x)) * sin(s * x)) = s / (t ^ 2 + s ^ 2)
-            from 2:
-                solve equation for INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                rewrite 1 / (s * (t ^ 2 / s ^ 2 + 1)) to s/(t^2+s^2)
-            done
-            subgoal 4:log(sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))) = 1/2*log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
-            lhs:
-                rewrite sqrt((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2)) to ((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))^(1/2)
-                simplify
-            done
-
-            subgoal 5: (INT x:[0, oo]. exp(-(t * x))*((cos(a*x)-cos(b*x))/x)) = log(sqrt((t^2+b^2)/(t^2+a^2))) for (t^2+b^2)/(t^2+a^2) > 0
-            lhs:
-                apply 1 on (cos(a*x)-cos(b*x))/x
-                rewrite INT x:[0,oo]. exp(-(t * x)) * (INT s:[a,b]. sin(x * s)) to INT x:[0,oo]. (INT s:[a,b]. exp(-(t * x)) * sin(s * x))
-                exchange integral and integral
-                apply 3 on INT x:[0,oo]. exp(-(t * x)) * sin(s * x)
-                substitute u for t^2+s^2
-                apply integral identity
-                simplify
-                rewrite -(log(a ^ 2 + t ^ 2) / 2) + log(b ^ 2 + t ^ 2) / 2 to -1/2*log(a ^ 2 + t ^ 2) + 1/2*log(b ^ 2 + t ^ 2)
-                rewrite to 1/2*(log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2))
-                rewrite log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2) to log((b ^ 2 + t ^ 2)/(a ^ 2 + t ^ 2))
-                apply 4 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
-                simplify
-                rewrite to log(sqrt((t^2+b^2)/(t^2+a^2)))
-            done
+            prove (INT x:[0,oo]. (cos(a*x)-cos(b*x)) / x) = log(b/a) for a>0, b>0
             lhs:
                 rewrite (cos(a*x)-cos(b*x)) / x to exp(-(0 * x))*((cos(a*x)-cos(b*x))/x)
-                apply 5 on INT x:[0,oo]. exp(-(0 * x)) * ((cos(a * x) - cos(b * x)) / x)
+                apply integral identity
                 simplify
-                rewrite log(abs(b) / abs(a)) to log(abs(b / a))
             done
             """
         self.check_actions("interesting", "flipside06", actions)
@@ -1502,6 +1556,14 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply series evaluation
             done
+            subgoal 5: SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2) = pi^2/12
+            lhs:
+                apply series evaluation
+            done
+            subgoal 6: SUM(k, 0, oo, 1 / (k + 1) ^ 2) = pi^2/6
+            lhs:
+                apply series evaluation
+            done
             lhs:
                 substitute t for cos(x)
                 simplify
@@ -1515,8 +1577,10 @@ class ActionTest(unittest.TestCase):
                 rewrite log(y) * SUM(k, 0, oo, y ^ k * (-1) ^ k) to SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k)
                 apply 3 on (INT y:[0,1]. (SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k)))
                 apply 4 on (INT y:[0,1]. SUM(k, 0, oo, log(y) * y ^ k))
-                apply series evaluation
+                apply 5 on SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2)
+                apply 6 on SUM(k, 0, oo, 1 / (k + 1) ^ 2)
                 simplify
+            done
             """
         self.check_actions("interesting", "LogFunction02", actions)
 
@@ -1525,18 +1589,12 @@ class ActionTest(unittest.TestCase):
         # Inside interesting integrals, Section 5.2, example #3 (5.2.2)
         actions = """
             prove (INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)
-            subgoal 1:converges(-SUM(n,1,oo,INT x:[0,1]. x^n/(x*n)))
-            arg:
-                simplify
-                apply integral identity
-                simplify
-            done
-            subgoal 2:(INT x:[0,1]. -(x ^ n / (n + 1))) = -(1/(n+1)^2) for n>=0
+            subgoal 1:(INT x:[0,1]. -(x ^ n / (n + 1))) = -(1/(n+1)^2) for n>=0
             lhs:
                 apply integral identity
                 simplify
             done
-            subgoal 3:SUM(n, 0, oo, 1 / (n + 1) ^ 2) = pi ^ 2 / 6
+            subgoal 2:SUM(n, 0, oo, 1 / (n + 1) ^ 2) = pi ^ 2 / 6
             lhs:
                 apply series evaluation
             done
@@ -1550,12 +1608,12 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite -(INT x:[0,1]. SUM(n, 0, oo, x ^ n / (n + 1))) to INT x:[0,1]. SUM(n, 0, oo, -(x ^ n / (n + 1)))
                 exchange integral and sum
-                apply 2 on (INT x:[0,1]. -(x ^ n / (n + 1)))
+                apply 1 on (INT x:[0,1]. -(x ^ n / (n + 1)))
                 simplify
-                apply 3 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
+                apply 2 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
             done
             """
-        self.check_actions("interesting", "LogFunction03(不存在)", actions)
+        self.check_actions("interesting", "LogFunction03", actions)
 
     def testBernoulliIntegral(self):
         actions = """

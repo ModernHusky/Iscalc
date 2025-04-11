@@ -6,8 +6,6 @@ from typing import Optional, Dict, Tuple, Union, List, Set
 import functools
 import operator
 
-from sympy import false
-
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
@@ -23,6 +21,7 @@ from integral import poly
 from integral.poly import from_poly, to_poly, normalize
 from integral.conditions import Conditions
 from integral import sympywrapper
+from integral import utils
 
 
 class RuleException(Exception):
@@ -175,7 +174,8 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
 
 
 class ProofObligationBranch:
-    def __init__(self, exprs: List[Expr], flags: List[bool] = None):
+    """Represents a single branch of proof obligation."""
+    def __init__(self, exprs: list[Expr], flags: list[bool] = None):
         self.exprs = exprs  # satisfy all expressions
         if flags is None or len(flags) != len(exprs):
             self.need_to_be_satisfied = [True for i in range(len(exprs))]
@@ -183,10 +183,7 @@ class ProofObligationBranch:
             self.need_to_be_satisfied = flags
 
     def __str__(self):
-        res = ", ".join([str(e) for e in self.exprs])
-        res += "\n"
-        res += ", ".join([str(b) for b in self.need_to_be_satisfied])
-        return res
+        return ", ".join(f"{e} ({b})" for e, b in zip(self.exprs, self.need_to_be_satisfied))
 
     def export(self):
         res = {
@@ -201,26 +198,21 @@ class ProofObligation:
 
     """
 
-    def __init__(self, branches: List['ProofObligationBranch'], conds: Conditions):
-        self.branches = branches  # if any branch is satisfied then the proof obligation is carried out
+    def __init__(self, branches: list[ProofObligationBranch], conds: Conditions):
+        # if any branch is satisfied then the proof obligation is carried out
+        self.branches = branches
         self.conds = conds
 
-    def __eq__(self, other: "ProofObligation"):
-        return self.branches == other.branches
-
-    def __le__(self, other: "ProofObligation"):
-        if len(self.branches) < other.branches:
-            return True
-        elif len(self.branches > other.branches):
-            return False
-        return all(a < b for a, b in zip(self.branches, other.branches))
+    def __eq__(self, other):
+        return isinstance(other, ProofObligation) and \
+            self.branches == other.branches and self.conds == other.conds
 
     def __str__(self):
         res = ""
-        for i, b in enumerate(self.branches):
-            res += "branch " + str(i) + ":\n"
-            res += str(b) + '\n'
-        res += str(self.conds) + "\n"
+        for i, branch in enumerate(self.branches, 1):
+            res += "Branch " + str(i) + ":\n"
+            res += utils.indent(str(branch)) + '\n'
+        res += "Conds: " + str(self.conds)
         return res
 
     def __repr__(self):
@@ -237,7 +229,7 @@ class ProofObligation:
         return res
 
 
-def check_wellformed(e: Expr, ctx: Context) -> List[ProofObligation]:
+def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
     """Check whether an expression e is wellformed, and return
     a set of wellformed-ness conditions if otherwise.
 
@@ -437,15 +429,15 @@ class Linearity(Rule):
 
         def rec(e: Expr):
             if expr.is_integral(e):
-                if e.body.is_plus():
+                if expr.is_plus(e.body):
                     return rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0])) + \
                            rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[1]))
                 elif expr.is_uminus(e.body):
                     return -rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0]))
-                elif e.body.is_minus():
+                elif expr.is_minus(e.body):
                     return rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[0])) - \
                            rec(expr.Integral(e.var, e.lower, e.upper, e.body.args[1]))
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b = prod(f for f in num_factors if f.contains_var(e.var))
                     c = prod(f for f in num_factors if not f.contains_var(e.var))
@@ -464,15 +456,15 @@ class Linearity(Rule):
                 else:
                     return e
             elif expr.is_indefinite_integral(e):
-                if e.body.is_plus():
+                if expr.is_plus(e.body):
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) + \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
                 elif expr.is_uminus(e.body):
                     return -rec(IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args))
-                elif e.body.is_minus():
+                elif expr.is_minus(e.body):
                     return rec(expr.IndefiniteIntegral(e.var, e.body.args[0], e.skolem_args)) - \
                         rec(expr.IndefiniteIntegral(e.var, e.body.args[1], e.skolem_args))
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b = prod(f for f in num_factors if f.contains_var(e.var))
                     c = prod(f for f in num_factors if not f.contains_var(e.var))
@@ -491,7 +483,7 @@ class Linearity(Rule):
             elif expr.is_limit(e):
                 if expr.is_uminus(e.body):
                     return -Limit(e.var, e.lim, e.body.args[0])
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b, c = Const(1), Const(1)
                     for f in num_factors:
@@ -509,11 +501,11 @@ class Linearity(Rule):
                     return e
             elif expr.is_summation(e):
                 v, l, u, body = e.index_var, e.lower, e.upper, e.body
-                if e.body.is_minus():
+                if expr.is_minus(e.body):
                     return Summation(v, l, u, body.args[0]) - Summation(v, l, u, body.args[1])
                 elif expr.is_uminus(e.body):
                     return -Summation(v, l, u, body.args[0])
-                elif e.body.is_times() or e.body.is_divides():
+                elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
                     b, c = Const(1), Const(1)
                     for f in num_factors:
@@ -790,14 +782,14 @@ class IndefiniteIntegralIdentity(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
-        def apply(e: Expr):
+        def apply(e: IndefiniteIntegral):
             for indef in ctx.get_indefinite_integrals():
                 inst = expr.match(e, indef.lhs)
                 if inst is None:
                     continue
 
                 inst['x'] = Var(e.var)
-                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1])
                 return indef.rhs.args[0].inst_pat(inst)
 
             # No matching identity found
@@ -815,13 +807,15 @@ class IndefiniteIntegralIdentity(Rule):
         skolem_args = set()
         for sub_e, loc in integrals:
             if expr.is_integral(sub_e):
-                raise RuleException("apply indefinite integral", "Attempting to apply indefinite integral methods to a definite integral expression will not work")
+                raise RuleException(
+                    "apply indefinite integral",
+                    "Attempting to apply indefinite integral to a definite integral expression")
             new_e = apply(sub_e)
             if new_e != sub_e:
                 e = e.replace_expr(loc, new_e)
                 skolem_args = skolem_args.union(set(sub_e.skolem_args))
 
-        if e.is_plus() and expr.is_skolem_func(e.args[1]):
+        if expr.is_plus(e) and expr.is_skolem_func(e.args[1]):
             # If already has Skolem variable at right
             skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
             e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
@@ -888,6 +882,7 @@ class EvaluateDefiniteIntegral(Rule):
                 cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
+                    # print(f"Warning: unable to check condition {cond}")
                     satisfied = False
             if satisfied:
                 return normalize(identity.rhs.inst_pat(inst), ctx)
@@ -938,7 +933,7 @@ class IntegralIdentity(Rule):
                 raise AssertionError
 
         if exist_indefinite_integral:
-            if e.is_plus() and expr.is_skolem_func(e.args[1]):
+            if expr.is_plus(e) and expr.is_skolem_func(e.args[1]):
                 # If already has Skolem variable at right
                 skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
                 e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
@@ -1305,7 +1300,8 @@ class ApplyEquation(Rule):
                 found = True
                 found_eq = self.eq
                 conds = []
-        assert found, "ApplyEquation: lemma %s not found" % self.eq
+        if not found:
+            raise RuleException("ApplyEquation", f"lemma {self.eq} not found")
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)
@@ -1338,7 +1334,7 @@ class ApplyEquation(Rule):
                     flag = flag and ctx.check_condition(cond)
                 if flag:
                     return tmp
-        # print("solve equation %s for %s"%(self.eq, e))
+
         # Finally, try to solve for e in the equation.
         res = solve_for_term(found_eq, e, ctx)
         if res is not None:
@@ -1551,17 +1547,25 @@ class Substitution(Rule):
             if e.lower == expr.NEG_INF:
                 lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
             else:
-                x = Var(e.var)
-                lower = self.var_subst
-                lower = limits.reduce_inf_limit(lower.subst(e.var, (1 / x) + e.lower), e.var, ctx)
-                lower = normalize(lower, ctx)
+                # 计算替换后的下限
+                try:
+                    lower = normalize(var_subst.subst(e.var, e.lower), ctx)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx)
+            
             if e.upper == expr.POS_INF:
                 upper = limits.reduce_inf_limit(var_subst, e.var, ctx)
             else:
-                x = Var(e.var)
-                upper = self.var_subst
-                upper = limits.reduce_inf_limit(upper.subst(e.var, e.upper - (1 / x)), e.var, ctx)
-                upper = normalize(upper, ctx)
+                # 计算替换后的上限
+                try:
+                    upper = normalize(var_subst.subst(e.var, e.upper), ctx)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx)
+
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
                 return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx)
             else:
@@ -1594,11 +1598,19 @@ class Substitution(Rule):
 class SubstitutionInverse(Rule):
     """Apply substitution x = f(u).
 
-    var_name - str: name of the new variable u.
-    var_subst - Expr: expression containing the new variable.
+    Grammar
+    -------
+
+        "substitute" expr "for" CNAME
+    
+    Attributes
+    ----------
+    old_var: str
+        name of the original variable of integration.
+    var_subst: Expr
+        expression containing the new variable.
 
     """
-
     def __init__(self, old_var: str, var_subst: Union[Expr, str]):
         self.name = "SubstitutionInverse"
         self.old_var = old_var
@@ -1796,12 +1808,11 @@ class Rewriting(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        # If old_expr is given, try to find it within e
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                print(e)
-                raise RuleException("Rewriting", "old expression %s not found" % self.old_expr)
+                raise RuleException(
+                    "Rewriting", f"old expression {self.old_expr} not found in {e}")
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -1812,6 +1823,52 @@ class Rewriting(Rule):
         r1, r2 = r.eval(e, ctx), r.eval(self.new_expr, ctx)
         if r1 == r2:
             return self.new_expr
+
+        # Handle infinity cases with products
+        if expr.is_op(e) and e.op == '*':
+            # If new_expr is a limit
+            if expr.is_limit(self.new_expr):
+                lim = self.new_expr
+                # Check if all factors in the product are exponential functions
+                all_exp = all(expr.is_fun(arg) and arg.func_name == 'exp' for arg in e.args)
+                if all_exp:
+                    # Check if the exponents contain infinity
+                    has_inf = any(expr.is_inf(arg.args[0]) or (expr.is_op(arg.args[0]) and 
+                                any(expr.is_inf(term) for term in arg.args[0].args))
+                                for arg in e.args)
+                    if has_inf:
+                        # Replace infinity with limit variable in each factor
+                        new_args = []
+                        for arg in e.args:
+                            if expr.is_fun(arg) and arg.func_name == 'exp':
+                                new_body = arg.args[0]
+                                if expr.is_inf(new_body):
+                                    new_body = Var(lim.var)
+                                elif expr.is_op(new_body):
+                                    for i, term in enumerate(new_body.args):
+                                        if expr.is_inf(term):
+                                            new_body = new_body.replace(term, Var(lim.var))
+                                new_args.append(Fun('exp', new_body))
+                        expected = Limit(lim.var, expr.POS_INF, functools.reduce(lambda x, y: Op('*', x, y), new_args))
+                        if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                            return self.new_expr
+
+        # Handle single exponential function
+        if expr.is_fun(e) and e.func_name == 'exp':
+            if len(e.args) == 1 and expr.is_op(e.args[0]) and e.args[0].op == '*':
+                if any(expr.is_inf(arg) for arg in e.args[0].args):
+                    # Check if new_expr is a limit expression
+                    if expr.is_limit(self.new_expr):
+                        lim = self.new_expr
+                        if expr.is_fun(lim.body) and lim.body.func_name == 'exp':
+                            # Replace infinity with limit variable
+                            new_body = e.args[0]
+                            for i, arg in enumerate(new_body.args):
+                                if expr.is_inf(arg):
+                                    new_body = new_body.replace(arg, Var(lim.var))
+                            expected = Limit(lim.var, expr.POS_INF, Fun('exp', new_body))
+                            if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                                return self.new_expr
 
         # Rewriting 1 to sin(x)^2 + cos(x)^2
         x = Symbol("x", [VAR, CONST, OP, FUN])
@@ -3042,7 +3099,7 @@ class SolveEquation(Rule):
 
         res = solve_for_term(e, self.solve_for, ctx)
         if not res:
-            raise AssertionError("SolveEquation: cannot solve")
+            raise RuleException("SolveEquation", f"cannot solve for {self.solve_for} in {e}")
         return Op("=", self.solve_for, normalize(res, ctx))
 
     def __str__(self):

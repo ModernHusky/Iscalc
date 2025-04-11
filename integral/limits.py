@@ -356,6 +356,11 @@ def limit_mult(a: Limit, b: Limit, ctx: Context) -> Limit:
 
     if a.e is None and a.is_bounded is None or b.e is None and b.is_bounded is None:
         return Limit(None)
+    # Handle exponential decay * bounded function
+    if a.e == Const(0) and a.side == FROM_ABOVE and b.is_bounded:
+        return Limit(Const(0), asymp=a.asymp, side=FROM_ABOVE)
+    elif b.e == Const(0) and b.side == FROM_ABOVE and a.is_bounded:
+        return Limit(Const(0), asymp=b.asymp, side=FROM_ABOVE)
     elif a.e == POS_INF and b.e == POS_INF:
         return Limit(POS_INF, asymp=asymp_mult(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF and b.e == NEG_INF:
@@ -399,6 +404,11 @@ def limit_mult(a: Limit, b: Limit, ctx: Context) -> Limit:
     elif b.e == Const(0) and a.is_bounded:
         return Limit(0)
     else:
+        if a.e.is_constant() and b.e is None and b.is_bounded is True:
+            return Limit(None)
+        elif b.e.is_constant() and a.e is None and a.is_bounded is True:
+            return Limit(None)
+        
         res_e = normalize(a.e * b.e, ctx)
         if a.side == TWO_SIDED or b.side == TWO_SIDED:
             return Limit(res_e, asymp=asymp_mult(a.asymp, b.asymp, ctx), side=TWO_SIDED)
@@ -555,7 +565,7 @@ def limit_power(a: Limit, b: Limit, ctx: Context) -> Limit:
 
 def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
     """Compute the limit of an expression as variable goes to infinity."""
-    if expr.is_const(e) or expr.is_fun(e) and len(e.args) == 0:
+    if expr.is_const(e) or (expr.is_fun(e) and (len(e.args) == 0 or e.func_name == 'i')):
         return Limit(e, side=AT_CONST)
     elif expr.is_inf(e):
         return Limit(e)
@@ -635,15 +645,17 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
         l = limit_of_expr(e.args[0], var_name, ctx)
         if l.e == None or l.e in [POS_INF, NEG_INF]:
             res = Limit(None)
-            res.is_bounded = True
+            res.is_bounded = True  # sin is always bounded between -1 and 1
+            return res
         else:
-            res = Limit(expr.Fun("sin", l.e), asymp=l.asymp)
-            res.is_bounded = True
-        return res
+            res = Limit(expr.Fun("sin", l.e))
+            res.is_bounded = True  # sin is always bounded between -1 and 1
+            return res
     elif expr.is_fun(e) and e.func_name == 'cos':
         l = limit_of_expr(e.args[0],var_name, ctx)
         if l.e == None:
             res = Limit(None)
+            res.is_bounded = True
         else:
             res = Limit(expr.Fun("cos", l.e), side=AT_CONST)
         res.is_bounded = True
@@ -714,6 +726,10 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 + l2, ctx)
+        elif l1 in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
+            return l1+l2    
+        elif l1 not in (POS_INF, NEG_INF) and l2 in (POS_INF, NEG_INF):
+            return l1+l2
         else:
             return expr.Limit(var_name, POS_INF, e)
     elif e.is_minus():
@@ -721,8 +737,18 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
         if l1 not in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
             return normalize(l1 - l2, ctx)
+        elif l1 in (POS_INF, NEG_INF) and l2 not in (POS_INF, NEG_INF):
+            return l1-l2    
+        elif l1 not in (POS_INF, NEG_INF) and l2 in (POS_INF, NEG_INF):
+            return l1-l2
         else:
             return expr.Limit(var_name, POS_INF, e)
+    elif expr.is_uminus(e):
+        inner = reduce_inf_limit(e.args[0], var_name, ctx)
+        if inner not in (POS_INF, NEG_INF):
+            return normalize(-inner, ctx)
+        else:
+            return -expr.Limit(var_name, POS_INF, e.args[0])
     elif e.is_times():
         if not e.args[0].contains_var(var_name):
             return normalize(e.args[0] * reduce_inf_limit(e.args[1], var_name, ctx), ctx)

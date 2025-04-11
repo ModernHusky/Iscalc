@@ -475,7 +475,7 @@ class Expr:
         find(self, Location(""))
         return results
 
-    def find_all_subexpr(self) -> List[Tuple["Expr", Location]]:
+    def find_all_subexpr(self) -> list[tuple["Expr", Location]]:
         return self.find_subexpr_pred(lambda t: True)
 
     def subst(self, var: str, e: "Expr") -> "Expr":
@@ -532,6 +532,8 @@ class Expr:
             self: Fun
             if self.func_name in ('inv', 'unit_matrix', 'zero_matrix'):
                 return False
+            elif self.func_name == 'i':
+                return True
             return all(arg.is_constant() for arg in self.args)
         else:
             return False
@@ -673,11 +675,11 @@ class Expr:
             print(self, e, repl_e)
             raise NotImplementedError
 
-    def separate_integral(self) -> List[Tuple["Expr", Location]]:
+    def separate_integral(self) -> list[tuple[Union["Integral", "IndefiniteIntegral"], Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_integral(e) or is_indefinite_integral(e))
 
-    def separate_limits(self) -> List[Tuple["Expr", Location]]:
+    def separate_limits(self) -> list[tuple["Limit", Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
 
@@ -870,8 +872,41 @@ def is_pos_inf(e: Expr) -> TypeGuard["Inf"]:
 def is_neg_inf(e: Expr) -> TypeGuard["Inf"]:
     return e.ty == INF and e.t == Decimal("-inf")
 
+def is_plus(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '+' and len(e.args) == 2
+
+def is_minus(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '-' and len(e.args) == 2
+
 def is_uminus(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '-' and len(e.args) == 1
+
+def is_times(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '*' and len(e.args) == 2
+
+def is_divides(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '/' and len(e.args) == 2
+
+def is_less(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '<'
+
+def is_greater(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '>'
+
+def is_less_eq(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '<='
+
+def is_greater_eq(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '>='
+
+def is_equals(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '='
+
+def is_not_equals(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '!='
+
+def is_compare(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op in ('<', '>', '<=', '>=', '=', '!=')
 
 def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     """Match expr with given pattern.
@@ -1190,9 +1225,10 @@ class Var(Expr):
 class Const(Expr):
     """Constants."""
 
-    def __init__(self, val: Union[int, Fraction, Decimal]):
-        assert isinstance(val, (int, Fraction, Decimal))
-        if isinstance(val, Decimal): val = Fraction(val)
+    def __init__(self, val: Union[bool, int, Fraction, Decimal]):
+        assert isinstance(val, (bool, int, Fraction, Decimal))
+        if isinstance(val, Decimal):
+            val = Fraction(val)
         self.ty = CONST
         if isinstance(val, Fraction) and val.denominator == 1:
             self.val = val.numerator
@@ -1333,14 +1369,14 @@ class Limit(Expr):
         return hash((LIMIT, self.var, self.lim, self.body, self.drt))
 
     def __str__(self):
-        if self.lim == inf() or self.lim == neg_inf():
+        if self.lim == POS_INF or self.lim == NEG_INF:
             return "LIM {%s -> %s}. %s" % (self.var, self.lim, self.body)
         else:
             return "LIM {%s -> %s %s}. %s" % (
                 self.var, self.lim, self.drt if self.drt != None else "", self.body)
 
     def __repr__(self):
-        if self.lim == inf() or self.lim == neg_inf():
+        if self.lim == POS_INF or self.lim == NEG_INF:
             return "Limit(%s, %s, %s)" % (self.var, self.lim, self.body)
         else:
             return "Limit(%s, %s%s, %s)" % (
@@ -1379,10 +1415,10 @@ class Inf(Expr):
 
 class SkolemFunc(Expr):
     """Skolem variable or function"""
-    def __init__(self, name: str, dep_vars: Iterable[Expr]):
+    def __init__(self, name: str, dep_vars: Iterable[Var]):
         self.ty = SKOLEMFUNC
         self.name = name
-        self.dependent_vars: Tuple[Expr] = tuple(dep_vars)
+        self.dependent_vars: tuple[Var] = tuple(dep_vars)
 
     def __eq__(self, other):
         return isinstance(other, SkolemFunc) and \
@@ -1401,17 +1437,14 @@ class SkolemFunc(Expr):
 NEG_INF = Inf(Decimal('-inf'))
 POS_INF = Inf(Decimal('inf'))
 ZERO = Const(0)
+TRUE = Const(True)
+FALSE = Const(False)
 
-def inf():
-    return Inf(Decimal("inf"))
 
-def neg_inf():
-    return Inf(Decimal("-inf"))
-
-def sin(e):
+def sin(e: Expr) -> Expr:
     return Fun("sin", e)
 
-def cos(e):
+def cos(e: Expr) -> Expr:
     return Fun("cos", e)
 
 def tan(e):
@@ -1469,6 +1502,7 @@ def factorial(e: Expr) -> Expr:
 pi = Fun("pi")
 E = Fun("exp", Const(1))
 G = Fun("G")
+i = Fun("i")
 
 
 def Eq(s: Expr, t: Expr) -> Expr:
@@ -1705,6 +1739,8 @@ def eval_expr(e: Expr):
             return math.sqrt(eval_expr(e.args[0]))
         elif e.func_name == 'exp':
             return math.exp(eval_expr(e.args[0]))
+        elif e.func_name == 'i':
+            return 1j  # 返回Python的复数单位
         elif e.func_name == 'abs':
             return abs(eval_expr(e.args[0]))
         elif e.func_name == 'pi':

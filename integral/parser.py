@@ -16,6 +16,7 @@ grammar = r"""
         | DECIMAL -> decimal_expr
         | "D" CNAME "." expr -> deriv_expr
         | "pi" -> pi_expr
+        | "i" -> i_expr
         | "G" -> g_expr
         | "inf" -> pos_inf_expr
         | "oo" -> pos_inf_expr
@@ -67,14 +68,14 @@ grammar = r"""
     ?calculate_action: "calculate" expr -> calculate_action
         | "calculate" expr "for" conditions -> calculate_with_condition_action
 
-    ?subgoal_action: "subgoal" INT ":" expr -> subgoal_action
-        | "subgoal" INT ":" expr "for" conditions -> subgoal_with_condition_action
+    ?subgoal_action: "subgoal" (INT | CNAME) ":" expr -> subgoal_action
+        | "subgoal" (INT | CNAME) ":" expr "for" conditions -> subgoal_with_condition_action
 
     ?done_action: "done" -> done_action
 
     ?sorry_action: "sorry" -> sorry_action
 
-    ?rewrite_goal_action: "from" INT ":" -> rewrite_goal_action
+    ?rewrite_goal_action: "from" (INT | CNAME) ":" -> rewrite_goal_action
 
     ?induction_action: "induction" "on" CNAME -> induction_action
         | "induction" "on" CNAME "starting" "from" expr -> induction_starting_action
@@ -225,6 +226,9 @@ class ExprTransformer(Transformer):
 
     def pi_expr(self):
         return expr.pi
+    
+    def i_expr(self):
+        return expr.i
 
     def g_expr(self):
         return expr.G
@@ -518,7 +522,6 @@ class ExprTransformer(Transformer):
     def rule_action(self, rule):
         from integral import action
         return action.RuleAction(rule)
-
 
 transformer = ExprTransformer()
 expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)
