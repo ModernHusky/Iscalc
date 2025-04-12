@@ -24,7 +24,7 @@ class ProveAction(Action):
 
     def __str__(self):
         if self.conditions:
-            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
             return "prove %s" % self.expr
 
@@ -40,7 +40,7 @@ class DefineAction(Action):
 
     def __str__(self):
         if self.conditions:
-            return "define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+            return "define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
             return "define %s" % self.expr
 
@@ -49,7 +49,7 @@ class DefineAction(Action):
 
 
 class SubgoalAction(Action):
-    """Start a proof."""
+    """Start proof of a subgoal."""
     def __init__(self, name: str, expr: Expr, conditions: Optional[Conditions] = None):
         self.name = name
         self.expr = expr
@@ -67,7 +67,7 @@ class SubgoalAction(Action):
 
 
 class DoneAction(Action):
-    """Done with current subgoal."""
+    """Done with current goal or subgoal."""
     def __init__(self):
         pass
 

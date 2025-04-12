@@ -1,6 +1,7 @@
 """Unit test for integrals using internal language."""
 
 import unittest
+import time
 
 from integral import compstate
 from integral import action
@@ -9,10 +10,11 @@ from integral import parser
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
-                      *, print_lines=False, print_state=False):
+                      *, print_lines=False, print_state=False, write_stats=True):
         file = compstate.CompFile(base_file, current_file)
         state = action.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
+        start_time = None
         for act in actions:
             if print_lines:
                 print(act)
@@ -20,7 +22,15 @@ class ActionTest(unittest.TestCase):
                 # title or comment
                 continue
             a = parser.parse_action(act)
+            if write_stats and isinstance(state, action.InitialState):
+                start_time = time.time()
+                with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                    stats_file.write(f"{base_file}.{current_file} {a}\n")
             state = state.process_action(a)
+            if write_stats and isinstance(state, action.InitialState):
+                elapsed_time = time.time() - start_time
+                with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                    stats_file.write(f"{elapsed_time:.2f} seconds\n")
         if print_state:
             print(state)
         if not print_state and not isinstance(state, action.InitialState):

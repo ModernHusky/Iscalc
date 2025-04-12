@@ -2492,18 +2492,18 @@ class ExpandDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        # Function case
         if expr.is_fun(e) and e.func_name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
                     inst = expr.match(e, identity.lhs)
-                    if inst == None:
+                    if inst is None:
                         continue
-                    tmp_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
-                    flag = True
-                    for cond in tmp_conds:
-                        flag = flag and ctx.check_condition(cond)
-                    if flag:
+                    inst_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
+                    if all(ctx.check_condition(cond) for cond in inst_conds):
                         return normalize(identity.rhs.inst_pat(inst), ctx)
+                    
+        # Constant case
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_var(identity.lhs) and identity.lhs.name == self.func_name:

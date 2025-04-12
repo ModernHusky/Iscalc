@@ -373,6 +373,23 @@
         },
         {
             "conds": [
+                "a > -1"
+            ],
+            "expr": "(INT x:[0,1]. x^a * (log(x))^2) = 2/(a+1)^3",
+            "path": "flipside07",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > b",
+                "b >= 0"
+            ],
+            "expr": "(INT x:[0,pi]. 1/(a+b*cos(x))) = pi/(sqrt(a^2-b^2))",
+            "path": "flipside08",
+            "type": "problem"
+        },
+        {
+            "conds": [
             ],
             "expr": "(INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24",
             "path": "LogFunction02",
