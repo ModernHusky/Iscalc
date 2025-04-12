@@ -840,7 +840,7 @@ class ActionTest(unittest.TestCase):
         try:
             # Still cannot remove the condition I(t) > 0
             self.check_actions("interesting", "leibniz03", actions)
-        except AssertionError as e:
+        except compstate.CheckFinishedException as e:
             ()
 
     def testGaussianPowerExp(self):
@@ -1779,119 +1779,41 @@ class ActionTest(unittest.TestCase):
 
     def testChapter3Practice05(self):#?
         # Inside interesting integrals, Section 3.10, C3.5
-        # 输出<integral.action.CaseAnalysisState object at 0x0000021C0ABE5D50>
         actions = """
-            prove (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/2 for a > 0,b > 0
-            subgoal 1:(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = 1/2 * (INT x:[0, oo]. sin((b + a) * x) / x) + 1/2 * (INT x:[0, oo]. sin((b - a) * x) / x) for a > 0,b > 0
-            lhs:
+            prove (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/4 + pi/4 * sgn(b-a) for a > 0,b > 0
 
+            define I(a, b) = (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) for a > 0, b > 0
+
+            subgoal 1: I(a, b) = 1/2 * (INT x:[0, oo]. sin((b + a) * x) / x) + 1/2 * (INT x:[0, oo]. sin((-a + b) * x) / x)
+            lhs:
+                expand definition for I
                 rewrite cos(a * x) * sin(b * x) to 1/2 * (sin(b * x + a * x) - sin(a * x - b * x))
                 rewrite 1/2 * (sin(b * x + a * x) - sin(a * x - b * x)) / x to 1/2 * sin((b + a) * x) / x - 1/2 * sin(-((b - a) * x)) / x
-                rewrite sin(-((b - a) * x)) to -sin((b - a) * x)
-                simplify
-            rhs:
-                simplify
-            done
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y>=0
-            subgoal 2: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y>=0,a!=0
-            lhs:
-                expand definition for g(all)
-                exchange derivative and integral
-                simplify
-                apply integral identity
-            rhs:
-                simplify
-            done
-            subgoal 3:g(y, a) = -arctan(y / a) + SKOLEM_FUNC(C(a)) for y>=0,a>0
-            from 2:
-                integrate both sides
-                apply integral identity
                 simplify
             done
 
-            subgoal 4:(LIM {y -> oo}. g(y, a)) = 0 for y>=0
-            lhs:
-                expand definition for g(all)
-                simplify
-            done
-            subgoal 5:SKOLEM_FUNC(C(a)) = pi / 2 for a>0
-            from 3:
-                apply limit y -> oo both sides
-                apply 4 on LIM {y -> oo}. g(y,a)
-                simplify
-                solve equation for SKOLEM_FUNC(C(a))
-            done
-            subgoal 6:g(0,a) = pi / 2 for a>0
-            from 3:
-                apply 5 on SKOLEM_FUNC(C(a)) 
-                simplify
-            done
-            define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y=0
-            subgoal 7:(INT x:[0,oo]. sin(a*x) / x) = g(0,a) for a!=0
-            rhs:
-                expand definition for g(all)
-            done
-            subgoal 8:(INT x:[0,oo]. sin(a*x) / x) = pi/2 for a>0
-            lhs:
-                apply 7 on (INT x:[0,oo]. sin(a*x) / x)
-                apply 6 on g(0,a)
-            done
-            subgoal 811:g(0,0) = 0
-            lhs:
-                expand definition for g(all)
-                simplify
-            done
-            subgoal 81:(INT x:[0,oo]. sin(a*x) / x) = 0 for a=0
-            lhs:
-                apply 7 on (INT x:[0,oo]. sin(a*x) / x)
-                simplify
-                apply 811 on g(0,0)
-            done
-            subgoal 82:(INT x:[0,oo]. sin(a*x) / x) = -pi/2 for a<0
-            lhs:
-                simplify
-            done
-            subgoal 9:(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/2 for b-a>0,a > 0,b > 0
-            lhs:
-                apply 1 on (INT x:[0, oo]. cos(a * x) * sin(b * x) / x)
-                substitute u for (b+a)*x
-                rewrite (INT u:[0,oo]. sin(u) / u) to (INT u:[0,oo]. sin(1*u) / u)
-                apply 8 on (INT u:[0,oo]. sin(1*u) / u)
-                apply 8 on (INT x:[0,oo]. sin((b - a) * x) / x)
-                simplify
-            done
-            subgoal 10:(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/2 for b-a=0,a > 0,b > 0
-            lhs:
-                apply 1 on (INT x:[0, oo]. cos(a * x) * sin(b * x) / x)
-                substitute u for (b+a)*x
-                rewrite (INT u:[0,oo]. sin(u) / u) to (INT u:[0,oo]. sin(1*u) / u)
-                apply 8 on (INT u:[0,oo]. sin(1*u) / u)
-                apply 81 on (INT x:[0,oo]. sin((b - a) * x) / x)
-                simplify
-            done
-            subgoal 11:(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/2 for b-a<0,a > 0,b > 0
-            lhs:
-                apply 1 on (INT x:[0, oo]. cos(a * x) * sin(b * x) / x)
-                substitute u for (b+a)*x
-                rewrite (INT u:[0,oo]. sin(u) / u) to (INT u:[0,oo]. sin(1*u) / u)
-                apply 8 on (INT u:[0,oo]. sin(1*u) / u)
-                apply 82 on (INT x:[0,oo]. sin((b - a) * x) / x)
-                simplify
-            done
-            case analysis on b-a
-            case negative :
-            lhs:
-                apply 11 on (INT x:[0,oo]. cos(a * x) * sin(b * x) / x)
-            done
-            case zero :
-            lhs:
-                apply 10 on (INT x:[0,oo]. cos(a * x) * sin(b * x) / x)
-            done
-            case positive :
-            lhs:
-                apply 9 on (INT x:[0,oo]. cos(a * x) * sin(b * x) / x)
-            done
+            case analysis on -a + b
+                case positive:
+                lhs:
+                    fold definition for I
+                    apply 1 on I(a,b)
+                    apply integral identity
+                done
 
+                case zero:
+                lhs:
+                    fold definition for I
+                    apply 1 on I(a,b)
+                    apply integral identity
+                done
+
+                case negative:
+                lhs:
+                    fold definition for I
+                    apply 1 on I(a,b)
+                    apply integral identity
+                done
+            done
             """
         self.check_actions("interesting", "Chapter3Practice05", actions)
 

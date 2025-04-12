@@ -1030,12 +1030,12 @@ class RewriteGoalProof(StateItem):
         calc_lhs = normalize(self.begin.last_expr.lhs, self.ctx)
         goal_lhs = normalize(self.goal.lhs, self.ctx)
         if calc_lhs != goal_lhs:
-            raise CheckFinishedException(stack, f"rewrite goal lhs: {calc_lhs} != {goal_lhs}")
+            raise CheckFinishedException(stack, f"rewrite goal lhs not equal: {calc_lhs} != {goal_lhs}")
 
         calc_rhs = normalize(self.begin.last_expr.rhs, self.ctx)
         goal_rhs = normalize(self.goal.rhs, self.ctx)
         if calc_rhs != goal_rhs:
-            raise CheckFinishedException(stack, f"rewrite goal rhs: {calc_rhs} != {goal_rhs}")
+            raise CheckFinishedException(stack, f"rewrite goal rhs not equal: {calc_rhs} != {goal_rhs}")
 
     def export(self):
         res = {

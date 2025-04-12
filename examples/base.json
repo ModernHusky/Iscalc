@@ -1584,6 +1584,17 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "simplify"
+            ],
+            "category": "discrete",
+            "expr": "sgn(a) = 0",
+            "type": "axiom",
+            "conds": [
+                "a = 0"
+            ]
+        },
+        {
             "level": 1,
             "name": "Derived integrals",
             "type": "header"
