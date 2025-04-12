@@ -279,8 +279,8 @@ class ProveState(State):
         
         # Done with current subgoal
         elif isinstance(action, DoneAction):
+            self.goal.check_finished(stack=tuple())
             if isinstance(self.past, InitialState):
-                self.goal.check_finished(stack=tuple())
                 if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
                 elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):

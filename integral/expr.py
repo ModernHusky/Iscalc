@@ -887,6 +887,9 @@ def is_times(e: Expr) -> TypeGuard["Op"]:
 def is_divides(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '/' and len(e.args) == 2
 
+def is_power(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '^' and len(e.args) == 2
+
 def is_less(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op == '<'
 
@@ -1261,7 +1264,7 @@ class Op(Expr):
             raise NotImplementedError
         self.ty = OP
         self.op = op
-        self.args: Tuple[Expr] = tuple(args)
+        self.args: tuple[Expr, ...] = tuple(args)
 
     def __hash__(self):
         return hash((OP, self.op, tuple(self.args)))
@@ -1308,7 +1311,7 @@ class Fun(Expr):
                all(isinstance(arg, Expr) for arg in args), func_name
 
         self.ty = FUN
-        self.args: Tuple[Expr] = tuple(args)
+        self.args: tuple[Expr, ...] = tuple(args)
         self.func_name = func_name
 
     def __hash__(self):

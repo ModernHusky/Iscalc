@@ -328,6 +328,15 @@
         },
         {
             "conds": [
+                "p > 0",
+                "q > 0"
+            ],
+            "expr": "(INT t:[0,oo]. (exp(-p*t^2)-exp(-q*t^2))/t^2) = sqrt(pi)*(sqrt(q) - sqrt(p))",
+            "path": "flipside02",
+            "type": "problem"
+        },
+        {
+            "conds": [
                 "a > -1"
             ],
             "expr": "(INT x:[0, 1]. (x ^ a - 1) / log(x)) = log(a + 1)",

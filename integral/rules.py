@@ -1163,8 +1163,6 @@ class OnCount(Rule):
                 count -= 1
                 if count == 0:
                     return self.rule.eval(cur_e, ctx)
-                else:
-                    return cur_e
 
             if expr.is_var(cur_e) or expr.is_const(cur_e) or expr.is_inf(cur_e):
                 return cur_e
@@ -1194,7 +1192,7 @@ class OnCount(Rule):
 
         res = rec(e, ctx)
         if count > 0:
-            raise RuleException("OnCount",f"{self.n} is out of range")
+            raise RuleException("OnCount", f"{self.n} is out of range")
         return res
 
 class Simplify(Rule):
@@ -1487,8 +1485,10 @@ class Substitution(Rule):
         if e.var not in var_subst.get_vars():
             raise RuleException("Substitution", "variable %s not found" % e.var)
 
+        ctx2 = body_conds(e, ctx)
+
         # Compute g(x)'
-        dfx = deriv(e.var, var_subst, ctx)
+        dfx = deriv(e.var, var_subst, ctx2)
 
         # If body is a product and g(x)' is on one of the sides, then
         # the new body is the other side. Otherwise, the new body is
@@ -1509,11 +1509,11 @@ class Substitution(Rule):
         nf, df = decompose_expr_factor2(var_subst)
         prod_nf, prod_df = prod(nf), prod(df)
         var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
-        body_subst2 = normalize(body, ctx).replace(normalize(var_subst, ctx), var_name)
+        body_subst2 = normalize(body, ctx2).replace(normalize(var_subst, ctx2), var_name)
         body_subst3 = body.replace(var_subst2, var_name)
-        body_subst4 = normalize(body, ctx).replace(normalize(var_subst2,ctx), var_name)
-        body_subst5 = normalize(body.replace(var_subst, var_name), ctx)
-        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx)
+        body_subst4 = normalize(body, ctx2).replace(normalize(var_subst2,ctx2), var_name)
+        body_subst5 = normalize(body.replace(var_subst, var_name), ctx2)
+        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx2)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
@@ -1529,68 +1529,68 @@ class Substitution(Rule):
             self.f = body_subst6
         else:
             # Substitution is unable to clear x, need to solve for x
-            gu = solve_equation(var_subst, var_name, e.var, ctx)
+            gu = solve_equation(var_subst, var_name, e.var, ctx2)
             if gu is None:
                 raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
                     var_subst, var_name, e.var, body_subst
                 ))
 
-            gu = normalize(gu, ctx)
+            gu = normalize(gu, ctx2)
             c = e.body.replace(Var(e.var), gu)
             if not expr.is_limit(e):
-                new_problem_body = c * deriv(str(var_name), gu, ctx)
+                new_problem_body = c * deriv(str(var_name), gu, ctx2)
             else:
                 new_problem_body = c
             self.f = new_problem_body
 
         if expr.is_integral(e):
             if e.lower == expr.NEG_INF:
-                lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
+                lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx2)
             else:
                 # 计算替换后的下限
                 try:
-                    lower = normalize(var_subst.subst(e.var, e.lower), ctx)
+                    lower = normalize(var_subst.subst(e.var, e.lower), ctx2)
                 except ZeroDivisionError:
                     # 如果出现除零,说明替换后可能是无穷
                     x = Var(e.var)
-                    lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx)
+                    lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx2)
             
             if e.upper == expr.POS_INF:
-                upper = limits.reduce_inf_limit(var_subst, e.var, ctx)
+                upper = limits.reduce_inf_limit(var_subst, e.var, ctx2)
             else:
                 # 计算替换后的上限
                 try:
-                    upper = normalize(var_subst.subst(e.var, e.upper), ctx)
+                    upper = normalize(var_subst.subst(e.var, e.upper), ctx2)
                 except ZeroDivisionError:
                     # 如果出现除零,说明替换后可能是无穷
                     x = Var(e.var)
-                    upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx)
+                    upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx2)
 
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
-                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx)
+                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx2)
             else:
-                return normalize(Integral(self.var_name, lower, upper, self.f), ctx)
+                return normalize(Integral(self.var_name, lower, upper, self.f), ctx2)
         elif expr.is_indefinite_integral(e):
-            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx)
+            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx2)
         elif expr.is_limit(e):
             # Perhaps need to be improved when drt is not None
             if e.lim == expr.NEG_INF:
-                lim = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
+                lim = limits.reduce_neg_inf_limit(var_subst, e.var, ctx2)
             elif e.lim == expr.POS_INF:
-                lim = limits.reduce_inf_limit(var_subst, e.var, ctx)
+                lim = limits.reduce_inf_limit(var_subst, e.var, ctx2)
             else:
                 x = Var(e.var)
                 left = self.var_subst
-                left = limits.reduce_inf_limit(left.subst(e.var, (1 / x) + e.lim), e.var, ctx)
-                left = normalize(left, ctx)
+                left = limits.reduce_inf_limit(left.subst(e.var, (1 / x) + e.lim), e.var, ctx2)
+                left = normalize(left, ctx2)
                 right = self.var_subst
-                right = limits.reduce_inf_limit(right.subst(e.var, e.lim - (1 / x)), e.var, ctx)
-                right = normalize(right, ctx)
+                right = limits.reduce_inf_limit(right.subst(e.var, e.lim - (1 / x)), e.var, ctx2)
+                right = normalize(right, ctx2)
                 if left.is_evaluable() and right.is_evaluable() and expr.eval_expr(left) == expr.eval_expr(right):
-                    return normalize(Limit(self.var_name, left, self.f, None), ctx)
+                    return normalize(Limit(self.var_name, left, self.f, None), ctx2)
                 else:
                     return e
-            return normalize(Limit(self.var_name, lim, self.f, None), ctx)
+            return normalize(Limit(self.var_name, lim, self.f, None), ctx2)
         else:
             raise TypeError
 

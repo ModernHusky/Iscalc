@@ -23,7 +23,7 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
     if expr.is_var(f):
         if f.name == x:
             return a
-    if f.is_plus():
+    if expr.is_plus(f):
         u, v = f.args
         if not u.contains_var(x):
             # u + v = a  ==>  v = a - u
@@ -35,7 +35,7 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         # -u = a  ==>  u = -a
         u, = f.args
         return solve_equation(u, -a, x, ctx)
-    if f.is_minus():
+    if expr.is_minus(f):
         u, v = f.args
         if not u.contains_var(x):
             # u - v = a  ==>  v = u - a
@@ -43,7 +43,7 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         if not v.contains_var(x):
             # u - v = a  ==>  u = v + a
             return solve_equation(u, v + a, x, ctx)
-    if f.is_times():
+    if expr.is_times(f):
         u, v = f.args
         if not u.contains_var(x) and ctx.is_nonzero(u):
             # u * v = a  ==>  v = a / u
@@ -51,7 +51,7 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         if not v.contains_var(x) and ctx.is_nonzero(v):
             # u * v = a  ==>  u = a / v
             return solve_equation(u, a / v, x, ctx)
-    if f.is_divides():
+    if expr.is_divides(f):
         u, v = f.args
         if not u.contains_var(x):
             # u / v = a  ==>  v = a / u
@@ -62,7 +62,7 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         if not v.contains_var(x):
             # u / v = a  ==>  u = v * a
             return solve_equation(u, v * a, x, ctx)
-    if f.is_power():
+    if expr.is_power(f):
         u, v = f.args
         if not v.contains_var(x):
             # u ^ v = a  ==>  u = a ^ (1/v)

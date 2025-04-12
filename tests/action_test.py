@@ -968,7 +968,7 @@ class ActionTest(unittest.TestCase):
         except AssertionError as e:
             ()
 
-    def testGaussianPowerExp(self):# ?
+    def testGaussianPowerExp(self):
         # Inside interesting integrals, Section 2.3
         actions = """
             prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n>=0,isInt(n)
@@ -1263,6 +1263,33 @@ class ActionTest(unittest.TestCase):
             done
             """
         self.check_actions("interesting", "dirichletIntegral", actions)
+
+    def testFlipside02(self):
+        actions = """
+            prove (INT t:[0,oo]. (exp(-p*t^2)-exp(-q*t^2))/t^2) = sqrt(pi)*(sqrt(q) - sqrt(p)) for p > 0, q > 0
+
+            subgoal 1: (INT t:[0,oo]. (exp(-p*t^2)-exp(-q*t^2))/t^2) = (INT t:[0,oo]. (INT a:[p,q]. exp(-a*t^2))) for p > 0, q > 0
+            rhs:
+                substitute x for -a*t (at 2)
+                apply integral identity
+                simplify
+                rewrite 1 / t * (-(exp(-(p * t ^ 2)) / t) + exp(-(q * t ^ 2)) / t) to -exp(-p * t ^ 2) / t^2 + exp(-q * t ^ 2) / t^2
+                rewrite to (INT t:[0,oo]. exp(-p * t ^ 2) / t ^ 2 - exp(-q * t ^ 2) / t ^ 2)
+                rewrite exp(-p * t ^ 2) / t ^ 2 - exp(-q * t ^ 2) / t ^ 2 to (exp(-p*t^2)-exp(-q*t^2))/t^2
+            done
+
+            lhs:
+                apply 1 on (INT t:[0,oo]. (exp(-p*t^2)-exp(-q*t^2))/t^2)
+                exchange integral and integral
+                substitute x for sqrt(2*a)*t (at 2)
+                apply integral identity
+                simplify
+                rewrite -(x^2/2) to -(x^2)/2
+                apply integral identity
+                rewrite to sqrt(pi)*(sqrt(q) - sqrt(p))
+            done
+            """
+        self.check_actions("interesting", "flipside02", actions)
 
     def testFlipside03(self):
         actions = """
