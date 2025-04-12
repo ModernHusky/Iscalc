@@ -280,8 +280,11 @@ class Goal(StateItem):
         return self.proof.is_finished()
 
     def check_finished(self, stack: tuple[str]):
+        goal_str = str(self.goal)
+        if self.conds:
+            goal_str += " for " + ', '.join(str(cond) for cond in self.conds.data)
         if self.proof is None:
-            raise CheckFinishedException(stack, f"goal {self.goal} has no proof")
+            raise CheckFinishedException(stack, f"goal {goal_str} has no proof")
         if not self.wellformed:
             msg = f"goal {self.goal} is not wellformed."
             for i, obligation in enumerate(self.proof_obligations, 1):
@@ -290,7 +293,7 @@ class Goal(StateItem):
             raise CheckFinishedException(stack, msg)
         for n, subgoal in self.subgoals:
             subgoal.check_finished(stack + (f"subgoal {n}: {subgoal.goal}",))
-        self.proof.check_finished(stack + (f"proof of {self.goal}",))
+        self.proof.check_finished(stack + (f"proof of {goal_str}",))
 
     def clear(self):
         self.proof = None

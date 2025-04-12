@@ -2,15 +2,9 @@
 
 import unittest
 
-from sympy.matrices.expressions.kronecker import rules
-
 from integral import parser
 from integral import context
 from integral import poly
-from integral.conditions import Conditions
-
-import os
-os.chdir('E:\\=graduatelife======\\learn-git\\iscalc')
 
 class PolyTest(unittest.TestCase):
     def testNormalizeAlpha(self):
@@ -32,10 +26,12 @@ class PolyTest(unittest.TestCase):
         # Test i * i = -1
         t1 = parser.parse_expr("i * i")
         self.assertEqual(poly.normalize(t1, ctx), parser.parse_expr("-1"))
+
     def testSimplifyAbs(self):
         t = parser.parse_expr("pi / abs(4 * cos(a))")
         ctx = context.Context()
         ctx.load_book("base")
+        ctx.add_condition("isReal(a)")
         ctx.add_condition("cos(a) < 0")
         ctx.add_condition("cos(a) != 0")
         simp_t = poly.normalize(t, ctx)

@@ -127,9 +127,9 @@ class InductionAction(Action):
 
     def __str__(self):
         if self.start == expr.Const(0):
-            return "induction on %s" % self.var_name
+            return f"induction on {self.var_name}"
         else:
-            return "induction on %s starting from %s" % (self.var_name, self.expr)
+            return f"induction on {self.var_name} starting from {self.start}"
 
     def get_start_states(self) -> list[str]:
         return ["proof"]

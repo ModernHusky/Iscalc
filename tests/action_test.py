@@ -510,7 +510,7 @@ class ActionTest(unittest.TestCase):
     def testPartialFraction03(self):
         # Inside interesting integrals, Section 2.3, example 3
         actions = """
-            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a) != 0
+            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a) != 0, isReal(a)
 
             subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
             case analysis on x != 0
