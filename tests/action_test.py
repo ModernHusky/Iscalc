@@ -1255,8 +1255,24 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
             done
-            """
+        """
         self.check_actions("interesting", "flipside06", actions)
+
+    def testFlipside07(self):
+        actions = """
+            prove (INT x:[0,1]. x^a * (log(x))^2) = 2/(a+1)^3 for a > -1
+
+            subgoal 1: (D a. (D a. (INT x:[0,1]. x^a))) = 2/(a+1)^3 for a > -1
+            lhs:
+                apply integral identity
+                simplify
+            done
+
+            from 1:
+                simplify
+            done
+        """
+        self.check_actions("interesting", "flipside07", actions)
 
     def testFrullaniIntegral01(self):
         actions = """
