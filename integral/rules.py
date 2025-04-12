@@ -2192,30 +2192,47 @@ class IntegrateByEquation(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Eliminate the lhs's integral in rhs by solving equation."""
-        lhs = normalize(self.lhs, ctx)
 
-        def get_coeff(t: Expr, lhs:Expr):
-            """Obtain the coefficient of lhs within t."""
+        def get_coeff(t: Expr, lhs: Expr) -> tuple[Expr, Expr]:
+            """Rewrite t in the form a * lhs + b."""
             if t == lhs:
-                return Const(1)
+                return Const(1), Const(0)
 
-            if t.is_plus():
-                return get_coeff(t.args[0], lhs) + get_coeff(t.args[1], lhs)
-            elif t.is_minus():
-                return get_coeff(t.args[0], lhs) - get_coeff(t.args[1], lhs)
+            if expr.is_plus(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                return a1 + a2, b1 + b2
+            elif expr.is_minus(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                return a1 - a2, b1 - b2
             elif expr.is_uminus(t):
-                return -get_coeff(t.args[0], lhs)
-            elif t.is_times():
-                return t.args[0] * get_coeff(t.args[1], lhs)
-            elif t.is_divides():
-                return get_coeff(t.args[0], lhs) / t.args[1]
+                a, b = get_coeff(t.args[0], lhs)
+                return -a, -b
+            elif expr.is_times(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                if a2 != Const(0):
+                    return t.args[0] * a2, t.args[0] * b2
+                elif a1 != Const(0):
+                    return t.args[1] * a1, t.args[1] * b1
+                else:
+                    return Const(0), t
+            elif expr.is_divides(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                return a1 / t.args[1], b1 / t.args[1]
             else:
-                return Const(0)
+                return Const(0), t
 
+        # Obtain coeff with normalize
         norm_e = normalize(e, ctx)
-        coeff = normalize(get_coeff(norm_e, lhs), ctx)
-        lhs = self.lhs
-        coeff2 = normalize(get_coeff(e, lhs), ctx)
+        norm_lhs = normalize(self.lhs, ctx)
+        coeff, rest = get_coeff(norm_e, norm_lhs)
+        coeff = normalize(coeff, ctx)
+
+        # Obtain coeff without normalize
+        coeff2, rest2 = get_coeff(e, self.lhs)
+        coeff2 = normalize(coeff2, ctx)
 
         if coeff == Const(0) and coeff2 == Const(0):
             raise RuleException("IntegrateByEquation", "lhs %s not found in integral" % self.lhs)
@@ -2225,10 +2242,10 @@ class IntegrateByEquation(Rule):
 
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
-        res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
+            rest = rest2
+        res = normalize(rest / (Const(1) - coeff), ctx)
 
         return res
-
 
 
 class ElimInfInterval(Rule):
