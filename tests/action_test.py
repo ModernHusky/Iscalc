@@ -1061,7 +1061,7 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "euler_log_sin06", actions)
 
-    def testDirichletIntegral(self):#?
+    def testDirichletIntegral(self):
         # Inside interesting integrals, Section 3.2
         actions = """
             prove (INT x:[0,oo]. sin(a*x)/x) = pi/2 * sgn(a)
@@ -1416,11 +1416,8 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "LogFunction01", actions)
 
-    def testLogFunction02(self):#?
+    def testLogFunction02(self):
         # Inside interesting integrals, Section 5.2, example #2 (5.2.4)
-        # 从subgoal 3开始原本的intsumexchange代码无法实现交换
-        # SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2)无法simplify
-
         actions = """
             prove (INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24
             subgoal 1: (-log(1-x) - log(1+x)) = -SUM(k,0,oo,(-1)^k*(-x)^(k+1) / (k+1))-SUM(k,0,oo,(-1)^k*x^(k+1)/(k+1)) for abs(x) < 1
@@ -1486,8 +1483,7 @@ class ActionTest(unittest.TestCase):
             """
         self.check_actions("interesting", "LogFunction02", actions)
 
-    def testLogFunction03(self):#? new_done
-        # 报错StateException: Use done when goal is not finished
+    def testLogFunction03(self):
         # Inside interesting integrals, Section 5.2, example #3 (5.2.2)
         actions = """
             prove (INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)
@@ -1777,7 +1773,7 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter3Practice04", actions)
 
-    def testChapter3Practice05(self):#?
+    def testChapter3Practice05(self):
         # Inside interesting integrals, Section 3.10, C3.5
         actions = """
             prove (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/4 + pi/4 * sgn(b-a) for a > 0,b > 0
@@ -2003,7 +1999,7 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter2Practice01", actions)
 
-    def testChapter2Practice02(self):#?+
+    def testChapter2Practice02(self):
         # Inside interesting integrals, C2.2
         actions = """
             prove (INT x:[0,1]. (x - 2) / (x ^ 2 - x + 1)) = -pi/sqrt(3)
