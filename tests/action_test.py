@@ -159,7 +159,7 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
             define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
-            subgoal 1: (D b. I(m,b)) = -(m + 1) * I(m + 1,b) for b > 0, m >= 0
+            subgoal 1: (D b. I(m,b)) = -(m + 1) * I(m + 1,b)
             lhs:
                 expand definition for I (all)
                 exchange derivative and integral
@@ -169,7 +169,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
 
-            subgoal 2: I(m,b) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
+            subgoal 2: I(m,b) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2))
             induction on m
                 base:
                     lhs:
@@ -465,7 +465,7 @@ class ActionTest(unittest.TestCase):
     def testTrick2e(self):
         actions = """
             prove (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) = pi / (8 * a) * log(2 * a ^ 2) for a > 0
-            subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) for a > 0
+            subgoal 1: (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a)
             lhs:
                 substitute t / a for x
                 simplify
@@ -479,7 +479,7 @@ class ActionTest(unittest.TestCase):
                 simplify
                 expand polynomial
             done
-            subgoal 2: a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) = pi * log(2) / 8 for a > 0
+            subgoal 2: a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) = pi * log(2) / 8
             lhs:
                 apply 1 on a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a)
                 apply integral identity
@@ -857,8 +857,8 @@ class ActionTest(unittest.TestCase):
         # Inside interesting integrals, Section 2.3
         actions = """
             prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n>=0,isInt(n)
-            define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2)) for n>=0, isInt(n)
-            subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1, isInt(n)
+            define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2))
+            subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1
             lhs:
                 simplify
             done
@@ -867,11 +867,11 @@ class ActionTest(unittest.TestCase):
                 simplify
                 rewrite x ^ (2 * n - 2) * exp(-(x ^ 2)) * (2 * n - 1) to (2*n-1)*x^(2*n-2)*exp(-x^2) 
             done
-            subgoal 3: (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = I(n) for n>=0, isInt(n)
+            subgoal 3: (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = I(n)
             rhs:
                 expand definition for I
             done
-            subgoal 4: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n>=1, isInt(n)
+            subgoal 4: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n>=1
             lhs:
                 apply 2 on (D x. x^(2*n-1)*exp(-x^2))
                 simplify
@@ -879,14 +879,14 @@ class ActionTest(unittest.TestCase):
                 rewrite (INT x:[0,oo]. x ^ (2 * n - 2) * exp(-(x ^ 2))) to (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
                 apply 3 on (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
             done
-            subgoal 5: I(n) = I(n-1)*(2*n-1)/2 for n>=0, isInt(n)
+            subgoal 5: I(n) = I(n-1)*(2*n-1)/2
             from 4:
                 apply 1 on (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2)))
                 solve equation for I(n)
                 rewrite I(n - 1) * (2 * n - 1) / 2 to I(n - 1) * ((2*n)*(2 * n - 1)) / (2*(2*n))
                 rewrite (2 * (2 * n)) to (4 * n)
             done
-            subgoal 6: I(n) = I(0)*factorial(2*n)/(4^n*factorial(n)) for n>=0, isInt(n)
+            subgoal 6: I(n) = I(0)*factorial(2*n)/(4^n*factorial(n))
             induction on n
                 base:
                 rhs:
