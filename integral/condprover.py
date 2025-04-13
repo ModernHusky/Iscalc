@@ -1,7 +1,6 @@
 """Module for reasoning about conditions."""
 
 from copy import copy
-from typing import Dict, List
 
 from integral import expr
 from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var, Fun
@@ -185,13 +184,13 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     # add simple condition transition
     for k in all_conds:
         for x in all_conds[k]:
-            if x.is_less():
+            if expr.is_less(x):
                 if x.args[1] in all_conds:
                     for y in all_conds[x.args[1]]:
                         # x: k < b
                         # y: b < c or b <= c or b = c
                         # x and y ==> k < c
-                        if y.is_less() or y.is_less_eq() or y.is_equals():
+                        if expr.is_less(y) or expr.is_less_eq(y) or expr.is_equals(y):
                             all_conds[k].append(Op('<', k, y.args[1]))
     return all_conds
 

@@ -1506,7 +1506,9 @@ pi = Fun("pi")
 E = Fun("exp", Const(1))
 G = Fun("G")
 i = Fun("i")
-
+int_type = Fun("int")
+real_type = Fun("real")
+complex_type = Fun("complex")
 
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)

@@ -501,9 +501,9 @@ class Linearity(Rule):
                     return e
             elif expr.is_summation(e):
                 v, l, u, body = e.index_var, e.lower, e.upper, e.body
-                if expr.is_minus(e.body):
+                if expr.is_minus(body):
                     return Summation(v, l, u, body.args[0]) - Summation(v, l, u, body.args[1])
-                elif expr.is_uminus(e.body):
+                elif expr.is_uminus(body):
                     return -Summation(v, l, u, body.args[0])
                 elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)

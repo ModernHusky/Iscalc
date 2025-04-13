@@ -157,7 +157,7 @@ class ActionTest(unittest.TestCase):
         # Reference:
         # Irresistable Integrals, Section 2.3
         actions = """
-            prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for b > 0, m >= 0
+            prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for m b: real, b > 0, m >= 0
             define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
             subgoal 1: (D b. I(m,b)) = -(m + 1) * I(m + 1,b)
             lhs:
@@ -520,7 +520,7 @@ class ActionTest(unittest.TestCase):
     def testPartialFraction03(self):
         # Inside interesting integrals, Section 2.3, example 3
         actions = """
-            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for cos(a) != 0, isReal(a)
+            prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for a: real, cos(a) != 0
 
             subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
             case analysis on x != 0
@@ -856,7 +856,7 @@ class ActionTest(unittest.TestCase):
     def testGaussianPowerExp(self):
         # Inside interesting integrals, Section 2.3
         actions = """
-            prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n>=0,isInt(n)
+            prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n: int, n >= 0
             define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2))
             subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1
             lhs:

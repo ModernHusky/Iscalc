@@ -18,6 +18,9 @@ grammar = r"""
         | "pi" -> pi_expr
         | "i" -> i_expr
         | "G" -> g_expr
+        | "int" -> int_type
+        | "real" -> real_type
+        | "complex" -> complex_type
         | "inf" -> pos_inf_expr
         | "oo" -> pos_inf_expr
         | "-inf" -> neg_inf_expr
@@ -57,7 +60,10 @@ grammar = r"""
 
     ?expr: compare
 
-    ?conditions: expr ("," expr)* -> conditions
+    ?condition: expr -> expr_condition
+        | (expr)+ ":" expr -> member_condition
+
+    ?conditions: condition ("," condition)* -> conditions
 
     ?prove_action: "prove" expr -> prove_action
         | "prove" expr "for" conditions -> prove_with_condition_action
@@ -233,16 +239,26 @@ class ExprTransformer(Transformer):
     def g_expr(self):
         return expr.G
 
+    def int_type(self):
+        return expr.int_type
+    
+    def real_type(self):
+        return expr.real_type
+    
+    def complex_type(self):
+        return expr.complex_type
+
     def pos_inf_expr(self):
         return expr.Inf(Decimal("inf"))
 
     def neg_inf_expr(self):
         return expr.Inf(Decimal("-inf"))
 
-    def fun_expr(self, func_name, *args):
+    def fun_expr(self, func_name, *args: Expr):
         if func_name == 'SKOLEM_CONST':
             return expr.SkolemFunc(str(args[0]), tuple())
         elif func_name == 'SKOLEM_FUNC':
+            assert isinstance(args[0], expr.Fun)
             return expr.SkolemFunc(str(args[0].func_name), tuple(arg for arg in args[0].args))
         elif func_name == 'SUM':
             e = expr.Summation(str(args[0]), *args[1:])
@@ -252,8 +268,8 @@ class ExprTransformer(Transformer):
             return e
         return expr.Fun(str(func_name), *args)
 
-    def abs_expr(self, expr):
-        return expr.Fun("abs", expr)
+    def abs_expr(self, arg: Expr):
+        return expr.Fun("abs", arg)
 
     def deriv_expr(self, var, body):
         return expr.Deriv(str(var), body)
@@ -282,8 +298,30 @@ class ExprTransformer(Transformer):
     def limit_r_expr(self, var, lim, body):
         return expr.Limit(str(var), lim, body, "+")
     
-    def conditions(self, *exprs: Expr) -> Tuple[Expr]:
-        return tuple(exprs)
+    def expr_condition(self, cond: Expr) -> tuple[Expr]:
+        return (cond,)
+    
+    def member_condition(self, *args: Expr) -> tuple[Expr]:
+        # last argument is the set
+        assert len(args) >= 2
+        mem_exprs, set_expr = args[:-1], args[-1]
+        res: list[Expr] = []
+        for mem_expr in mem_exprs:
+            if set_expr == expr.int_type:
+                res.append(expr.Fun("isInt", mem_expr))
+            elif set_expr == expr.real_type:
+                res.append(expr.Fun("isReal", mem_expr))
+            elif set_expr == expr.complex_type:
+                res.append(expr.Fun("isComplex", mem_expr))
+            else:
+                raise NotImplementedError(f"set_expr = {set_expr}")
+        return tuple(res)
+
+    def conditions(self, *exprs: tuple[Expr]) -> tuple[Expr]:
+        res = list()
+        for expr_list in exprs:
+            res.extend(expr_list)
+        return tuple(res)
 
     def prove_action(self, expr: Expr):
         from integral import action
