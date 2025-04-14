@@ -151,28 +151,19 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
         if expr.is_fun(cond) and cond.func_name in ('isInt', 'isEven', 'isComplex', 'isReal'):
             vars_with_type.add(cond.args[0])
             
-        # 处理绝对值条件
+        # Handle absolute value conditions
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less():
+            # abs(x) < c  -->  -c < x < c
             if x.args[0] not in all_conds:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<", x.args[0], cond.args[1]))
             all_conds[x.args[0]].append(Op(">", x.args[0], -cond.args[1]))
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less_eq():
+            # abs(x) <= c  -->  -c <= x <= c
             if x.args[0] not in all_conds:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))
-        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_greater():
-            if x.args[0] not in all_conds:
-                all_conds[x.args[0]] = list()
-            all_conds[x.args[0]].append(Op(">", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op("<", x.args[0], -cond.args[1]))
-        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_greater_eq():
-            if x.args[0] not in all_conds:
-                all_conds[x.args[0]] = list()
-            all_conds[x.args[0]].append(Op(">=", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op("<=", x.args[0], -cond.args[1]))
-        
+            all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))        
 
     # 为未声明类型的变量添加isReal条件
     for var in all_vars:
@@ -751,18 +742,18 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         return True
 
     # INT Real Condition
-    def contains_i(e):
+    def contains_i(e: Expr):
         if expr.is_fun(e) and e.func_name == 'i':
             return True
         if e.ty in (expr.VAR, expr.CONST, expr.SYMBOL, expr.INF):
             return False
         if e.ty in (expr.OP, expr.FUN):
             return any(contains_i(arg) for arg in e.args)
-        if e.ty == expr.INTEGRAL:
+        if expr.is_integral(e):
             return contains_i(e.body) or contains_i(e.lower) or contains_i(e.upper)
         return False
 
-    def add_integral_real_cond(e, all_conds):
+    def add_integral_real_cond(e: Expr, all_conds: dict[Expr, list[Expr]]):
         if expr.is_integral(e):
             if not contains_i(e.body) and not contains_i(e.lower) and not contains_i(e.upper):
                 if e not in all_conds:
@@ -774,10 +765,10 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     all_conds = init_all_conds(conds)
     
     # Check all subexpressions of e
-    def check_subexpr(e):
+    def check_subexpr(e: Expr):
         if expr.is_integral(e):
             add_integral_real_cond(e, all_conds)
-        if e.ty in (expr.OP, expr.FUN):
+        if expr.is_op(e) or expr.is_fun(e):
             for arg in e.args:
                 check_subexpr(arg)
         if expr.is_integral(e):
