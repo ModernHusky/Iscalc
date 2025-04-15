@@ -1284,6 +1284,21 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "flipside07", actions)
 
+    def testFlipside08(self):
+        actions = """
+            prove (INT x:[0,pi]. 1/(a+b*cos(x))) = pi/(sqrt(a^2-b^2)) for a > b, b >= 0
+            define I(a, b) = (INT x:[0,pi]. log(a+b*cos(x)))
+            subgoal 1: (D a. I(a, b)) = (INT x:[0,pi]. 1/(a+b*cos(x)))
+            lhs:
+                expand definition for I (all)
+                simplify
+            done
+        """
+        try:
+            self.check_actions("interesting", "flipside08", actions)
+        except compstate.CheckFinishedException as e:
+            ()
+
     def testFrullaniIntegral01(self):
         actions = """
             prove (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a b: real, a > 0, b > 0

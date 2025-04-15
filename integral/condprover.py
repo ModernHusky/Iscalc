@@ -375,7 +375,10 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
     return
 
 def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], ctx: Context):
-    """Perform one round of saturation"""
+    """Perform one round of saturation. New facts are added
+    onto `all_conds`.
+    
+    """
     all_subs = e.find_all_subexpr()
     for sube, _ in all_subs:
         for ineq in ineqs:
@@ -390,7 +393,8 @@ def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
 
 def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
              ctx: Context, *, round_limit: int = 5, size_limit: int = 1000):
-    """Saturate up to given number of rounds and size limits.
+    """Saturate up to given number of rounds and size limits. New facts
+    are added onto `all_conds`.
     
     If number of rounds and size limits have been reached without
     saturation, warning is printed to alert possible problems.
