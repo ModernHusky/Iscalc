@@ -443,7 +443,6 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < b", "c <= d"], "a + c < b + d"),
         (["a >= b", "c >= d"], "a + c >= b + d"),
         (["a <= b", "c <= d"], "a + c <= b + d"),
-        ([], "a + b = b + a"),
 
         # Unary minus
         (["x > a"], "-x < -a"),
@@ -625,9 +624,6 @@ def get_standard_inequalities() -> list[Identity]:
 
         # Factorial
         ([], "factorial(x) >= 1"),
-
-        # reflexivity
-        ([], "x = x"),
 
         # isInt
         (["isInt(a)", "isInt(b)"], "isInt(a + b)"),
