@@ -36,79 +36,64 @@ tol = 1e-15
 # Comparison of floating-point numbers up to rounding error
 def approx_equal(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
         return abs(a_val - b_val) < tol
     except:
         return False
 
 def approx_not_equal(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
         return abs(a_val - b_val) > tol
     except:
         return True
 
 def approx_greater(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
-        # 对于复数，我们只比较实部，如果实部相等则比较虚部
-        if abs(a_val.real - b_val.real) > tol:
-            return a_val.real - b_val.real > tol
-        return a_val.imag - b_val.imag > tol
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return a_val - b_val > tol
     except:
         return False
 
 def approx_greater_eq(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
-        # 对于复数，我们只比较实部，如果实部相等则比较虚部
-        if abs(a_val.real - b_val.real) > tol:
-            return a_val.real - b_val.real > -tol
-        return a_val.imag - b_val.imag > -tol
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return a_val - b_val > -tol
     except:
         return False
 
 def approx_less(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
-        # 对于复数，我们只比较实部，如果实部相等则比较虚部
-        if abs(b_val.real - a_val.real) > tol:
-            return b_val.real - a_val.real > tol
-        return b_val.imag - a_val.imag > tol
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return b_val - a_val > tol
     except:
         return False
 
 def approx_less_eq(a: Expr, b: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        b_val = complex(eval_expr(b))
-        # 对于复数，我们只比较实部，如果实部相等则比较虚部
-        if abs(b_val.real - a_val.real) > tol:
-            return b_val.real - a_val.real > -tol
-        return b_val.imag - a_val.imag > -tol
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return b_val - a_val > -tol
     except:
         return False
 
 def approx_integer(a: Expr) -> bool:
     try:
-        a_val = complex(eval_expr(a))
-        # 对于复数，检查实部和虚部是否都是整数
-        return abs(round(a_val.real) - a_val.real) < tol and \
-               abs(round(a_val.imag) - a_val.imag) < tol
+        a_val = float(eval_expr(a))
+        return abs(round(a_val) - a_val) < tol
     except:
         return False
 
 def approx_even(a: Expr) -> bool:
     try:
         if approx_integer(a):
-            a_val = complex(eval_expr(a))
-            # 对于复数，检查实部是否为偶数且虚部为0
-            return round(a_val.real) % 2 == 0 and abs(a_val.imag) < tol
+            a_val = float(eval_expr(a))
+            return round(a_val) % 2 == 0
         return False
     except:
         return False
@@ -134,22 +119,18 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     """
     all_conds: dict[Expr, list[Expr]] = dict()
     
-    # 收集所有变量
+    # collect all variables
     all_vars = set()
-    vars_with_type = set()
     
-    # 首先处理现有条件
+    # Rewrite all absolute value conditions
     for cond in conds.data:
         x = subject_of(cond)
         if x not in all_conds:
             all_conds[x] = list()
         all_conds[x].append(cond)
         
-        # 收集所有变量和已声明类型的变量
         if expr.is_var(x):
             all_vars.add(x)
-        if expr.is_fun(cond) and cond.func_name in ('isInt', 'isEven', 'isComplex', 'isReal'):
-            vars_with_type.add(cond.args[0])
             
         # Handle absolute value conditions
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less():
@@ -164,13 +145,6 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
             all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))        
-
-    # 为未声明类型的变量添加isReal条件
-    for var in all_vars:
-        if var not in vars_with_type:
-            if var not in all_conds:
-                all_conds[var] = list()
-            all_conds[var].append(Fun('isReal', var))
 
     # add simple condition transition
     for k in all_conds:
@@ -656,11 +630,6 @@ def get_standard_inequalities() -> list[Identity]:
         (["a > b", "b > c"], "a > c"),
 
         # Complex number rules
-        (["isReal(a)", "b = i"], "isComplex(a + b)"),
-        (["isReal(a)", "b = i"], "isComplex(a - b)"),
-        (["isReal(a)", "b = i"], "isComplex(a * b)"),
-        (["isReal(a)", "b = i"], "isComplex(a / b)"),
-
         (["isReal(a)"], "isReal(cos(a))"),
         (["isReal(a)"], "isReal(sin(a))"),
         (["isReal(a)"], "isReal(tan(a))"),
@@ -681,10 +650,10 @@ def get_standard_inequalities() -> list[Identity]:
         (["isReal(a)"], "isReal(abs(a))"),
         (["isReal(a)"], "isReal(sqrt(a))"),
 
-        (["isComplex(a)", "isComplex(b)"], "isComplex(a + b)"),
-        (["isComplex(a)", "isComplex(b)"], "isComplex(a - b)"),
-        (["isComplex(a)", "isComplex(b)"], "isComplex(a * b)"),
-        (["isComplex(a)", "isComplex(b)","b != 0"], "isComplex(a / b)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a + i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a - i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a * i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a / i)"),
         (["isComplex(a)"], "isComplex(-a)"),
 
         (["isEven(a)"], "isInt(a)"),
