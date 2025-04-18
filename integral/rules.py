@@ -2173,7 +2173,7 @@ class IntegrateByEquation(Rule):
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
         res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
-
+        res = ExpandPolynomial().eval(res, ctx)
         return res
 
 
