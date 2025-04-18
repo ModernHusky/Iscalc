@@ -250,10 +250,33 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             for arg in e.args:
                 rec(arg, ctx)
             if e.is_divides():
-                if ctx.check_condition(Op("!=", e.args[1], Const(0))):
-                    pass
+                # if the denominator has i, and var is real, then the expression is not 0
+                if Expr.contains_i(e.args[1]):
+                    # collect the variables in the expression
+                    vars_in_expr = e.args[1].get_vars()
+                    if vars_in_expr:
+                        # iterate over all variables
+                        for var_name in vars_in_expr:
+                            var = Var(var_name)
+                            is_real = any(expr.is_fun(cond) and cond.func_name == "isReal" and 
+                                        expr.is_var(cond.args[0]) and cond.args[0].name == var_name
+                                        for cond in ctx.get_conds().data)
+                            not_zero = any(expr.is_op(cond) and cond.op == "!=" and 
+                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name and 
+                                         expr.is_const(cond.args[1]) and cond.args[1] == Const(0)
+                                         for cond in ctx.get_conds().data)
+                            
+                            if is_real and not_zero:
+                                pass
+                            else:
+                                add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                    else:
+                        add_obligation(Op("!=", e.args[1], Const(0)), ctx)
                 else:
-                    add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                    if ctx.check_condition(Op("!=", e.args[1], Const(0))):
+                        pass
+                    else:
+                        add_obligation(Op("!=", e.args[1], Const(0)), ctx)
             if e.is_power():
                 if ctx.check_condition(Op(">", e.args[0], Const(0))):
                     pass
