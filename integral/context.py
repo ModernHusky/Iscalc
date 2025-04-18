@@ -547,13 +547,15 @@ def body_conds(e: Expr, ctx: Context) -> Context:
     """Return the conditions in the body."""
     ctx2 = Context(ctx)
     if expr.is_integral(e):
+        ctx2.add_condition(expr.isReal(expr.Var(e.var)))
         if e.lower != expr.NEG_INF:
             ctx2.add_condition(Op(">", expr.Var(e.var), e.lower))
         if e.upper != expr.POS_INF:
             ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
     elif expr.is_indefinite_integral(e):
-        pass
+        ctx2.add_condition(expr.isReal(expr.Var(e.var)))
     elif expr.is_limit(e):
+        ctx2.add_condition(expr.isReal(expr.Var(e.var)))
         if e.lim == expr.POS_INF:
             ctx2.add_condition(expr.Op(">", expr.Var(e.var), Const(0)))
     elif expr.is_summation(e) or expr.is_product(e):

@@ -1306,9 +1306,11 @@ class Op(Expr):
 class Fun(Expr):
     """Functions."""
 
-    def __init__(self, func_name: str, *args):
-        assert isinstance(func_name, str) and \
-               all(isinstance(arg, Expr) for arg in args), func_name
+    def __init__(self, func_name: str, *args: Expr):
+        if not isinstance(func_name, str):
+            raise AssertionError("Fun:", func_name)
+        if not all(isinstance(arg, Expr) for arg in args):
+            raise AssertionError("Fun:", args)
 
         self.ty = FUN
         self.args: tuple[Expr, ...] = tuple(args)
@@ -1496,7 +1498,6 @@ def binom(e1: Expr, e2: Expr) -> Expr:
     """Binomial coefficients"""
     return Fun("binom", e1, e2)
 
-
 def factorial(e: Expr) -> Expr:
     """Factorial of e"""
     return Fun('factorial', e)
@@ -1513,6 +1514,8 @@ complex_type = Fun("complex")
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)
 
+def isReal(t: Expr) -> Expr:
+    return Fun("isReal", t)
 
 class Deriv(Expr):
     """Derivative of an expression."""

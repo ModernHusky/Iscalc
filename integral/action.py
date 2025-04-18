@@ -374,11 +374,11 @@ class CalculateState(State):
             if isinstance(action.rule, IntegrateByEquation):
                 if not (self.calc.start == action.rule.lhs or
                         any(step.res == action.rule.lhs for step in self.calc.steps)):
-                    print("Current calculation is:")
-                    print(self.calc)
+                    # print("Current calculation is:")
+                    # print(self.calc)
                     raise RuleException(
                         "IntegrateByEquation",
-                        "lhs %s must appear as one of the steps" % action.rule.lhs)
+                        f"lhs {action.rule.lhs} must appear exactly as one of the steps")
             self.calc.perform_rule(action.rule)
             return self
         
@@ -386,9 +386,11 @@ class CalculateState(State):
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
                 if not self.is_finished():
-                    print("Current calculation is:")
-                    print(self.calc)
-                    raise StateException("Use done when calculation is not finished")
+                    # print("Current calculation is:")
+                    # print(self.calc)
+                    msg = "Use done when calculation is not finished\n"
+                    msg += f"Final expression {self.calc.steps[-1].res} is not closed"
+                    raise StateException(msg)
                 return self.past
             else:
                 return self.past.process_action(action)

@@ -437,11 +437,16 @@ class CalculationStep(StateItem):
     
     Attributes
     ----------
-    parent (Calculation): the calculation this step is contained in.
-    rule (Rule): rule to be applied in this calculation.
-    res (Expr): result of this calculation step.
-    id (int): index of this step within the calculation.
-    ctx (Context): context of the calculation step.    
+    parent: Calculation
+        the calculation this step is contained in.
+    rule: Rule
+        rule to be applied in this calculation.
+    res: Expr
+        result of this calculation step.
+    id: int
+        index of this step within the calculation.
+    ctx: Context
+        context of the calculation step.
 
     """
     def __init__(self, parent: "Calculation", rule: Rule, res: Expr, id: int):
@@ -483,21 +488,25 @@ class Calculation(StateItem):
 
     Attributes
     ----------
-    parent: parent of the calculation, either a StateItem or CompFile.
-    start (Expr): starting expression.
-    steps: list of steps in the calculation.
-    conds: (optional) a list of conditions under which the calculation
-        is carried out.
-    connection_symbol: one of '=' and '==>'
-    ctx: current context (including existing identities, conditions,
-        fixed variables, etc).
+    parent: Union[StateItem, CompFile]
+        parent of the calculation
+    ctx: Context
+        context of the calculation
+    start: Expr
+        starting expression.
+    connection_symbol: str
+        one of '=' (for equality chaining) and '==>' (for rewriting goal)
+    steps: list[CalculationStep]:
+        list of steps in the calculation.
+    conds: Conditions
+        conditions under which the calculation is carried out.
 
     """
     def __init__(self, parent, ctx: Context, start: Expr, *,
-                 connection_symbol='=', conds: Optional[Conditions] = None):
+                 connection_symbol: str = '=', conds: Optional[Conditions] = None):
         self.parent = parent
         self.start = start
-        self.steps: List[CalculationStep] = []
+        self.steps: list[CalculationStep] = []
         if conds is None:
             conds = Conditions()
         self.conds = conds

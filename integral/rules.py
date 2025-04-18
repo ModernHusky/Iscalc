@@ -1731,7 +1731,7 @@ class ExpandPolynomial(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         # Case of constant, integer power
-        if e.is_power() and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
+        if expr.is_power(e) and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
                 int(e.args[1].val) == e.args[1].val:
             n = int(e.args[1].val)
             base = to_poly(self.eval(e.args[0], ctx), ctx)
