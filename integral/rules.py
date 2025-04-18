@@ -271,7 +271,7 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                             else:
                                 add_obligation(Op("!=", e.args[1], Const(0)), ctx)
                     else:
-                        add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                        pass
                 else:
                     if ctx.check_condition(Op("!=", e.args[1], Const(0))):
                         pass
