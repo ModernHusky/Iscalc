@@ -280,28 +280,28 @@
             "attributes": [
                 "simplify"
             ],
-            "expr": "abs(i - a) = sqrt(a^2 + 1)",
+            "expr": "abs(-a + i) = sqrt(a^2 + 1)",
             "type": "axiom"
         },
         {
             "attributes": [
                 "simplify"
             ],
-            "expr": "abs(i + a) = sqrt(a^2 + 1)",
+            "expr": "abs(a + i) = sqrt(a^2 + 1)",
             "type": "axiom"
         },
         {
             "attributes": [
                 "simplify"
             ],
-            "expr": "abs(-i - a) = sqrt(a^2 + 1)",
+            "expr": "abs(-a - i) = sqrt(a^2 + 1)",
             "type": "axiom"
         },
         {
             "attributes": [
                 "simplify"
             ],
-            "expr": "abs(-i + a) = sqrt(a^2 + 1)",
+            "expr": "abs(a - i) = sqrt(a^2 + 1)",
             "type": "axiom"
         },
         {
