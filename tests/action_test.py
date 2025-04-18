@@ -1299,6 +1299,15 @@ class ActionTest(unittest.TestCase):
         except compstate.CheckFinishedException as e:
             ()
 
+    def testFrullaniIntegral02(self):
+        actions = """
+            prove (LIM{x->oo}. exp(-a*x)) = 0 for a > 0
+            lhs:
+                simplify
+            done
+        """
+        self.check_actions("interesting", "FrullaniIntegral02", actions)
+        
     def testFrullaniIntegral01(self):
         actions = """
             prove (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a b: real, a > 0, b > 0
@@ -1872,9 +1881,9 @@ class ActionTest(unittest.TestCase):
 
     def testChapter3Practice07a(self):
         actions = """
-            prove (INT x:[-oo,oo]. x * exp(-(x ^ 2) - x)) = -1/2 * sqrt(pi * sqrt(exp(1)))
+            prove (INT x:[-oo,oo]. x * exp(-(x ^ 2) - x)) = -1/2 * sqrt(pi * sqrt(exp(1))) for x:real
             define I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a b: real, a > 0
-            subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a b: real, a > 0
             lhs:
                 expand definition for I
                 rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
@@ -1884,12 +1893,18 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
             done
-            subgoal 2: (D b. I(a,b)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            subgoal 2: (D b. I(a,b)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a b: real, a > 0
             lhs:
                 apply 1 on I(a,b)
                 simplify
+                rewrite a ^ (3/2) to a*sqrt(a)
+                rewrite (2 * (a * sqrt(a))) to (2 * a * sqrt(a))
+                rewrite b * sqrt(pi) / (2 * a * sqrt(a)) to b * 1/sqrt(a) * sqrt(pi) / (2 * a)
+                rewrite b * 1 / sqrt(a) * sqrt(pi) to 1 / sqrt(a) * sqrt(pi) * b
+                rewrite 1 / sqrt(a) * sqrt(pi) to sqrt(pi/a)
+                rewrite sqrt(pi / a) * b / (2 * a) * exp(b ^ 2 / (4 * a)) to b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
             done
-            subgoal 3: (INT x:[-oo,oo]. x * exp(-(a * x ^ 2) + b * x)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
+            subgoal 3: (INT x:[-oo,oo]. x * exp(-(a * x ^ 2) + b * x)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a b: real, a > 0
             from 2:
                 expand definition for I (all)
                 simplify

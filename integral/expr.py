@@ -517,6 +517,25 @@ class Expr:
         else:
             print('subst on', self)
             raise NotImplementedError
+        
+        
+    def contains_i(self) -> bool:
+        """check if the expression contains i"""
+        if is_fun(self) and self.func_name == "i":
+            return True
+        elif is_op(self):
+            return any(arg.contains_i() for arg in self.args)
+        elif is_fun(self):
+            return any(arg.contains_i() for arg in self.args)
+        elif is_integral(self):
+            return self.body.contains_i()
+        elif is_deriv(self):
+            return self.body.contains_i()
+        elif is_summation(self):
+            return self.body.contains_i() or self.lower.contains_i() or self.upper.contains_i()
+        else:
+            return False
+
 
     def is_constant(self):
         """Determine whether expr is a number.

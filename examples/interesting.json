@@ -411,6 +411,14 @@
             "type": "problem"
         },
         {
+            "conds": [
+                "a > 0"
+            ],
+            "expr": "(LIM{x->oo}. exp(-a*x)) = 0",
+            "path": "FrullaniIntegral02",
+            "type": "problem"
+        },
+        {
             "level": 2,
             "name": "3.10 Challenge Problems",
             "type": "header"
