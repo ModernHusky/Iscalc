@@ -204,7 +204,7 @@ class ActionTest(unittest.TestCase):
     def testGammaFunction(self):
         actions = """
             define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n: real, n > 0
-            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n > 1
+            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n: real, n > 1
             lhs:
                 expand definition for Gamma
                 integrate by parts with u = x ^ (n - 1), v = -exp(-x)
@@ -213,7 +213,7 @@ class ActionTest(unittest.TestCase):
                 expand definition for Gamma (all)
             done
 
-            prove Gamma(n) = factorial(n - 1) for n >= 1
+            prove Gamma(n) = factorial(n - 1) for n: real, n >= 1
             induction on n starting from 1
                 base:
                 lhs:
