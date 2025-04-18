@@ -1514,8 +1514,14 @@ complex_type = Fun("complex")
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)
 
+def isInt(t: Expr) -> Expr:
+    return Fun("isInt", t)
+
 def isReal(t: Expr) -> Expr:
     return Fun("isReal", t)
+
+def isEven(t: Expr) -> Expr:
+    return Fun("isEven", t)
 
 class Deriv(Expr):
     """Derivative of an expression."""

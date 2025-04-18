@@ -213,7 +213,7 @@ class ActionTest(unittest.TestCase):
                 expand definition for Gamma (all)
             done
 
-            prove Gamma(n) = factorial(n - 1) for n: real, n >= 1
+            prove Gamma(n) = factorial(n - 1) for n: int, n >= 1
             induction on n starting from 1
                 base:
                 lhs:

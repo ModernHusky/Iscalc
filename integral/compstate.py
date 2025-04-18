@@ -763,11 +763,19 @@ class InductionProof(StateItem):
             self.start = start
         else:
             raise NotImplementedError
+
+        if not ctx.check_condition(expr.Fun("isInt", expr.Var(self.induct_var))):
+            raise StateException(f"InductionProof: induction variable {self.induct_var} is not integer")
+
+        if not ctx.check_condition(expr.Op(">=", expr.Var(self.induct_var), self.start)):
+            raise StateException(f"InductionProof: condition {self.induct_var} >= {self.start} does not hold")
+
         # Base case: n = start
         base_goal_ctx = Context(self.ctx)
         eq0 = normalize(goal.subst(induct_var, self.start), base_goal_ctx)
         self.base_case = Goal(self, base_goal_ctx, eq0)
 
+        # Induction case
         n1 = Var(induct_var) + Const(1)
         induct_goal_ctx = Context(self.ctx)
         eqI = normalize(goal.subst(induct_var, n1), induct_goal_ctx)

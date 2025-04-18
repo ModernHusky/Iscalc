@@ -9,8 +9,8 @@ import operator
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
-    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify
+    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, \
+    SkolemFunc, decompose_expr_factor2, is_const, exprify
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -297,15 +297,24 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
             if e.func_name == 'tan':
                 tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(Fun("isInt", tmp))
-                f2 = ctx.check_condition(Fun("isEven", tmp))
+                f1 = ctx.check_condition(expr.isInt(tmp))
+                f2 = ctx.check_condition(expr.isEven(tmp))
 
                 if not f1 or f2:
                     pass
                 else:
-                    branch1 = ProofObligationBranch([Fun("isInt", tmp)], [False])
-                    branch2 = ProofObligationBranch([Fun("isEven", tmp)])
+                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
+                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
                     add_obligation([branch1, branch2], ctx)
+            if e.func_name == 'factorial':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+            if e.func_name == 'binom':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+                if not ctx.check_condition(expr.isInt(e.args[1])):
+                    add_obligation(expr.isInt(e.args[1]), ctx)
+
             # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
@@ -3153,10 +3162,6 @@ class FunEquation(Rule):
             return e
         ne = Op('=', Fun(self.func_name, e.lhs), Fun(self.func_name, e.rhs))
         return ne
-        # if len(check_wellformed(ne, ctx)) == 0:
-        #     return ne
-        # return e
-
 
 
 class LimRewrite(Rule):
