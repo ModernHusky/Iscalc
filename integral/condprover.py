@@ -299,6 +299,9 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
                 # x <= b --> b < a --> x < a
                 if expr.is_less_eq(fact) and approx_less(fact.args[1], cond.args[1]):
                     return [inst]
+                # x < b --> b <= a --> x < a
+                if expr.is_less(fact) and approx_less_eq(fact.args[1], cond.args[1]):
+                    return [inst]
             if expr.is_equals(cond):
                 if expr.is_equals(fact) and approx_equal(fact.args[1], cond.args[1]):
                     return [inst]

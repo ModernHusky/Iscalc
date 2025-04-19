@@ -7,6 +7,9 @@ from integral import compstate
 from integral import action
 from integral import parser
 
+import os
+os.chdir("E:\=graduatelife======\learn-git\iscalc")
+
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
@@ -204,7 +207,7 @@ class ActionTest(unittest.TestCase):
     def testGammaFunction(self):
         actions = """
             define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n: real, n > 0
-            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n > 1
+            prove Gamma(n) = (n - 1) * Gamma(n - 1) for n: real, n > 1
             lhs:
                 expand definition for Gamma
                 integrate by parts with u = x ^ (n - 1), v = -exp(-x)
@@ -213,7 +216,7 @@ class ActionTest(unittest.TestCase):
                 expand definition for Gamma (all)
             done
 
-            prove Gamma(n) = factorial(n - 1) for n >= 1
+            prove Gamma(n) = factorial(n - 1) for n: int, n >= 1
             induction on n starting from 1
                 base:
                 lhs:
@@ -499,7 +502,7 @@ class ActionTest(unittest.TestCase):
         # Reference
         # Inside interesting integrals, Section 2.3, example 2
         actions = """
-            prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
+            prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a)) for a: real
             lhs:
                 expand definition for cosh (all)
                 rewrite x ^ 4 + 2 * x ^ 2 * ((exp(-(2 * a)) + exp(2 * a)) / 2) + 1 to (x ^ 2 + exp(2 * a)) * (x ^ 2 + exp(-(2 * a)))
@@ -1604,12 +1607,12 @@ class ActionTest(unittest.TestCase):
     def testAhmedIntegral(self):
         actions = """
             prove (INT x:[0,1]. arctan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
-            define I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u > 0
+            define I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u:real, u > 0
             subgoal 1: I(1) = (INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
             lhs:
                 expand definition for I
             done
-            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * arctan(u / sqrt(1 + 2 * u ^ 2))) for u > 0
+            subgoal 2: (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * arctan(u / sqrt(1 + 2 * u ^ 2))) for u:real, u > 0
             lhs:
                 expand definition for I (all)
                 exchange derivative and integral
