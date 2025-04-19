@@ -2101,7 +2101,8 @@ class Equation(Rule):
 class IntegrationByParts(Rule):
     """Apply integration by parts.
 
-    The arguments u and v should satisfy u * dv equals the integrand.
+    The arguments `u` and `v` should satisfy `u * dv` equals the integrand.
+    This step transforms `INT x. u * dv` into `u * v - INT x. v * du`.
 
     """
 
@@ -2159,8 +2160,7 @@ class IntegrationByParts(Rule):
                 return normalize(self.u * self.v, ctx2) - \
                        expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
         else:
-            raise RuleException("Integration by parts", "u * dv does not equal body: %s != %s" % (
-                str(udv), str(e.body)))
+            raise RuleException(self.name, f"u * dv does not equal body: {udv} != {e.body}")
 
 
 class SplitRegion(Rule):

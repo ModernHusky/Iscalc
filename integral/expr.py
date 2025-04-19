@@ -1797,7 +1797,11 @@ def eval_expr(e: Expr):
         elif e.func_name == 'arctan':
             return math.atan(eval_expr(e.args[0]))
         elif e.func_name == 'log':
-            return math.log(eval_expr(e.args[0]))
+            a = eval_expr(e.args[0])
+            if a <= 0.0:
+                return -math.inf
+            else:
+                return math.log(a)
         elif e.func_name == 'factorial':
             arg = eval_expr(e.args[0])
             if int(arg) == arg:
