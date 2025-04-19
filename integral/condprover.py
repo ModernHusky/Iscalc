@@ -491,6 +491,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > 0"], "1 / x > 0"),
 
         # Square root
+        ([], "sqrt(a) >= 0"),
         (["a > 0"], "sqrt(a) > 0"),
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),

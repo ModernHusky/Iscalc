@@ -593,7 +593,8 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
         elif expr.is_limit(e):
             return f(expr.Limit(e.var, rec(e.lim, ctx), rec(e.body, body_conds(e, ctx))), ctx)
         elif expr.is_indefinite_integral(e):
-            return f(expr.IndefiniteIntegral(e.var, rec(e.body, ctx), e.skolem_args), ctx)
+            body = rec(e.body, body_conds(e, ctx))
+            return f(expr.IndefiniteIntegral(e.var, body, e.skolem_args), ctx)
         elif expr.is_summation(e):
             lower = rec(e.lower, ctx)
             upper = rec(e.upper, ctx)
