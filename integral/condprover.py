@@ -299,9 +299,6 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
                 # x <= b --> b < a --> x < a
                 if expr.is_less_eq(fact) and approx_less(fact.args[1], cond.args[1]):
                     return [inst]
-                # x < b --> b <= a --> x < a
-                if expr.is_less(fact) and approx_less_eq(fact.args[1], cond.args[1]):
-                    return [inst]
             if expr.is_equals(cond):
                 if expr.is_equals(fact) and approx_equal(fact.args[1], cond.args[1]):
                     return [inst]
@@ -741,12 +738,13 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     if expr.is_op(e) and e.op == '!=':
         if expr.is_op(e.args[0]) and e.args[0].op == '-' and e.args[1] == Const(0):
             x = e.args[0].args[0]
-            a = e.args[0].args[1]
-            if expr.is_var(x) and expr.is_const(a):
-                # Check if x != a is in the context
-                for cond in ctx.get_conds().data:
-                    if cond.op == '!=' and cond.args[0] == x and cond.args[1] == a:
-                        return True
+            if len(e.args[0].args) > 1:  # 确保有第二个参数
+                a = e.args[0].args[1]
+                if expr.is_var(x) and expr.is_const(a):
+                    # Check if x != a is in the context
+                    for cond in ctx.get_conds().data:
+                        if cond.op == '!=' and cond.args[0] == x and cond.args[1] == a:
+                            return True
 
     # Substitute for equations in the context
     if ctx.get_substs():

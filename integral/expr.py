@@ -841,7 +841,7 @@ def contains_i(e: Expr) -> bool:
     elif is_integral(e) or is_deriv(e) or is_limit(e) or is_summation(e) or is_product(e):
         return contains_i(e.body)
     else:
-        raise NotImplementedError(f"contains_i: {type(e)}")
+        return False
 
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
