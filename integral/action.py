@@ -272,10 +272,10 @@ class InitialState(State):
             return self
         
         # Other actions are invalid
-        elif isinstance(action, RuleAction):
-            raise StateException("Cannot apply calculation step in initial state.")
         else:
-            raise StateException(f"Action type {type(action)} cannot be performed in initial state")
+            raise StateException(
+                "Initial",
+                f"Action type {type(action).__name__} cannot be performed in initial state")
         
     def is_finished(self) -> bool:
         return False
@@ -295,21 +295,21 @@ class ProveState(State):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("lhs: not in calculation proof")
+                raise StateException("Prove", "lhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.lhs_calc)
         
         elif isinstance(action, RHSAction):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("rhs: not in calculation proof")
+                raise StateException("Prove", "rhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.rhs_calc)
         
         elif isinstance(action, ArgAction):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("arg: not in calculation proof")
+                raise StateException("Prove", "arg: not in calculation proof")
             return CalculateState(self, self.goal.proof.arg_calc)
 
         # Prove by rewriting goal
@@ -351,7 +351,9 @@ class ProveState(State):
         
         # Other cases are invalid
         else:
-            raise StateException(f"Action type {type(action)} cannot be performed in prove state")
+            raise StateException(
+                "Prove",
+                f"Action type {type(action).__name__} cannot be performed in prove state")
 
     def is_finished(self) -> bool:
         return self.goal.is_finished()
@@ -386,11 +388,9 @@ class CalculateState(State):
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
                 if not self.is_finished():
-                    # print("Current calculation is:")
-                    # print(self.calc)
                     msg = "Use done when calculation is not finished\n"
                     msg += f"Final expression {self.calc.steps[-1].res} is not closed"
-                    raise StateException(msg)
+                    raise StateException("Done", msg)
                 return self.past
             else:
                 return self.past.process_action(action)
@@ -407,10 +407,10 @@ class CalculateState(State):
             return self.past.process_action(action)
         
         # Other cases are invalid
-        elif isinstance(action, CalculateAction):
-            raise StateException("Cannot start a new calculation within a calculation.")
         else:
-            raise StateException(f"Action type {type(action)} cannot be performed in calculate state")
+            raise StateException(
+                "Calculate",
+                f"Action type {type(action).__name__} cannot be performed in calculate state")
 
     def is_finished(self) -> bool:
         if isinstance(self.past, InitialState):
@@ -449,7 +449,9 @@ class InductionState(State):
         elif isinstance(action, DoneAction):
             return self.past.process_action(action)
         else:
-            raise StateException(f"Action type {type(action)} cannot be performed in induction state")
+            raise StateException(
+                "Induction",
+                f"Action type {type(action).__name__} cannot be performed in induction state")
     
     def is_finished(self) -> bool:
         return self.induct_proof.is_finished()
@@ -468,30 +470,32 @@ class CaseAnalysisState(State):
         if isinstance(action, CaseAction):
             if action.mark == "true":
                 if self.case_proof.split_type != "two-way":
-                    raise StateException("case true when not in two-way analysis.")
+                    raise StateException("Case", "case true when not in two-way analysis.")
                 return ProveState(self, self.case_proof.cases[0])
             elif action.mark == "false":
                 if self.case_proof.split_type != "two-way":
-                    raise StateException("case false when not in two-way analysis.")
+                    raise StateException("Case", "case false when not in two-way analysis.")
                 return ProveState(self, self.case_proof.cases[1])
             elif action.mark == "negative":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case negative when not in three-way analysis.")
+                    raise StateException("Case", "case negative when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[0])
             elif action.mark == "zero":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case zero when not in three-way analysis.")
+                    raise StateException("Case", "case zero when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[1])
             elif action.mark == "positive":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case positive when not in three-way analysis.")
+                    raise StateException("Case", "case positive when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[2])
             else:
-                raise StateException("Unknown case %s" % action.mark)
+                raise StateException("Case", f"Unknown case {action.mark}")
         elif isinstance(action, DoneAction):
             return self.past.process_action(action)
         else:
-            raise StateException(f"Action type {type(action)} cannot be performed in case state")
+            raise StateException(
+                "Case",
+                f"Action type {type(action).__name__} cannot be performed in case state")
     
     def is_finished(self) -> bool:
         return self.case_proof.is_finished()

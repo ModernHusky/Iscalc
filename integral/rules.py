@@ -24,13 +24,25 @@ from integral import sympywrapper
 from integral import utils
 
 
-class RuleException(Exception):
+class RuleException(expr.IscalcException):
+    """Exception raised when applying some calculation rule."""
     def __init__(self, rule_name: str, msg: str):
         self.rule_name = rule_name
         self.msg = msg
 
     def __str__(self):
         return "%s: %s" % (self.rule_name, self.msg)
+
+    def to_json(self) -> dict:
+        return {
+            "class": "RuleException",
+            "rule_name": self.rule_name,
+            "msg": self.msg
+        }
+    
+    @staticmethod
+    def from_json(data: dict):
+        return RuleException(data["rule_name"], data["msg"])
 
 
 def deriv(var: str, e: Expr, ctx: Context) -> Expr:
@@ -42,7 +54,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
     def normal(x):
         return normalize(x, ctx)
 
-    def rec(e):
+    def rec(e: Expr):
         if var not in e.get_vars():
             return Const(0)
         elif expr.is_var(e):
@@ -78,7 +90,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 if not y.contains_var(var):
                     # x / c case:
                     return normal(rec(x) / y)
-                elif not x.contains_var(var) and y.ty == OP and y.op == "^":
+                elif not x.contains_var(var) and expr.is_power(y):
                     # c / (y0 ^ y1): rewrite to c * y0 ^ (-y1)
                     return rec(x * (y.args[0] ^ (-y.args[1])))
                 else:
@@ -86,7 +98,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal((rec(x) * y - x * rec(y)) / (y ^ Const(2)))
             elif e.op == "^":
                 x, y = e.args
-                if y.ty == CONST:
+                if expr.is_const(y):
                     return normal(y * (x ^ Const(y.val - 1)) * rec(x))
                 elif var not in y.get_vars():
                     return normal(y * (x ^ (y - 1)) * rec(x))

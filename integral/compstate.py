@@ -13,21 +13,45 @@ from integral.poly import normalize
 from integral import utils
 
 
-class CheckFinishedException(Exception):
+class CheckFinishedException(expr.IscalcException):
+    """Exception raised when check finished fails."""
     def __init__(self, stack: tuple[str], msg: str):
         self.stack = stack + (msg,)
 
     def __str__(self):
         return "Use done when goal is not finished, goal stack:\n" + '\n'.join(self.stack)
 
+    def to_json(self) -> dict:
+        return {
+            "class": "CheckFinishedException",
+            "stack": list(self.stack)
+        }
+    
+    @staticmethod
+    def from_json(data: dict):
+        stack = data['stack']
+        return CheckFinishedException(tuple(stack[:-1]), stack[-1])
 
-class StateException(Exception):
+
+class StateException(expr.IscalcException):
     """Exception resulting from applying action to a state."""
-    def __init__(self, msg: str):
+    def __init__(self, kind: str, msg: str):
+        self.kind = kind
         self.msg = msg
 
     def __str__(self):
-        return self.msg
+        return f"{self.kind}: {self.msg}"
+
+    def to_json(self) -> dict:
+        return {
+            "class": "StateException",
+            "kind": self.kind,
+            "msg": self.msg
+        }
+    
+    @staticmethod
+    def from_json(data: dict):
+        return StateException(data["kind"], data["msg"])
 
 
 class Label:
@@ -106,7 +130,7 @@ class FuncDef(StateItem):
 
     def __init__(self, parent: "CompFile", ctx: Context, eq: Expr, conds: Optional[Conditions] = None):
         if not eq.is_equals():
-            raise AssertionError("FuncDef: input should be an equation")
+            raise StateException("FuncDef", "input should be an equation")
 
         self.parent = parent
         self.ctx = ctx
@@ -118,11 +142,11 @@ class FuncDef(StateItem):
             self.symb = self.eq.lhs.name
             self.args = []
         else:
-            raise AssertionError("FuncDef: left side of equation must be variable or function")
+            raise StateException("FuncDef", "left side of equation must be variable or function")
         self.body = self.eq.rhs
 
         if any(not expr.is_var(arg) for arg in self.args) or len(self.args) != len(set(self.args)):
-            raise AssertionError("FuncDef: arguments should be distinct variables")
+            raise StateException("FuncDef", "arguments should be distinct variables")
 
         if conds is None:
             conds = Conditions()
@@ -384,7 +408,7 @@ class Goal(StateItem):
 
     def proof_by_rewrite_goal(self, *, begin: str):
         if not isinstance(begin, str):
-            raise AssertionError("RewriteGoalProof: begin should be a string")
+            raise StateException("RewriteGoalProof", "begin should be a string")
         ctx = Context(self.ctx)
         for n, subgoal in self.subgoals:
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
@@ -616,7 +640,7 @@ class CalculationProof(StateItem):
             assert isinstance(parent, Goal)
             self.calcs.append(Calculation(self, self.ctx, goal.args[0], conds=parent.conds))
         else:
-            raise AssertionError("CalculationProof: unknown form of goal.")
+            raise StateException("CalculationProof", "unknown form of goal.")
 
     def __eq__(self, other):
         return isinstance(other, CalculationProof) and \
@@ -750,7 +774,7 @@ class InductionProof(StateItem):
     def __init__(self, parent: Goal, ctx: Context, goal: Expr, induct_var: str,
                  *, start: Union[int, Expr] = 0):
         if not goal.is_equals():
-            raise AssertionError("InductionProof: currently only support equation goals.")
+            raise StateException("InductionProof", "currently only support equation goals.")
 
         self.parent = parent
         self.goal = goal
@@ -765,10 +789,10 @@ class InductionProof(StateItem):
             raise NotImplementedError
 
         if not ctx.check_condition(expr.Fun("isInt", expr.Var(self.induct_var))):
-            raise StateException(f"InductionProof: induction variable {self.induct_var} is not integer")
+            raise StateException("InductionProof", f"induction variable {self.induct_var} is not integer")
 
         if not ctx.check_condition(expr.Op(">=", expr.Var(self.induct_var), self.start)):
-            raise StateException(f"InductionProof: condition {self.induct_var} >= {self.start} does not hold")
+            raise StateException("InductionProof", f"condition {self.induct_var} >= {self.start} does not hold")
 
         # Base case: n = start
         base_goal_ctx = Context(self.ctx)
@@ -1016,14 +1040,14 @@ class RewriteGoalProof(StateItem):
     """
     def __init__(self, parent: StateItem, ctx: Context, goal: Expr, *, start: str):
         if not goal.is_equals():
-            raise AssertionError("RewriteGoalProof: goal is not an equality.")
+            raise StateException("RewriteGoalProof", f"goal {goal} is not an equality.")
         self.parent = parent
         self.goal = goal
         self.ctx = ctx
         self.start = start
         start_goal = ctx.get_subgoal(start)
         if not start_goal:
-            raise StateException(f"RewriteGoalProof: start {start} not found")
+            raise StateException("RewriteGoalProof", f"start {start} not found")
         self.begin = Calculation(self, ctx, start_goal.expr, connection_symbol='==>',
                                  conds=start_goal.conds)
 

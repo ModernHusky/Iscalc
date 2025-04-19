@@ -9,6 +9,18 @@ from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
 import sympy
 
+class IscalcException(Exception):
+    """Parent class of all exceptions in Iscalc."""
+    def to_json(self) -> dict:
+        """Convert current object to json format."""
+        raise NotImplementedError(f"to_json: {type(self)}")
+    
+    @staticmethod
+    def from_json(data: dict):
+        """Load object from json format."""
+        raise NotImplementedError(f"from_json: {__class__.__name__}")
+
+
 VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
 SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
