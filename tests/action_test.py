@@ -241,6 +241,11 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "GammaFunction", actions)
 
+    def testInteresting(self):
+        with open("theories/interesting.thy", 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", None, actions)
+
     def testChapter1Section5(self):
         actions = """
             prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
@@ -490,7 +495,6 @@ class ActionTest(unittest.TestCase):
                 rewrite 2 * log(a) to log(a ^ 2)
                 rewrite 1/8 * pi * log(a ^ 2) + pi * log(2) / 8 to 1/8 * pi * (log(2) + log(a ^ 2))
                 rewrite log(2) + log(a ^ 2) to log(2 * a ^ 2)
-                rewrite 1 / a * (1/8 * pi * log(2 * a ^ 2)) to pi / (8 * a) * log(2 * a ^ 2)
             done
         """
         self.check_actions("interesting", "Trick2e", actions)
