@@ -251,7 +251,7 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 rec(arg, ctx)
             if e.is_divides():
                 # if the denominator has i, and var is real, then the expression is not 0
-                if Expr.contains_i(e.args[1]):
+                if expr.contains_i(e.args[1]):
                     # collect the variables in the expression
                     vars_in_expr = e.args[1].get_vars()
                     if vars_in_expr:

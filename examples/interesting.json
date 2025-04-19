@@ -26,6 +26,11 @@
             "type": "problem"
         },
         {
+            "expr": "(INT x:[0,8]. 1/(x-2)) = log(3)",
+            "path": "Chapter1Practice0101",
+            "type": "problem"
+        },
+        {
             "level": 1,
             "name": "2. 'Easy' integrals",
             "type": "header"

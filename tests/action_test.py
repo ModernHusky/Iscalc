@@ -1975,6 +1975,17 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter3Practice09", actions)
 
+    def testChapter1Practice0101(self):
+        actions = """
+            prove (INT x:[0,8]. 1/(x-2)) = log(3)
+            lhs:
+                split region at 2
+                apply integral identity
+                simplify
+            done
+        """
+        self.check_actions("interesting", "Chapter1Practice0101", actions)
+
     def testChapter1Practice0104(self):
         actions = """
             prove (INT x:[0,pi / 3]. 1 / cos(x)) = log(2 + sqrt(3))

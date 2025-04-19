@@ -517,25 +517,6 @@ class Expr:
         else:
             print('subst on', self)
             raise NotImplementedError
-        
-        
-    def contains_i(self) -> bool:
-        """check if the expression contains i"""
-        if is_fun(self) and self.func_name == "i":
-            return True
-        elif is_op(self):
-            return any(arg.contains_i() for arg in self.args)
-        elif is_fun(self):
-            return any(arg.contains_i() for arg in self.args)
-        elif is_integral(self):
-            return self.body.contains_i()
-        elif is_deriv(self):
-            return self.body.contains_i()
-        elif is_summation(self):
-            return self.body.contains_i() or self.lower.contains_i() or self.upper.contains_i()
-        else:
-            return False
-
 
     def is_constant(self):
         """Determine whether expr is a number.
@@ -842,6 +823,25 @@ def exprify(value):
     # 对于其他类型的输入，抛出异常
     raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
+
+def contains_i(e: Expr) -> bool:
+    """Check if the expression contains the imaginary unit i."""
+    if is_const(e):
+        return False
+    elif is_var(e):
+        return False
+    elif is_fun(e) and e.func_name == "i":
+        return True
+    elif is_inf(e):
+        return False
+    elif is_symbol(e):
+        return False
+    elif is_op(e):
+        return any(contains_i(arg) for arg in e.args)
+    elif is_integral(e) or is_deriv(e) or is_limit(e) or is_summation(e) or is_product(e):
+        return contains_i(e.body)
+    else:
+        raise NotImplementedError(f"contains_i: {type(e)}")
 
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR

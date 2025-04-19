@@ -736,6 +736,17 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         e1 = Op("<", arg, e.args[1])
         e2 = Op(">", arg, -e.args[1])
         return check_condition(e1, ctx) and check_condition(e2,ctx)
+    
+    # x != a implies x - a != 0
+    if expr.is_op(e) and e.op == '!=':
+        if expr.is_op(e.args[0]) and e.args[0].op == '-' and e.args[1] == Const(0):
+            x = e.args[0].args[0]
+            a = e.args[0].args[1]
+            if expr.is_var(x) and expr.is_const(a):
+                # Check if x != a is in the context
+                for cond in ctx.get_conds().data:
+                    if cond.op == '!=' and cond.args[0] == x and cond.args[1] == a:
+                        return True
 
     # Substitute for equations in the context
     if ctx.get_substs():
