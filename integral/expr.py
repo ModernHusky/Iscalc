@@ -9,6 +9,18 @@ from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
 import sympy
 
+class IscalcException(Exception):
+    """Parent class of all exceptions in Iscalc."""
+    def to_json(self) -> dict:
+        """Convert current object to json format."""
+        raise NotImplementedError(f"to_json: {type(self)}")
+    
+    @staticmethod
+    def from_json(data: dict):
+        """Load object from json format."""
+        raise NotImplementedError(f"from_json: {__class__.__name__}")
+
+
 VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
 SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
@@ -517,6 +529,25 @@ class Expr:
         else:
             print('subst on', self)
             raise NotImplementedError
+        
+        
+    def contains_i(self) -> bool:
+        """check if the expression contains i"""
+        if is_fun(self) and self.func_name == "i":
+            return True
+        elif is_op(self):
+            return any(arg.contains_i() for arg in self.args)
+        elif is_fun(self):
+            return any(arg.contains_i() for arg in self.args)
+        elif is_integral(self):
+            return self.body.contains_i()
+        elif is_deriv(self):
+            return self.body.contains_i()
+        elif is_summation(self):
+            return self.body.contains_i() or self.lower.contains_i() or self.upper.contains_i()
+        else:
+            return False
+
 
     def is_constant(self):
         """Determine whether expr is a number.
@@ -532,6 +563,8 @@ class Expr:
             self: Fun
             if self.func_name in ('inv', 'unit_matrix', 'zero_matrix'):
                 return False
+            elif self.func_name == 'i':
+                return True
             return all(arg.is_constant() for arg in self.args)
         else:
             return False
@@ -884,6 +917,9 @@ def is_times(e: Expr) -> TypeGuard["Op"]:
 
 def is_divides(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '/' and len(e.args) == 2
+
+def is_power(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '^' and len(e.args) == 2
 
 def is_less(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op == '<'
@@ -1259,7 +1295,7 @@ class Op(Expr):
             raise NotImplementedError
         self.ty = OP
         self.op = op
-        self.args: Tuple[Expr] = tuple(args)
+        self.args: tuple[Expr, ...] = tuple(args)
 
     def __hash__(self):
         return hash((OP, self.op, tuple(self.args)))
@@ -1301,12 +1337,14 @@ class Op(Expr):
 class Fun(Expr):
     """Functions."""
 
-    def __init__(self, func_name: str, *args):
-        assert isinstance(func_name, str) and \
-               all(isinstance(arg, Expr) for arg in args), func_name
+    def __init__(self, func_name: str, *args: Expr):
+        if not isinstance(func_name, str):
+            raise AssertionError("Fun:", func_name)
+        if not all(isinstance(arg, Expr) for arg in args):
+            raise AssertionError("Fun:", args)
 
         self.ty = FUN
-        self.args: Tuple[Expr] = tuple(args)
+        self.args: tuple[Expr, ...] = tuple(args)
         self.func_name = func_name
 
     def __hash__(self):
@@ -1491,7 +1529,6 @@ def binom(e1: Expr, e2: Expr) -> Expr:
     """Binomial coefficients"""
     return Fun("binom", e1, e2)
 
-
 def factorial(e: Expr) -> Expr:
     """Factorial of e"""
     return Fun('factorial', e)
@@ -1500,11 +1537,22 @@ def factorial(e: Expr) -> Expr:
 pi = Fun("pi")
 E = Fun("exp", Const(1))
 G = Fun("G")
-
+i = Fun("i")
+int_type = Fun("int")
+real_type = Fun("real")
+complex_type = Fun("complex")
 
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)
 
+def isInt(t: Expr) -> Expr:
+    return Fun("isInt", t)
+
+def isReal(t: Expr) -> Expr:
+    return Fun("isReal", t)
+
+def isEven(t: Expr) -> Expr:
+    return Fun("isEven", t)
 
 class Deriv(Expr):
     """Derivative of an expression."""
@@ -1736,6 +1784,8 @@ def eval_expr(e: Expr):
             return math.sqrt(eval_expr(e.args[0]))
         elif e.func_name == 'exp':
             return math.exp(eval_expr(e.args[0]))
+        elif e.func_name == 'i':
+            return 1j  # 返回Python的复数单位
         elif e.func_name == 'abs':
             return abs(eval_expr(e.args[0]))
         elif e.func_name == 'pi':
@@ -1759,7 +1809,11 @@ def eval_expr(e: Expr):
         elif e.func_name == 'arctan':
             return math.atan(eval_expr(e.args[0]))
         elif e.func_name == 'log':
-            return math.log(eval_expr(e.args[0]))
+            a = eval_expr(e.args[0])
+            if a <= 0.0:
+                return -math.inf
+            else:
+                return math.log(a)
         elif e.func_name == 'factorial':
             arg = eval_expr(e.args[0])
             if int(arg) == arg:

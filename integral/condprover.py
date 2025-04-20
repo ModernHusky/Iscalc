@@ -1,10 +1,9 @@
 """Module for reasoning about conditions."""
 
 from copy import copy
-from typing import Dict, List
 
 from integral import expr
-from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var
+from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var, Fun
 from integral.conditions import Conditions
 from integral.context import Context, Identity
 from integral.parser import parse_expr
@@ -36,37 +35,81 @@ tol = 1e-15
 
 # Comparison of floating-point numbers up to rounding error
 def approx_equal(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return abs(a - b) < tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return abs(a_val - b_val) < tol
+    except:
+        return False
 
 def approx_not_equal(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return abs(a - b) > tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return abs(a_val - b_val) > tol
+    except:
+        return True
 
 def approx_greater(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return a - b > tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return a_val - b_val > tol
+    except:
+        return False
 
 def approx_greater_eq(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return a - b > -tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return a_val - b_val > -tol
+    except:
+        return False
 
 def approx_less(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return b - a > tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return b_val - a_val > tol
+    except:
+        return False
 
 def approx_less_eq(a: Expr, b: Expr) -> bool:
-    a, b = eval_expr(a), eval_expr(b)
-    return b - a > -tol
+    try:
+        a_val = float(eval_expr(a))
+        b_val = float(eval_expr(b))
+        return b_val - a_val > -tol
+    except:
+        return False
 
 def approx_integer(a: Expr) -> bool:
-    a = eval_expr(a)
-    return abs(round(a) - a) < tol
+    try:
+        a_val = float(eval_expr(a))
+        return abs(round(a_val) - a_val) < tol
+    except:
+        return False
 
 def approx_even(a: Expr) -> bool:
-    if approx_integer(a):
-        return eval_expr(a) % 2 == 0
-    else:
+    try:
+        if approx_integer(a):
+            a_val = float(eval_expr(a))
+            return round(a_val) % 2 == 0
+        return False
+    except:
+        return False
+    
+def approx_real(a: Expr) -> bool:
+    try:
+        a_val = complex(eval_expr(a))
+        return abs(a_val.imag) < tol
+    except:
+        return False
+    
+def approx_complex(a: Expr) -> bool:
+    try:
+        a_val = complex(eval_expr(a))
+        return abs(a_val.imag) > tol
+    except:
         return False
 
 def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
@@ -75,32 +118,44 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     
     """
     all_conds: dict[Expr, list[Expr]] = dict()
+    
+    # collect all variables
+    all_vars = set()
+    
+    # Rewrite all absolute value conditions
     for cond in conds.data:
         x = subject_of(cond)
         if x not in all_conds:
             all_conds[x] = list()
         all_conds[x].append(cond)
+        
+        if expr.is_var(x):
+            all_vars.add(x)
+            
+        # Handle absolute value conditions
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less():
+            # abs(x) < c  -->  -c < x < c
             if x.args[0] not in all_conds:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<", x.args[0], cond.args[1]))
             all_conds[x.args[0]].append(Op(">", x.args[0], -cond.args[1]))
         if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less_eq():
+            # abs(x) <= c  -->  -c <= x <= c
             if x.args[0] not in all_conds:
                 all_conds[x.args[0]] = list()
             all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))
+            all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))        
 
     # add simple condition transition
     for k in all_conds:
         for x in all_conds[k]:
-            if x.is_less():
+            if expr.is_less(x):
                 if x.args[1] in all_conds:
                     for y in all_conds[x.args[1]]:
                         # x: k < b
                         # y: b < c or b <= c or b = c
                         # x and y ==> k < c
-                        if y.is_less() or y.is_less_eq() or y.is_equals():
+                        if expr.is_less(y) or expr.is_less_eq(y) or expr.is_equals(y):
                             all_conds[k].append(Op('<', k, y.args[1]))
     return all_conds
 
@@ -174,6 +229,12 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
                 return [inst]
         elif expr.is_fun(cond) and cond.func_name == 'isEven':
             if approx_even(x):
+                return [inst]
+        elif expr.is_fun(cond) and cond.func_name == 'isReal':
+            if approx_real(x):
+                return [inst]
+        elif expr.is_fun(cond) and cond.func_name == 'isComplex':
+            if approx_complex(x):
                 return [inst]
 
     # If the goal is of form x ?= c, where c is a constant, try to
@@ -288,7 +349,10 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
     return
 
 def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], ctx: Context):
-    """Perform one round of saturation"""
+    """Perform one round of saturation. New facts are added
+    onto `all_conds`.
+    
+    """
     all_subs = e.find_all_subexpr()
     for sube, _ in all_subs:
         for ineq in ineqs:
@@ -303,7 +367,8 @@ def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
 
 def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
              ctx: Context, *, round_limit: int = 5, size_limit: int = 1000):
-    """Saturate up to given number of rounds and size limits.
+    """Saturate up to given number of rounds and size limits. New facts
+    are added onto `all_conds`.
     
     If number of rounds and size limits have been reached without
     saturation, warning is printed to alert possible problems.
@@ -352,7 +417,6 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < b", "c <= d"], "a + c < b + d"),
         (["a >= b", "c >= d"], "a + c >= b + d"),
         (["a <= b", "c <= d"], "a + c <= b + d"),
-        ([], "a + b = b + a"),
 
         # Unary minus
         (["x > a"], "-x < -a"),
@@ -427,6 +491,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > 0"], "1 / x > 0"),
 
         # Square root
+        ([], "sqrt(a) >= 0"),
         (["a > 0"], "sqrt(a) > 0"),
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
@@ -535,9 +600,6 @@ def get_standard_inequalities() -> list[Identity]:
         # Factorial
         ([], "factorial(x) >= 1"),
 
-        # reflexivity
-        ([], "x = x"),
-
         # isInt
         (["isInt(a)", "isInt(b)"], "isInt(a + b)"),
         (["isInt(a)", "isInt(b)"], "isInt(a - b)"),
@@ -563,6 +625,49 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "a != b"], "a < b"),
         (["a = b", "a > c"], "b > c"),
         (["a > b", "b > c"], "a > c"),
+
+        # Complex number rules
+        (["isReal(a)"], "isReal(cos(a))"),
+        (["isReal(a)"], "isReal(sin(a))"),
+        (["isReal(a)"], "isReal(tan(a))"),
+        (["isReal(a)"], "isReal(cot(a))"),
+        (["isReal(a)"], "isReal(csc(a))"),
+        (["isReal(a)"], "isReal(sec(a))"),
+
+        (["isReal(a)"], "isReal(arcsin(a))"),
+        (["isReal(a)"], "isReal(arccos(a))"),
+        (["isReal(a)"], "isReal(arctan(a))"),
+        (["isReal(a)"], "isReal(arcsec(a))"),
+        (["isReal(a)"], "isReal(arccsc(a))"),
+        (["isReal(a)"], "isReal(arccot(a))"),
+
+        (["isReal(a)", "a > 0"], "isReal(log(a))"),
+        (["isReal(a)"], "isReal(exp(a))"),
+        (["isReal(a)"], "exp(a) > 0"),
+        (["isReal(a)"], "isReal(abs(a))"),
+        (["isReal(a)"], "isReal(sqrt(a))"),
+
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a + i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a - i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a * i)"),
+        (["isComplex(a)", "isComplex(i)"], "isComplex(a / i)"),
+        (["isComplex(a)"], "isComplex(-a)"),
+
+        (["isEven(a)"], "isInt(a)"),
+        (["isInt(a)"], "isReal(a)"),
+        (["isReal(a)"], "isComplex(a)"),
+
+        (["isReal(a)", "isReal(b)"], "isReal(a + b)"),
+        (["isReal(a)", "isReal(b)"], "isReal(a - b)"),
+        (["isReal(a)", "isReal(b)"], "isReal(a * b)"),
+        (["isReal(a)", "isReal(b)","b != 0"], "isReal(a / b)"),
+        
+        (["isReal(a)"], "isReal(-a)"),
+
+        # Real number power rules
+        (["isReal(x)"], "isReal(x ^ n)"),
+        (["isReal(x)", "isReal(y)"], "isReal(x ^ y)"),
+
     ]
 
     ineqs = []
@@ -606,9 +711,43 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     if (expr.is_less(e) or expr.is_less_eq(e)) and expr.is_pos_inf(e.args[1]):
         return True
 
+    # INT Real Condition
+    def contains_i(e: Expr):
+        if expr.is_fun(e) and e.func_name == 'i':
+            return True
+        if e.ty in (expr.VAR, expr.CONST, expr.SYMBOL, expr.INF):
+            return False
+        if e.ty in (expr.OP, expr.FUN):
+            return any(contains_i(arg) for arg in e.args)
+        if expr.is_integral(e):
+            return contains_i(e.body) or contains_i(e.lower) or contains_i(e.upper)
+        return False
+
+    def add_integral_real_cond(e: Expr, all_conds: dict[Expr, list[Expr]]):
+        if expr.is_integral(e):
+            if not contains_i(e.body) and not contains_i(e.lower) and not contains_i(e.upper):
+                if e not in all_conds:
+                    all_conds[e] = []
+                all_conds[e].append(Fun('isReal', e))
+                
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
     all_conds = init_all_conds(conds)
+    
+    # Check all subexpressions of e
+    def check_subexpr(e: Expr):
+        if expr.is_integral(e):
+            add_integral_real_cond(e, all_conds)
+        if expr.is_op(e) or expr.is_fun(e):
+            for arg in e.args:
+                check_subexpr(arg)
+        if expr.is_integral(e):
+            check_subexpr(e.body)
+            check_subexpr(e.lower)
+            check_subexpr(e.upper)
+    
+    check_subexpr(e)
+    
     ineqs = copy(standard_inequalities)
     ineqs.extend(ctx.get_inequalities())
     for lemma in ctx.get_lemmas():
@@ -617,3 +756,4 @@ def check_condition(e: Expr, ctx: Context) -> bool:
 
     saturate(subject_of(e), ineqs, all_conds, ctx)
     return len(check_cond(e, all_conds, dict())) == 1
+

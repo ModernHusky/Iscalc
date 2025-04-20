@@ -12,7 +12,8 @@ from integral import poly
 
 class Action:
     """Base class for actions."""
-    pass
+    def get_start_states(self) -> list[str]:
+        raise NotImplementedError(f"get_start_states: {type(self)}")
 
 
 class ProveAction(Action):
@@ -23,9 +24,12 @@ class ProveAction(Action):
 
     def __str__(self):
         if self.conditions:
-            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
             return "prove %s" % self.expr
+
+    def get_start_states(self) -> list[str]:
+        return ["initial", "proof"]
 
 
 class DefineAction(Action):
@@ -36,13 +40,16 @@ class DefineAction(Action):
 
     def __str__(self):
         if self.conditions:
-            return "define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions))
+            return "define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
             return "define %s" % self.expr
 
+    def get_start_states(self) -> list[str]:
+        return ["initial", "proof"]
+
 
 class SubgoalAction(Action):
-    """Start a proof."""
+    """Start proof of a subgoal."""
     def __init__(self, name: str, expr: Expr, conditions: Optional[Conditions] = None):
         self.name = name
         self.expr = expr
@@ -55,14 +62,20 @@ class SubgoalAction(Action):
         else:
             return "subgoal %s: %s" % (self.name, self.expr)
 
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
 
 class DoneAction(Action):
-    """Done with current subgoal."""
+    """Done with current goal or subgoal."""
     def __init__(self):
         pass
 
     def __str__(self):
         return "done"
+
+    def get_start_states(self) -> list[str]:
+        return ["proof", "calculation", "case", "induction"]
 
 
 class SorryAction(Action):
@@ -73,6 +86,9 @@ class SorryAction(Action):
     def __str__(self):
         return "sorry"
 
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
 
 class RewriteGoalAction(Action):
     """Invoke rewriting goal."""
@@ -81,6 +97,9 @@ class RewriteGoalAction(Action):
 
     def __str__(self):
         return "from %s:" % self.name
+
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
 
 
 class CalculateAction(Action):
@@ -96,6 +115,9 @@ class CalculateAction(Action):
         else:
             return "calculate %s" % self.expr
 
+    def get_start_states(self) -> list[str]:
+        return ["initial"]
+
 
 class InductionAction(Action):
     """Start an induction."""
@@ -105,9 +127,12 @@ class InductionAction(Action):
 
     def __str__(self):
         if self.start == expr.Const(0):
-            return "induction on %s" % self.var_name
+            return f"induction on {self.var_name}"
         else:
-            return "induction on %s starting from %s" % (self.var_name, self.expr)
+            return f"induction on {self.var_name} starting from {self.start}"
+
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
 
 
 class CaseAnalysisAction(Action):
@@ -118,6 +143,9 @@ class CaseAnalysisAction(Action):
     def __str__(self):
         return "case analysis on %s" % self.split_cond
 
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
 
 class LHSAction(Action):
     """Perform a proof by working on the left hand side."""
@@ -127,6 +155,10 @@ class LHSAction(Action):
     def __str__(self):
         return "lhs:"
 
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
+
 class RHSAction(Action):
     """Perform a proof by working on the right hand side."""
     def __init__(self):
@@ -134,6 +166,10 @@ class RHSAction(Action):
 
     def __str__(self):
         return "rhs:"
+
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
 
 class ArgAction(Action):
     """Perform a proof by working on the argument."""
@@ -143,6 +179,10 @@ class ArgAction(Action):
     def __str__(self):
         return "arg:"
 
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
+
 class BaseCaseAction(Action):
     """Base case of an induction."""
     def __init__(self):
@@ -151,6 +191,10 @@ class BaseCaseAction(Action):
     def __str__(self):
         return "base:"
     
+    def get_start_states(self) -> list[str]:
+        return ["induction"]
+
+
 class InductCaseAction(Action):
     """Induct case of an induction."""
     def __init__(self):
@@ -158,6 +202,10 @@ class InductCaseAction(Action):
 
     def __str__(self):
         return "induct:"
+
+    def get_start_states(self) -> list[str]:
+        return ["induction"]
+
 
 class CaseAction(Action):
     """Case in case analysis."""
@@ -167,6 +215,10 @@ class CaseAction(Action):
     def __str__(self):
         return "case %s" % self.mark
 
+    def get_start_states(self) -> list[str]:
+        return ["case"]
+
+
 class RuleAction(Action):
     """Apply rule."""
     def __init__(self, rule: Rule):
@@ -175,6 +227,9 @@ class RuleAction(Action):
     def __str__(self):
         return str(self.rule)
     
+    def get_start_states(self) -> list[str]:
+        return ["calculation"]
+
 
 """State machine for processing the actions."""
 
@@ -217,10 +272,10 @@ class InitialState(State):
             return self
         
         # Other actions are invalid
-        elif isinstance(action, RuleAction):
-            raise StateException("Cannot apply rule when at initial state.")
         else:
-            raise StateException("Unknown action type %s" % type(action))
+            raise StateException(
+                "Initial",
+                f"Action type {type(action).__name__} cannot be performed in initial state")
         
     def is_finished(self) -> bool:
         return False
@@ -240,21 +295,21 @@ class ProveState(State):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("lhs: not in calculation proof")
+                raise StateException("Prove", "lhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.lhs_calc)
         
         elif isinstance(action, RHSAction):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("rhs: not in calculation proof")
+                raise StateException("Prove", "rhs: not in calculation proof")
             return CalculateState(self, self.goal.proof.rhs_calc)
         
         elif isinstance(action, ArgAction):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("arg: not in calculation proof")
+                raise StateException("Prove", "arg: not in calculation proof")
             return CalculateState(self, self.goal.proof.arg_calc)
 
         # Prove by rewriting goal
@@ -279,8 +334,8 @@ class ProveState(State):
         
         # Done with current subgoal
         elif isinstance(action, DoneAction):
+            self.goal.check_finished(stack=tuple())
             if isinstance(self.past, InitialState):
-                self.goal.check_finished(stack=tuple())
                 if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
                 elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
@@ -296,7 +351,9 @@ class ProveState(State):
         
         # Other cases are invalid
         else:
-            raise StateException("Unknown action type %s" % type(action))
+            raise StateException(
+                "Prove",
+                f"Action type {type(action).__name__} cannot be performed in prove state")
 
     def is_finished(self) -> bool:
         return self.goal.is_finished()
@@ -319,11 +376,11 @@ class CalculateState(State):
             if isinstance(action.rule, IntegrateByEquation):
                 if not (self.calc.start == action.rule.lhs or
                         any(step.res == action.rule.lhs for step in self.calc.steps)):
-                    print("Current calculation is:")
-                    print(self.calc)
+                    # print("Current calculation is:")
+                    # print(self.calc)
                     raise RuleException(
                         "IntegrateByEquation",
-                        "lhs %s must appear as one of the steps" % action.rule.lhs)
+                        f"lhs {action.rule.lhs} must appear exactly as one of the steps")
             self.calc.perform_rule(action.rule)
             return self
         
@@ -331,9 +388,9 @@ class CalculateState(State):
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):
                 if not self.is_finished():
-                    print("Current calculation is:")
-                    print(self.calc)
-                    raise StateException("Use done when calculation is not finished")
+                    msg = "Use done when calculation is not finished\n"
+                    msg += f"Final expression {self.calc.steps[-1].res} is not closed"
+                    raise StateException("Done", msg)
                 return self.past
             else:
                 return self.past.process_action(action)
@@ -350,10 +407,10 @@ class CalculateState(State):
             return self.past.process_action(action)
         
         # Other cases are invalid
-        elif isinstance(action, CalculateAction):
-            raise StateException("Cannot start a new calculation within a calculation.")
         else:
-            raise StateException("Unknown action type %s" % type(action))
+            raise StateException(
+                "Calculate",
+                f"Action type {type(action).__name__} cannot be performed in calculate state")
 
     def is_finished(self) -> bool:
         if isinstance(self.past, InitialState):
@@ -392,7 +449,9 @@ class InductionState(State):
         elif isinstance(action, DoneAction):
             return self.past.process_action(action)
         else:
-            raise StateException("Unknown action type %s" % type(action))
+            raise StateException(
+                "Induction",
+                f"Action type {type(action).__name__} cannot be performed in induction state")
     
     def is_finished(self) -> bool:
         return self.induct_proof.is_finished()
@@ -411,30 +470,32 @@ class CaseAnalysisState(State):
         if isinstance(action, CaseAction):
             if action.mark == "true":
                 if self.case_proof.split_type != "two-way":
-                    raise StateException("case true when not in two-way analysis.")
+                    raise StateException("Case", "case true when not in two-way analysis.")
                 return ProveState(self, self.case_proof.cases[0])
             elif action.mark == "false":
                 if self.case_proof.split_type != "two-way":
-                    raise StateException("case false when not in two-way analysis.")
+                    raise StateException("Case", "case false when not in two-way analysis.")
                 return ProveState(self, self.case_proof.cases[1])
             elif action.mark == "negative":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case negative when not in three-way analysis.")
+                    raise StateException("Case", "case negative when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[0])
             elif action.mark == "zero":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case zero when not in three-way analysis.")
+                    raise StateException("Case", "case zero when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[1])
             elif action.mark == "positive":
                 if self.case_proof.split_type != "three-way":
-                    raise StateException("case positive when not in three-way analysis.")
+                    raise StateException("Case", "case positive when not in three-way analysis.")
                 return ProveState(self, self.case_proof.cases[2])
             else:
-                raise StateException("Unknown case %s" % action.mark)
+                raise StateException("Case", f"Unknown case {action.mark}")
         elif isinstance(action, DoneAction):
             return self.past.process_action(action)
         else:
-            raise StateException("Unknown action type %s" % type(action))
+            raise StateException(
+                "Case",
+                f"Action type {type(action).__name__} cannot be performed in case state")
     
     def is_finished(self) -> bool:
         return self.case_proof.is_finished()

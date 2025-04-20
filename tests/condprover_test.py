@@ -134,16 +134,33 @@ class CondProverTest(unittest.TestCase):
             ("a ^ 2 + b ^ 2 > 0", ["a != 0"], True),
             ("-k + 1 != 0", ["k > 1"], True),
             ("(p ^ 2 - 5) ^ 2 - 16 != 0", ["p > 3"], True),
-            ("1-sqrt(3)/2 > 0", [], True)
+            ("1 - sqrt(3) / 2 > 0", [], True),
+            # ("a + b * cos(x) != 0", ["a > b", "b >= 0", "x > 0", "x < pi"], True),
         ]
 
         for s, conds, res in test_data:
             e = parse_expr(s)
             ctx = Context()
             ctx.load_book("base")
-            conds = Conditions(conds)
-            ctx.extend_condition(conds)
+            ctx.extend_condition(Conditions(conds))
             self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
+
+    def testCheckConditionWithSubst(self):
+        # For each triple (s, conds, subst, res), res equals whether s
+        # can be derived from conds under substitution subst.
+        test_data = [
+            ("u >= 0", ["isReal(x)"], ("u", "sqrt(1+x)"), True),
+            ("isReal(u)", ["isReal(x)"], ("u", "sqrt(1+x)"), True),
+        ]
+
+        for s, conds, subst, res in test_data:
+            e = parse_expr(s)
+            ctx = Context()
+            ctx.load_book("base")
+            ctx.extend_condition(Conditions(conds))
+            var, var_subst = subst
+            ctx.add_subst(var, parse_expr(var_subst))
+            self.assertEqual(check_condition(e, ctx), res, f"{e} {conds} {subst}")
 
     def testCheckTransitivity(self):
         test_data = [

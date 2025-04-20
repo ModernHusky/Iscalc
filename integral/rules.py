@@ -9,8 +9,8 @@ import operator
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
-    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify
+    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, \
+    SkolemFunc, decompose_expr_factor2, is_const, exprify
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -24,13 +24,25 @@ from integral import sympywrapper
 from integral import utils
 
 
-class RuleException(Exception):
+class RuleException(expr.IscalcException):
+    """Exception raised when applying some calculation rule."""
     def __init__(self, rule_name: str, msg: str):
         self.rule_name = rule_name
         self.msg = msg
 
     def __str__(self):
         return "%s: %s" % (self.rule_name, self.msg)
+
+    def to_json(self) -> dict:
+        return {
+            "class": "RuleException",
+            "rule_name": self.rule_name,
+            "msg": self.msg
+        }
+
+    @staticmethod
+    def from_json(data: dict):
+        return RuleException(data["rule_name"], data["msg"])
 
 
 def deriv(var: str, e: Expr, ctx: Context) -> Expr:
@@ -42,7 +54,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
     def normal(x):
         return normalize(x, ctx)
 
-    def rec(e):
+    def rec(e: Expr):
         if var not in e.get_vars():
             return Const(0)
         elif expr.is_var(e):
@@ -78,7 +90,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 if not y.contains_var(var):
                     # x / c case:
                     return normal(rec(x) / y)
-                elif not x.contains_var(var) and y.ty == OP and y.op == "^":
+                elif not x.contains_var(var) and expr.is_power(y):
                     # c / (y0 ^ y1): rewrite to c * y0 ^ (-y1)
                     return rec(x * (y.args[0] ^ (-y.args[1])))
                 else:
@@ -86,7 +98,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal((rec(x) * y - x * rec(y)) / (y ^ Const(2)))
             elif e.op == "^":
                 x, y = e.args
-                if y.ty == CONST:
+                if expr.is_const(y):
                     return normal(y * (x ^ Const(y.val - 1)) * rec(x))
                 elif var not in y.get_vars():
                     return normal(y * (x ^ (y - 1)) * rec(x))
@@ -250,10 +262,33 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             for arg in e.args:
                 rec(arg, ctx)
             if e.is_divides():
-                if ctx.check_condition(Op("!=", e.args[1], Const(0))):
-                    pass
+                # if the denominator has i, and var is real, then the expression is not 0
+                if Expr.contains_i(e.args[1]):
+                    # collect the variables in the expression
+                    vars_in_expr = e.args[1].get_vars()
+                    if vars_in_expr:
+                        # iterate over all variables
+                        for var_name in vars_in_expr:
+                            var = Var(var_name)
+                            is_real = any(expr.is_fun(cond) and cond.func_name == "isReal" and
+                                        expr.is_var(cond.args[0]) and cond.args[0].name == var_name
+                                        for cond in ctx.get_conds().data)
+                            not_zero = any(expr.is_op(cond) and cond.op == "!=" and
+                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name and
+                                         expr.is_const(cond.args[1]) and cond.args[1] == Const(0)
+                                         for cond in ctx.get_conds().data)
+
+                            if is_real and not_zero:
+                                pass
+                            else:
+                                add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                    else:
+                        pass
                 else:
-                    add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                    if ctx.check_condition(Op("!=", e.args[1], Const(0))):
+                        pass
+                    else:
+                        add_obligation(Op("!=", e.args[1], Const(0)), ctx)
             if e.is_power():
                 if ctx.check_condition(Op(">", e.args[0], Const(0))):
                     pass
@@ -297,15 +332,24 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
             if e.func_name == 'tan':
                 tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(Fun("isInt", tmp))
-                f2 = ctx.check_condition(Fun("isEven", tmp))
+                f1 = ctx.check_condition(expr.isInt(tmp))
+                f2 = ctx.check_condition(expr.isEven(tmp))
 
                 if not f1 or f2:
                     pass
                 else:
-                    branch1 = ProofObligationBranch([Fun("isInt", tmp)], [False])
-                    branch2 = ProofObligationBranch([Fun("isEven", tmp)])
+                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
+                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
                     add_obligation([branch1, branch2], ctx)
+            if e.func_name == 'factorial':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+            if e.func_name == 'binom':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+                if not ctx.check_condition(expr.isInt(e.args[1])):
+                    add_obligation(expr.isInt(e.args[1]), ctx)
+
             # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
@@ -501,9 +545,9 @@ class Linearity(Rule):
                     return e
             elif expr.is_summation(e):
                 v, l, u, body = e.index_var, e.lower, e.upper, e.body
-                if expr.is_minus(e.body):
+                if expr.is_minus(body):
                     return Summation(v, l, u, body.args[0]) - Summation(v, l, u, body.args[1])
-                elif expr.is_uminus(e.body):
+                elif expr.is_uminus(body):
                     return -Summation(v, l, u, body.args[0])
                 elif expr.is_times(e.body) or expr.is_divides(e.body):
                     num_factors, denom_factors = decompose_expr_factor(e.body)
@@ -1163,8 +1207,6 @@ class OnCount(Rule):
                 count -= 1
                 if count == 0:
                     return self.rule.eval(cur_e, ctx)
-                else:
-                    return cur_e
 
             if expr.is_var(cur_e) or expr.is_const(cur_e) or expr.is_inf(cur_e):
                 return cur_e
@@ -1194,7 +1236,7 @@ class OnCount(Rule):
 
         res = rec(e, ctx)
         if count > 0:
-            raise RuleException("OnCount",f"{self.n} is out of range")
+            raise RuleException("OnCount", f"{self.n} is out of range")
         return res
 
 class Simplify(Rule):
@@ -1487,8 +1529,10 @@ class Substitution(Rule):
         if e.var not in var_subst.get_vars():
             raise RuleException("Substitution", "variable %s not found" % e.var)
 
+        ctx2 = body_conds(e, ctx)
+
         # Compute g(x)'
-        dfx = deriv(e.var, var_subst, ctx)
+        dfx = deriv(e.var, var_subst, ctx2)
 
         # If body is a product and g(x)' is on one of the sides, then
         # the new body is the other side. Otherwise, the new body is
@@ -1509,11 +1553,11 @@ class Substitution(Rule):
         nf, df = decompose_expr_factor2(var_subst)
         prod_nf, prod_df = prod(nf), prod(df)
         var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
-        body_subst2 = normalize(body, ctx).replace(normalize(var_subst, ctx), var_name)
+        body_subst2 = normalize(body, ctx2).replace(normalize(var_subst, ctx2), var_name)
         body_subst3 = body.replace(var_subst2, var_name)
-        body_subst4 = normalize(body, ctx).replace(normalize(var_subst2,ctx), var_name)
-        body_subst5 = normalize(body.replace(var_subst, var_name), ctx)
-        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx)
+        body_subst4 = normalize(body, ctx2).replace(normalize(var_subst2,ctx2), var_name)
+        body_subst5 = normalize(body.replace(var_subst, var_name), ctx2)
+        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx2)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
@@ -1529,60 +1573,68 @@ class Substitution(Rule):
             self.f = body_subst6
         else:
             # Substitution is unable to clear x, need to solve for x
-            gu = solve_equation(var_subst, var_name, e.var, ctx)
+            gu = solve_equation(var_subst, var_name, e.var, ctx2)
             if gu is None:
                 raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
                     var_subst, var_name, e.var, body_subst
                 ))
 
-            gu = normalize(gu, ctx)
+            gu = normalize(gu, ctx2)
             c = e.body.replace(Var(e.var), gu)
             if not expr.is_limit(e):
-                new_problem_body = c * deriv(str(var_name), gu, ctx)
+                new_problem_body = c * deriv(str(var_name), gu, ctx2)
             else:
                 new_problem_body = c
             self.f = new_problem_body
 
         if expr.is_integral(e):
             if e.lower == expr.NEG_INF:
-                lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
+                lower = limits.reduce_neg_inf_limit(var_subst, e.var, ctx2)
             else:
-                x = Var(e.var)
-                lower = self.var_subst
-                lower = limits.reduce_inf_limit(lower.subst(e.var, (1 / x) + e.lower), e.var, ctx)
-                lower = normalize(lower, ctx)
+                # 计算替换后的下限
+                try:
+                    lower = normalize(var_subst.subst(e.var, e.lower), ctx2)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx2)
+
             if e.upper == expr.POS_INF:
-                upper = limits.reduce_inf_limit(var_subst, e.var, ctx)
+                upper = limits.reduce_inf_limit(var_subst, e.var, ctx2)
             else:
-                x = Var(e.var)
-                upper = self.var_subst
-                upper = limits.reduce_inf_limit(upper.subst(e.var, e.upper - (1 / x)), e.var, ctx)
-                upper = normalize(upper, ctx)
+                # 计算替换后的上限
+                try:
+                    upper = normalize(var_subst.subst(e.var, e.upper), ctx2)
+                except ZeroDivisionError:
+                    # 如果出现除零,说明替换后可能是无穷
+                    x = Var(e.var)
+                    upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx2)
+
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
-                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx)
+                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx2)
             else:
-                return normalize(Integral(self.var_name, lower, upper, self.f), ctx)
+                return normalize(Integral(self.var_name, lower, upper, self.f), ctx2)
         elif expr.is_indefinite_integral(e):
-            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx)
+            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx2)
         elif expr.is_limit(e):
             # Perhaps need to be improved when drt is not None
             if e.lim == expr.NEG_INF:
-                lim = limits.reduce_neg_inf_limit(var_subst, e.var, ctx)
+                lim = limits.reduce_neg_inf_limit(var_subst, e.var, ctx2)
             elif e.lim == expr.POS_INF:
-                lim = limits.reduce_inf_limit(var_subst, e.var, ctx)
+                lim = limits.reduce_inf_limit(var_subst, e.var, ctx2)
             else:
                 x = Var(e.var)
                 left = self.var_subst
-                left = limits.reduce_inf_limit(left.subst(e.var, (1 / x) + e.lim), e.var, ctx)
-                left = normalize(left, ctx)
+                left = limits.reduce_inf_limit(left.subst(e.var, (1 / x) + e.lim), e.var, ctx2)
+                left = normalize(left, ctx2)
                 right = self.var_subst
-                right = limits.reduce_inf_limit(right.subst(e.var, e.lim - (1 / x)), e.var, ctx)
-                right = normalize(right, ctx)
+                right = limits.reduce_inf_limit(right.subst(e.var, e.lim - (1 / x)), e.var, ctx2)
+                right = normalize(right, ctx2)
                 if left.is_evaluable() and right.is_evaluable() and expr.eval_expr(left) == expr.eval_expr(right):
-                    return normalize(Limit(self.var_name, left, self.f, None), ctx)
+                    return normalize(Limit(self.var_name, left, self.f, None), ctx2)
                 else:
                     return e
-            return normalize(Limit(self.var_name, lim, self.f, None), ctx)
+            return normalize(Limit(self.var_name, lim, self.f, None), ctx2)
         else:
             raise TypeError
 
@@ -1723,7 +1775,7 @@ class ExpandPolynomial(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         # Case of constant, integer power
-        if e.is_power() and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
+        if expr.is_power(e) and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
                 int(e.args[1].val) == e.args[1].val:
             n = int(e.args[1].val)
             base = to_poly(self.eval(e.args[0], ctx), ctx)
@@ -1800,7 +1852,6 @@ class Rewriting(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        # If old_expr is given, try to find it within e
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
@@ -1816,6 +1867,52 @@ class Rewriting(Rule):
         r1, r2 = r.eval(e, ctx), r.eval(self.new_expr, ctx)
         if r1 == r2:
             return self.new_expr
+
+        # Handle infinity cases with products
+        if expr.is_op(e) and e.op == '*':
+            # If new_expr is a limit
+            if expr.is_limit(self.new_expr):
+                lim = self.new_expr
+                # Check if all factors in the product are exponential functions
+                all_exp = all(expr.is_fun(arg) and arg.func_name == 'exp' for arg in e.args)
+                if all_exp:
+                    # Check if the exponents contain infinity
+                    has_inf = any(expr.is_inf(arg.args[0]) or (expr.is_op(arg.args[0]) and
+                                any(expr.is_inf(term) for term in arg.args[0].args))
+                                for arg in e.args)
+                    if has_inf:
+                        # Replace infinity with limit variable in each factor
+                        new_args = []
+                        for arg in e.args:
+                            if expr.is_fun(arg) and arg.func_name == 'exp':
+                                new_body = arg.args[0]
+                                if expr.is_inf(new_body):
+                                    new_body = Var(lim.var)
+                                elif expr.is_op(new_body):
+                                    for i, term in enumerate(new_body.args):
+                                        if expr.is_inf(term):
+                                            new_body = new_body.replace(term, Var(lim.var))
+                                new_args.append(Fun('exp', new_body))
+                        expected = Limit(lim.var, expr.POS_INF, functools.reduce(lambda x, y: Op('*', x, y), new_args))
+                        if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                            return self.new_expr
+
+        # Handle single exponential function
+        if expr.is_fun(e) and e.func_name == 'exp':
+            if len(e.args) == 1 and expr.is_op(e.args[0]) and e.args[0].op == '*':
+                if any(expr.is_inf(arg) for arg in e.args[0].args):
+                    # Check if new_expr is a limit expression
+                    if expr.is_limit(self.new_expr):
+                        lim = self.new_expr
+                        if expr.is_fun(lim.body) and lim.body.func_name == 'exp':
+                            # Replace infinity with limit variable
+                            new_body = e.args[0]
+                            for i, arg in enumerate(new_body.args):
+                                if expr.is_inf(arg):
+                                    new_body = new_body.replace(arg, Var(lim.var))
+                            expected = Limit(lim.var, expr.POS_INF, Fun('exp', new_body))
+                            if normalize(expected, ctx) == normalize(self.new_expr, ctx):
+                                return self.new_expr
 
         # Rewriting 1 to sin(x)^2 + cos(x)^2
         x = Symbol("x", [VAR, CONST, OP, FUN])
@@ -2016,7 +2113,8 @@ class Equation(Rule):
 class IntegrationByParts(Rule):
     """Apply integration by parts.
 
-    The arguments u and v should satisfy u * dv equals the integrand.
+    The arguments `u` and `v` should satisfy `u * dv` equals the integrand.
+    This step transforms `INT x. u * dv` into `u * v - INT x. v * du`.
 
     """
 
@@ -2074,8 +2172,7 @@ class IntegrationByParts(Rule):
                 return normalize(self.u * self.v, ctx2) - \
                        expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
         else:
-            raise RuleException("Integration by parts", "u * dv does not equal body: %s != %s" % (
-                str(udv), str(e.body)))
+            raise RuleException(self.name, f"u * dv does not equal body: {udv} != {e.body}")
 
 
 class SplitRegion(Rule):
@@ -2139,30 +2236,47 @@ class IntegrateByEquation(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Eliminate the lhs's integral in rhs by solving equation."""
-        lhs = normalize(self.lhs, ctx)
 
-        def get_coeff(t: Expr, lhs:Expr):
-            """Obtain the coefficient of lhs within t."""
+        def get_coeff(t: Expr, lhs: Expr) -> tuple[Expr, Expr]:
+            """Rewrite t in the form a * lhs + b."""
             if t == lhs:
-                return Const(1)
+                return Const(1), Const(0)
 
-            if t.is_plus():
-                return get_coeff(t.args[0], lhs) + get_coeff(t.args[1], lhs)
-            elif t.is_minus():
-                return get_coeff(t.args[0], lhs) - get_coeff(t.args[1], lhs)
+            if expr.is_plus(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                return a1 + a2, b1 + b2
+            elif expr.is_minus(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                return a1 - a2, b1 - b2
             elif expr.is_uminus(t):
-                return -get_coeff(t.args[0], lhs)
-            elif t.is_times():
-                return t.args[0] * get_coeff(t.args[1], lhs)
-            elif t.is_divides():
-                return get_coeff(t.args[0], lhs) / t.args[1]
+                a, b = get_coeff(t.args[0], lhs)
+                return -a, -b
+            elif expr.is_times(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                a2, b2 = get_coeff(t.args[1], lhs)
+                if a2 != Const(0):
+                    return t.args[0] * a2, t.args[0] * b2
+                elif a1 != Const(0):
+                    return t.args[1] * a1, t.args[1] * b1
+                else:
+                    return Const(0), t
+            elif expr.is_divides(t):
+                a1, b1 = get_coeff(t.args[0], lhs)
+                return a1 / t.args[1], b1 / t.args[1]
             else:
-                return Const(0)
+                return Const(0), t
 
+        # Obtain coeff with normalize
         norm_e = normalize(e, ctx)
-        coeff = normalize(get_coeff(norm_e, lhs), ctx)
-        lhs = self.lhs
-        coeff2 = normalize(get_coeff(e, lhs), ctx)
+        norm_lhs = normalize(self.lhs, ctx)
+        coeff, rest = get_coeff(norm_e, norm_lhs)
+        coeff = normalize(coeff, ctx)
+
+        # Obtain coeff without normalize
+        coeff2, rest2 = get_coeff(e, self.lhs)
+        coeff2 = normalize(coeff2, ctx)
 
         if coeff == Const(0) and coeff2 == Const(0):
             raise RuleException("IntegrateByEquation", "lhs %s not found in integral" % self.lhs)
@@ -2172,10 +2286,10 @@ class IntegrateByEquation(Rule):
 
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
-        res = normalize((e - (coeff * lhs)) / ((Const(1) - coeff)), ctx)
-        res = ExpandPolynomial().eval(res, ctx)
-        return res
+            rest = rest2
+        res = normalize(rest / (Const(1) - coeff), ctx)
 
+        return res
 
 
 class ElimInfInterval(Rule):
@@ -2439,18 +2553,18 @@ class ExpandDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        # Function case
         if expr.is_fun(e) and e.func_name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
                     inst = expr.match(e, identity.lhs)
-                    if inst == None:
+                    if inst is None:
                         continue
-                    tmp_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
-                    flag = True
-                    for cond in tmp_conds:
-                        flag = flag and ctx.check_condition(cond)
-                    if flag:
+                    inst_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
+                    if all(ctx.check_condition(cond) for cond in inst_conds):
                         return normalize(identity.rhs.inst_pat(inst), ctx)
+
+        # Constant case
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():
                 if expr.is_var(identity.lhs) and identity.lhs.name == self.func_name:
@@ -3083,10 +3197,6 @@ class FunEquation(Rule):
             return e
         ne = Op('=', Fun(self.func_name, e.lhs), Fun(self.func_name, e.rhs))
         return ne
-        # if len(check_wellformed(ne, ctx)) == 0:
-        #     return ne
-        # return e
-
 
 
 class LimRewrite(Rule):

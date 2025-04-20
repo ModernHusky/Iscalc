@@ -328,6 +328,15 @@
         },
         {
             "conds": [
+                "p > 0",
+                "q > 0"
+            ],
+            "expr": "(INT t:[0,oo]. (exp(-p*t^2)-exp(-q*t^2))/t^2) = sqrt(pi)*(sqrt(q) - sqrt(p))",
+            "path": "flipside02",
+            "type": "problem"
+        },
+        {
+            "conds": [
                 "a > -1"
             ],
             "expr": "(INT x:[0, 1]. (x ^ a - 1) / log(x)) = log(a + 1)",
@@ -366,8 +375,47 @@
             "conds": [
                 "a > -1"
             ],
+            "expr": "(INT x:[0,1]. x^a * (log(x))^2) = 2/(a+1)^3",
+            "path": "flipside07",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > b",
+                "b >= 0"
+            ],
+            "expr": "(INT x:[0,pi]. 1/(a+b*cos(x))) = pi/(sqrt(a^2-b^2))",
+            "path": "flipside08",
+            "type": "problem"
+        },
+        {
+            "conds": [
+            ],
+            "expr": "(INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24",
+            "path": "LogFunction02",
+            "type": "problem"
+        },
+        {
+            "conds": [
+            ],
+            "expr": "(INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)",
+            "path": "LogFunction03",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > -1"
+            ],
             "expr": "(INT x:[0,1]. x^a*(log(x))^2) = 2/(a+1)^3",
             "path": "flipside07",
+            "type": "problem"
+        },
+        {
+            "conds": [
+                "a > 0"
+            ],
+            "expr": "(LIM{x->oo}. exp(-a*x)) = 0",
+            "path": "FrullaniIntegral02",
             "type": "problem"
         },
         {
