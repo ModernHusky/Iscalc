@@ -9,8 +9,8 @@ import operator
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
-    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, INTEGRAL, INF, \
-    Product, SYMBOL, SkolemFunc, decompose_expr_factor2, is_const, exprify
+    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, \
+    SkolemFunc, decompose_expr_factor2, is_const, exprify
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -24,13 +24,25 @@ from integral import sympywrapper
 from integral import utils
 
 
-class RuleException(Exception):
+class RuleException(expr.IscalcException):
+    """Exception raised when applying some calculation rule."""
     def __init__(self, rule_name: str, msg: str):
         self.rule_name = rule_name
         self.msg = msg
 
     def __str__(self):
         return "%s: %s" % (self.rule_name, self.msg)
+
+    def to_json(self) -> dict:
+        return {
+            "class": "RuleException",
+            "rule_name": self.rule_name,
+            "msg": self.msg
+        }
+    
+    @staticmethod
+    def from_json(data: dict):
+        return RuleException(data["rule_name"], data["msg"])
 
 
 def deriv(var: str, e: Expr, ctx: Context) -> Expr:
@@ -42,7 +54,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
     def normal(x):
         return normalize(x, ctx)
 
-    def rec(e):
+    def rec(e: Expr):
         if var not in e.get_vars():
             return Const(0)
         elif expr.is_var(e):
@@ -78,7 +90,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 if not y.contains_var(var):
                     # x / c case:
                     return normal(rec(x) / y)
-                elif not x.contains_var(var) and y.ty == OP and y.op == "^":
+                elif not x.contains_var(var) and expr.is_power(y):
                     # c / (y0 ^ y1): rewrite to c * y0 ^ (-y1)
                     return rec(x * (y.args[0] ^ (-y.args[1])))
                 else:
@@ -86,7 +98,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal((rec(x) * y - x * rec(y)) / (y ^ Const(2)))
             elif e.op == "^":
                 x, y = e.args
-                if y.ty == CONST:
+                if expr.is_const(y):
                     return normal(y * (x ^ Const(y.val - 1)) * rec(x))
                 elif var not in y.get_vars():
                     return normal(y * (x ^ (y - 1)) * rec(x))
@@ -320,15 +332,24 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
             if e.func_name == 'tan':
                 tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(Fun("isInt", tmp))
-                f2 = ctx.check_condition(Fun("isEven", tmp))
+                f1 = ctx.check_condition(expr.isInt(tmp))
+                f2 = ctx.check_condition(expr.isEven(tmp))
 
                 if not f1 or f2:
                     pass
                 else:
-                    branch1 = ProofObligationBranch([Fun("isInt", tmp)], [False])
-                    branch2 = ProofObligationBranch([Fun("isEven", tmp)])
+                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
+                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
                     add_obligation([branch1, branch2], ctx)
+            if e.func_name == 'factorial':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+            if e.func_name == 'binom':
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+                if not ctx.check_condition(expr.isInt(e.args[1])):
+                    add_obligation(expr.isInt(e.args[1]), ctx)
+
             # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
@@ -1754,7 +1775,7 @@ class ExpandPolynomial(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         # Case of constant, integer power
-        if e.is_power() and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
+        if expr.is_power(e) and expr.is_const(e.args[1]) and e.args[1].val > 1 and \
                 int(e.args[1].val) == e.args[1].val:
             n = int(e.args[1].val)
             base = to_poly(self.eval(e.args[0], ctx), ctx)
@@ -2092,7 +2113,8 @@ class Equation(Rule):
 class IntegrationByParts(Rule):
     """Apply integration by parts.
 
-    The arguments u and v should satisfy u * dv equals the integrand.
+    The arguments `u` and `v` should satisfy `u * dv` equals the integrand.
+    This step transforms `INT x. u * dv` into `u * v - INT x. v * du`.
 
     """
 
@@ -2150,8 +2172,7 @@ class IntegrationByParts(Rule):
                 return normalize(self.u * self.v, ctx2) - \
                        expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
         else:
-            raise RuleException("Integration by parts", "u * dv does not equal body: %s != %s" % (
-                str(udv), str(e.body)))
+            raise RuleException(self.name, f"u * dv does not equal body: {udv} != {e.body}")
 
 
 class SplitRegion(Rule):
@@ -3176,10 +3197,6 @@ class FunEquation(Rule):
             return e
         ne = Op('=', Fun(self.func_name, e.lhs), Fun(self.func_name, e.rhs))
         return ne
-        # if len(check_wellformed(ne, ctx)) == 0:
-        #     return ne
-        # return e
-
 
 
 class LimRewrite(Rule):

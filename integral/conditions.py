@@ -1,6 +1,6 @@
 """Conditions"""
 
-from typing import List, Union
+from typing import Union
 
 from integral.expr import Expr
 from integral import latex
@@ -9,8 +9,8 @@ from integral import parser
 
 class Conditions:
     """A condition is represented by a list of boolean expressions."""
-    def __init__(self, conds: Union["Conditions", List[Union[str, Expr]]] = None):
-        self.data: List[Expr] = list()
+    def __init__(self, conds: Union["Conditions", list[Union[str, Expr]]] = None):
+        self.data: list[Expr] = list()
         if isinstance(conds, Conditions):
             self.data.extend(conds.data)
         elif conds is not None:

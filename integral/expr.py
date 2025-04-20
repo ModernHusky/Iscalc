@@ -9,6 +9,18 @@ from typing import Dict, List, Optional, Set, TypeGuard, Tuple, Union, Callable
 
 import sympy
 
+class IscalcException(Exception):
+    """Parent class of all exceptions in Iscalc."""
+    def to_json(self) -> dict:
+        """Convert current object to json format."""
+        raise NotImplementedError(f"to_json: {type(self)}")
+    
+    @staticmethod
+    def from_json(data: dict):
+        """Load object from json format."""
+        raise NotImplementedError(f"from_json: {__class__.__name__}")
+
+
 VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
 SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
@@ -1325,9 +1337,11 @@ class Op(Expr):
 class Fun(Expr):
     """Functions."""
 
-    def __init__(self, func_name: str, *args):
-        assert isinstance(func_name, str) and \
-               all(isinstance(arg, Expr) for arg in args), func_name
+    def __init__(self, func_name: str, *args: Expr):
+        if not isinstance(func_name, str):
+            raise AssertionError("Fun:", func_name)
+        if not all(isinstance(arg, Expr) for arg in args):
+            raise AssertionError("Fun:", args)
 
         self.ty = FUN
         self.args: tuple[Expr, ...] = tuple(args)
@@ -1515,7 +1529,6 @@ def binom(e1: Expr, e2: Expr) -> Expr:
     """Binomial coefficients"""
     return Fun("binom", e1, e2)
 
-
 def factorial(e: Expr) -> Expr:
     """Factorial of e"""
     return Fun('factorial', e)
@@ -1532,6 +1545,14 @@ complex_type = Fun("complex")
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)
 
+def isInt(t: Expr) -> Expr:
+    return Fun("isInt", t)
+
+def isReal(t: Expr) -> Expr:
+    return Fun("isReal", t)
+
+def isEven(t: Expr) -> Expr:
+    return Fun("isEven", t)
 
 class Deriv(Expr):
     """Derivative of an expression."""
@@ -1788,7 +1809,11 @@ def eval_expr(e: Expr):
         elif e.func_name == 'arctan':
             return math.atan(eval_expr(e.args[0]))
         elif e.func_name == 'log':
-            return math.log(eval_expr(e.args[0]))
+            a = eval_expr(e.args[0])
+            if a <= 0.0:
+                return -math.inf
+            else:
+                return math.log(a)
         elif e.func_name == 'factorial':
             arg = eval_expr(e.args[0])
             if int(arg) == arg:

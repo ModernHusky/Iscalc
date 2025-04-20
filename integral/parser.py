@@ -566,13 +566,24 @@ expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer
 action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
 
 
-class ParseException(Exception):
+class ParseException(expr.IscalcException):
     def __init__(self, s: str, msg: str):
         self.s = s
         self.msg = msg
 
     def __str__(self):
         return "Error while parsing %s\n%s" % (self.s, self.msg)
+
+    def to_json(self) -> dict:
+        return {
+            "class": "ParseException",
+            "s": self.s,
+            "msg": self.msg
+        }
+    
+    @staticmethod
+    def from_json(data: dict):
+        return ParseException(data["s"], data["msg"])
 
 
 def parse_expr(s: str) -> Expr:
