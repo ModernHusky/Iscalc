@@ -1020,7 +1020,7 @@ def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
 def simplify_sum(e: expr.Expr, ctx:Context) -> expr.Expr:
     if expr.is_summation(e):
         if e.lower == e.upper and e.lower not in (expr.POS_INF, expr.NEG_INF):
-            return e.body
+            return e.body.subst(e.index_var, e.lower)
         if e.body == expr.Const(0):
             return e.body
     elif e.is_plus():
