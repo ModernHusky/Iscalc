@@ -144,15 +144,15 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("UCDavis", "LogAndArcTangent", actions)
 
-    # def testPowerSubstitution(self):
-    #     with open('theories/ucdavisPowerSubst.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("UCDavis", "PowerSubstitution", actions)
+    def testPowerSubstitution(self):
+        with open('theories/ucdavisPowerSubst.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("UCDavis", "PowerSubstitution", actions)
 
-    # def testTrigSubstitution(self):
-    #     with open('theories/ucdavisTrigSubst.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("UCDavis", "TrigSubstitution", actions)
+    def testTrigSubstitution(self):
+        with open('theories/ucdavisTrigSubst.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("UCDavis", "TrigSubstitution", actions)
 
     def testWallis(self):
         # Reference:
@@ -2135,35 +2135,35 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("standard", "PostgraduateIndefinitePart1SectionA", actions)
 
-    # def testPostgraduateIndefinitePart1SectionB(self):
-    #     with open('theories/postgradIndef1b.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("standard", "PostgraduateIndefinitePart1SectionB", actions)
+    def testPostgraduateIndefinitePart1SectionB(self):
+        with open('theories/postgradIndef1b.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("standard", "PostgraduateIndefinitePart1SectionB", actions)
 
     def testPostgraduateIndefinitePart2SectionA(self):
         with open('theories/postgradIndef2a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
         self.check_actions("standard", "PostgraduateIndefinitePart2SectionA", actions)
 
-    # def testPostgraduateIndefinitePart2SectionB(self):
-    #     with open('theories/postgradIndef2b.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("standard", "PostgraduateIndefinitePart2SectionB", actions)
+    def testPostgraduateIndefinitePart2SectionB(self):
+        with open('theories/postgradIndef2b.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("standard", "PostgraduateIndefinitePart2SectionB", actions)
 
-    # def testPostgraduateIndefinitePart3SectionA(self):
-    #     with open('theories/postgradIndef3a.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("standard", "PostgraduateIndefinitePart3SectionA", actions)
+    def testPostgraduateIndefinitePart3SectionA(self):
+        with open('theories/postgradIndef3a.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("standard", "PostgraduateIndefinitePart3SectionA", actions)
 
     def testPostgraduateIndefinitePart4SectionA(self):
         with open('theories/postgradIndef4a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
         self.check_actions("standard", "PostgraduateIndefinitePart4SectionA", actions)
 
-    # def testPostgraduateIndefinitePart4SectionB(self):
-    #     with open('theories/postgradIndef4b.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("standard", "PostgraduateIndefinitePart4SectionB", actions)
+    def testPostgraduateIndefinitePart4SectionB(self):
+        with open('theories/postgradIndef4b.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("standard", "PostgraduateIndefinitePart4SectionB", actions)
 
     def testPostgraduateIndefinitePart5SectionA(self):
         with open('theories/postgradIndef5a.thy', 'r', encoding='utf-8') as file:

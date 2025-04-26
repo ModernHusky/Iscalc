@@ -103,60 +103,6 @@ def approx_real(a: Expr) -> bool:
         return abs(a_val.imag) < tol
     except:
         return False
-    
-def approx_complex(a: Expr) -> bool:
-    try:
-        a_val = complex(eval_expr(a))
-        return abs(a_val.imag) > tol
-    except:
-        return False
-
-def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
-    """Initialize mapping from subject to list of facts from a given
-    condition object.
-    
-    """
-    all_conds: dict[Expr, list[Expr]] = dict()
-    
-    # collect all variables
-    all_vars = set()
-    
-    # Rewrite all absolute value conditions
-    for cond in conds.data:
-        x = subject_of(cond)
-        if x not in all_conds:
-            all_conds[x] = list()
-        all_conds[x].append(cond)
-        
-        if expr.is_var(x):
-            all_vars.add(x)
-            
-        # Handle absolute value conditions
-        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less():
-            # abs(x) < c  -->  -c < x < c
-            if x.args[0] not in all_conds:
-                all_conds[x.args[0]] = list()
-            all_conds[x.args[0]].append(Op("<", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op(">", x.args[0], -cond.args[1]))
-        if expr.is_fun(x) and x.func_name == 'abs' and cond.is_less_eq():
-            # abs(x) <= c  -->  -c <= x <= c
-            if x.args[0] not in all_conds:
-                all_conds[x.args[0]] = list()
-            all_conds[x.args[0]].append(Op("<=", x.args[0], cond.args[1]))
-            all_conds[x.args[0]].append(Op(">=", x.args[0], -cond.args[1]))        
-
-    # add simple condition transition
-    for k in all_conds:
-        for x in all_conds[k]:
-            if expr.is_less(x):
-                if x.args[1] in all_conds:
-                    for y in all_conds[x.args[1]]:
-                        # x: k < b
-                        # y: b < c or b <= c or b = c
-                        # x and y ==> k < c
-                        if expr.is_less(y) or expr.is_less_eq(y) or expr.is_equals(y):
-                            all_conds[k].append(Op('<', k, y.args[1]))
-    return all_conds
 
 def update_inst(k: str, v: Expr, inst: dict[str, Expr]) -> dict[str, Expr]:
     """Update instantiation without changing the original."""
@@ -233,8 +179,7 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
             if approx_real(x):
                 return [inst]
         elif expr.is_fun(cond) and cond.func_name == 'isComplex':
-            if approx_complex(x):
-                return [inst]
+            return [inst]
 
     # If the goal is of form x ?= c, where c is a constant, try to
     # apply transitivity with facts in all_conds.
@@ -319,15 +264,61 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
     # Not found
     return list()
 
-def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
-                  ctx: Context):
+def add_condition(all_conds: dict[Expr, list[Expr]], e: Expr, cond: Expr):
+    """Helper function: add condition `cond` to `all_conds` only if
+    it is not already implied by the existing conditions.
+    
+    """
+    if e not in all_conds:
+        all_conds[e] = list()
+    if len(check_cond(cond, all_conds, dict())) == 0:
+        all_conds[e].append(cond)
+
+def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
+    """Initialize mapping from subject to list of facts from a given
+    condition object.
+    
+    """
+    all_conds: dict[Expr, list[Expr]] = dict()
+    
+    # Rewrite all absolute value conditions
+    for cond in conds.data:
+        x = subject_of(cond)
+        add_condition(all_conds, x, cond)
+            
+        # Handle absolute value conditions
+        if expr.is_fun(x) and x.func_name == 'abs' and expr.is_less(cond):
+            # abs(x) < c  -->  -c < x < c
+            add_condition(all_conds, x.args[0], Op("<", x.args[0], cond.args[1]))
+            add_condition(all_conds, x.args[0], Op(">", x.args[0], -cond.args[1]))
+        if expr.is_fun(x) and x.func_name == 'abs' and expr.is_less_eq(cond):
+            # abs(x) <= c  -->  -c <= x <= c
+            add_condition(all_conds, x.args[0], Op("<=", x.args[0], cond.args[1]))
+            add_condition(all_conds, x.args[0], Op(">=", x.args[0], -cond.args[1]))
+
+    # add simple condition transition
+    for k in all_conds:
+        for x in all_conds[k]:
+            if expr.is_less(x):
+                if x.args[1] in all_conds:
+                    for y in all_conds[x.args[1]]:
+                        # x: k < b
+                        # y: b < c or b <= c or b = c
+                        # x and y ==> k < c
+                        if expr.is_less(y) or expr.is_less_eq(y) or expr.is_equals(y):
+                            add_condition(all_conds, k, Op('<', k, y.args[1]))
+    return all_conds
+
+def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]]):
     """Use the rule `ineq` to saturate facts about `e`. New facts are
-    added to all_conds.
+    added to `all_conds`.
     
     """
     pat = subject_of(ineq.expr)
     inst = match(e, pat)
     if inst is not None:
+        # Check conditions of the inequality, instantiating schematic
+        # variables in the inequality in the process.
         old_list = [inst]
         for cond in ineq.conds.data:
             new_list = []
@@ -335,19 +326,13 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
                 res = check_cond(cond.inst_pat(inst), all_conds, inst)
                 new_list.extend(res)
             old_list = new_list
+        # For each instantiation, apply the identity
         for mapping in old_list:
             res = ineq.expr.inst_pat(mapping)
-            if e not in all_conds:
-                all_conds[e] = list()
-            if res not in all_conds[e]:
-                all_conds[e].append(res)
-            if expr.is_compare(res):
-                res_norm = Op(res.op, res.args[0], res.args[1])
-                if res_norm not in all_conds[e]:
-                    all_conds[e].append(res_norm)
+            add_condition(all_conds, e, res)
     return
 
-def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], ctx: Context):
+def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]]):
     """Perform one round of saturation. New facts are added
     onto `all_conds`.
     
@@ -355,7 +340,7 @@ def saturate_once(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Exp
     all_subs = e.find_all_subexpr()
     for sube, _ in all_subs:
         for ineq in ineqs:
-            saturate_expr(sube, ineq, all_conds, ctx)
+            saturate_expr(sube, ineq, all_conds)
 
 def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
     """Return number of facts in all_conds."""
@@ -364,8 +349,8 @@ def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
         res += len(conds)
     return res
 
-def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
-             ctx: Context, *, round_limit: int = 5, size_limit: int = 1000):
+def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], *,
+             round_limit: int = 5, size_limit: int = 200):
     """Saturate up to given number of rounds and size limits. New facts
     are added onto `all_conds`.
     
@@ -376,7 +361,7 @@ def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
     i = 0
     while True:
         prev_size = all_conds_size(all_conds)
-        saturate_once(e, ineqs, all_conds, ctx)
+        saturate_once(e, ineqs, all_conds)
         i += 1
         next_size = all_conds_size(all_conds)
         if prev_size == next_size:
@@ -384,7 +369,8 @@ def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
             return
         if next_size > size_limit:
             print(f"Warning: size limit reached during saturation, size = {next_size}, limit = {size_limit}")
-            return
+            print_all_conds(all_conds)
+            raise AssertionError
         if i > round_limit:
             print(f"Warning: round limit reached during saturation")
             return
@@ -392,7 +378,7 @@ def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]],
 def print_all_conds(all_conds: dict[Expr, list[Expr]]):
     """Print all conditions (for debugging)."""
     for x, conds in all_conds.items():
-        print("%s: %s" % (x, ', '.join(str(cond) for cond in conds)))
+        print("%s: %s\n" % (x, ', '.join(str(cond) for cond in conds)))
 
 def get_standard_inequalities() -> list[Identity]:
     """List of standard inequalities."""
@@ -753,6 +739,6 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         if lemma.expr.is_compare():
             ineqs.append(lemma)
 
-    saturate(subject_of(e), ineqs, all_conds, ctx)
+    saturate(subject_of(e), ineqs, all_conds)
     return len(check_cond(e, all_conds, dict())) == 1
 
