@@ -1,5 +1,6 @@
+# Chapter 1
 
-// Chapter 1, Section 5
+## Chapter 1, Section 5, Some Examples of Tricks
 
 prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
 lhs:
@@ -10,7 +11,7 @@ lhs:
     simplify
 done
 
-// Chapter 1, Section 7
+## Chapter 1, Section 7, Dalzell's Integral
 
 prove (INT x:[0,1]. (x^4*(1-x)^4)/(1+x^2)) = 22/7 - pi
 lhs:
@@ -20,7 +21,7 @@ lhs:
     simplify
 done
 
-// Chapter 2, Section 1
+## Chapter 2, Section 1, Six 'Easy' Warm-Ups
 
 prove (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1) for a: real, a > -1
 lhs:
@@ -99,7 +100,7 @@ lhs:
     simplify
 done
 
-// Chapter 2, Section 2
+## Chapter 2, Section 2, A New Trick
 
 calculate INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
     substitute y for pi / 2 - x
@@ -203,4 +204,159 @@ from 2:
     rewrite 2 * log(a) to log(a ^ 2)
     rewrite 1/8 * pi * log(a ^ 2) + pi * log(2) / 8 to 1/8 * pi * (log(2) + log(a ^ 2))
     rewrite log(2) + log(a ^ 2) to log(2 * a ^ 2)
+done
+
+## Chapter 2, Section 3, Two Old Tricks, Plus a New One
+
+prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
+lhs:
+    expand definition for cosh (all)
+    rewrite x ^ 4 + 2 * x ^ 2 * ((exp(-(2 * a)) + exp(2 * a)) / 2) + 1 to (x ^ 2 + exp(2 * a)) * (x ^ 2 + exp(-(2 * a)))
+    rewrite 1 / ((x ^ 2 + exp(2 * a)) * (x ^ 2 + exp(-(2 * a)))) to 1 / (exp(2 * a) - exp(-(2 * a))) * (1 / (x ^ 2 + exp(-(2 * a))) - 1 / (x ^ 2 + exp(2 * a)))
+    simplify
+    rewrite exp(-(2 * a)) to exp(-a) ^ 2
+    rewrite exp(-(2 * a)) to exp(-a) ^ 2
+    rewrite exp(2 * a) to exp(a) ^ 2
+    rewrite exp(2 * a) to exp(a) ^ 2
+    apply integral identity
+    simplify
+    rewrite to pi / (4 * ((exp(a) + exp(-a)) / 2))
+    fold definition for cosh (all)
+done
+
+prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for a: real, cos(a) != 0
+subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
+case analysis on x != 0
+    case true:
+    lhs:
+        rewrite to (x^2 - 1)^2 + 2*x^2*(1 + cos(2*a))
+        rewrite cos(2*a) to 2*cos(a)^2 - 1
+        simplify
+    done
+    case false:
+    lhs:
+        simplify                    
+    done
+done
+subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0 for cos(a) != 0
+case analysis on x != 0
+    case true:
+    lhs:
+        expand polynomial
+        rewrite sin(a)^2 to 1 - cos(a)^2
+        simplify
+        rewrite to (x^2 - 1) ^ 2 + 4*x^2*(cos(a)^2)
+    done
+    case false:
+    lhs:
+        simplify
+    done
+done
+subgoal 1: (INT x:[0,oo]. x^2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1)) = (INT x:[0,oo]. 1 / (x^4+2*x^2*cos(2*a)+1))
+rhs:
+    substitute y for 1/x
+    rewrite 1 / (y ^ 2 * (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)) to (1/y ^ 2)/ (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)
+    rewrite 1 / y ^ 2 / (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1) to (y^4*(1 / y ^ 2)) / (y^4*(2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1))
+    rewrite y ^ 4 * (1 / y ^ 2) / (y ^ 4 * (2 * cos(2 * a) / y ^ 2 + 1 / y ^ 4 + 1)) to y^2/(y^4+2*y^2*cos(2*a)+1)
+    substitute x for y
+done
+subgoal 2: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/2*(INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+rhs:
+    rewrite (1 + x^2)/(x^4+2*x^2*cos(2*a)+1) to (1/(x^4+2*x^2*cos(2*a)+1) + x^2/(x^4+2*x^2*cos(2*a)+1))
+    simplify
+    rewrite (2 * x ^ 2 * cos(2 * a) + x ^ 4 + 1) to (x ^ 4 + 2 * x^2* cos(2 * a) + 1)
+    apply 1 on (INT x:[0,oo]. x ^ 2 / (x ^ 4 + 2 * x^2* cos(2 * a) + 1))
+    simplify
+done
+subgoal 3: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = 1/4*(INT x:[-oo,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+rhs:
+    split region at 0
+    substitute u for -x
+    substitute x for u
+    simplify
+    rewrite (INT x:[0,oo]. (x ^ 2 + 1) / (2 * x ^ 2 * cos(2 * a) + x ^ 4 + 1)) to (INT x:[0,oo]. (1 + x^2)/(x^4+2*x^2*cos(2*a)+1))
+    apply 2 on (INT x:[0,oo]. (1 + x ^ 2) / (x ^ 4 + 2 * x ^ 2 * cos(2 * a) + 1))
+    simplify
+    rewrite to (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+done
+subgoal 4: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+lhs:
+    substitute u for -x
+    substitute x for u
+    rewrite (INT x:[-oo,oo]. -(2 * x * sin(a) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))) to -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+done
+subgoal 5: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = 0
+lhs:
+    rewrite to 1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))+1/2*(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    apply 4 on (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    rewrite to 1/2*((INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) - (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))))
+    simplify
+done
+subgoal 6: (INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = (INT x:[-oo,oo]. (1 + 2*x*sin(a) + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+rhs:
+    expand polynomial
+    rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
+    simplify
+    rewrite 2 * sin(a) * (INT x:[-oo,oo]. x / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1))) to (INT x:[-oo,oo]. (2*x*sin(a)) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))
+    rewrite ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
+    apply 5 on (INT x:[-oo,oo]. 2 * x * sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    rewrite to (INT x:[-oo,oo]. (x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)))
+    rewrite x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to (1 + x ^ 2) / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)
+    rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
+done
+subgoal 7: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/(4*cos(a)) for cos(a)>0
+lhs:
+    apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+    rewrite cos(2*a) to 1 - 2*(sin(a))^2
+    rewrite 2 * x ^ 2 * (1 - 2 * sin(a) ^ 2) to 2*x^2 - 4*x^2*sin(a)^2
+    rewrite (x ^ 4 + (2 * x ^ 2 - 4 * x ^ 2 * sin(a) ^ 2) + 1) to (x^2 - 2*x*sin(a)+1)*(x^2+2*x*sin(a)+1)
+    apply 6 on (INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    rewrite (1 + 2 * x * sin(a) + x ^ 2) to (x ^ 2 + 2 * x * sin(a) + 1)
+    rewrite (x ^ 2 + 2 * x * sin(a) + 1) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)) to 1 / (x ^ 2 - 2 * x * sin(a) + 1)
+    rewrite 1 to sin(a)^2 + cos(a)^2
+    rewrite 1 to sin(a)^2 + cos(a)^2
+    rewrite (x ^ 2 - 2 * x * sin(a) + (sin(a) ^ 2 + cos(a) ^ 2)) to (x ^ 2 - 2 * x * sin(a) + sin(a) ^ 2 + cos(a) ^ 2)
+    rewrite x ^ 2 - 2 * x * sin(a) + sin(a) ^ 2 to (x-sin(a))^2
+    rewrite sin(a)^2 + cos(a)^2 to 1
+    substitute u for (x - sin(a))
+    apply integral identity
+    simplify
+    rewrite to 1 / (4 * cos(a))*((LIM {u -> oo}. arctan(u / cos(a)))-(LIM {u -> oo}. arctan(-(u / cos(a)))))
+    rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
+    simplify
+done
+subgoal 8: (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = -pi/(4*cos(a)) for cos(a)<0
+lhs:
+    apply 3 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+    rewrite cos(2*a) to 1 - 2*(sin(a))^2
+    rewrite 2 * x ^ 2 * (1 - 2 * sin(a) ^ 2) to 2*x^2 - 4*x^2*sin(a)^2
+    rewrite (x ^ 4 + (2 * x ^ 2 - 4 * x ^ 2 * sin(a) ^ 2) + 1) to (x^2 - 2*x*sin(a)+1)*(x^2+2*x*sin(a)+1)
+    apply 6 on (INT x:[-oo,oo]. (1 + x ^ 2) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    rewrite (1 + 2 * x * sin(a) + x ^ 2) to (x ^ 2 + 2 * x * sin(a) + 1)
+    rewrite (x ^ 2 + 2 * x * sin(a) + 1) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)) to 1 / (x ^ 2 - 2 * x * sin(a) + 1)
+    rewrite 1 to sin(a)^2 + cos(a)^2
+    rewrite 1 to sin(a)^2 + cos(a)^2
+    rewrite (x ^ 2 - 2 * x * sin(a) + (sin(a) ^ 2 + cos(a) ^ 2)) to (x ^ 2 - 2 * x * sin(a) + sin(a) ^ 2 + cos(a) ^ 2)
+    rewrite x ^ 2 - 2 * x * sin(a) + sin(a) ^ 2 to (x-sin(a))^2
+    rewrite sin(a)^2 + cos(a)^2 to 1
+    substitute u for (x - sin(a))
+    apply integral identity
+    simplify
+    rewrite to 1 / (4 * cos(a))*((LIM {u -> oo}. arctan(u / cos(a)))-(LIM {u -> oo}. arctan(-(u / cos(a)))))
+    rewrite arctan(-(u / cos(a))) to -arctan((u / cos(a)))
+    simplify
+done
+case analysis on cos(a)
+    case negative:
+    lhs:
+        apply 8 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+    rhs:
+        simplify
+    done
+    case positive:
+    lhs:
+        apply 7 on (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1))
+    rhs:
+        simplify
+    done
 done

@@ -73,7 +73,7 @@
         
     ],
     "imports": [
-        "base"
+        "standard"
     ],
     "name": "The Calculus Page Problems List (by D. A. Kouba)",
     "type": "header"
