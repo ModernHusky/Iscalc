@@ -83,7 +83,7 @@ class ActionTest(unittest.TestCase):
     def testStandard(self):
         with open('theories/standard.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", "standard", actions)
+        self.check_actions("base", None, actions)
 
     def testMIT2019(self):
         actions = """
@@ -96,72 +96,72 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
         """        
-        self.check_actions("MIT", "MIT2019", actions)
+        self.check_actions("standard", None, actions)
 
     def testLHopital(self):
         with open('theories/lhopital.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "LHopital", actions)
+        self.check_actions("standard", None, actions)
 
     def testTongji(self):
         with open('theories/tongji05.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "tongji", actions)
+        self.check_actions("standard", None, actions)
 
     def testTongjiIndefSubstitution(self):
         with open('theories/tongji0402.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "tongji0402", actions)
+        self.check_actions("standard", None, actions)
 
     def testTongjiIndefByParts(self):
         with open('theories/tongji0403.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "tongji0403", actions)
+        self.check_actions("standard", None, actions)
 
     def testTongjiIndefRational(self):
         with open('theories/tongji0404.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "tongji0404", actions)
+        self.check_actions("standard", None, actions)
 
     def testUSubstitution(self):
         with open('theories/ucdavisUSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "USubstitution", actions)
+        self.check_actions("standard", None, actions)
 
     def testUCDavisPartialFraction(self):
         with open('theories/ucdavisPartial.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "PartialFraction", actions)
+        self.check_actions("standard", None, actions)
 
     def testIntegrateByParts(self):
         with open('theories/ucdavisByParts.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "IntegrateByParts", actions)
+        self.check_actions("standard", None, actions)
 
     def testExponential(self):
         with open('theories/ucdavisExponential.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "Exponential", actions)
+        self.check_actions("standard", None, actions)
 
     def testTrigonometric(self):
         with open('theories/ucdavisTrigonometric.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "Trigonometric", actions)
+        self.check_actions("standard", None, actions)
 
     def testLogAndArcTangent(self):
         with open('theories/ucdavisLogArctan.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "LogAndArcTangent", actions)
+        self.check_actions("standard", None, actions)
 
     def testPowerSubstitution(self):
         with open('theories/ucdavisPowerSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "PowerSubstitution", actions)
+        self.check_actions("standard", None, actions)
 
     def testTrigSubstitution(self):
         with open('theories/ucdavisTrigSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("UCDavis", "TrigSubstitution", actions)
+        self.check_actions("standard", None, actions)
 
     def testWallis(self):
         # Reference:
@@ -249,7 +249,7 @@ class ActionTest(unittest.TestCase):
                 apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
             done
         """
-        self.check_actions("interesting", "GammaFunction", actions)
+        self.check_actions("interesting", None, actions)
 
     def testInteresting(self):
         with open("theories/interesting.thy", 'r', encoding='utf-8') as file:
