@@ -12,24 +12,22 @@ dirname = os.path.dirname(__file__)
 
 class Identity:
     def __init__(self, expr: Union[str, Expr], *,
-                 conds: Optional[Conditions] = None, simp_level: int = 1, category: str = "", split_cond=None):
+                 conds: Optional[Conditions] = None, category: str = "", split_cond=None):
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
         self.expr = expr
         if conds is None:
             conds = Conditions()
         self.conds = conds
-        self.simp_level = simp_level
         self.category = category
         self.split_cond = split_cond
 
-    def __eq__(self, other:"Identity"):
-        return isinstance(other, Identity) and\
-        self.expr == other.expr and \
-        self.conds == other.conds and \
-        self.simp_level == other.simp_level and \
-        self.category == other.category and \
-        self.split_cond == other.split_cond
+    def __eq__(self, other: "Identity"):
+        return isinstance(other, Identity) and \
+            self.expr == other.expr and \
+            self.conds == other.conds and \
+            self.category == other.category and \
+            self.split_cond == other.split_cond
 
     @property
     def lhs(self):
