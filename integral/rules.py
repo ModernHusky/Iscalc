@@ -39,7 +39,6 @@ class RuleException(expr.IscalcException):
             "rule_name": self.rule_name,
             "msg": self.msg
         }
-    
     @staticmethod
     def from_json(data: dict):
         return RuleException(data["rule_name"], data["msg"])
@@ -270,14 +269,14 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                         # iterate over all variables
                         for var_name in vars_in_expr:
                             var = Var(var_name)
-                            is_real = any(expr.is_fun(cond) and cond.func_name == "isReal" and 
+                            is_real = any(expr.is_fun(cond) and cond.func_name == "isReal" and
                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name
                                         for cond in ctx.get_conds().data)
-                            not_zero = any(expr.is_op(cond) and cond.op == "!=" and 
-                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name and 
+                            not_zero = any(expr.is_op(cond) and cond.op == "!=" and
+                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name and
                                          expr.is_const(cond.args[1]) and cond.args[1] == Const(0)
                                          for cond in ctx.get_conds().data)
-                            
+
                             if is_real and not_zero:
                                 pass
                             else:
@@ -1598,7 +1597,7 @@ class Substitution(Rule):
                     # 如果出现除零,说明替换后可能是无穷
                     x = Var(e.var)
                     lower = limits.reduce_inf_limit(var_subst.subst(e.var, e.lower + (1/x)), e.var, ctx2)
-            
+
             if e.upper == expr.POS_INF:
                 upper = limits.reduce_inf_limit(var_subst, e.var, ctx2)
             else:
@@ -1877,7 +1876,7 @@ class Rewriting(Rule):
                 all_exp = all(expr.is_fun(arg) and arg.func_name == 'exp' for arg in e.args)
                 if all_exp:
                     # Check if the exponents contain infinity
-                    has_inf = any(expr.is_inf(arg.args[0]) or (expr.is_op(arg.args[0]) and 
+                    has_inf = any(expr.is_inf(arg.args[0]) or (expr.is_op(arg.args[0]) and
                                 any(expr.is_inf(term) for term in arg.args[0].args))
                                 for arg in e.args)
                     if has_inf:
@@ -2563,7 +2562,7 @@ class ExpandDefinition(Rule):
                     inst_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
                     if all(ctx.check_condition(cond) for cond in inst_conds):
                         return normalize(identity.rhs.inst_pat(inst), ctx)
-                    
+
         # Constant case
         if expr.is_var(e) and e.name == self.func_name:
             for identity in ctx.get_definitions():

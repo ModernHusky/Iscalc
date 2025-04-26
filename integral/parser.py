@@ -65,6 +65,8 @@ grammar = r"""
 
     ?conditions: condition ("," condition)* -> conditions
 
+    ?imports_action: "imports" CNAME ("," CNAME)* -> imports_action
+
     ?prove_action: "prove" expr -> prove_action
         | "prove" expr "for" conditions -> prove_with_condition_action
 
@@ -136,7 +138,8 @@ grammar = r"""
         | atomic_rule "(at" INT ")" -> on_count_rule
         | atomic_rule "(all)" -> on_subterms_rule
 
-    ?action: prove_action
+    ?action: imports_action
+        | prove_action
         | subgoal_action
         | done_action
         | sorry_action
@@ -323,6 +326,11 @@ class ExprTransformer(Transformer):
             res.extend(expr_list)
         return tuple(res)
 
+    def imports_action(self, *theories: Token):
+        from integral import action
+        theories = [str(s) for s in theories]
+        return action.ImportsAction(theories)
+
     def prove_action(self, expr: Expr):
         from integral import action
         return action.ProveAction(expr)
@@ -430,10 +438,6 @@ class ExprTransformer(Transformer):
     def integral_identity_rule(self):
         from integral import rules
         return rules.IntegralIdentity()
-
-    def indefinite_integral_rule(self):
-        from integral import rules
-        return rules.IndefiniteIntegralIdentity()
     
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
         from integral import rules

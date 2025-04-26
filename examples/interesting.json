@@ -878,7 +878,7 @@
         }
     ],
     "imports": [
-        "base"
+        "standard"
     ],
     "name": "interesting"
 }

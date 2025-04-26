@@ -8,28 +8,24 @@ from integral import expr
 from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
 from integral import parser
 from integral.conditions import Conditions
+from integral import action
+
 dirname = os.path.dirname(__file__)
 
 class Identity:
     def __init__(self, expr: Union[str, Expr], *,
-                 conds: Optional[Conditions] = None, simp_level: int = 1, category: str = "", split_cond=None):
+                 conds: Optional[Conditions] = None, category: str = ""):
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
         self.expr = expr
         if conds is None:
             conds = Conditions()
         self.conds = conds
-        self.simp_level = simp_level
         self.category = category
-        self.split_cond = split_cond
 
-    def __eq__(self, other:"Identity"):
-        return isinstance(other, Identity) and\
-        self.expr == other.expr and \
-        self.conds == other.conds and \
-        self.simp_level == other.simp_level and \
-        self.category == other.category and \
-        self.split_cond == other.split_cond
+    def __eq__(self, other: "Identity"):
+        return isinstance(other, Identity) and self.expr == other.expr and \
+            self.conds == other.conds and self.category == other.category
 
     @property
     def lhs(self):
@@ -43,10 +39,7 @@ class Identity:
         if self.category != "":
             return "%s  [%s] (%s)" % (self.expr, self.conds, self.category)
         else:
-            if self.split_cond is None:
-                return "%s  [%s]" % (self.expr, self.conds)
-            else:
-                return "%s [%s] {%s}" % (self.expr, self.conds, self.split_cond)
+            return "%s  [%s]" % (self.expr, self.conds)
 
     def __repr__(self):
         return str(self)
@@ -289,13 +282,13 @@ class Context:
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
         self.definitions.append(Identity(symb_e, conds=Conditions(symb_conds)))
 
-    def add_indefinite_integral(self, eq: Expr):
+    def add_indefinite_integral(self, eq: Expr, conds: Conditions):
         if not (eq.is_equals() and expr.is_indefinite_integral(eq.lhs)):
             raise TypeError
 
         symb_lhs = expr_to_pattern(eq.lhs)
         symb_rhs = expr_to_pattern(eq.rhs)
-        self.indefinite_integrals.append(Identity(Eq(symb_lhs, symb_rhs)))
+        self.indefinite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
 
     def add_definite_integral(self, eq: Expr, conds: Conditions):
         if not (eq.is_equals() and expr.is_integral(eq.lhs)):
@@ -361,12 +354,11 @@ class Context:
         if tmp not in self.lemmas:
             self.lemmas.append(tmp)
 
-    def add_summation_split_identities(self, e: Expr, conds: Conditions, split_cond: Expr):
+    def add_summation_split_identities(self, e: Expr, conds: Conditions):
         symb_lhs = expr_to_pattern(e.lhs)
         symb_rhs = expr_to_pattern(e.rhs)
-        symb_split_cond = expr_to_pattern(split_cond)
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        tmp = Identity(Eq(symb_lhs, symb_rhs), conds = Conditions(symb_conds), split_cond=symb_split_cond)
+        tmp = Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds))
         if tmp not in self.summation_split_identities:
             self.summation_split_identities.append(tmp)
 
@@ -396,11 +388,15 @@ class Context:
     def add_subst(self, var: str, expr: Expr):
         self.substs.append((var, expr))
 
-    def extend_by_item(self, item):
+    def extend_by_item(self, item: dict):
         if item['type'] == 'axiom' or item['type'] == 'problem':
             e = parser.parse_expr(item['expr'])
             if e.is_equals() and expr.is_indefinite_integral(e.lhs):
-                self.add_indefinite_integral(e)
+                conds = Conditions()
+                if 'conds' in item:
+                    for cond in item['conds']:
+                        conds.add_condition(parser.parse_expr(cond))
+                self.add_indefinite_integral(e, conds)
             elif e.is_equals() and expr.is_integral(e.lhs):
                 conds = Conditions()
                 if 'conds' in item:
@@ -412,8 +408,7 @@ class Context:
                 if 'conds' in item:
                     for c in item['conds']:
                         conds.add_condition(parser.parse_expr(c))
-                split_cond = parser.parse_expr(item['split-cond'])
-                self.add_summation_split_identities(e, conds, split_cond)
+                self.add_summation_split_identities(e, conds)
             elif e.is_equals() and not expr.is_summation(e.lhs) and expr.is_summation(e.rhs):
                 self.add_series_expansion(e)
                 if item['type'] == 'problem':
@@ -475,22 +470,46 @@ class Context:
         """
         assert isinstance(book_name, str)
         root_dir = os.path.dirname(dirname)
-        examples_dir = os.path.join(root_dir, 'examples')
-        filename = os.path.join(examples_dir, book_name + '.json')
-        with open(filename, 'r', encoding='utf-8') as f:
-            info = json.load(f)
 
-        # Load imported books
-        if 'imports' in info:
-            for book_name in info['imports']:
-                self.load_book(book_name)
+        json_filename = os.path.join(root_dir, 'examples', book_name + '.json')
 
-        # Load content
-        if 'content' in info:
-            for item in info['content']:
-                if upto is not None and "path" in item and item['path'] == upto:
-                    break
-                self.extend_by_item(item)
+        if os.path.exists(json_filename):
+            # Old json format
+            with open(json_filename, 'r', encoding='utf-8') as f:
+                info = json.load(f)
+
+            # Load imported books
+            if 'imports' in info:
+                for book_name in info['imports']:
+                    self.load_book(book_name)
+
+            # Load content
+            if 'content' in info:
+                for item in info['content']:
+                    if upto is not None and "path" in item and item['path'] == upto:
+                        break
+                    self.extend_by_item(item)
+
+        else:
+            # New theory format
+            thy_filename = os.path.join(root_dir, 'theories', book_name + '.thy')
+            with open(thy_filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+            actions = [s for s in content.split('\n') if s.strip()]
+            for act in actions:
+                if act.lstrip().startswith("#") or act.lstrip().startswith("//"):
+                    # title of comment
+                    continue
+                a = parser.parse_action(act)
+                if isinstance(a, action.ImportsAction):
+                    for book_name in a.theories:
+                        self.load_book(book_name)
+
+                elif isinstance(a, action.ProveAction):
+                    if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
+                        self.add_indefinite_integral(a.expr, a.conditions)
+                    elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
+                        self.add_definite_integral(a.expr, a.conditions)
 
     def check_condition(self, e: Expr) -> bool:
         """Check the given condition under the extra conditions"""

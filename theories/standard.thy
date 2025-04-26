@@ -1,9 +1,31 @@
+# Standard integrals
+
+imports base
+
 prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
 lhs:
     substitute u for x + a
     apply integral identity
     replace substitution
 done
+
+prove (INT x. 1 / (-x + a)) = -log(abs(-x + a)) + SKOLEM_CONST(C) for -x + a != 0
+sorry
+
+prove (INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (a * x)) = log(abs(a * x)) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (a * x - b)) = log(abs(a * x - b)) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (-(a * x) + b)) = log(abs(-(a * x) + b)) / (-a) + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (-(a * x) - b)) = log(abs(-(a * x) - b)) / (-a) + SKOLEM_CONST(C) for a != 0
+sorry
 
 prove (INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C) for a != 0
 lhs:
@@ -12,6 +34,18 @@ lhs:
     apply integral identity
     replace substitution
 done
+
+prove (INT x. exp(a * x + b)) = exp(a * x + b) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. exp(a * x - b)) = exp(a * x - b) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. exp(-(a * x))) = - exp(-(a * x)) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. exp(-x)) = - exp(-x) + SKOLEM_CONST(C)
+sorry
 
 prove (INT x. sin(a * x)) = -(cos(a * x) / a) + SKOLEM_CONST(C) for a != 0
 lhs:
@@ -22,6 +56,12 @@ lhs:
     simplify
 done
 
+prove (INT x. sin(-x)) = cos(-x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. sin(a * x + b)) = -cos(a * x + b) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
 prove (INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C) for a != 0
 lhs:
     substitute u for a * x
@@ -29,6 +69,42 @@ lhs:
     apply integral identity
     replace substitution
 done
+
+prove (INT x. cos(a * x + b)) = sin(a * x + b) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. cos(-x)) = -sin(-x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. tan(x)) = -log(abs(cos(x))) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. cot(x)) = -log(abs(sin(-x))) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. tan(a * x)) = log(abs(sec(a*x))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. tan(a * x + b)) = log(abs(sec(a*x + b))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. tan(a * x - b)) = log(abs(sec(a*x - b))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1 / (b - a * x)) = -log(abs(b - a * x)) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1 / (b + a * x)) = log(abs(b + a * x)) / a + SKOLEM_CONST(C) for a != 0
+sorry
 
 prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * arctan(x / a) + SKOLEM_CONST(C) for a != 0
 lhs:
@@ -39,6 +115,15 @@ lhs:
     replace substitution
     simplify
 done
+
+prove (INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * arctan(x / sqrt(a)) + SKOLEM_CONST(C) for a > 0
+sorry
+
+prove (INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C) for a > 0, b > 0
+sorry
+
+prove (INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C) for a > 0, b > 0
+sorry
 
 prove (INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C) for x > 0, k != -1
 lhs:
@@ -94,3 +179,42 @@ lhs:
     apply integral identity
     simplify
 done
+
+prove (INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. sec(-x)) = -log(abs(sec(-x)+tan(-x))) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. sec(a*x)) = log(abs(sec(a*x)+tan(a*x))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. sec(a*x + b)) = log(abs(sec(a*x+b)+tan(a*x+b))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. sec(a*x - b)) = log(abs(sec(a*x-b)+tan(a*x-b))) / a + SKOLEM_CONST(C) for a != 0
+sorry
+
+prove (INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1/sqrt(-(x^2)+1)) = arcsin(x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
+sorry
+
+prove (INT x. 1/sqrt(-(x^2)+a)) = arcsin(x/sqrt(a))+ SKOLEM_CONST(C) for a > 0
+sorry
+
+prove (INT x. 1/sqrt(x^2-1)) = arccos(x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1/sqrt(-1+x^2)) = arccos(x) + SKOLEM_CONST(C)
+sorry
+
+prove (INT x. 1/sqrt(x^2-a)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
+sorry
+
+prove (INT x. 1/sqrt(-a+x^2)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
+sorry

@@ -2,8 +2,8 @@
 # Section A
 // page 180
 
-calculate INT x. x^2 / sqrt(a^2-x^2) for a > 0, x > -a, x < a
-    substitute a*sin(u) for x
+calculate INT x. x^2 / sqrt(a^2-x^2) for a: real, a > 0, x > -a, x < a
+    substitute a * sin(u) for x
     rewrite sqrt(a ^ 2 - (a * sin(u)) ^ 2) to a * sqrt(1-sin(u)^2)
     rewrite 1-sin(u)^2 to cos(u)^2
     simplify
@@ -19,7 +19,7 @@ calculate INT x. x^2 / sqrt(a^2-x^2) for a > 0, x > -a, x < a
 done
 
 calculate INT x. 1 / sqrt(x^2 + 1)
-    substitute tan(u) for  x
+    substitute tan(u) for x
     rewrite tan(u)^2 + 1 to sec(u)^2
     simplify
     apply integral identity
