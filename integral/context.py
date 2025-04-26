@@ -14,7 +14,7 @@ dirname = os.path.dirname(__file__)
 
 class Identity:
     def __init__(self, expr: Union[str, Expr], *,
-                 conds: Optional[Conditions] = None, category: str = "", split_cond=None):
+                 conds: Optional[Conditions] = None, category: str = ""):
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
         self.expr = expr
@@ -22,14 +22,10 @@ class Identity:
             conds = Conditions()
         self.conds = conds
         self.category = category
-        self.split_cond = split_cond
 
     def __eq__(self, other: "Identity"):
-        return isinstance(other, Identity) and \
-            self.expr == other.expr and \
-            self.conds == other.conds and \
-            self.category == other.category and \
-            self.split_cond == other.split_cond
+        return isinstance(other, Identity) and self.expr == other.expr and \
+            self.conds == other.conds and self.category == other.category
 
     @property
     def lhs(self):
@@ -43,10 +39,7 @@ class Identity:
         if self.category != "":
             return "%s  [%s] (%s)" % (self.expr, self.conds, self.category)
         else:
-            if self.split_cond is None:
-                return "%s  [%s]" % (self.expr, self.conds)
-            else:
-                return "%s [%s] {%s}" % (self.expr, self.conds, self.split_cond)
+            return "%s  [%s]" % (self.expr, self.conds)
 
     def __repr__(self):
         return str(self)
@@ -361,12 +354,11 @@ class Context:
         if tmp not in self.lemmas:
             self.lemmas.append(tmp)
 
-    def add_summation_split_identities(self, e: Expr, conds: Conditions, split_cond: Expr):
+    def add_summation_split_identities(self, e: Expr, conds: Conditions):
         symb_lhs = expr_to_pattern(e.lhs)
         symb_rhs = expr_to_pattern(e.rhs)
-        symb_split_cond = expr_to_pattern(split_cond)
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        tmp = Identity(Eq(symb_lhs, symb_rhs), conds = Conditions(symb_conds), split_cond=symb_split_cond)
+        tmp = Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds))
         if tmp not in self.summation_split_identities:
             self.summation_split_identities.append(tmp)
 
@@ -416,8 +408,7 @@ class Context:
                 if 'conds' in item:
                     for c in item['conds']:
                         conds.add_condition(parser.parse_expr(c))
-                split_cond = parser.parse_expr(item['split-cond'])
-                self.add_summation_split_identities(e, conds, split_cond)
+                self.add_summation_split_identities(e, conds)
             elif e.is_equals() and not expr.is_summation(e.lhs) and expr.is_summation(e.rhs):
                 self.add_series_expansion(e)
                 if item['type'] == 'problem':

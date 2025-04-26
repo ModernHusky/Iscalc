@@ -1648,7 +1648,6 @@
         },
         {
           "category": "summation-split",
-          "split-cond": "n = a",
           "conds": [
               "a = l",
               "a < u"
@@ -1658,7 +1657,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n >= a",
             "conds": [
                 "a > l",
                 "a <= u"
@@ -1668,7 +1666,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n > a",
             "conds": [
                 "a >= l",
                 "a < u"
@@ -1678,7 +1675,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n <= a",
             "conds": [
                 "a >= l",
                 "a < u"
@@ -1688,7 +1684,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n < a",
             "conds": [
                 "a > l",
                 "a <= u"
@@ -1698,7 +1693,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n = a",
             "conds": [
                 "a > l",
                 "a < u"
@@ -1708,7 +1702,6 @@
         },
         {
           "category": "summation-split",
-          "split-cond": "n = a",
           "conds": [
               "a = l",
               "a < u"
@@ -1718,7 +1711,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n = a",
             "conds": [
                 "a = u",
                 "a > l"
@@ -1728,7 +1720,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n % 2",
             "expr": "SUM(n, 0, oo, f(n)) = SUM(n, 0, oo, f(2*n+1)) + SUM(n, 0, oo, f(2*n))",
             "type": "axiom"
         },
@@ -1739,7 +1730,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n = a",
             "conds": [
                 "a = u",
                 "a > l"
@@ -1749,7 +1739,6 @@
         },
         {
             "category": "summation-split",
-            "split-cond": "n = a",
             "conds": [
                 "a = l",
                 "a < u"
