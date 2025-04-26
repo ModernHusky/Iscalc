@@ -7,7 +7,6 @@ from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Va
 from integral.conditions import Conditions
 from integral.context import Context, Identity
 from integral.parser import parse_expr
-from integral.poly import normalize
 
 
 def subject_of(cond: Expr) -> Expr:
@@ -343,7 +342,7 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]],
             if res not in all_conds[e]:
                 all_conds[e].append(res)
             if expr.is_compare(res):
-                res_norm = Op(res.op, res.args[0], normalize(res.args[1], ctx))
+                res_norm = Op(res.op, res.args[0], res.args[1])
                 if res_norm not in all_conds[e]:
                     all_conds[e].append(res_norm)
     return
