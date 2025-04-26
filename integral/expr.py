@@ -527,9 +527,7 @@ class Expr:
             return Product(self.index_var, self.lower.subst(var, e), self.upper.subst(var, e),
                              self.body.subst(var, e))
         else:
-            print('subst on', self)
-            raise NotImplementedError
-        
+            raise NotImplementedError(f"subst: {type(self)}")
         
     def contains_i(self) -> bool:
         """check if the expression contains i"""
@@ -547,7 +545,6 @@ class Expr:
             return self.body.contains_i() or self.lower.contains_i() or self.upper.contains_i()
         else:
             return False
-
 
     def is_constant(self):
         """Determine whether expr is a number.
@@ -920,6 +917,9 @@ def is_divides(e: Expr) -> TypeGuard["Op"]:
 
 def is_power(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP and e.op == '^' and len(e.args) == 2
+
+def is_mod(e: Expr) -> TypeGuard["Op"]:
+    return e.ty == OP and e.op == '%' and len(e.args) == 2
 
 def is_less(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op == '<'
@@ -1765,19 +1765,19 @@ def eval_expr(e: Expr):
             return float('-inf')
     elif is_const(e):
         return e.val
-    elif e.is_plus():
+    elif is_plus(e):
         return eval_expr(e.args[0]) + eval_expr(e.args[1])
     elif is_uminus(e):
         return -eval_expr(e.args[0])
-    elif e.is_minus():
+    elif is_minus(e):
         return eval_expr(e.args[0]) - eval_expr(e.args[1])
-    elif e.is_times():
+    elif is_times(e):
         return eval_expr(e.args[0]) * eval_expr(e.args[1])
-    elif e.is_divides():
+    elif is_divides(e):
         return eval_expr(e.args[0]) / eval_expr(e.args[1])
-    elif e.is_mod():
+    elif is_mod(e):
         return eval_expr(e.args[0]) % eval_expr(e.args[1])
-    elif e.is_power():
+    elif is_power(e):
         return eval_expr(e.args[0]) ** eval_expr(e.args[1])
     elif is_fun(e):
         if e.func_name == 'sqrt':
@@ -1785,7 +1785,7 @@ def eval_expr(e: Expr):
         elif e.func_name == 'exp':
             return math.exp(eval_expr(e.args[0]))
         elif e.func_name == 'i':
-            return 1j  # 返回Python的复数单位
+            return 1j  # return imaginary unit in Python
         elif e.func_name == 'abs':
             return abs(eval_expr(e.args[0]))
         elif e.func_name == 'pi':
@@ -1826,24 +1826,24 @@ def eval_expr(e: Expr):
             from scipy.special import gamma
             return gamma(float(arg))
 
-    raise NotImplementedError(str(e))
+    raise NotImplementedError(f"eval_expr on {e}")
 
-
-def neg_expr(ex: Expr):
-    if is_op(ex):
-        if ex.op == "=":
-            return Op("!=", ex.args[0], ex.args[1])
-        elif ex.op == "!=":
-            return Op("=", ex.args[0], ex.args[1])
-        elif ex.op == ">":
-            return Op("<=", ex.args[0], ex.args[1])
-        elif ex.op == "<":
-            return Op(">=", ex.args[0], ex.args[1])
-        elif ex.op == ">=":
-            return Op("<", ex.args[0], ex.args[1])
-        elif ex.op == "<=":
-            return Op(">", ex.args[0], ex.args[1])
+def neg_expr(e: Expr):
+    """Return the negation of the given formula."""
+    if is_op(e):
+        if e.op == "=":
+            return Op("!=", e.args[0], e.args[1])
+        elif e.op == "!=":
+            return Op("=", e.args[0], e.args[1])
+        elif e.op == ">":
+            return Op("<=", e.args[0], e.args[1])
+        elif e.op == "<":
+            return Op(">=", e.args[0], e.args[1])
+        elif e.op == ">=":
+            return Op("<", e.args[0], e.args[1])
+        elif e.op == "<=":
+            return Op(">", e.args[0], e.args[1])
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"neg_expr: {e}")
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"neg_expr: {e}")

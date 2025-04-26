@@ -80,11 +80,11 @@ class CondProverTest(unittest.TestCase):
             (["x >= -pi / 2", "x <= pi / 2"], True),
             (["x >= 0", "x <= pi"], False),
         ]
-        ctx = context.Context()
+
         for conds, res in test_data:
             conds = Conditions(conds)
             all_conds = init_all_conds(conds)
-            saturate_expr(parse_expr("cos(x)"), cos_identity, all_conds, ctx)
+            saturate_expr(parse_expr("cos(x)"), cos_identity, all_conds)
             inst = dict()
             e = parse_expr("cos(x) >= 0")
             self.assertEqual(len(check_cond(e, all_conds, inst)) == 1, res, conds)
@@ -95,11 +95,11 @@ class CondProverTest(unittest.TestCase):
             (["x > 1"], True),
             (["x > 0"], False),
         ]
-        ctx = context.Context()
+
         for conds, res in test_data:
             conds = Conditions(conds)
             all_conds = init_all_conds(conds)
-            saturate_expr(parse_expr("log(x)"), log_identity, all_conds, ctx)
+            saturate_expr(parse_expr("log(x)"), log_identity, all_conds)
             inst = dict()
             e = parse_expr("log(x) >= 0")
             self.assertEqual(len(check_cond(e, all_conds, inst)) == 1, res, conds)
@@ -109,12 +109,12 @@ class CondProverTest(unittest.TestCase):
         test_data = [
             ("k + 1 != 0", ["k != -1"], True),
         ]
-        ctx = context.Context()
+
         for s, conds, res in test_data:
             e = parse_expr(s)
             conds = Conditions(conds)
             all_conds = init_all_conds(conds)
-            saturate_expr(subject_of(e), ineq_identity, all_conds, ctx)
+            saturate_expr(subject_of(e), ineq_identity, all_conds)
             inst = dict()
             self.assertEqual(len(check_cond(e, all_conds, inst)) == 1, res, "%s [%s]" % (e, conds))
 
@@ -151,6 +151,7 @@ class CondProverTest(unittest.TestCase):
         test_data = [
             ("u >= 0", ["isReal(x)"], ("u", "sqrt(1+x)"), True),
             ("isReal(u)", ["isReal(x)"], ("u", "sqrt(1+x)"), True),
+            ("cos(u) >= 0", ["x > -a", "x < a"], ("u", "arcsin(x/a)"), True),
         ]
 
         for s, conds, subst, res in test_data:
