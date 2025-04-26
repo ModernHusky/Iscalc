@@ -515,11 +515,10 @@ class Context:
                         self.load_book(book_name)
 
                 elif isinstance(a, action.ProveAction):
-                    goal = a.expr
-                    if goal.is_equals() and expr.is_indefinite_integral(goal.lhs):
-                        self.add_indefinite_integral(goal, a.conditions)
-                    elif goal.is_equals() and expr.is_integral(goal.lhs):
-                        self.add_definite_integral(goal, a.conditions)
+                    if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
+                        self.add_indefinite_integral(a.expr, a.conditions)
+                    elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
+                        self.add_definite_integral(a.expr, a.conditions)
 
     def check_condition(self, e: Expr) -> bool:
         """Check the given condition under the extra conditions"""

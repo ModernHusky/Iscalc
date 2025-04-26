@@ -156,7 +156,7 @@ induct:
     done
 done
 
-prove (INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)
+prove (INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2) for y > 0
 lhs:
     integrate by parts with u = exp(-(x * y)), v = -cos(a * x) / a
     simplify

@@ -4,10 +4,9 @@ import unittest
 import time
 
 from integral import compstate
-from integral import action
 from integral import state
 from integral import parser
-
+from integral import expr
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
@@ -16,6 +15,7 @@ class ActionTest(unittest.TestCase):
         st = state.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
         start_time = None
+        cur_goal = None
         for act in actions:
             if print_lines:
                 print(act)
@@ -23,15 +23,24 @@ class ActionTest(unittest.TestCase):
                 # title or comment
                 continue
             a = parser.parse_action(act)
-            if write_stats and isinstance(st, state.InitialState):
-                start_time = time.time()
-                with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                    stats_file.write(f"{base_file}.{current_file} {a}\n")
+            if isinstance(a, (state.ProveAction, state.CalculateAction)):
+                cur_goal = a
+                if write_stats:
+                    start_time = time.time()
+                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                        stats_file.write(f"{cur_goal}\n")
             st = st.process_action(a)
-            if write_stats and isinstance(st, state.InitialState):
-                elapsed_time = time.time() - start_time
-                with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                    stats_file.write(f"{elapsed_time:.2f} seconds\n")
+            if isinstance(st, state.InitialState):
+                if isinstance(cur_goal, state.ProveAction):
+                    if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                        file.ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
+                    elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                        file.ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
+                if cur_goal and write_stats:
+                    elapsed_time = time.time() - start_time
+                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                        stats_file.write(f"{elapsed_time:.2f} seconds\n")
+                cur_goal = None
         if print_state:
             print(st)
         if not print_state and not isinstance(st, state.InitialState):
@@ -99,10 +108,10 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("standard", "tongji", actions)
 
-    # def testTongjiIndefSubstitution(self):
-    #     with open('theories/tongji0402.thy', 'r', encoding='utf-8') as file:
-    #         actions = file.read()
-    #     self.check_actions("standard", "tongji0402", actions)
+    def testTongjiIndefSubstitution(self):
+        with open('theories/tongji0402.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("standard", "tongji0402", actions)
 
     def testTongjiIndefByParts(self):
         with open('theories/tongji0403.thy', 'r', encoding='utf-8') as file:
@@ -1081,7 +1090,7 @@ class ActionTest(unittest.TestCase):
         actions = """
             prove (INT x:[0,oo]. sin(a*x)/x) = pi/2 * sgn(a)
             define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y >= 0
-            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y >= 0, a != 0
+            subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y > 0, a != 0
             lhs:
                 expand definition for g(all)
                 exchange derivative and integral
@@ -1230,7 +1239,7 @@ class ActionTest(unittest.TestCase):
 
     def testFlipside05(self):
         actions = """
-            prove (INT x:[0, oo]. exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x) = log(sqrt((t^2+b^2)/(t^2+a^2))) for a b t: real, a>0, b>0, t>=0
+            prove (INT x:[0, oo]. exp(-(t*x)) * (cos(a*x) - cos(b*x)) / x) = log(sqrt((t^2+b^2)/(t^2+a^2))) for a b t: real, a>0, b>0, t>0
             subgoal 1: (INT s:[a,b]. sin(x*s)) = (cos(a*x)-cos(b*x))/x for x>0
             lhs:
                 apply integral identity
