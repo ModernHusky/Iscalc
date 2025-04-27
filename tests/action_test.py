@@ -92,7 +92,7 @@ class ActionTest(unittest.TestCase):
         self.check_actions("base", None, actions)
 
     def testStandard2(self):
-        with open('../theories/standard2.thy', 'r', encoding='utf-8') as file:
+        with open('theories/standard2.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
         self.check_actions("base", None, actions)
 
