@@ -1,25 +1,6 @@
-# Chapter 1
+imports standard
 
-## Chapter 1, Section 5, Some Examples of Tricks
-
-prove (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
-lhs:
-    split region at 1
-    substitute 1 / u for x
-    simplify
-    rewrite u ^ 2 * (1 / u ^ 2 + 1) to u ^ 2 + 1
-    simplify
-done
-
-## Chapter 1, Section 7, Dalzell's Integral
-
-prove (INT x:[0,1]. (x^4*(1-x)^4)/(1+x^2)) = 22/7 - pi
-lhs:
-    rewrite (x^4*(1-x)^4)/(1+x^2) to (x^6-4*x^5+5*x^4-4*x^2+4)-4/(1+x^2)
-    simplify
-    apply integral identity
-    simplify
-done
+# Chapter 2
 
 ## Chapter 2, Section 1, Six 'Easy' Warm-Ups
 
@@ -359,4 +340,242 @@ case analysis on cos(a)
     rhs:
         simplify
     done
+done
+
+## Chapter 2, Section 4, Euler's Log-Sine integral
+
+prove (INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2) for a: real, a>0
+subgoal 1: (INT x:[0,pi/2]. log(a * sin(x))) = (INT x:[0,pi/2]. log(a * cos(x)))
+lhs:
+    substitute y for pi/2-x
+done
+subgoal 2: (INT x:[0,pi/2]. log(a * sin(2*x))) = (INT x:[0,pi/2]. log(a * sin(x)))
+lhs:
+    substitute t for 2*x
+    simplify
+    split region at pi/2
+    simplify
+    substitute u for pi-t
+    simplify
+    substitute x for pi-u
+done
+subgoal 3: 2*cos(x)*sin(x) = sin(2*x)
+rhs:
+    rewrite to 2*cos(x)*sin(x)
+done
+subgoal 4: (INT x:[0,pi/2]. log(a * sin(x)))=1/2 * (INT x:[0,pi / 2]. log(a * sin(x))) + pi * log(a) / 4 - pi * log(2) / 4
+lhs:
+    rewrite to 1/2*((INT x:[0,pi/2]. log(a * sin(x)))+(INT x:[0,pi/2]. log(a * sin(x))))
+    apply 1 on (INT x:[0,pi/2]. log(a * sin(x)))
+    rewrite to 1/2*(INT x:[0,pi/2]. (log(a * sin(x))+log(a*cos(x))))
+    rewrite log(a*cos(x)) to log(a )+ log(cos(x))
+    rewrite to 1/2 * (INT x:[0,pi / 2]. log(a * sin(x)) + log(a) + log(cos(x)))
+    rewrite log(a * sin(x)) + log(a) to log(a * sin(x)*a)
+    rewrite log(a * sin(x) * a) + log(cos(x)) to log(a * sin(x) * a*cos(x))
+    rewrite to 1/2 * (INT x:[0,pi / 2]. log(a ^ 2 *1/2*(2 * cos(x) * sin(x))))
+    apply 3 on (2 * cos(x) * sin(x))
+    rewrite log(a ^ 2 * 1 / 2 * sin(2 * x)) to log(a*1/2*a*sin(2*x))
+    rewrite log(a*1/2*a*sin(2*x)) to log(a*sin(2*x)*a*1/2)
+    rewrite log(a*sin(2*x)*a*1/2) to log(a*sin(2*x)*a)+log(1/2)
+    rewrite log(a * sin(2 * x) * a) to log(a * sin(2 * x))+log(a)
+    apply integral identity
+    simplify
+    apply 2 on (INT x:[0,pi / 2]. log(a * sin(2 * x)))
+done
+subgoal 5: (INT x:[0,pi / 2]. log(a * sin(x))) = pi * log(a) / 2 - pi * log(2) / 2 
+from 4:
+    solve equation for INT x:[0,pi / 2]. log(a * sin(x))
+done
+lhs:
+    apply 5 on (INT x:[0,pi / 2]. log(a * sin(x)))
+    rewrite to pi/2*(log(a)-log(2))
+    rewrite log(a) - log(2) to log(a/2)
+done
+
+prove (INT x:[0,pi / 2]. log(sin(x) / x)) = pi / 2 * (1 - log(pi))
+lhs:
+    rewrite log(sin(x) / x) to log(sin(x)) - log(x)
+    simplify
+    rewrite log(sin(x)) to log(1 * sin(x))
+    apply integral identity
+    integrate by parts with u = log(x), v = x
+    apply integral identity
+    simplify
+    expand polynomial
+    simplify
+rhs:
+    expand polynomial
+done
+
+prove (INT x:[0,1]. log(x + 1 / x) / (x ^ 2 + 1)) = pi / 2 * log(2)
+subgoal 1: (INT x:[0,oo]. log(x ^ 2 + 1) / (x ^ 2 + 1)) = pi * log(2)
+lhs:
+    substitute tan(u) for x
+    rewrite sec(u) ^ 2 to tan(u) ^ 2 + 1
+    simplify
+    rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2
+    rewrite sec(u) to cos(u) ^ (-1)
+    simplify
+    substitute x for pi / 2 - u
+    rewrite sin(x) to 1 * sin(x)
+    apply integral identity
+    simplify
+done
+from 1:
+    split region at 1
+    substitute y for 1 / x (at 2)
+    rewrite y ^ 2 * (1 / y ^ 2 + 1) to y ^ 2 + 1
+    rewrite 1 / (y ^ 2 + 1) * log(1 / y ^ 2 + 1) to log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+    rewrite (INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1)) + (INT y:[0,1]. log(1 / y ^ 2 + 1) / (y ^ 2 + 1)) to INT y:[0,1]. log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1)
+    rewrite log(y ^ 2 + 1) / (y ^ 2 + 1) + log(1 / y ^ 2 + 1) / (y ^ 2 + 1) to (log(y ^ 2 + 1) + log(1 / y ^ 2 + 1)) / (y ^ 2 + 1)
+    rewrite log(y ^ 2 + 1) + log(1 / y ^ 2 + 1) to log((y ^ 2 + 1) * (1 / y ^ 2 + 1))
+    rewrite (y ^ 2 + 1) * (1 / y ^ 2 + 1) to (y + 1 / y) ^ 2
+    rewrite log((y + 1 / y) ^ 2) to 2 * log(y + 1 / y)
+    simplify
+    rewrite 1 / (y ^ 2 + 1) * log(1 / y + y) to log(y + 1 / y) / (y ^ 2 + 1)
+    solve equation for INT y:[0,1]. log(y + 1 / y) / (y ^ 2 + 1)
+done
+
+prove (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) = 0 for b: real, b > -2, b < 2
+subgoal 1: x ^ 2 - b * x + 1 != 0
+lhs:
+    rewrite x ^ 2 - b * x + 1 to (x - 1/2 * b) ^ 2 + 1 - 1/4 * b ^ 2
+done
+subgoal 2: (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) = (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) - a * (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) for a > 0
+lhs:
+    substitute 1 / u for x
+    simplify
+    expand polynomial
+    rewrite (1 / u) ^ a to 1 ^ a / u ^ a
+    rewrite 1 ^ a / u ^ a + 1 to (1 + u ^ a) / u ^ a
+    rewrite log((1 + u ^ a) / u ^ a) to log(1 + u ^ a) - log(u ^ a)
+    expand polynomial
+    simplify
+done
+from 2:
+    solve equation for INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)
+done
+
+prove (INT x:[0,1]. (1 - x) / (1 + x + x ^ 2)) = sqrt(3) * pi / 6 - log(3) / 2
+lhs:
+    rewrite 1 + x + x ^ 2 to (x + 1/2) ^ 2 + 3/4
+    substitute u for 2 * (x + 1/2) / sqrt(3)
+    rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
+    simplify
+    rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
+    apply integral identity
+    simplify
+    substitute t for u ^ 2 + 1
+    apply integral identity
+    simplify
+    expand polynomial
+    simplify
+done
+
+## Chapter 2, Section 5, Challenge Problems
+
+// Problem C2.1
+
+prove (INT x:[0,4]. log(x) / sqrt(4 * x - x ^ 2)) = 0
+subgoal 1: (INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))) = pi
+lhs:
+    substitute sin(x) ^ 2 for y
+    rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
+    simplify
+    apply integral identity
+    simplify
+done
+subgoal 2: (INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))) = -(2 * pi * log(2))
+lhs:
+    substitute sin(x) ^ 2 for y
+    rewrite log(sin(x) ^ 2) to 2 * log(sin(x))
+    rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2 (at 2)
+    simplify
+    rewrite sin(x) to 1 * sin(x)
+    apply integral identity
+    simplify
+done
+subgoal 3: 4 * x - x ^ 2 >= 0 for x > 0, x < 4
+lhs:
+    rewrite 4 * x - x ^ 2 to x * (4 - x)
+done
+subgoal 4: sqrt(4 * x - x ^ 2) != 0 for x > 0, x < 4
+lhs:
+    rewrite 4 * x - x ^ 2 to x * (4 - x)
+done
+lhs:
+    substitute y for x / 4
+    rewrite log(4 * y) to log(4) + log(y)
+    rewrite sqrt(-(16 * y ^ 2) + 16 * y) to 4 * sqrt(-(y ^ 2) + y)
+    rewrite sqrt(-(y ^ 2) + y) to sqrt(y) * sqrt(1 - y)
+    expand polynomial
+    simplify
+    rewrite -y + 1 to 1 - y
+    rewrite -y + 1 to 1 - y
+    apply 1 on INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))
+    apply 2 on INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))
+    simplify
+done
+
+// Problem C2.2
+
+prove (INT x:[0,1]. (x - 2) / (x ^ 2 - x + 1)) = -pi/sqrt(3)
+subgoal 1:(INT u:[-1/2,0]. u / (u ^ 2 + 3/4)) = -(INT u:[0,1/2]. u / (u ^ 2 + 3/4))
+lhs:
+    substitute t for -u
+    simplify
+done
+subgoal 2:(INT u:[-1/2,1/2]. u/(u^2+3/4)) = 0
+lhs:
+    split region at 0
+    apply 1 on INT u:[-1/2,0]. u / (u ^ 2 + 3/4)
+    simplify
+done
+subgoal 3:3/2*(INT u:[-1/2,1/2]. 1/(u^2+3/4)) = pi/sqrt(3)
+lhs:
+    simplify
+    rewrite 1 / (u ^ 2 + 3/4) to (4/3)/((4/3)*u^2+(4/3)*(3/4))
+    simplify
+    substitute t for (2*u)/sqrt(3)
+    rewrite sqrt(3) / (2 * t ^ 2 + 2) to (sqrt(3))/2*(1/(t^2+1))
+    simplify
+    apply integral identity
+    simplify
+    rewrite to pi/sqrt(3)
+done
+lhs:
+    substitute u for x-1/2
+    rewrite (u + 1/2) ^ 2 - u + 1/2 to u^2+3/4
+    expand polynomial
+    simplify
+    apply 2 on INT u:[-1/2,1/2]. u / (u ^ 2 + 3/4)
+    apply 3 on 3/2 * (INT u:[-1/2,1/2]. 1 / (u ^ 2 + 3/4))
+    rewrite to -pi/sqrt(3)
+done
+
+// Problem C2.3
+
+prove (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)) = (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) for m: int, m >= 1
+subgoal 1: (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) = 4 * m * ((INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) - (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)))
+lhs:
+    integrate by parts with u = 1 / (x ^ 4 + 1) ^ m, v = x
+    simplify
+    rewrite x ^ 4 * (x ^ 4 + 1) ^ (-m - 1) to (x ^ 4 + 1) / (x ^ 4 + 1) ^ (m + 1) - 1 / (x ^ 4 + 1) ^ (m + 1)
+    rewrite INT x:[0,oo]. (x ^ 4 + 1) / (x ^ 4 + 1) ^ (m + 1) - 1 / (x ^ 4 + 1) ^ (m + 1) to (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m) - (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1))
+done
+from 1:
+    solve equation for INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)
+    rewrite -(1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)) + (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) to (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m)
+done
+
+// Problem C2.5
+
+prove (INT x:[0,oo]. log(x + 1) / x ^ (3/2)) = 2 * pi
+lhs:
+    integrate by parts with u = log(1 + x), v = -2 / sqrt(x)
+    simplify
+    substitute t for sqrt(x)
+    simplify
+    apply integral identity
+    simplify
 done
