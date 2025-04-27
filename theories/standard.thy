@@ -94,10 +94,10 @@ sorry
 prove (INT x. tan(a * x - b)) = log(abs(sec(a*x - b))) / a + SKOLEM_CONST(C) for a != 0
 sorry
 
-prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C)
+prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for x - a != 0
 sorry
 
-prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)
+prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
 sorry
 
 prove (INT x. 1 / (b - a * x)) = -log(abs(b - a * x)) / a + SKOLEM_CONST(C) for a != 0

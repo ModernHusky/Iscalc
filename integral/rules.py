@@ -353,6 +353,8 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
+        elif expr.is_indefinite_integral(e):
+            rec(e.body, body_conds(e, ctx))
         elif expr.is_deriv(e):
             rec(e.body, ctx)
         elif expr.is_summation(e):
