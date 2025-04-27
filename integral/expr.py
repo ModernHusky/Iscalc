@@ -1062,7 +1062,7 @@ def expr_to_pattern(e: Expr) -> Expr:
         elif _e.ty == EVAL_AT:
             return EvalAt(_e.var, rec(_e.lower), rec(_e.upper), rec(_e.body))
         elif _e.ty == INDEFINITEINTEGRAL:
-            return IndefiniteIntegral(_e.var, rec(_e.body), e.skolem_args)
+            return IndefiniteIntegral(_e.var, rec(_e.body), _e.skolem_args)
         elif _e.ty == LIMIT:
             return Limit(_e.var, rec(_e.lim), rec(_e.body), _e.drt)
         elif _e.ty == DERIV:

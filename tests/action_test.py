@@ -29,18 +29,24 @@ class ActionTest(unittest.TestCase):
                     start_time = time.time()
                     with open("stats.txt", "a", encoding='utf-8') as stats_file:
                         stats_file.write(f"{cur_goal}\n")
-            st = st.process_action(a)
-            if isinstance(st, state.InitialState):
-                if isinstance(cur_goal, state.ProveAction):
-                    if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
-                        file.ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
-                    elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
-                        file.ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
-                if cur_goal and write_stats:
-                    elapsed_time = time.time() - start_time
-                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                        stats_file.write(f"{elapsed_time:.2f} seconds\n")
-                cur_goal = None
+            try:
+                st = st.process_action(a)
+
+                if isinstance(st, state.InitialState):
+                    if isinstance(cur_goal, state.ProveAction):
+                        if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                            file.ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
+                        elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                            file.ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
+                    if cur_goal and write_stats:
+                        elapsed_time = time.time() - start_time
+                        with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                            stats_file.write(f"{elapsed_time:.2f} seconds\n")
+                    cur_goal = None
+            except Exception as e:
+                print(cur_goal)
+                print(st)
+                raise e
         if print_state:
             print(st)
         if not print_state and not isinstance(st, state.InitialState):
@@ -82,6 +88,11 @@ class ActionTest(unittest.TestCase):
 
     def testStandard(self):
         with open('theories/standard.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", None, actions)
+
+    def testStandard2(self):
+        with open('../theories/standard2.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
         self.check_actions("base", None, actions)
 
@@ -128,6 +139,21 @@ class ActionTest(unittest.TestCase):
             actions = file.read()
         self.check_actions("standard", None, actions)
 
+    def testActions2(self):
+        actions = """
+        prove (INT x. 1/sqrt(-(x^2)+a)) = arcsin(x/sqrt(a))+ SKOLEM_CONST(C) for a > 0, -x^2 + a > 0, x / sqrt(a) <= 1, x / sqrt(a) >= -1
+        lhs:
+            rewrite sqrt(-(x^2)+a) to sqrt(a - x^2)
+            rewrite sqrt(a - x^2) to sqrt(a*(1 - x^2/a))
+            rewrite sqrt(a*(1 - x^2/a)) to sqrt(a)*sqrt(1 - (x/sqrt(a))^2)
+            rewrite 1/(sqrt(a)*sqrt(1 - (x/sqrt(a))^2)) to (1/sqrt(a))*(1/sqrt(1 - (x/sqrt(a))^2))
+            substitute u for x/sqrt(a)
+            simplify
+            apply integral identity
+            replace substitution
+        done
+        """
+        self.check_actions("standard", None, actions)
     def testUCDavisPartialFraction(self):
         with open('theories/ucdavisPartial.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
