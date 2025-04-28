@@ -29,11 +29,6 @@ prove (INT x. sin(x) ^ 4) = -1/4 * sin(x) ^ 3  * cos(x) - 3/8 * sin(x) * cos(x) 
 sorry
 
 # 5
-prove (INT x. sin(x) ^ 5) = -1/80 * cos(5 * x) + 5/48 * cos(3 * x) - 5/8 * cos(x) + SKOLEM_CONST(C)
-sorry
-
-# TODO: "apply integral identity" has a bug
-# 6
 prove (INT x. sin(x) ^ 5) = -1/5 * sin(x) ^ 4 * cos(x) + 4/15 * cos(x) ^ 3 - 4/5 * cos(x) + SKOLEM_CONST(C)
 lhs:
     rewrite sin(x)^5 to sin(x)^4 * sin(x)
@@ -55,6 +50,10 @@ lhs:
     replace substitution
     solve integral INT x. sin(x)^5
 done
+
+# 6
+prove (INT x. sin(x) ^ 5) = -1/80 * cos(5 * x) + 5/48 * cos(3 * x) - 5/8 * cos(x) + SKOLEM_CONST(C)
+sorry
 
 # 7
 prove (INT x. sin(x) ^ (2 * n)) = 1/(2 ^ (2 * n)) * binom(2 * n, n) * x + (-1) ^ n/(2 ^ (2*n - 1)) * SUM(k, 0, n-1, (-1) ^ k * binom(2 * n, k) * sin(2 * n-2 * k) * x / (2 * n-2 * k)) + SKOLEM_CONST(C)
