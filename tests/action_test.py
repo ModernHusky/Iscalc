@@ -94,7 +94,13 @@ class ActionTest(unittest.TestCase):
     def testStandard2(self):
         with open('theories/standard2.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", None, actions)
+        self.check_actions("base", "standard", actions)
+
+    def testStandard3(self):
+        with open('theories/standard3.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "standard", actions)
+
 
     def testMIT2019(self):
         actions = """
