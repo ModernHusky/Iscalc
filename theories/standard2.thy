@@ -33,7 +33,6 @@ sorry
 prove (INT x. sin(x) ^ 5) = -1/80 * cos(5 * x) + 5/48 * cos(3 * x) - 5/8 * cos(x) + SKOLEM_CONST(C)
 sorry
 
-// TODO: "apply integral identity" has a bug
 // 5b
 prove (INT x. sin(x) ^ 5) = -1/5 * sin(x) ^ 4 * cos(x) + 4/15 * cos(x) ^ 3 - 4/5 * cos(x) + SKOLEM_CONST(C)
 lhs:

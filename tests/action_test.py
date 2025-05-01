@@ -94,7 +94,18 @@ class ActionTest(unittest.TestCase):
     def testStandard2(self):
         with open('theories/standard2.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", None, actions)
+        self.check_actions("base", "standard", actions)
+
+    def testStandard3(self):
+        with open('theories/standard3.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "standard", actions)
+
+    def testStandard4(self):
+        with open('theories/standard4.thy', 'r', encoding='utf-8') as file:
+            actions = file.read()
+        self.check_actions("base", "standard", actions)
+
 
     def testMIT2019(self):
         actions = """
@@ -130,9 +141,9 @@ class ActionTest(unittest.TestCase):
         self.check_actions("standard", None, actions)
 
     def testTongjiIndefRational(self):
-        with open('theories/tongji0404.thy', 'r', encoding='utf-8') as file:
+        with open('../theories/tongji0404.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", None, actions, print_state=True)
 
     def testUSubstitution(self):
         with open('theories/ucdavisUSubst.thy', 'r', encoding='utf-8') as file:

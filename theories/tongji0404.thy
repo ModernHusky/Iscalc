@@ -168,6 +168,7 @@ calculate INT x. 1 / (1 + sin(x) + cos(x))
     simplify
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (2*sin(x) - cos(x) + 5)
