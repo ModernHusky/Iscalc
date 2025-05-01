@@ -745,7 +745,6 @@ def simplify_identity(e: expr.Expr, ctx: Context) -> expr.Expr:
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
                     satisfied = False

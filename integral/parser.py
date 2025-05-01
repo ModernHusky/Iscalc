@@ -67,6 +67,11 @@ grammar = r"""
 
     ?imports_action: "imports" CNAME ("," CNAME)* -> imports_action
 
+    ?attributes: ("[" CNAME ("," CNAME)* "]")? -> attributes
+
+    ?axiom_action: "axiom" attributes expr -> axiom_action
+        | "axiom" attributes expr "for" conditions -> axiom_with_condition_action
+
     ?prove_action: "prove" expr -> prove_action
         | "prove" expr "for" conditions -> prove_with_condition_action
 
@@ -139,6 +144,7 @@ grammar = r"""
         | atomic_rule "(all)" -> on_subterms_rule
 
     ?action: imports_action
+        | axiom_action
         | prove_action
         | subgoal_action
         | done_action
@@ -331,11 +337,22 @@ class ExprTransformer(Transformer):
         theories = [str(s) for s in theories]
         return action.ImportsAction(theories)
 
+    def attributes(self, *attrs: Token) -> tuple[str]:
+        return tuple(str(attr) for attr in attrs)
+
+    def axiom_action(self, attrs: tuple[str], expr: Expr):
+        from integral import action
+        return action.AxiomAction(expr, tuple(), attrs)
+    
+    def axiom_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
+        from integral import action
+        return action.AxiomAction(expr, conditions, attrs)
+
     def prove_action(self, expr: Expr):
         from integral import action
         return action.ProveAction(expr)
 
-    def prove_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
+    def prove_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
         from integral import action
         return action.ProveAction(expr, conditions)
 
@@ -343,7 +360,7 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.DefineAction(expr)
     
-    def define_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
+    def define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
         from integral import action
         return action.DefineAction(expr, conditions)
 

@@ -2,223 +2,6 @@
     "content": [
         {
             "level": 1,
-            "name": "Inequality reasoning",
-            "type": "header"
-        },
-        {
-            "level": 1,
-            "name": "Common integrals",
-            "type": "header"
-        },
-        {
-            "expr": "(INT x. c) = c * x + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. -x) = -x ^ 2 / 2 + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "conds": ["a!=0"],
-            "expr": "(INT x. a*x) = x ^ 2 / a + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "conds": ["a!=0"],
-            "expr": "(INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "conds": ["a!=0"],
-            "expr": "(INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "n != -1"
-            ],
-            "expr": "(INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "n = 1"
-            ],
-            "expr": "(INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / cos(x)^2) = tan(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / sin(x)^2) = -cot(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. cot(x) * csc(x)) = -csc(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. sec(x) * tan(x)) = sec(x) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. sec(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)",
-            "type": "axiom"
-        },
-        {
-            "name": "Common series expansion",
-            "type": "header",
-            "level": 1
-        },
-        {
-            "expr": "exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1))",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(x) = SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n))",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "abs(x) <= 1"
-            ],
-            "expr": "arctan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1))",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "abs(x) < 1"
-            ],
-            "expr": "(1 + x) ^ -1 = SUM(n, 0, oo, (-1)^n * x ^ n)",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "abs(x) < 1"
-            ],
-            "expr": "(1 - x) ^ -1 = SUM(n, 0, oo, x ^ n)",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "x > -1",
-                "x <= 1"
-            ],
-            "expr": "log(1 + x) = SUM(n, 0, oo, (-1)^n * x ^ (n+1) / (n + 1))",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "x >= -1",
-                "x < 1"
-            ],
-            "expr": "log(1 - x) = SUM(n, 0, oo, (-1)^n * (-x)^(n+1) / (n + 1))",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
-            "name": "Common series evaluations",
-            "type": "header"
-        },
-        {
-            "expr": "SUM(n, 0, oo, 1 / (n+1)^2) = (pi^2) / 6",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "abs(x) < 1"
-            ],
-            "expr": "(SUM(n, a, oo, (x)^n)) = (x^a)/(1-x)",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n / (n+1)^2) = (pi^2) / 12",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1)) = sin(x)",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n)) = cos(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [],
-            "category": "unknown",
-            "conds": [],
-            "expr": "SUM(n, 0, oo, x^n/factorial(n)) = exp(x)",
-            "reference": "",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
             "name": "Common identities",
             "type": "header"
         },
@@ -226,27 +9,6 @@
             "level": 2,
             "name": "Absolute value",
             "type": "header"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "x^(3/2) / (y * sqrt(x)) = x / y",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "b * a / b = a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "a * b / b = a",
-            "type": "axiom"
         },
         {
             "attributes": [
@@ -426,63 +188,14 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "x >= 0",
-                "isReal(x)"
-            ],
-            "expr": "abs(x) = x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "x <= 0",
-                "isReal(x)"
-            ],
-            "expr": "abs(x) = -x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "abs(x * y) = abs(x) * abs(y)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "y != 0"
-            ],
-            "expr": "abs(x / y) = abs(x) / abs(y)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "isInt(n)"
-            ],
-            "expr": "abs(c ^ n) = abs(c) ^ n",
-            "type": "axiom"
-        },
-        {
             "level": 2,
             "name": "Hyperbolic functions",
             "type": "header"
         },
         {
-                "expr": "cosh(x) = (exp(x) + exp(-x)) / 2",
-                "type": "definition"
-            },
+            "expr": "cosh(x) = (exp(x) + exp(-x)) / 2",
+            "type": "definition"
+        },
         {
             "expr": "sinh(x) = (exp(x) - exp(-x)) / 2",
             "type": "definition"
@@ -1767,6 +1480,9 @@
             "type": "axiom",
             "category": "limit_eval"
         }
+    ],
+    "imports": [
+        "base0"
     ],
     "name": "Base theory"
 }

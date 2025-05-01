@@ -194,7 +194,7 @@ done
 
 // page 178
 
-calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1
+calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1, x * exp(x) != 1
     substitute u for x*exp(x)
     apply integral identity
     replace substitution

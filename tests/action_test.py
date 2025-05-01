@@ -141,9 +141,9 @@ class ActionTest(unittest.TestCase):
         self.check_actions("standard", None, actions)
 
     def testTongjiIndefRational(self):
-        with open('theories/tongji0404.thy', 'r', encoding='utf-8') as file:
+        with open('../theories/tongji0404.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", None, actions, print_state=True)
 
     def testUSubstitution(self):
         with open('theories/ucdavisUSubst.thy', 'r', encoding='utf-8') as file:
@@ -296,7 +296,7 @@ class ActionTest(unittest.TestCase):
     def testInteresting2(self):
         with open("theories/interesting2.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting1", None, actions, print_lines=True)
+        self.check_actions("interesting1", None, actions)
 
     def testLeibniz01(self):
         actions = """
