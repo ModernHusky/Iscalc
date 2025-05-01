@@ -11,19 +11,14 @@ sorry
 // 3b
 prove (INT x. sin(x) ^ 3)  = 1/3 * cos(x) ^ 3 - cos(x) + SKOLEM_CONST(C)
 lhs:
-    rewrite sin(x)^3 to sin(x)*sin(x)^2
-    rewrite sin(x)^2 to 1 - cos(x)^2
-    simplify
-    integrate by parts with u=1 - cos(x)^2, v=-cos(x)
+    rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
+    rewrite sin(x) ^ 2 to (1 - cos(x) ^ 2)
     simplify
     substitute u for cos(x)
+    simplify
     apply integral identity
     replace substitution
     simplify
-    rewrite -(cos(x) * (-(cos(x) ^ 2) + 1)) to cos(x)^3 - cos(x)
-    rewrite cos(x)^3 - cos(x) - 2*cos(x)^3/3 to (cos(x)^3 - 2*cos(x)^3/3) - cos(x)
-    rewrite cos(x)^3 - 2*cos(x)^3/3 to (1/3)*cos(x)^3
-    rewrite (1/3)*cos(x)^3 - cos(x) to (1/3)*cos(x)^3 - cos(x)
 done
 
 // 4a
@@ -42,24 +37,22 @@ sorry
 // 5b
 prove (INT x. sin(x) ^ 5) = -1/5 * sin(x) ^ 4 * cos(x) + 4/15 * cos(x) ^ 3 - 4/5 * cos(x) + SKOLEM_CONST(C)
 lhs:
-    rewrite sin(x)^5 to sin(x)^4 * sin(x)
-    integrate by parts with u = sin(x)^4, v = -cos(x)
+    rewrite sin(x) ^ 5 to sin(x) ^ 4 * sin(x)
+    integrate by parts with u = sin(x) ^ 4, v = -cos(x)
     simplify
-    rewrite cos(x)^2 to 1 - sin(x)^2
-    expand polynomial
-    simplify
-    integrate by parts with u = sin(x)^2, v = -cos(x)
-    simplify
-    rewrite sin(x)^2 to 1 - cos(x)^2
-    expand polynomial
-    simplify
+    rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2
+    rewrite (1 - sin(x) ^ 2) * sin(x) ^ 3 to sin(x) ^ 3 - sin(x) ^ 5
+    rewrite 4 * (INT x. sin(x) ^ 3 - sin(x) ^ 5) to 4 * (INT x. sin(x) ^ 3) - 4 * (INT x. sin(x) ^ 5)
+    solve integral INT x. sin(x) ^ 5
+    rewrite INT x. sin(x) ^ 3 to INT x. sin(x) * sin(x) ^ 2
+    rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2
+    rewrite sin(x) * (1 - cos(x) ^ 2) to sin(x) - sin(x) * cos(x) ^ 2
+    rewrite INT x. sin(x) - sin(x) * cos(x) ^ 2 to (INT x. sin(x)) - (INT x. sin(x) * cos(x) ^ 2)
     apply integral identity
-    simplify
     substitute u for cos(x)
-    simplify
     apply integral identity
     replace substitution
-    solve integral INT x. sin(x)^5
+    simplify
 done
 
 // 6
@@ -80,7 +73,15 @@ done
 
 // 9
 prove (INT x. x ^ 2 * sin(x)) = 2 * x * sin(x) - (x ^ 2 - 2) * cos(x) + SKOLEM_CONST(C)
-sorry
+lhs:
+    integrate by parts with u = x^2, v = -cos(x)
+    simplify
+    integrate by parts with u = x, v = sin(x)
+    simplify
+    apply integral identity
+    simplify
+    rewrite -(x ^ 2 * cos(x)) + 2 * x * sin(x) + 2 * cos(x) + SKOLEM_CONST(C) to 2 * x * sin(x) - (x ^ 2 - 2) * cos(x) + SKOLEM_CONST(C)
+done
 
 // 10
 prove (INT x. x ^ 3 * sin(x)) = (3 * x ^ 2 - 6) * sin(x) - (x ^ 3 - 6 * x) * cos(x) + SKOLEM_CONST(C)
@@ -98,7 +99,21 @@ done
 
 // 11
 prove (INT x. x ^ 4 * sin(x)) = (4 * x ^ 3 - 24 * x) * sin(x) - (x ^ 4 - 12 * x ^ 2 + 24) * cos(x) + SKOLEM_CONST(C)
-sorry
+lhs:
+    integrate by parts with u = x^4, v = -cos(x)
+    simplify
+    rewrite 4 * (INT x. x^3 * cos(x)) to INT x. 4 * x^3 * cos(x)
+    integrate by parts with u = 4*x^3, v = sin(x)
+    simplify
+    rewrite 12 * (INT x. x^2 * sin(x)) to INT x. 12 * x^2 * sin(x)
+    integrate by parts with u = 12 * x^2, v = -cos(x)
+    simplify
+    integrate by parts with u = x, v = sin(x)
+    simplify
+    apply integral identity
+    simplify
+    rewrite 12 * x ^ 2 * cos(x) + 4 * x ^ 3 * sin(x) - x ^ 4 * cos(x) - 24 * x * sin(x) - 24 * cos(x) + SKOLEM_CONST(C) to (4 * x ^ 3 - 24 * x) * sin(x) - (x ^ 4 - 12 * x ^ 2 + 24) * cos(x) + SKOLEM_CONST(C)
+done
 
 // 12
 prove (INT x. x ^ (2 * n) * sin(x)) = factorial(2 * n) * SUM(k, 0, n, (-1) ^ (k + 1) * (x ^ (2 * n - 2 * k))/factorial(2 * n -2 * k) *  cos(x)) +  SUM(k, 0, n-1, (-1)^k * (x ^ (2 * n - 2 * k - 1))/factorial(2 * n - 2 * k -1) *  sin(x)) + SKOLEM_CONST(C) for isInt(n)
@@ -122,7 +137,23 @@ done
 
 // 15
 prove (INT x. x * sin(x) ^ 2) = 1/4 * x ^ 2 -  1/4 * x * sin(2 * x) -1/8 * cos(2 * x) + SKOLEM_CONST(C)
-sorry
+lhs:
+    rewrite sin(x)^2 to (1 - cos(2*x))/2
+    expand polynomial
+    apply integral identity
+    integrate by parts with u = x, v = sin(2 * x)/2
+    simplify
+    apply integral identity
+    simplify
+    apply integral identity
+    simplify
+    simplify
+    rewrite (INT x. sin(2 * x)) / 4 to (INT x. sin(2 * x) / 4)
+    substitute u for 2 * x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 16
 prove (INT x. x ^ 2 * sin(x) ^ 2) = 1/6 * x ^ 3 -1/4 * x * cos(2 * x) -1/4 * (x ^ 2 - 1/2) * sin(2 * x) + SKOLEM_CONST(C)
@@ -278,7 +309,7 @@ lhs:
 done
 
 // 11
-prove (INT x. x ^ 4 *cos(x))  = (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
+prove (INT x. x ^ 4 * cos(x))  = (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x^4, v = sin(x)
     simplify
