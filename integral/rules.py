@@ -826,7 +826,17 @@ class SeriesEvaluationIdentity(Rule):
             if inst is None:
                 continue
 
-            return identity.rhs.inst_pat(inst)
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                return identity.rhs.inst_pat(inst)
+
         # No matching identity found
         return e
 

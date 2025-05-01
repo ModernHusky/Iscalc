@@ -71,3 +71,17 @@ axiom (1 - x) ^ -1 = SUM(n, 0, oo, x ^ n) for x > -1, x < 1
 axiom log(1 + x) = SUM(n, 0, oo, (-1)^n * x ^ (n+1) / (n + 1)) for x > -1, x <= 1
 
 axiom log(1 - x) = SUM(n, 0, oo, (-1)^n * (-x)^(n+1) / (n + 1)) for x >= -1, x < 1
+
+# Common series evaluations
+
+axiom SUM(n, 0, oo, 1 / (n+1)^2) = (pi^2) / 6
+
+axiom SUM(n, a, oo, x ^ n) = (x^a)/(1-x) for x > -1, x < 1
+
+axiom SUM(n, 0, oo, (-1)^n / (n+1)^2) = (pi^2) / 12
+
+axiom SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1)) = sin(x)
+
+axiom SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n)) = cos(x)
+
+axiom SUM(n, 0, oo, x^n/factorial(n)) = exp(x)

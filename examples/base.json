@@ -2,42 +2,6 @@
     "content": [
         {
             "level": 1,
-            "name": "Common series evaluations",
-            "type": "header"
-        },
-        {
-            "expr": "SUM(n, 0, oo, 1 / (n+1)^2) = (pi^2) / 6",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "abs(x) < 1"
-            ],
-            "expr": "(SUM(n, a, oo, (x)^n)) = (x^a)/(1-x)",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n / (n+1)^2) = (pi^2) / 12",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1)) = sin(x)",
-            "type": "axiom"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n)) = cos(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [],
-            "category": "unknown",
-            "conds": [],
-            "expr": "SUM(n, 0, oo, x^n/factorial(n)) = exp(x)",
-            "reference": "",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
             "name": "Common identities",
             "type": "header"
         },
