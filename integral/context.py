@@ -333,7 +333,7 @@ class Context:
         symb_lhs = expr_to_pattern(eq.lhs)
         symb_rhs = expr_to_pattern(eq.rhs)
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        self.simp_identities.append(Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(conds)))
+        self.simp_identities.append(Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds)))
 
     def add_function_table(self, funcname: str, table: Dict[str, str]):
         self.function_tables[funcname] = dict()
@@ -513,6 +513,8 @@ class Context:
                         self.add_series_expansion(a.expr, a.conditions)
                     elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not expr.is_summation(a.expr.rhs):
                         self.add_series_evaluation(a.expr, a.conditions)
+                    elif isinstance(a, action.AxiomAction) and 'simp' in a.attrs:
+                        self.add_simp_identity(a.expr, a.conditions)
 
 
     def check_condition(self, e: Expr) -> bool:

@@ -85,3 +85,17 @@ axiom SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1)) = sin(x)
 axiom SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n)) = cos(x)
 
 axiom SUM(n, 0, oo, x^n/factorial(n)) = exp(x)
+
+# Common identities
+
+## Absolute value
+
+axiom [simp] abs(x) = x for x: real, x >= 0
+
+axiom [simp] abs(x) = -x for x: real, x <= 0
+
+axiom [simp] abs(x * y) = abs(x) * abs(y)
+
+axiom [simp] abs(x / y) = abs(x) / abs(y) for y != 0
+
+axiom [simp] abs(x ^ n) = abs(x) ^ n for n: int

@@ -14,27 +14,6 @@
             "attributes": [
                 "simplify"
             ],
-            "expr": "x^(3/2) / (y * sqrt(x)) = x / y",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "b * a / b = a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "a * b / b = a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
             "expr": "abs(b * i + a) = sqrt(a^2 + b^2)",
             "type": "axiom"
         },
@@ -209,63 +188,14 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "x >= 0",
-                "isReal(x)"
-            ],
-            "expr": "abs(x) = x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "x <= 0",
-                "isReal(x)"
-            ],
-            "expr": "abs(x) = -x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "abs(x * y) = abs(x) * abs(y)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "y != 0"
-            ],
-            "expr": "abs(x / y) = abs(x) / abs(y)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "isInt(n)"
-            ],
-            "expr": "abs(c ^ n) = abs(c) ^ n",
-            "type": "axiom"
-        },
-        {
             "level": 2,
             "name": "Hyperbolic functions",
             "type": "header"
         },
         {
-                "expr": "cosh(x) = (exp(x) + exp(-x)) / 2",
-                "type": "definition"
-            },
+            "expr": "cosh(x) = (exp(x) + exp(-x)) / 2",
+            "type": "definition"
+        },
         {
             "expr": "sinh(x) = (exp(x) - exp(-x)) / 2",
             "type": "definition"
