@@ -231,17 +231,17 @@ class Expr:
 
     @property
     def lhs(self) -> "Expr":
-        if self.is_equals():
+        if self.is_compare():
             return self.args[0]
         else:
-            raise AssertionError(f"lhs: term {self} is not an equality")
+            raise AssertionError(f"lhs: term {self} is not a comparison")
 
     @property
     def rhs(self) -> "Expr":
-        if self.is_equals():
+        if self.is_compare():
             return self.args[1]
         else:
-            raise AssertionError("rhs: term is not an equality")
+            raise AssertionError(f"rhs: term {self} is not a comparison")
 
     def __le__(self, other):
         if isinstance(other, (int, Fraction)):
@@ -861,8 +861,11 @@ def is_const(e: Expr) -> TypeGuard["Const"]:
 def is_op(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP
 
-def is_fun(e: Expr) -> TypeGuard["Fun"]:
-    return e.ty == FUN
+def is_fun(e: Expr, name: str = "") -> TypeGuard["Fun"]:
+    if name == "":
+        return e.ty == FUN
+    else:
+        return e.ty == FUN and e.func_name == name
 
 def is_deriv(e: Expr) -> TypeGuard["Deriv"]:
     return e.ty == DERIV

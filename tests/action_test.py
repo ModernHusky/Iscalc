@@ -1457,6 +1457,17 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("interesting", "Chapter3Practice09", actions)
 
+    def testEulerFormula1(self):
+        actions = """
+            prove (INT x:[1,oo]. 1/(x*(x^2+1))) = log(2)/2 for x:real, x!=0
+            lhs:
+                rewrite 1/(x*(x^2+1)) to 1/x - 1/(2*(x-i)) - 1/(2*(x+i))
+                apply integral identity
+                simplify
+            done
+        """
+        self.check_actions("standard", None, actions)
+
     def testPostgraduateIndefinitePart1SectionA(self):
         with open('theories/postgradIndef1a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()

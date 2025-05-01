@@ -33,41 +33,6 @@ class ActionTest(unittest.TestCase):
         if not print_state and not isinstance(st, state.InitialState):
             raise AssertionError("Does not end in initial state (add print_state=True to debug)")
 
-    def testComplex01(self):
-        actions = """
-            prove (INT x:[1,oo]. 1/(x*(x^2+1))) = log(2)/2 for x:real, x!=0
-            subgoal 1:x*(x + i) * (x - i) = x*(x^2+1)
-            lhs:
-                rewrite to x*(x*x-x*i+i*x-i*i)
-                simplify
-            done
-            subgoal 2:1/x-1/(2*(x-i))-1/(2*(x+i))=1/(x*(x^2+1))
-            lhs:
-                rewrite 1/x to 2*(x+i)*2*(x-i)/(x*2*(x+i)*2*(x-i))
-                rewrite 1/(2*(x-i)) to x*2*(x+i)/(x * 2 * (x - i) * 2 * (x + i))
-                rewrite 1/(2*(x+i)) to x*2*(x-i)/(x * 2 * (x - i) * 2 * (x + i))
-                rewrite to (2 * (x + i) * 2 * (x - i)- x * 2 * (x + i) - x * 2 * (x - i))/(x * 2 * (x - i) * 2 * (x + i))
-                simplify
-                rewrite (x - i) * (4 * x + 4 * i) to 4*x^2+4*i*x-i*4*x-i*4*i
-                simplify
-                rewrite (2 * x * (x + i)) to 2*x*x+2*x*i
-                rewrite 2 * x * (x - i) to 2*x*x-2*x*i
-                simplify
-                apply 1 on x*(x + i) * (x - i)
-            done
-            subgoal 3:(x + i) * (x - i) = (x^2+1)
-            lhs:
-                rewrite to (x*x-x*i+i*x-i*i)
-                simplify
-            done
-            lhs:
-                apply 2 on 1/(x*(x^2+1))
-                apply integral identity
-                simplify
-            done
-        """
-        self.check_actions("interesting", "", actions)
-
     def testEulerFormula(self):
         actions = """
             prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for y>0
