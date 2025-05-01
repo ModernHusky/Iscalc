@@ -1488,7 +1488,6 @@ class ActionTest(unittest.TestCase):
         self.check_actions("standard", None, actions)
 
     def testEulerFormula2(self):
-        # TODO: evaluate limit LIM {x -> oo}. exp(x * (-(b * i) - y)) to 0
         actions = """
             prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for b: real, y > 0
             lhs:
@@ -1498,8 +1497,21 @@ class ActionTest(unittest.TestCase):
                 rewrite -(b * x * i) - x * y to (-y - b*i) * x
                 rewrite b * x * i - x * y to (-y + b*i) * x
                 apply integral identity
+                rewrite x * (-(b*i) - y) to  -x * (b*i) - x * y
+                rewrite x * (b * i - y) to x * b * i - x * y
                 simplify
-            sorry
+                rewrite (2 * i * (-(b * i) - y)) to (-2 * i * (b * i) - 2 * i * y)
+                rewrite (2 * i * (b * i - y)) to ((2 * i * b * i - 2 * i * y))
+                simplify
+                rewrite to 1 / (-(2 * y * i) + 2 * b) + 1 / ((2 * y * i) + 2 * b)
+                rewrite 1 / (-(2 * y * i) + 2 * b) + 1 / ((2 * y * i) + 2 * b)to (2 * y * i + 2 * b)  / ((-(2 * y * i) + 2 * b)*(2 * y * i + 2 * b) )+ (-(2 * y * i) + 2 * b) / ((-(2 * y * i) + 2 * b)*(2 * y * i + 2 * b) )
+                rewrite to (-(2 * y * i) + 2 * b + 2 * y * i + 2 * b) / ((2 * y * i + 2 * b) * (-(2 * y * i) + 2 * b))
+                simplify
+                rewrite ((2 * y * i + 2 * b) * (-(2 * y * i) + 2 * b))  to ((2 * y * i)*(-(2 * y * i) ) + 2 * b * 2 * b)
+                simplify
+                rewrite 4 * b / (4 * b ^ 2 + 4 * y ^ 2) to 1/4*4 * b / (b ^ 2 + y ^ 2)
+                simplify
+            done
         """
         self.check_actions("standard", None, actions)
 

@@ -721,6 +721,37 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
     l = limit_of_expr(e, var_name, ctx)
     if l.e is not None:
         return l.e
+    elif expr.is_fun(e) and e.func_name == 'exp':
+        arg = e.args[0]
+        # Check whether the real item is included
+        real_part = None
+        print("arg", arg.is_minus())  
+        if arg.is_times():
+            # Extract the term containing the variable x
+            var_terms = [term for term in arg.args if term.contains_var(var_name)]
+            if var_terms:
+                if any(expr.is_uminus(t) for t in var_terms):
+                    return Const(0)  
+        elif arg.is_plus() or arg.is_minus():
+            for term in arg.args:
+                if not term.contains_i() and term.contains_var(var_name):
+                    real_part = term
+                    break
+            print("term", term)
+            if real_part is not None:
+                if arg.is_minus():
+                    if arg.args[1] == real_part:
+                        return Const(0)
+                elif arg.is_plus():
+                    if expr.is_uminus(real_part):
+                        return Const(0)
+                    # Check whether the real part is in the negative sign
+                    for term in arg.args:
+                        if term.is_uminus() and term.args[0] == real_part:
+                            return Const(0)
+        elif expr.is_uminus(arg):
+            return Const(0) 
+        return expr.Limit(var_name, POS_INF, e)
     elif e.is_plus():
         l1 = reduce_inf_limit(e.args[0], var_name, ctx)
         l2 = reduce_inf_limit(e.args[1], var_name, ctx)
