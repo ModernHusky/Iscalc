@@ -505,7 +505,7 @@ class Context:
                     for book_name in a.theories:
                         self.load_book(book_name)
 
-                elif isinstance(a, action.ProveAction):
+                elif isinstance(a, (action.AxiomAction, action.ProveAction)):
                     if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
                         self.add_indefinite_integral(a.expr, a.conditions)
                     elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):

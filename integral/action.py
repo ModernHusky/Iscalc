@@ -25,6 +25,22 @@ class ImportsAction(Action):
         return ["initial"]
 
 
+class AxiomAction(Action):
+    """State an axiom."""
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
+        self.expr = expr
+        self.conditions = Conditions(conditions)
+
+    def __str__(self):
+        if self.conditions:
+            return "axiom %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
+        else:
+            return "axiom %s" % self.expr    
+
+    def get_start_states(self) -> list[str]:
+        return ["initial"]
+
+
 class ProveAction(Action):
     """Start a proof."""
     def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
