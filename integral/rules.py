@@ -816,7 +816,24 @@ class EvaluateDefiniteIntegral(Rule):
         assert isinstance(e, Integral)
 
         ctx2 = context.body_conds(e, ctx)
-        # First, try indefinite integral identities
+
+        # First, look for definite integral identities
+        for identity in ctx.get_definite_integrals():
+            inst = expr.match(e, identity.lhs)
+            if inst is None:
+                continue
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+            if satisfied:
+                return identity.rhs.inst_pat(inst)
+
+        # Next, try indefinite integral identities
         for identity in ctx.get_indefinite_integrals():
             assert isinstance(identity.lhs, IndefiniteIntegral)
             inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
@@ -838,22 +855,6 @@ class EvaluateDefiniteIntegral(Rule):
                 assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
                 pat_rhs = identity.rhs.args[0]
                 return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
-
-        # Next, look for definite integral identities
-        for identity in ctx.get_definite_integrals():
-            inst = expr.match(e, identity.lhs)
-            if inst is None:
-                continue
-
-            # Check conditions
-            satisfied = True
-            for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
-                cond = cond.inst_pat(inst)
-                if not ctx2.check_condition(cond):
-                    satisfied = False
-            if satisfied:
-                return normalize(identity.rhs.inst_pat(inst), ctx2)
 
         # No matching identity found
         return e

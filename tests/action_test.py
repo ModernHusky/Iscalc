@@ -7,6 +7,8 @@ from integral import compstate
 from integral import state
 from integral import parser
 from integral import expr
+import os
+os.chdir("E:\Agraduatelife\learn-git\iscalc")
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
@@ -1471,11 +1473,17 @@ class ActionTest(unittest.TestCase):
         self.check_actions("interesting", "Chapter3Practice09", actions)
 
     def testEulerFormula1(self):
+        # TODO ([log(x)]_x=1,oo) - 1/2 * ([log(x - i)]_x=1,oo) - 1/2 * ([log(x + i)]_x=1,oo) ->
+        #                                        [(log(x)) - 1/2 * (log(x - i)) - 1/2 * (log(x + i))]_x=1,oo
         actions = """
             prove (INT x:[1,oo]. 1/(x*(x^2+1))) = log(2)/2 for x:real, x!=0
             lhs:
                 rewrite 1/(x*(x^2+1)) to 1/x - 1/(2*(x-i)) - 1/(2*(x+i))
                 apply integral identity
+                simplify
+                rewrite to (log(-i + 1) + log(i + 1)) / 2
+                rewrite log(-i + 1) + log(i + 1) to log((-i + 1)*(i + 1))
+                rewrite (-i + 1)*(i + 1) to (-i*i-i+i+1)
                 simplify
             done
         """
