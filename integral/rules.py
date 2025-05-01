@@ -1012,7 +1012,7 @@ class OnLocation(Rule):
         return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        def rec(cur_e, loc, ctx):
+        def rec(cur_e: Expr, loc: expr.Location, ctx: Context):
             if loc.is_empty():
                 return self.rule.eval(cur_e, ctx)
             elif expr.is_var(cur_e) or expr.is_const(cur_e):
@@ -1075,7 +1075,8 @@ class OnLocation(Rule):
                     raise AssertionError("OnLocation: invalid location")
             elif expr.is_indefinite_integral(cur_e):
                 assert loc.head == 0, "OnLocation: invalid location"
-                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx), cur_e.skolem_args)
+                ctx2 = body_conds(cur_e, ctx)
+                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx2), cur_e.skolem_args)
             elif expr.is_summation(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 if loc.head == 0:

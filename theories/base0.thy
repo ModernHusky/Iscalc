@@ -145,3 +145,45 @@ axiom [simp] conj(i) = -i
 axiom [simp] conj(-i) = i
 
 axiom [simp] conj(a) = a for a: real
+
+## Euler's formula
+
+axiom exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom sin(x) = (exp(i*x) - exp(-i * x)) / (2*i)
+
+## Power
+
+axiom [simp] 0 ^ x = 0 for x: real, x > 0
+
+axiom [bidirectional] (a * b) ^ k = a ^ k * b ^ k for k: int, a != 0, b != 0
+
+axiom [bidirectional] (a * b) ^ k = a ^ k * b ^ k for k: real, a > 0, b > 0
+
+axiom [bidirectional] (a / b) ^ k = a ^ k / b ^ k for k: int, a != 0, b != 0
+
+axiom [bidirectional] (a / b) ^ k = a ^ k / b ^ k for k: real, a > 0, b > 0
+
+axiom [bidirectional] (-a) ^ k = (-1) ^ k * a ^ k for k: int, a != 0
+
+axiom [bidirectional] a ^ x ^ y = a ^ y ^ x for a > 0, x y: real
+
+axiom [bidirectional] a ^ x ^ y = a ^ y ^ x for a != 0, x y: int
+
+axiom [simp, bidirectional] a ^ x ^ y = a ^ (x * y) for a > 0, x y: real
+
+axiom [simp, bidirectional] a ^ x ^ y = a ^ (x * y) for a != 0, x: int, y: real
+
+axiom [bidirectional] x ^ a * x ^ b = x ^ (a + b) for x > 0, a b: real
+
+axiom [bidirectional] x ^ a * x ^ b = x ^ (a + b) for x != 0, a b: int
+
+axiom [bidirectional] x ^ a / x ^ b = x ^ (a - b) for x > 0, a b: real
+
+axiom [bidirectional] x ^ a / x ^ b = x ^ (a - b) for x != 0, a b: int
+
+axiom [simp] (-1) ^ (2 * n) = 1 for n: int
+
+axiom [simp] (-x) ^ (2 * n) = x ^ (2 * n) for n: int
+
+axiom [bidirectional] a ^ (-x) = (1 / a) ^ x for a != 0

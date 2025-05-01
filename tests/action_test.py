@@ -165,6 +165,7 @@ class ActionTest(unittest.TestCase):
         done
         """
         self.check_actions("standard", None, actions)
+
     def testUCDavisPartialFraction(self):
         with open('theories/ucdavisPartial.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
@@ -870,6 +871,7 @@ class ActionTest(unittest.TestCase):
                 apply series expansion on (1 + 1 / x ^ 2) ^ (-1) index n
                 rewrite log(x) * x ^ (-2) * SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n) to SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n * log(x) * x ^ (-2))
                 exchange integral and sum
+                rewrite (1 / x ^ 2) ^ n to x ^ (-(2 * n))
                 simplify
                 rewrite x ^ (-(2 * n) - 2) * log(x) to log(x) / x ^ (2 * n + 2)
                 apply 1 on INT x:[1,oo]. log(x) / x ^ (2 * n + 2)
@@ -948,12 +950,12 @@ class ActionTest(unittest.TestCase):
         # Inside interesting integrals, Section 5.2, example #2 (5.2.4)
         actions = """
             prove (INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24
-            subgoal 1: (-log(1-x) - log(1+x)) = -SUM(k,0,oo,(-1)^k*(-x)^(k+1) / (k+1))-SUM(k,0,oo,(-1)^k*x^(k+1)/(k+1)) for abs(x) < 1
+            subgoal 1: (-log(1-x) - log(1+x)) = -SUM(k,0,oo,(-1)^k*(-x)^(k+1) / (k+1))-SUM(k,0,oo,(-1)^k*x^(k+1)/(k+1)) for x != 0, abs(x) < 1
             lhs:
                 apply series expansion on log(1-x) index k
                 apply series expansion on log(1+x) index k
             done
-            subgoal 2:x / (-(x ^ 2) + 1) = 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k) for abs(x) < 1
+            subgoal 2:x / (-(x ^ 2) + 1) = 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k) for x != 0, abs(x) < 1
             from 1:
                 differentiate both sides at x
                 simplify
