@@ -298,13 +298,13 @@ class Context:
         symb_rhs = expr_to_pattern(eq.rhs)
         self.definite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
 
-    def add_series_expansion(self, eq: Expr):
+    def add_series_expansion(self, eq: Expr, conds: Conditions):
         if not (eq.is_equals() and not expr.is_summation(eq.lhs) and expr.is_summation(eq.rhs)):
             raise TypeError
 
         symb_lhs = expr_to_pattern(eq.lhs)
         symb_rhs = expr_to_pattern(eq.rhs)
-        self.series_expansions.append(Identity(Eq(symb_lhs, symb_rhs)))
+        self.series_expansions.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
 
     def add_series_evaluation(self, eq: Expr):
         if not (eq.is_equals() and expr.is_summation(eq.lhs) and not expr.is_summation(eq.rhs)):
@@ -410,12 +410,12 @@ class Context:
                         conds.add_condition(parser.parse_expr(c))
                 self.add_summation_split_identities(e, conds)
             elif e.is_equals() and not expr.is_summation(e.lhs) and expr.is_summation(e.rhs):
-                self.add_series_expansion(e)
+                conds = Conditions()
+                if 'conds' in item:
+                    for c in item['conds']:
+                        conds.add_condition(parser.parse_expr(c))
+                self.add_series_expansion(e, conds)
                 if item['type'] == 'problem':
-                    conds = Conditions()
-                    if 'conds' in item:
-                        for c in item['conds']:
-                            conds.add_condition(parser.parse_expr(c))
                     self.add_lemma(e, conds)
             elif e.is_equals() and expr.is_summation(e.lhs) and not expr.is_summation(e.rhs):
                 if item['type'] == 'problem':
@@ -510,6 +510,9 @@ class Context:
                         self.add_indefinite_integral(a.expr, a.conditions)
                     elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
                         self.add_definite_integral(a.expr, a.conditions)
+                    elif a.expr.is_equals() and not expr.is_summation(a.expr.lhs) and expr.is_summation(a.expr.rhs):
+                        self.add_series_expansion(a.expr, a.conditions)
+
 
     def check_condition(self, e: Expr) -> bool:
         """Check the given condition under the extra conditions"""

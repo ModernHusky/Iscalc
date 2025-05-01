@@ -53,3 +53,21 @@ axiom (INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
 axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
+
+# Common series expansion
+
+axiom exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))
+
+axiom sin(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1))
+
+axiom cos(x) = SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n))
+
+axiom arctan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1)) for x >= -1, x <= 1
+
+axiom (1 + x) ^ -1 = SUM(n, 0, oo, (-1)^n * x ^ n) for x > -1, x < 1
+
+axiom (1 - x) ^ -1 = SUM(n, 0, oo, x ^ n) for x > -1, x < 1
+
+axiom log(1 + x) = SUM(n, 0, oo, (-1)^n * x ^ (n+1) / (n + 1)) for x > -1, x <= 1
+
+axiom log(1 - x) = SUM(n, 0, oo, (-1)^n * (-x)^(n+1) / (n + 1)) for x >= -1, x < 1

@@ -785,10 +785,20 @@ class SeriesExpansionIdentity(Rule):
             inst = expr.match(e, identity.lhs)
             if inst is None:
                 continue
-            res = identity.rhs.inst_pat(inst)
-            assert expr.is_summation(res)
-            res = res.alpha_convert(self.index_var)
-            return res
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                res = identity.rhs.inst_pat(inst)
+                assert expr.is_summation(res)
+                return res.alpha_convert(self.index_var)
+
         # No matching identity found
         return e
 
