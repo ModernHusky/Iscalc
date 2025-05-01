@@ -1479,6 +1479,22 @@ class ActionTest(unittest.TestCase):
         """
         self.check_actions("standard", None, actions)
 
+    def testEulerFormula2(self):
+        # TODO: evaluate limit LIM {x -> oo}. exp(x * (-(b * i) - y)) to 0
+        actions = """
+            prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for b: real, y > 0
+            lhs:
+                rewrite sin(b*x) to (exp(i*(b*x)) - exp(-i*(b*x))) / (2*i)
+                expand polynomial
+                simplify
+                rewrite -(b * x * i) - x * y to (-y - b*i) * x
+                rewrite b * x * i - x * y to (-y + b*i) * x
+                apply integral identity
+                simplify
+            sorry
+        """
+        self.check_actions("standard", None, actions)
+
     def testPostgraduateIndefinitePart1SectionA(self):
         with open('theories/postgradIndef1a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()

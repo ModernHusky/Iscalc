@@ -1,7 +1,5 @@
 import unittest
 
-from integral import context
-from integral import expr
 from integral.parser import parse_expr
 from integral.condprover import init_all_conds, check_cond, saturate_expr, \
     check_condition, subject_of
@@ -162,6 +160,19 @@ class CondProverTest(unittest.TestCase):
             var, var_subst = subst
             ctx.add_subst(var, parse_expr(var_subst))
             self.assertEqual(check_condition(e, ctx), res, f"{e} {conds} {subst}")
+
+    def testCheckConditionComplex(self):
+        test_data = [
+            ("-y - b*i != 0", ["isReal(b)", "y > 0"], True),
+            ("-y + b*i != 0", ["isReal(b)", "y > 0"], True),
+        ]
+
+        for s, conds, res in test_data:
+            e = parse_expr(s)
+            ctx = Context()
+            ctx.load_book("base")
+            ctx.extend_condition(Conditions(conds))
+            self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
 
     def testCheckTransitivity(self):
         test_data = [

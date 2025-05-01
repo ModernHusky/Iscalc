@@ -7,22 +7,21 @@
         },
         {
             "attributes": [
-                "simplify"
+                "bidirectional"
             ],
-            "conds": [
-                
-            ],
-            "expr": "exp(b * x * i) = i * sin(b * x) + cos(b * x)",
+            "category": "euler",
+            "expr": "sin(x) = (exp(i*x) - exp(-i * x)) / (2*i)",
             "type": "axiom"
         },
         {
             "attributes": [
-                "simplify"
+                "bidirectional"
             ],
             "conds": [
-                
+                "isReal(x)"
             ],
-            "expr": "exp(-(b * x * i)) = -(i * sin(b * x)) + cos(b * x)",
+            "category": "euler",
+            "expr": "exp(i*x) = cos(x) + i * sin(x)",
             "type": "axiom"
         },
         {

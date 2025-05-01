@@ -405,6 +405,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b"], "c + a <= c + b"),
         (["a != -b"], "a + b != 0"),
         (["a != b"], "a - b != 0"),
+        (["a < 0", "isReal(b)"], "a + b * i != 0"),
+        (["a < 0", "isReal(b)"], "a - b * i != 0"),
         (["a >= b", "c > d"], "a + c > b + d"),
         (["a > b", "c >= d"], "a + c > b + d"),
         (["a <= b", "c < d"], "a + c < b + d"),
