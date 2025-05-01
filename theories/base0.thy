@@ -99,3 +99,49 @@ axiom [simp] abs(x * y) = abs(x) * abs(y)
 axiom [simp] abs(x / y) = abs(x) / abs(y) for y != 0
 
 axiom [simp] abs(x ^ n) = abs(x) ^ n for n: int
+
+## Complex numbers
+
+axiom [simp] abs(b * i + a) = sqrt(a^2 + b^2) for a b: real
+
+axiom [simp] abs(-(b * i) + a) = sqrt(a^2 + b^2) for a b: real
+
+axiom [simp] abs(b * i - a) = sqrt(a^2 + b^2) for a b: real
+
+axiom [simp] abs(-(b * i) - a) = sqrt(a^2 + b^2) for a b: real
+
+axiom [simp] abs(-a + i) = sqrt(a^2 + 1) for a: real
+
+axiom [simp] abs(a + i) = sqrt(a^2 + 1) for a: real
+
+axiom [simp] abs(-a - i) = sqrt(a^2 + 1) for a: real
+
+axiom [simp] abs(a - i) = sqrt(a^2 + 1) for a: real
+
+axiom [simp] abs(-(a*i)) = a for a: real
+
+axiom [simp] abs(a*i) = a for a: real
+
+axiom [simp] abs(i) = 1
+
+axiom [simp] conj(-i + a) = a + i for a: real
+
+axiom [simp] conj(i + a) = a - i for a: real
+
+axiom [simp] conj(-(b * i) + a) = b * i + a for a b: real
+
+axiom [simp] conj(-(b * i) - a) = b * i - a for a b: real
+
+axiom [simp] conj((b * i) - a) = -b * i - a for a b: real
+
+axiom [simp] conj((b * i) + a) = -b * i + a for a b: real
+
+axiom [simp] conj(b * i) = -b * i for b: real
+
+axiom [simp] conj(-(b * i)) = b * i for b: real
+
+axiom [simp] conj(i) = -i
+
+axiom [simp] conj(-i) = i
+
+axiom [simp] conj(a) = a for a: real

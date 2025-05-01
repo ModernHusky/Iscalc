@@ -2,18 +2,17 @@
 
 from integral import parser
 from integral import compstate
-from integral import action
-import time
+from integral import state
 import unittest
 
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
-                      *, print_lines=False, print_state=False, write_stats=True):
+                      *, print_lines=False, print_state=False):
         file = compstate.CompFile(base_file, current_file)
-        state = action.InitialState(file)
+        st = state.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
-        start_time = None
+        cur_goal = None
         for act in actions:
             if print_lines:
                 print(act)
@@ -21,18 +20,17 @@ class ActionTest(unittest.TestCase):
                 # title or comment
                 continue
             a = parser.parse_action(act)
-            if write_stats and isinstance(state, action.InitialState):
-                start_time = time.time()
-                with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                    stats_file.write(f"{base_file}.{current_file} {a}\n")
-            state = state.process_action(a)
-            if write_stats and isinstance(state, action.InitialState):
-                elapsed_time = time.time() - start_time
-                with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                    stats_file.write(f"{elapsed_time:.2f} seconds\n")
+            if isinstance(a, (state.ProveAction, state.CalculateAction)):
+                cur_goal = a
+            try:
+                st = st.process_action(a)
+            except Exception as e:
+                print(cur_goal)
+                print(st)
+                raise e
         if print_state:
-            print(state)
-        if not print_state and not isinstance(state, action.InitialState):
+            print(st)
+        if not print_state and not isinstance(st, state.InitialState):
             raise AssertionError("Does not end in initial state (add print_state=True to debug)")
 
     def testComplex01(self):
