@@ -708,16 +708,26 @@ class DefiniteIntegralIdentity(Rule):
                 e = OnLocation(self, loc).eval(e, ctx)
             return e
 
+        ctx2 = context.body_conds(e, ctx)
         # First, look for indefinite integrals identities
         for identity in ctx.get_indefinite_integrals():
             inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
             if inst is None:
                 continue
-
             inst[identity.lhs.var] = Var(e.var)
-            assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
-            pat_rhs = identity.rhs.args[0]  # remove Skolem constant C
-            return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                pat_rhs = identity.rhs.args[0]  # remove Skolem constant C
+                return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
 
         # Look for definite integral identities
         for identity in ctx.get_definite_integrals():
@@ -728,10 +738,10 @@ class DefiniteIntegralIdentity(Rule):
                 for cond in identity.conds.data:
                     cond = expr.expr_to_pattern(cond)
                     cond = cond.inst_pat(inst)
-                    if not ctx.check_condition(cond):
+                    if not ctx2.check_condition(cond):
                         satisfied = False
                 if satisfied:
-                    return normalize(identity.rhs.inst_pat(inst), ctx)
+                    return normalize(identity.rhs.inst_pat(inst), ctx2)
 
         # No matching identity found
         return e
@@ -829,14 +839,23 @@ class IndefiniteIntegralIdentity(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
         def apply(e: IndefiniteIntegral):
-            for indef in ctx.get_indefinite_integrals():
-                inst = expr.match(e, indef.lhs)
-                if inst is None:
-                    continue
+            ctx2 = context.body_conds(e, ctx)
+            for identity in ctx.get_indefinite_integrals():
+                inst = expr.match(e, identity.lhs)
+                inst[identity.lhs.var] = Var(e.var)
 
-                inst['x'] = Var(e.var)
-                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1])
-                return indef.rhs.args[0].inst_pat(inst)
+                # Check conditions
+                satisfied = True
+                for cond in identity.conds.data:
+                    cond = expr.expr_to_pattern(cond)
+                    cond = cond.inst_pat(inst)
+                    if not ctx2.check_condition(cond):
+                        satisfied = False
+
+                if satisfied:
+                    inst['x'] = Var(e.var)
+                    assert expr.is_plus(identity.rhs) and expr.is_skolem_func(identity.rhs.args[1])
+                    return identity.rhs.args[0].inst_pat(inst)
 
             # No matching identity found
             return e
@@ -878,18 +897,28 @@ class EvaluateIndefiniteIntegral(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, IndefiniteIntegral)
+
+        ctx2 = context.body_conds(e, ctx)
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
             inst = expr.match(e, indef.lhs)
             if inst is None:
                 continue
-
             inst[indef.lhs.var] = Var(e.var)
 
-            # The right side of the identity should be of the form "expr + C"
-            # take the expr part of the expression.
-            assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
-            return indef.rhs.args[0].inst_pat(inst)
+            # Check conditions
+            satisfied = True
+            for cond in indef.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                # The right side of the identity should be of the form "expr + C"
+                # take the expr part of the expression.
+                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                return indef.rhs.args[0].inst_pat(inst)
 
         # No matching identity found
         return e
@@ -901,20 +930,29 @@ class EvaluateDefiniteIntegral(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, Integral)
 
+        ctx2 = context.body_conds(e, ctx)
         # First, try indefinite integral identities
         for identity in ctx.get_indefinite_integrals():
             assert isinstance(identity.lhs, IndefiniteIntegral)
             inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
             if inst is None:
                 continue
-
             inst[identity.lhs.var] = Var(e.var)
 
-            # The right side of the identity should be of the form "expr + C"
-            # take the expr part of the expression.
-            assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
-            pat_rhs = identity.rhs.args[0]
-            return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                # The right side of the identity should be of the form "expr + C"
+                # take the expr part of the expression.
+                assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                pat_rhs = identity.rhs.args[0]
+                return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
 
         # Next, look for definite integral identities
         for identity in ctx.get_definite_integrals():
@@ -927,11 +965,10 @@ class EvaluateDefiniteIntegral(Rule):
             for cond in identity.conds.data:
                 cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
-                if not ctx.check_condition(cond):
-                    # print(f"Warning: unable to check condition {cond}")
+                if not ctx2.check_condition(cond):
                     satisfied = False
             if satisfied:
-                return normalize(identity.rhs.inst_pat(inst), ctx)
+                return normalize(identity.rhs.inst_pat(inst), ctx2)
 
         # No matching identity found
         return e
@@ -2029,7 +2066,6 @@ class Equation(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                print(e)
                 raise RuleException("Equation", "old expression %s not found" % self.old_expr)
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
