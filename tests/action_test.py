@@ -7,8 +7,6 @@ from integral import compstate
 from integral import state
 from integral import parser
 from integral import expr
-import os
-os.chdir("E:\Agraduatelife\learn-git\iscalc")
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
