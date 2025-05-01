@@ -187,3 +187,27 @@ axiom [simp] (-1) ^ (2 * n) = 1 for n: int
 axiom [simp] (-x) ^ (2 * n) = x ^ (2 * n) for n: int
 
 axiom [bidirectional] a ^ (-x) = (1 / a) ^ x for a != 0
+
+## Exponential and Logarithm
+
+axiom [bidirectional] exp(a) ^ b = exp(a * b)
+
+axiom exp(a + b) = exp(a) * exp(b)
+
+axiom exp(a - b) = exp(a) * exp(-b)
+
+axiom [simp] exp(0) = 1
+
+axiom [simp] log(1) = 0
+
+axiom [simp] exp(log(b)) = b for b > 0
+
+axiom [simp] log(exp(b)) = b
+
+axiom [bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
+
+axiom [bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
+
+axiom [simp] log(1 / x) = -log(x) for x > 0
+
+axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
