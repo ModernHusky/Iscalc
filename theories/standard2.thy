@@ -1,8 +1,14 @@
-# 1
+## 9.2 Integrands involving powers of x and powers of sin x or cos x
+
+### 9.2.1 Integrands involving x^n sin^m x
+
+#### 9.2.1.1
+
+// 3a
 prove (INT x. sin(x) ^ 3) = 1/12 * cos(3 * x) - 3/4 * cos(x) + SKOLEM_CONST(C)
 sorry
 
-# 2
+// 3b
 prove (INT x. sin(x) ^ 3)  = 1/3 * cos(x) ^ 3 - cos(x) + SKOLEM_CONST(C)
 lhs:
     rewrite sin(x)^3 to sin(x)*sin(x)^2
@@ -20,20 +26,20 @@ lhs:
     rewrite (1/3)*cos(x)^3 - cos(x) to (1/3)*cos(x)^3 - cos(x)
 done
 
-# 3
+// 4a
 prove (INT x. sin(x) ^ 4) = 1/32 * sin(4 * x) - 1/4 * sin(2 * x) + 3/8 * x + SKOLEM_CONST(C)
 sorry
 
-# 4
+// 4b
 prove (INT x. sin(x) ^ 4) = -1/4 * sin(x) ^ 3  * cos(x) - 3/8 * sin(x) * cos(x) + 3/8 * x + SKOLEM_CONST(C)
 sorry
 
-# 5
+// 5a
 prove (INT x. sin(x) ^ 5) = -1/80 * cos(5 * x) + 5/48 * cos(3 * x) - 5/8 * cos(x) + SKOLEM_CONST(C)
 sorry
 
-# TODO: "apply integral identity" has a bug
-# 6
+// TODO: "apply integral identity" has a bug
+// 5b
 prove (INT x. sin(x) ^ 5) = -1/5 * sin(x) ^ 4 * cos(x) + 4/15 * cos(x) ^ 3 - 4/5 * cos(x) + SKOLEM_CONST(C)
 lhs:
     rewrite sin(x)^5 to sin(x)^4 * sin(x)
@@ -56,15 +62,15 @@ lhs:
     solve integral INT x. sin(x)^5
 done
 
-# 7
+// 6
 prove (INT x. sin(x) ^ (2 * n)) = 1/(2 ^ (2 * n)) * binom(2 * n, n) * x + (-1) ^ n/(2 ^ (2*n - 1)) * SUM(k, 0, n-1, (-1) ^ k * binom(2 * n, k) * sin(2 * n-2 * k) * x / (2 * n-2 * k)) + SKOLEM_CONST(C)
 sorry
 
-# 8
+// 7
 prove (INT x. sin(x) ^ (2 * n + 1)) = 1/(2 ^ (2 * n)) * (-1) ^ (n + 1) * SUM(k, 0, n, (-1)^k * binom(2 * n + 1, k) * cos(2 * n + 1 -2 * k) * x / (2 * n + 1 -2 * k)) + SKOLEM_CONST(C)
 sorry
 
-# 9
+// 8
 prove (INT x. x * sin(x)) = sin(x) - x * cos(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x, v = -cos(x)
@@ -72,11 +78,11 @@ lhs:
     apply integral identity
 done
 
-# 10
+// 9
 prove (INT x. x ^ 2 * sin(x)) = 2 * x * sin(x) - (x ^ 2 - 2) * cos(x) + SKOLEM_CONST(C)
 sorry
 
-# 11
+// 10
 prove (INT x. x ^ 3 * sin(x)) = (3 * x ^ 2 - 6) * sin(x) - (x ^ 3 - 6 * x) * cos(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x^3, v = -cos(x)
@@ -90,34 +96,22 @@ lhs:
     rewrite 3 * x ^ 2 * sin(x) - x ^ 3 * cos(x) + 6 * x * cos(x) - 6 * sin(x) to (3 * x ^ 2 - 6) * sin(x) - (x ^ 3 - 6 * x) * cos(x)
 done
 
-# 12
+// 11
 prove (INT x. x ^ 4 * sin(x)) = (4 * x ^ 3 - 24 * x) * sin(x) - (x ^ 4 - 12 * x ^ 2 + 24) * cos(x) + SKOLEM_CONST(C)
 sorry
 
-# 13
+// 12
 prove (INT x. x ^ (2 * n) * sin(x)) = factorial(2 * n) * SUM(k, 0, n, (-1) ^ (k + 1) * (x ^ (2 * n - 2 * k))/factorial(2 * n -2 * k) *  cos(x)) +  SUM(k, 0, n-1, (-1)^k * (x ^ (2 * n - 2 * k - 1))/factorial(2 * n - 2 * k -1) *  sin(x)) + SKOLEM_CONST(C) for isInt(n)
 sorry
 
-# 14
+// 13
 prove (INT x. x ^ (2 * (n + 1)) * sin(x)) = factorial(2 * n + 1) * SUM(k, 0, n, (-1) ^ (k + 1) * (x ^ (2 * n - 2 * k + 1))/factorial(2 * n -2 * k + 1) *  cos(x)) + SUM(k, 0, n-1, (-1)^k * (x ^ (2 * n - 2 * k))/factorial(2 * n - 2 * k) *  sin(x)) + SKOLEM_CONST(C) for isInt(n)
 sorry
 
-# 15
+// 14
 prove (INT x. sin(x) ^ 2) = 1/2 * x - 1/4 * sin(2 * x) + SKOLEM_CONST(C)
 lhs:
     rewrite sin(x)^2 to (1 - cos(2*x))/2
-    apply integral identity
-    simplify
-    substitute u for 2*x
-    apply integral identity
-    replace substitution
-    simplify
-done
-
-# 16
-prove (INT x. sin(x) ^ 2) = 1/2 * x -1/4 * sin(2 * x) + SKOLEM_CONST(C)
-lhs:
-    rewrite sin(x)^2 to (1 - cos(2*x))/2
     simplify
     apply integral identity
     simplify
@@ -126,63 +120,77 @@ lhs:
     replace substitution
 done
 
-# 17
+// 15
 prove (INT x. x * sin(x) ^ 2) = 1/4 * x ^ 2 -  1/4 * x * sin(2 * x) -1/8 * cos(2 * x) + SKOLEM_CONST(C)
 sorry
 
-# 18
+// 16
 prove (INT x. x ^ 2 * sin(x) ^ 2) = 1/6 * x ^ 3 -1/4 * x * cos(2 * x) -1/4 * (x ^ 2 - 1/2) * sin(2 * x) + SKOLEM_CONST(C)
 sorry
 
-# 19
-prove (INT x. x ^ m * sin(x) ^ n) = x ^ (m - 1) * sin(x) ^ (n - 1) * x / n ^ 2 * (m * sin(x) - n * x * cos(x)) + binom(n - 1, n) * (INT x. x ^ m * sin(x) ^ (n - 2)) - m * (m -1)/n ^ 2 * (INT x. x ^ (m - 2) * sin(x) ^ n)
+// 17
+prove (INT x. x ^ m * sin(x) ^ n) = x ^ (m - 1) * sin(x) ^ (n - 1) * x / n ^ 2 * (m * sin(x) - n * x * cos(x)) + (n - 1) / n * (INT x. x ^ m * sin(x) ^ (n - 2)) - m * (m -1)/n ^ 2 * (INT x. x ^ (m - 2) * sin(x) ^ n)
 sorry
 
-# 20
-prove (INT x. sin(x)/x) =SUM(k, 0, oo, (-1) ^ k * x ^ (2 * k+1) /((2 * k+1) * factorial(2 * k+1))) + SKOLEM_CONST(C)
+### 9.2.2 Integrands involving x^-n sin^m x
+
+#### 9.2.2.1
+
+// 1
+prove (INT x. sin(x) / x) = SUM(k, 0, oo, (-1) ^ k * x ^ (2 * k+1) /((2 * k+1) * factorial(2 * k+1))) + SKOLEM_CONST(C)
 sorry
 
-# 21
-prove (INT x. sin(x)/x ^ 2) = -sin(x)/x + (INT x. cos(x)/x)
+// 2
+prove (INT x. sin(x) / x ^ 2) = -sin(x)/x + (INT x. cos(x)/x)
 sorry
 
-# 22
-prove (INT x. sin(x)/x ^ 3) = -sin(x)/(2 * x ^ 2) - cos(x)/(2 * x) - 1/2 * (INT x. sin(x)/x)
+// 3
+prove (INT x. sin(x) / x ^ 3) = -sin(x)/(2 * x ^ 2) - cos(x)/(2 * x) - 1/2 * (INT x. sin(x)/x)
 sorry
 
-# 23
-prove (INT x. sin(x)/x ^ n) = -sin(x)/((n - 1) * x ^ (n - 1)) - cos(x)/((n - 1) * (n - 2) * x ^ (2 * n) ) - 1/((n - 1) * (n - 2)) * (INT x. sin(x)/x ^ (n - 2)) for n > 2
+// 4
+prove (INT x. sin(x) / x ^ n) = -sin(x)/((n - 1) * x ^ (n - 1)) - cos(x)/((n - 1) * (n - 2) * x ^ (2 * n) ) - 1/((n - 1) * (n - 2)) * (INT x. sin(x)/x ^ (n - 2)) for n > 2
 sorry
 
-# 24
-prove (INT x. sin(x) ^ m/x ^ n) = -(sin(x) ^ (m-1) * x * ((n - 2)  * sin(x) + m * x * cos(x)))/((n - 1) * (n - 2) * x ^ (n - 1)) - m ^ 2/((n - 1) * (n - 2)) * (INT x. sin(x) ^ m/x ^ (n - 2)) + m * (m -1)/((n - 1) * (n - 2)) * (INT x. sin(x) ^ (m - 2)/x ^ (n - 2)) for n !=2
+// 5
+prove (INT x. sin(x) ^ m / x ^ n) = -(sin(x) ^ (m-1) * x * ((n - 2)  * sin(x) + m * x * cos(x)))/((n - 1) * (n - 2) * x ^ (n - 1)) - m ^ 2/((n - 1) * (n - 2)) * (INT x. sin(x) ^ m/x ^ (n - 2)) + m * (m -1)/((n - 1) * (n - 2)) * (INT x. sin(x) ^ (m - 2)/x ^ (n - 2)) for n != 1, n != 2
 sorry
 
-# 25
-prove (INT x. 1/sin(x)) = log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x)<pi
+### 9.2.3 Integrands involving x^n sin^-m x
+
+#### 9.2.3.1
+
+// 1a
+prove (INT x. 1 / sin(x)) = log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x) < pi
 sorry
 
-# 26
-prove (INT x. 1/sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for abs(x)<pi
+// 1b
+prove (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for abs(x) < pi
 sorry
 
-# 27
-prove (INT x. 1/sin(x) ^ 2) = -cot(x) + SKOLEM_CONST(C) for abs(x)<pi
+// 2
+prove (INT x. 1 / sin(x) ^ 2) = -cot(x) + SKOLEM_CONST(C) for abs(x)<pi
 sorry
 
-# 28
-prove (INT x. 1/sin(x) ^ 3) = -cos(x)/(2 * sin(x) ^ 2) + 1/2 * log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x)<pi
+// 3
+prove (INT x. 1 / sin(x) ^ 3) = -cos(x)/(2 * sin(x) ^ 2) + 1/2 * log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x)<pi
 sorry
 
-# 29
-prove (INT x. 1/sin(x) ^ n) = -cos(x)/((n - 1) * sin(x) ^ (n - 1)) + binom(n - 2, n - 1) * (INT x. 1/sin(x) ^ (n - 2)) + SKOLEM_CONST(C) for abs(x)<pi, n>1
+// 4
+prove (INT x. 1 / sin(x) ^ n) = -cos(x)/((n - 1) * sin(x) ^ (n - 1)) + (n - 2) / (n - 1) * (INT x. 1/sin(x) ^ (n - 2)) + SKOLEM_CONST(C) for abs(x) < pi, n > 1
 sorry
 
-# 30
+// The rest involves Bernoulli numbers
+
+### 9.2.4 Integrands involving x^n cos^m x
+
+#### 9.2.4.1
+
+// 3a
 prove (INT x. cos(x) ^ 3)  = 1/12 * sin(3 * x) + 3/4 * sin(x) + SKOLEM_CONST(C)
 sorry
 
-# 31
+// 3b
 prove (INT x. cos(x) ^ 3)  = sin(x) - 1/3 * sin(x) ^ 3 + SKOLEM_CONST(C)
 lhs:
     rewrite cos(x)^3 to cos(x)^2 * cos(x)
@@ -193,7 +201,7 @@ lhs:
     replace substitution
 done
 
-# 32
+// 4a
 prove (INT x. cos(x) ^ 4)  = 1/32 * sin(4 * x) + 1/4 * sin(2 * x) + 3/8 * x + SKOLEM_CONST(C)
 lhs:
     rewrite cos(x)^4 to (cos(x)^2)^2
@@ -212,27 +220,27 @@ lhs:
     simplify
 done
 
-# 33
+// 4b
 prove (INT x. cos(x) ^ 4)  = 1/4 * sin(x) * cos(x) ^ 3 + 3/8 * sin(x) * cos(x) + 3/8 * x + SKOLEM_CONST(C)
 sorry
 
-# 34
+// 5a
 prove (INT x. cos(x) ^ 5)  = 1/80 * sin(5 * x) + 5/48 * sin(3 * x) + 5/8 * sin(x) + SKOLEM_CONST(C)
 sorry
 
-# 35
+// 5b
 prove (INT x. cos(x) ^ 5)  = 1/5 * cos(x) ^ 4 * sin(x) - 4/15 * sin(x) ^ 3 + 4/5 * sin(x) + SKOLEM_CONST(C)
 sorry
 
-# 36
+// 6
 prove (INT x. cos(x) ^ (2 * n))  = 1/2^(2 * n) * binom(2 * n, n) * x + 1/2^(2 * n - 1) * SUM(k, 0, n - 1, binom(2 * n, k) * sin(2 * n -2 * k) * x/(2 * n -2 * k)) + SKOLEM_CONST(C)
 sorry
 
-# 37
+// 7
 prove (INT x. cos(x) ^ (2 * n + 1))  = 1/2 ^(2 * n) * SUM(k, 0, n, binom(2 * n + 1, k) * sin(2 * n -2 * k + 1) * x/(2 * n -2 * k + 1)) + SKOLEM_CONST(C)
 sorry
 
-# 38
+// 8
 prove (INT x. x * cos(x))  = cos(x) + x * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x, v = sin(x)
@@ -241,8 +249,8 @@ lhs:
     simplify
 done
 
-# 39
-prove (INT x. x ^ 2 *cos(x))  = 2 * x * cos(x) + (x ^ 2 - 2) * sin(x) + SKOLEM_CONST(C)
+// 9
+prove (INT x. x ^ 2 * cos(x))  = 2 * x * cos(x) + (x ^ 2 - 2) * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x^2, v = sin(x)
     simplify
@@ -253,8 +261,8 @@ lhs:
     rewrite x^2 * sin(x) + 2 * x * cos(x) - 2 * sin(x) to (x^2 - 2) * sin(x) + 2 * x * cos(x)
 done
 
-# 40
-prove (INT x. x ^ 3 *cos(x))  = (3 * x ^ 2 - 6) * cos(x) + (x ^ 3 - 6 * x) * sin(x) + SKOLEM_CONST(C)
+// 10
+prove (INT x. x ^ 3 * cos(x))  = (3 * x ^ 2 - 6) * cos(x) + (x ^ 3 - 6 * x) * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x^3, v = sin(x)
     simplify
@@ -269,7 +277,7 @@ lhs:
     rewrite (x^3 * sin(x) - 6 * x * sin(x)) to (x^3 - 6 * x) * sin(x)
 done
 
-# 41
+// 11
 prove (INT x. x ^ 4 *cos(x))  = (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x^4, v = sin(x)
@@ -285,10 +293,10 @@ lhs:
     rewrite -(12 * x ^ 2 * sin(x)) + 4 * x ^ 3 * cos(x) + x ^ 4 * sin(x) - 24 * x * cos(x) + 24 * sin(x) + SKOLEM_CONST(C) to (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
 done
 
-# 42
+// 12
 prove (INT x. x ^ (2 * n) * cos(x)) = factorial(2 * n) * SUM(k, 0, n, (-1) ^ k * (x ^ (2 * n - 2 * k))/factorial(2 * n -2 * k) *  sin(x)) +  SUM(k, 0, n-1, (-1)^k * (x ^ (2 * n - 2 * k - 1))/factorial(2 * n - 2 * k -1) *  cos(x)) + SKOLEM_CONST(C) for isInt(n)
 sorry
 
-# 43
+// 13
 prove (INT x. x ^ (2 * (n + 1)) * cos(x)) = factorial(2 * n + 1) * SUM(k, 0, n, (-1) ^ k * (x ^ (2 * n - 2 * k + 1))/factorial(2 * n -2 * k+ 1) *  sin(x)) + SUM(k, 0, n, (-1)^k * (x ^ (2 * n - 2 * k))/factorial(2 * n - 2 * k) *  cos(x)) + SKOLEM_CONST(C) for isInt(n)
 sorry
