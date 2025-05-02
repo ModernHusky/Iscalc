@@ -196,31 +196,6 @@ class Goal(StateItem):
         self.ctx.extend_vars(goal.get_vars())
         self.ctx.extend_condition(self.conds)
 
-        # Check for potential division by zero
-        def check_division_by_zero(e: Expr):
-            if expr.is_divides(e):
-                denominator = e.args[1]
-                # check if the denominator is not constant or is zero
-                if not denominator.is_constant() or denominator == Const(0):
-                    # check if the condition already contains the condition that the denominator is not zero
-                    has_condition = False
-                    for cond in self.conds.data:
-                        if expr.is_not_equals(cond) and cond.args[0] == denominator and cond.args[1] == Const(0):
-                            has_condition = True
-                            break
-                    if not has_condition:
-                        # add the condition that the denominator is not zero
-                        self.ctx.add_condition(Op("!=", denominator, Const(0)))
-            # recursively check the subexpressions
-            if e.ty in (expr.OP, expr.FUN):
-                for arg in e.args:
-                    check_division_by_zero(arg)
-            if expr.is_integral(e) or expr.is_deriv(e) or expr.is_limit(e) or expr.is_summation(e) or expr.is_product(e):
-                check_division_by_zero(e.body)
-
-
-        check_division_by_zero(goal)
-
         # Check well-formedness of the goal
         proof_obligations_raw = check_wellformed(goal, self.ctx)
         self.proof_obligations: list[rules.ProofObligation] = []
