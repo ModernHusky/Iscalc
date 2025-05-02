@@ -2,17 +2,23 @@
 
 import unittest
 import time
+import sys
+import cProfile
+import pstats
 
 from integral import compstate
 from integral import state
 from integral import parser
 from integral import expr
+from integral import context
+
 
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, actions: str,
                       *, print_lines=False, print_state=False, write_stats=True):
-        file = compstate.CompFile(base_file)
-        st = state.InitialState(file)
+        ctx = context.Context()
+        ctx.load_book(base_file)
+        st = state.InitialState(ctx)
         actions = [s for s in actions.split('\n') if s.strip()]
         start_time = None
         cur_goal = None
@@ -34,11 +40,11 @@ class ActionTest(unittest.TestCase):
                 if isinstance(st, state.InitialState):
                     if isinstance(cur_goal, state.ProveAction):
                         if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
-                            file.ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
+                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
                         elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
-                            file.ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
+                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
                         else:
-                            file.ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
                     if cur_goal and write_stats:
                         elapsed_time = time.time() - start_time
                         with open("stats.txt", "a", encoding='utf-8') as stats_file:
@@ -54,8 +60,9 @@ class ActionTest(unittest.TestCase):
             raise AssertionError("Does not end in initial state (add print_state=True to debug)")
         
     def testCalculationFinished(self):
-        file = compstate.CompFile("base")
-        st = state.InitialState(file)
+        ctx = context.Context()
+        ctx.load_book("base")
+        st = state.InitialState(ctx)
 
         actions = """
             calculate INT x. (3 - 2*x)^3
@@ -70,8 +77,9 @@ class ActionTest(unittest.TestCase):
         self.assertFalse(st.is_finished())
 
     def testCalculationFinished2(self):
-        file = compstate.CompFile("base")
-        st = state.InitialState(file)
+        ctx = context.Context()
+        ctx.load_book("base")
+        st = state.InitialState(ctx)
 
         actions = """
             calculate INT x. (3 - 2*x)^3
@@ -530,4 +538,18 @@ class ActionTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if "--profile" in sys.argv:
+        sys.argv.remove("--profile")
+        profiler = cProfile.Profile()
+        profiler.enable()
+        
+        # Run tests
+        unittest.TestProgram(exit=False)
+        
+        profiler.disable()
+        print("\n\n--- Profiling Results ---")
+        stats = pstats.Stats(profiler)
+        stats.sort_stats(pstats.SortKey.CUMULATIVE)
+        stats.print_stats(50)  # Show top 50 functions by cumulative time
+    else:
+        unittest.main()

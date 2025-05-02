@@ -75,6 +75,8 @@ class Context:
     def __init__(self, parent: Optional["Context"] = None):
 
         # Parent context
+        if parent is not None:
+            assert isinstance(parent, Context)
         self.parent = parent
 
         # List of definitions
