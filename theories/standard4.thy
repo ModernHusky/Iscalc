@@ -109,21 +109,14 @@ sorry
 // 1
 prove (INT x. arctan(x / a)) = x * arctan(x / a) - a / 2 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a: real, a != 0, x != 0
 lhs:
-    integrate by parts with u = arctan(x/a), v = x
+    integrate by parts with u = arctan(x / a), v = x
     simplify
-    rewrite x^2/a^2 + 1 to (x^2 + a^2)/a^2
-    rewrite 1/a * (INT x. x / ((x^2 + a^2)/a^2)) to 1/a * (INT x. x * a^2 / (x^2 + a^2))
-    simplify
-    rewrite a^2 + x^2 to x^2 + a^2
-    rewrite a * (INT x. x / (x^2 + a^2)) to a/2 * (INT x. 2*x / (x^2 + a^2))
-    apply integral identity
-    simplify
-    rewrite a * (INT x. x / (a^2 + x^2)) to a/2 * (INT x. 2*x / (x^2 + a^2))
+    rewrite x / (x^2 / a^2 + 1) to (x * a^2) / (x^2 + a^2)
+    rewrite (x * a^2) / (x^2 + a^2) to (a / 2) * (2 * x * a) / (x^2 + a^2)
     substitute u for x^2 + a^2
-    simplify
     apply integral identity
     replace substitution
-    simplify
+    rewrite log(abs(x^2 + a^2)) to log(x^2 + a^2)
 done
 
 // 2
