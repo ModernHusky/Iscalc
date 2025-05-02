@@ -290,6 +290,8 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     
     # Rewrite all absolute value conditions
     for cond in conds.data:
+        if not (expr.is_compare(cond) or expr.is_fun(cond)):
+            continue
         x = subject_of(cond)
         add_condition(all_conds, x, cond)
             

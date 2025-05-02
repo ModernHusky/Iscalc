@@ -600,6 +600,10 @@ class PartialFractionDecomposition(Rule):
         if not sympywrapper.is_rational(e.body):
             raise RuleException("PartialFractionDecomposition", "cannot be applied to non-rational body")
 
+        if len(e.body.get_vars()) > 1:
+            raise RuleException("PartialFractionDecomposition",
+                                "cannot be applied to expression with more than one variable")
+
         new_body = normalize(sympywrapper.partial_fraction(e.body), ctx)
         if expr.is_integral(e):
             return expr.Integral(e.var, e.lower, e.upper, new_body)

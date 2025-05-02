@@ -23,7 +23,22 @@ done
 
 // 4a
 prove (INT x. sin(x) ^ 4) = 1/32 * sin(4 * x) - 1/4 * sin(2 * x) + 3/8 * x + SKOLEM_CONST(C)
-sorry
+lhs:
+    rewrite sin(x) ^ 4 to (sin(x) ^ 2) ^ 2
+    rewrite sin(x) ^ 2 to (1 - cos(2 * x)) / 2
+    expand polynomial
+    rewrite cos(2 * x) ^ 2 to (1 + cos(4 * x)) / 2
+    simplify
+    apply integral identity
+    simplify
+    substitute u for 2 * x
+    apply integral identity
+    replace substitution
+    substitute v for 4 * x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 4b
 prove (INT x. sin(x) ^ 4) = -1/4 * sin(x) ^ 3  * cos(x) - 3/8 * sin(x) * cos(x) + 3/8 * x + SKOLEM_CONST(C)
@@ -252,7 +267,25 @@ done
 
 // 4b
 prove (INT x. cos(x) ^ 4)  = 1/4 * sin(x) * cos(x) ^ 3 + 3/8 * sin(x) * cos(x) + 3/8 * x + SKOLEM_CONST(C)
-sorry
+lhs:
+    rewrite cos(x) ^ 4 to cos(x) * cos(x) ^ 3
+    integrate by parts with u = cos(x)^3, v = sin(x)
+    simplify
+    rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2
+    expand polynomial
+    rewrite 3 * (INT x. cos(x) ^ 2 - cos(x) ^ 4) to 3 * (INT x. cos(x) ^ 2) - 3 * (INT x. cos(x) ^ 4)
+    rewrite 3 * (INT x. cos(x) ^ 2) - 3 * (INT x. cos(x) ^ 4) + cos(x) ^ 3 * sin(x) to cos(x) ^ 3 * sin(x) + 3 * (INT x. cos(x) ^ 2) - 3 * (INT x. cos(x) ^ 4)
+    solve integral INT x. cos(x) ^ 4
+    rewrite cos(x) ^ 2 to (1 + cos(2*x))/2
+    apply integral identity
+    simplify
+    substitute u for 2*x
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite sin(2*x) to 2*sin(x)*cos(x)
+    simplify
+done
 
 // 5a
 prove (INT x. cos(x) ^ 5)  = 1/80 * sin(5 * x) + 5/48 * sin(3 * x) + 5/8 * sin(x) + SKOLEM_CONST(C)
@@ -260,7 +293,26 @@ sorry
 
 // 5b
 prove (INT x. cos(x) ^ 5)  = 1/5 * cos(x) ^ 4 * sin(x) - 4/15 * sin(x) ^ 3 + 4/5 * sin(x) + SKOLEM_CONST(C)
-sorry
+lhs:
+    rewrite cos(x)^5 to cos(x)^4 * cos(x)
+    integrate by parts with u = cos(x)^4, v = sin(x)
+    simplify
+    rewrite sin(x)^2 to 1 - cos(x)^2
+    rewrite cos(x)^3 * (1 - cos(x)^2) to cos(x)^3 - cos(x)^5
+    rewrite 4 * (INT x. cos(x)^3 - cos(x)^5) to 4 * (INT x. cos(x)^3) - 4 * (INT x. cos(x)^5)
+    solve integral INT x. cos(x)^5
+    simplify
+    rewrite INT x. cos(x)^3 to INT x. cos(x)^2 * cos(x)
+    rewrite cos(x)^2 to 1 - sin(x)^2
+    rewrite (1 - sin(x)^2) * cos(x) to cos(x) - sin(x)^2 * cos(x)
+    rewrite INT x. cos(x) - sin(x)^2 * cos(x) to (INT x. cos(x)) - (INT x. sin(x)^2 * cos(x))
+    apply integral identity
+    apply integral identity
+    substitute u for sin(x)
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 6
 prove (INT x. cos(x) ^ (2 * n))  = 1/2^(2 * n) * binom(2 * n, n) * x + 1/2^(2 * n - 1) * SUM(k, 0, n - 1, binom(2 * n, k) * sin(2 * n -2 * k) * x/(2 * n -2 * k)) + SKOLEM_CONST(C)

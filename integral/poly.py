@@ -473,12 +473,10 @@ class Polynomial:
     def __truediv__(self, other):
         # Assume the denominator is a monomial
         if isinstance(other, Polynomial):
-            if len(other.monomials) == 0:
-                raise ZeroDivisionError
-            elif len(other.monomials) == 1:
+            if len(other.monomials) == 1 and other.monomials[0].coeff != 0:
                 return Polynomial([m / other.monomials[0] for m in self.monomials])
             else:
-                raise ValueError
+                raise ZeroDivisionError
         else:
             raise NotImplementedError
 
