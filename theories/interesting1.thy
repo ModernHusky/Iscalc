@@ -25,6 +25,17 @@ done
 
 ## Chapter 1, Section 10, Challenge Problems
 
+// C1.1
+
+prove (INT x:[0,8]. 1/(x-2)) = log(3)
+lhs:
+    split region at 2
+    apply integral identity
+    simplify
+done
+
+// C1.5
+
 prove (INT x:[0,pi / 3]. 1 / cos(x)) = log(2 + sqrt(3))
 lhs:
     rewrite 1 / cos(x) to cos(x) / cos(x) ^ 2
