@@ -1,6 +1,6 @@
 imports standard
 
-# Chapter 1
+# Inside Interesting Integrals, Chapter 1
 
 ## Chapter 1, Section 5, Some Examples of Tricks
 

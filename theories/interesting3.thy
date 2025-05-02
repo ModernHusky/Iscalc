@@ -1,6 +1,6 @@
-imports standard
+imports interesting2
 
-# Chapter 3
+# Inside Interesting Integrals, Chapter 3
 
 ## Chapter 3, Section 1, Leibniz's formula
 

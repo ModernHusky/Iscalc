@@ -367,19 +367,6 @@
         },
         {
             "level": 1,
-            "name": "Gamma and Beta function",
-            "type": "header"
-        },
-        {
-            "expr": "B(m,n) = Gamma(m) * Gamma(n) / Gamma(m+n)",
-            "type": "axiom"
-        },
-        {
-            "expr": "(1-x^n) / (1-x) =  SUM(k, 1, n, x^(k-1))",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
             "name": "Summation split rules",
             "type": "header"
         },

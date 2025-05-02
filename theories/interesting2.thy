@@ -1,6 +1,6 @@
-imports standard
+imports interesting1
 
-# Chapter 2
+# Inside Interesting Integrals, Chapter 2
 
 ## Chapter 2, Section 1, Six 'Easy' Warm-Ups
 

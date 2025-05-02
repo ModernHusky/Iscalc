@@ -27,7 +27,7 @@ class ImportsAction(Action):
 
 class AxiomAction(Action):
     """State an axiom."""
-    def __init__(self, expr: Expr, conditions: tuple[Expr], attrs: Iterable[str]):
+    def __init__(self, expr: Expr, conditions: Iterable[Expr], attrs: Iterable[str]):
         self.expr = expr
         self.conditions = Conditions(conditions)
         self.attrs = tuple(attrs)
@@ -47,15 +47,19 @@ class AxiomAction(Action):
 
 class ProveAction(Action):
     """Start a proof."""
-    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
+    def __init__(self, expr: Expr, conditions: Iterable[Expr], attrs: Iterable[str]):
         self.expr = expr
         self.conditions = Conditions(conditions)
+        self.attrs = tuple(attrs)
 
     def __str__(self):
+        res = "prove "
+        if self.attrs:
+            res += "[" + ', '.join(self.attrs) + "] "
+        res += str(self.expr)
         if self.conditions:
-            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
-        else:
-            return "prove %s" % self.expr
+            res += " for " + ', '.join(str(cond) for cond in self.conditions.data)
+        return res
 
     def get_start_states(self) -> list[str]:
         return ["initial"]
