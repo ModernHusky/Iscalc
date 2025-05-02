@@ -1204,7 +1204,7 @@ class Simplify(Rule):
 class ApplyEquation(Rule):
     """Apply the given equation for rewriting."""
 
-    def __init__(self, eq: Union[Expr, str], source: Expr):
+    def __init__(self, eq: str, source: Expr):
         self.name = "ApplyEquation"
         self.eq = eq
         self.source = source
@@ -1218,7 +1218,7 @@ class ApplyEquation(Rule):
     def export(self):
         res = {
             "name": self.name,
-            "eq": str(self.eq),
+            "eq": self.eq,
             "str": str(self),
             "latex_str": self.latex_str()
         }
@@ -1238,37 +1238,11 @@ class ApplyEquation(Rule):
         assert self.source == e or self.source is None
 
         # Find lemma
-        found = False
-        conds = None
-        found_eq = None
-        for identity in ctx.get_lemmas():
-            if self.eq == identity.expr:
-                found = True
-                found_eq = self.eq
-                conds = identity.conds.data
-        if isinstance(self.eq, str):
-            res = ctx.get_subgoal(self.eq)
-            if res:
-                found = True
-                found_eq = res.expr
-                conds = res.conds.data
-        for item in ctx.get_eq_conds().data:
-            if self.eq == item:
-                if self.source is None:
-                    if e == item.lhs:
-                        return item.rhs
-                    if e == item.rhs:
-                        return item.lhs
-                else:
-                    if self.source == item.lhs:
-                        return item.rhs
-                    if self.source == item.rhs:
-                        return item.lhs
-                found = True
-                found_eq = self.eq
-                conds = []
-        if not found:
+        res = ctx.get_subgoal(self.eq)
+        if not res:
             raise RuleException("ApplyEquation", f"lemma {self.eq} not found")
+        found_eq = res.expr
+        conds = res.conds.data
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)

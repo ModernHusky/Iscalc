@@ -123,8 +123,6 @@ class ProveState(State):
                     self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
                 elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
                     self.past.comp_file.ctx.add_indefinite_integral(self.goal.goal, self.goal.conds)
-                else:
-                    self.past.comp_file.ctx.add_lemma(self.goal.goal, self.goal.conds)
             return self.past
 
         # Make definition

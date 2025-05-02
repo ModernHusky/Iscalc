@@ -31,13 +31,14 @@ class ActionTest(unittest.TestCase):
                         stats_file.write(f"{cur_goal}\n")
             try:
                 st = st.process_action(a)
-
                 if isinstance(st, state.InitialState):
                     if isinstance(cur_goal, state.ProveAction):
                         if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
                             file.ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
                         elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
                             file.ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
+                        else:
+                            file.ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
                     if cur_goal and write_stats:
                         elapsed_time = time.time() - start_time
                         with open("stats.txt", "a", encoding='utf-8') as stats_file:

@@ -6,7 +6,7 @@ imports interesting3
 
 define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n: real, n > 0
 
-prove Gamma(n) = (n - 1) * Gamma(n - 1) for n: real, n > 1
+prove [bidirectional] Gamma(n) = (n - 1) * Gamma(n - 1) for n: real, n > 1
 lhs:
     expand definition for Gamma
     integrate by parts with u = x ^ (n - 1), v = -exp(-x)
@@ -25,7 +25,7 @@ induction on n starting from 1
     done
     induct:
     lhs:
-        apply Gamma(n) = (n - 1) * Gamma(n - 1) on Gamma(n + 1)
+        rewrite Gamma(n + 1) to n * Gamma(n)
         simplify
         apply induction hypothesis (all)
         rewrite n * factorial(n - 1) to factorial(n)
@@ -38,7 +38,7 @@ calculate INT x:[0,oo]. exp(-(x ^ 3))
     rewrite exp(-y) / y ^ (2/3) to exp(-y) * y ^ (1/3 - 1)
     fold definition for Gamma (all)
     rewrite to (4/3 - 1) * Gamma(4/3 - 1)
-    apply Gamma(n) = (n - 1) * Gamma(n - 1) on (4/3 - 1) * Gamma(4/3 - 1)
+    rewrite (4/3 - 1) * Gamma(4/3 - 1) to Gamma(4/3)
 done
 
 ## Chapter 4, Section 2, Wallis' Integral and the Beta functions

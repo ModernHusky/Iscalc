@@ -104,9 +104,6 @@ class Context:
         # List of inequalities
         self.inequalities: List[Identity] = list()
 
-        # Lemmas
-        self.lemmas: List[Identity] = list()
-
         # Inductive hypothesis
         self.induct_hyps: List[Identity] = list()
 
@@ -122,8 +119,8 @@ class Context:
         # List of subgoals
         self.subgoals: Dict[str, Identity] = dict()
 
-        # List of identities of summation split
-        self.summation_split_identities: List[Identity] = list()
+        # List of identities of summation/product split
+        self.split_identities: List[Identity] = list()
 
     def __str__(self):
         res = ""
@@ -154,9 +151,6 @@ class Context:
         res += "Inequalities\n"
         for identity in self.get_inequalities():
             res += str(identity) + "\n"
-        res += "Lemmas\n"
-        for identity in self.get_lemmas():
-            res += str(identity) + "\n"
         res += "Inductive hypothesis\n"
         for identity in self.get_induct_hyps():
             res += str(identity) + "\n"
@@ -174,9 +168,9 @@ class Context:
         res.extend(self.definitions)
         return res
 
-    def get_summation_split_identities(self) -> List[Identity]:
-        res = self.parent.get_summation_split_identities() if self.parent is not None else []
-        res.extend(self.summation_split_identities)
+    def get_split_identities(self) -> List[Identity]:
+        res = self.parent.get_split_identities() if self.parent is not None else []
+        res.extend(self.split_identities)
         return res
 
     def get_indefinite_integrals(self) -> List[Identity]:
@@ -217,11 +211,6 @@ class Context:
     def get_inequalities(self) -> List[Identity]:
         res = self.parent.get_inequalities() if self.parent is not None else []
         res.extend(self.inequalities)
-        return res
-
-    def get_lemmas(self) -> List[Identity]:
-        res = self.parent.get_lemmas() if self.parent is not None else []
-        res.extend(self.lemmas)
         return res
 
     def get_induct_hyps(self) -> List[Identity]:
@@ -346,20 +335,13 @@ class Context:
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
         self.inequalities.append(Identity(symb_e, conds=Conditions(symb_conds)))
 
-    def add_lemma(self, e: Union[Expr, str], conds: Conditions):
-        if isinstance(e, str):
-            e = parser.parse_expr(e)
-        tmp = Identity(e, conds=conds)
-        if tmp not in self.lemmas:
-            self.lemmas.append(tmp)
-
-    def add_summation_split_identities(self, e: Expr, conds: Conditions):
+    def add_split_identities(self, e: Expr, conds: Conditions):
         symb_lhs = expr_to_pattern(e.lhs)
         symb_rhs = expr_to_pattern(e.rhs)
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
         tmp = Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds))
-        if tmp not in self.summation_split_identities:
-            self.summation_split_identities.append(tmp)
+        if tmp not in self.split_identities:
+            self.split_identities.append(tmp)
 
     def add_induct_hyp(self, e: Union[Expr, str]):
         if isinstance(e, str):
@@ -408,24 +390,18 @@ class Context:
                     for c in item['conds']:
                         conds.add_condition(parser.parse_expr(c))
                 self.add_series_expansion(e, conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
             elif e.is_equals() and expr.is_summation(e.lhs) and not expr.is_summation(e.rhs):
                 conds = Conditions()
                 if 'conds' in item:
                     for c in item['conds']:
                         conds.add_condition(parser.parse_expr(c))
                 self.add_series_evaluation(e, conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
             elif e.is_equals():
                 conds = Conditions()
                 if 'conds' in item:
                     for c in item['conds']:
                         conds.add_condition(parser.parse_expr(c))
                 self.add_other_identities(e, item.get('attributes'), conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
         if 'attributes' in item and 'simplify' in item['attributes']:
             e = parser.parse_expr(item['expr'])
             conds = Conditions()
@@ -440,12 +416,12 @@ class Context:
                 for cond in item['conds']:
                     conds.add_condition(parser.parse_expr(cond))
             self.add_inequality(e, conds)
-        if 'attributes' in item and 'summation-split' in item['attributes']:
+        if 'attributes' in item and 'split' in item['attributes']:
             conds = Conditions()
             if 'conds' in item:
                 for c in item['conds']:
                     conds.add_condition(parser.parse_expr(c))
-            self.add_summation_split_identities(e, conds)
+            self.add_split_identities(e, conds)
         if item['type'] == 'definition':
             e = parser.parse_expr(item['expr'])
             conds = Conditions()

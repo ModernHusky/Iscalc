@@ -753,9 +753,6 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     
     ineqs = copy(standard_inequalities)
     ineqs.extend(ctx.get_inequalities())
-    for lemma in ctx.get_lemmas():
-        if lemma.expr.is_compare():
-            ineqs.append(lemma)
 
     saturate(subject_of(e), ineqs, all_conds)
     return len(check_cond(e, all_conds, dict())) == 1

@@ -1,5 +1,6 @@
 """State of computation"""
-from typing import List, Optional, Tuple, Union
+
+from typing import List, Optional, Union
 
 from integral.expr import Expr, Var, Const, Op
 from integral import rules, expr
@@ -1172,9 +1173,7 @@ class CompFile:
         for item in (self.content if index == -1 else self.content[:index]):
             if isinstance(item, FuncDef):
                 ctx.add_definition(item.eq, item.conds)
-                ctx.add_lemma(item.eq, item.conds)
             elif isinstance(item, Goal):
-                ctx.add_lemma(item.goal, item.conds)
                 ctx.extend_by_item(item.export_book())
         return ctx
 
