@@ -1430,7 +1430,10 @@ class Substitution(Rule):
         var_subst = self.var_subst
 
         if e.var not in var_subst.get_vars():
-            raise RuleException("Substitution", "variable %s not found" % e.var)
+            raise RuleException("Substitution", f"variable {e.var} not found in substituted expression")
+        
+        if self.var_name in ctx.get_vars() or self.var_name in ctx.get_substs():
+            raise RuleException("Substitution", f"variable {self.var_name} is already used")
 
         ctx2 = body_conds(e, ctx)
 
