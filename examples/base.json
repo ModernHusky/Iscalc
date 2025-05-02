@@ -366,11 +366,6 @@
             "type": "axiom"
         },
         {
-            "expr": "(INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = pi / sin(m * pi)",
-            "reference": "Inside interesting Integrals, Section 8.7.9",
-            "type": "axiom"
-        },
-        {
             "level": 1,
             "name": "Gamma and Beta function",
             "type": "header"
@@ -508,25 +503,6 @@
                 "a < u"
             ],
             "expr": "MUL(n, l, u, f(n)) = f(l) * MUL(n, l+1, u, f(n))",
-            "type": "axiom"
-        },
-
-        {
-            "level": 1,
-            "name": "Ramanujan series",
-            "type": "header"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (4 * n + 1) * binom(2 * n, n) ^ 3 / (-64) ^ n) = 2 / pi",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
-            "name": "Stirling's formula",
-            "type": "header"
-        },
-        {
-            "expr": "(LIM {n -> oo}. factorial(n) / (sqrt(2 * pi * n) * (n / exp(1)) ^ n)) = 1",
             "type": "axiom"
         }
     ],
