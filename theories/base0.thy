@@ -211,3 +211,142 @@ axiom [bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
 axiom [simp] log(1 / x) = -log(x) for x > 0
 
 axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
+
+## Trigonometric identities
+
+### Simple relations between trigonometric functions
+
+axiom sin(-u) = -sin(u)
+
+axiom cos(-u) = cos(u)
+
+axiom [simp] sin(pi / 2 - u) = cos(u)
+
+axiom [simp] cos(pi / 2 - u) = sin(u)
+
+axiom [simp] sin(-u + pi) = sin(u)
+
+axiom [simp] cos(-u + pi) = -cos(u)
+
+### Identity for sin(x)^2 + cos(x)^2 and variations
+
+axiom [simp] sin(x)^2 + cos(x)^2 = 1
+
+axiom [bidirectional] cot(x)^2 = csc(x)^2 - 1
+
+axiom [bidirectional] cot(x)^2 = -1 + csc(x)^2
+
+axiom [bidirectional] a * cot(x)^2 = a * csc(x)^2 - a
+
+axiom [bidirectional] a * cot(x)^2 = -a + a * csc(x)^2
+
+axiom [bidirectional] tan(x)^2 = sec(x)^2 - 1
+
+axiom [bidirectional] tan(x)^2 = -1 + sec(x)^2
+
+axiom [bidirectional] a * tan(x)^2 = a * sec(x)^2 - a
+
+axiom [bidirectional] a * tan(x)^2 = -a + a * sec(x)^2
+
+axiom [bidirectional] sin(x)^2 = 1 - cos(x)^2
+
+axiom [bidirectional] sin(x)^2 = -cos(x)^2 + 1
+
+axiom [bidirectional] a * sin(x)^2 = a - a * cos(x)^2
+
+axiom [bidirectional] a * sin(x)^2 = -(a * cos(x)^2) + a
+
+axiom [bidirectional] cos(x)^2 = 1 - sin(x)^2
+
+axiom [bidirectional] cos(x)^2 = -sin(x)^2 + 1
+
+axiom [bidirectional] a * cos(x)^2 = a - a * sin(x)^2
+
+axiom [bidirectional] a * cos(x)^2 = -(a * sin(x)^2) + a
+
+axiom [bidirectional] sec(x)^2 = tan(x)^2 + 1
+
+axiom [bidirectional] sec(x)^2 = 1 + tan(x)^2
+
+axiom [bidirectional] a * sec(x)^2 = a * tan(x)^2 + a
+
+axiom [bidirectional] a * sec(x)^2 = a + a * tan(x)^2
+
+### Double-angle formulas and variations
+
+axiom sin(x)^2 = 1/2 * (1 - cos(2*x))
+
+axiom cos(x)^2 = 1/2 * (1 + cos(2*x))
+
+axiom sin(x)^2 = (1 - cos(2*x)) / 2
+
+axiom cos(x)^2 = (1 + cos(2*x)) / 2
+
+axiom [bidirectional] sin(2*x) = 2 * sin(x) * cos(x)
+
+axiom [bidirectional] sin(x) = 2 * sin(x/2) * cos(x/2)
+
+axiom cos(2*x) = 2 * cos(x)^2 - 1
+
+axiom cos(x) = cos(x/2)^2 - sin(x/2)^2
+
+axiom cos(2*x) = 1 - 2 * sin(x) ^ 2
+
+axiom cos(x) = 1 - 2 * sin(x/2) ^ 2
+
+axiom cos(2*x) = cos(x)^2 - sin(x)^2
+
+### Sum to product formulas and variations
+
+axiom sin(a) + sin(b) = 2 * sin((a + b) / 2) * cos((a - b) / 2)
+
+axiom sin(a) - sin(b) = 2 * cos((a + b) / 2) * sin((a - b) / 2)
+
+axiom cos(a) + cos(b) = 2 * cos((a + b) / 2) * cos((a - b) / 2)
+
+axiom cos(a) - cos(b) = -2 * sin((a + b) / 2) * sin((a - b) / 2)
+
+axiom cos(a) * sin(b) = (1 / 2) * (sin(a + b) - sin(a - b))
+
+axiom sin(a) * cos(b) = (1 / 2) * (sin(a + b) + sin(a - b))
+
+axiom cos(a) * cos(b) = (1 / 2) * (cos(a - b) + cos(a + b))
+
+axiom sin(a) * sin(b) = -(1 / 2) * (cos(a - b) - cos(a + b))
+
+axiom sin(a + b) = sin(a) * cos(b) + cos(a) * sin(b)
+
+axiom sin(a - b) = sin(a) * cos(b) - cos(a) * sin(b)
+
+axiom cos(a + b) = cos(a) * cos(b) - sin(a) * sin(b)
+
+axiom cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
+
+### Relation with inverse trigonometric functions
+
+axiom [simp] arcsin(sin(x)) = x for x >= -pi/2, x <= pi/2
+
+axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
+
+axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
+
+axiom [simp] tan(arcsec(x)) = sqrt(x ^ 2 - 1)
+
+axiom [simp] tan(arcsin(x)) = x / sqrt(1 - x ^ 2)
+
+axiom [simp] cos(arctan(x)) = 1 / sqrt(x ^ 2 + 1)
+
+axiom [simp] sin(arctan(x)) = x / sqrt(x ^ 2 + 1)
+
+axiom [simp] sec(arctan(x)) = sqrt(x ^ 2 + 1)
+
+axiom [simp] cot(arctan(x)) = 1 / x
+
+axiom [simp] csc(arctan(x)) = sqrt(x^2 + 1) / x
+
+axiom [simp] cot(arcsin(x)) = sqrt(1 - x^2) / x
+
+axiom [simp] csc(arcsin(x)) = 1 / x
+
+axiom [simp] sin(arcsec(x)) = sqrt(x^2 - 1) / x
+
