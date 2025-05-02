@@ -1141,24 +1141,21 @@ class CompFile:
     ctx - initial context of the file.
         either a Context or a string, specifying the base context or
         file name.
-    name - name of the file.
 
     """
-    def __init__(self, ctx: Union[Context, str], name: str):
+    def __init__(self, ctx: Union[Context, str]):
         if isinstance(ctx, str):
             self.ctx = Context()
-            self.ctx.load_book(ctx, upto=name)
+            self.ctx.load_book(ctx)
         else:
             self.ctx = ctx
-        self.name: str = name
         self.content: list[StateItem] = []
 
     def __eq__(self, other):
-        return isinstance(other, CompFile) and \
-            self.name == other.name and self.content == other.content
+        return isinstance(other, CompFile) and self.content == other.content
 
     def __str__(self):
-        res = "File %s\n" % self.name
+        res = ""
         for st in self.content:
             res += str(st)
         return res
@@ -1315,9 +1312,7 @@ class CompFile:
         return rec(self, label)
 
     def export(self):
-        self.name = self.name
         return {
-            "name": self.name,
             "content": [item.export() for item in self.content]
         }
 

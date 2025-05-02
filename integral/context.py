@@ -432,7 +432,7 @@ class Context:
         if item['type'] == 'table':
             self.add_function_table(item['name'], item['table'])
 
-    def load_book(self, book_name: str, *, upto: Optional[str] = None):
+    def load_book(self, book_name: str):
         """Load the book with the given name.
         
         This function recursively loads imported books.
@@ -456,8 +456,6 @@ class Context:
             # Load content
             if 'content' in info:
                 for item in info['content']:
-                    if upto is not None and "path" in item and item['path'] == upto:
-                        break
                     self.extend_by_item(item)
 
         else:
@@ -489,7 +487,6 @@ class Context:
                         self.add_other_identities(a.expr, a.attrs, a.conditions)
                     else:
                         self.add_other_identities(a.expr, a.attrs, a.conditions)
-
 
     def check_condition(self, e: Expr) -> bool:
         """Check the given condition under the extra conditions"""

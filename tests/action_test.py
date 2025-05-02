@@ -9,9 +9,9 @@ from integral import parser
 from integral import expr
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, base_file: str, current_file: str, actions: str,
+    def check_actions(self, base_file: str, actions: str,
                       *, print_lines=False, print_state=False, write_stats=True):
-        file = compstate.CompFile(base_file, current_file)
+        file = compstate.CompFile(base_file)
         st = state.InitialState(file)
         actions = [s for s in actions.split('\n') if s.strip()]
         start_time = None
@@ -54,7 +54,7 @@ class ActionTest(unittest.TestCase):
             raise AssertionError("Does not end in initial state (add print_state=True to debug)")
         
     def testCalculationFinished(self):
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         st = state.InitialState(file)
 
         actions = """
@@ -70,7 +70,7 @@ class ActionTest(unittest.TestCase):
         self.assertFalse(st.is_finished())
 
     def testCalculationFinished2(self):
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         st = state.InitialState(file)
 
         actions = """
@@ -90,23 +90,22 @@ class ActionTest(unittest.TestCase):
     def testStandard(self):
         with open('theories/standard.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", None, actions)
+        self.check_actions("base", actions)
 
     def testStandard2(self):
         with open('theories/standard2.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", "standard", actions)
+        self.check_actions("base", actions)
 
     def testStandard3(self):
         with open('theories/standard3.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", "standard", actions)
+        self.check_actions("base", actions)
 
     def testStandard4(self):
         with open('theories/standard4.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("base", "standard", actions)
-
+        self.check_actions("base", actions)
 
     def testMIT2019(self):
         actions = """
@@ -119,37 +118,37 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
         """        
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testLHopital(self):
         with open('theories/lhopital.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTongji(self):
         with open('theories/tongji05.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTongjiIndefSubstitution(self):
         with open('theories/tongji0402.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTongjiIndefByParts(self):
         with open('theories/tongji0403.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTongjiIndefRational(self):
         with open('theories/tongji0404.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testUSubstitution(self):
         with open('theories/ucdavisUSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testActions2(self):
         actions = """
@@ -165,42 +164,42 @@ class ActionTest(unittest.TestCase):
             replace substitution
         done
         """
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testUCDavisPartialFraction(self):
         with open('theories/ucdavisPartial.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testIntegrateByParts(self):
         with open('theories/ucdavisByParts.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testExponential(self):
         with open('theories/ucdavisExponential.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTrigonometric(self):
         with open('theories/ucdavisTrigonometric.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testLogAndArcTangent(self):
         with open('theories/ucdavisLogArctan.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testPowerSubstitution(self):
         with open('theories/ucdavisPowerSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testTrigSubstitution(self):
         with open('theories/ucdavisTrigSubst.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testWallis(self):
         # Reference:
@@ -248,37 +247,37 @@ class ActionTest(unittest.TestCase):
                 apply 2 on I(m,b)
             done
         """
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testInteresting1(self):
         with open("theories/interesting1.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testInteresting2(self):
         with open("theories/interesting2.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting1", None, actions)
+        self.check_actions("interesting1", actions)
 
     def testInteresting3(self):
         with open("theories/interesting3.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting2", None, actions)
+        self.check_actions("interesting2", actions)
 
     def testInteresting4(self):
         with open("theories/interesting4.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting3", None, actions)
+        self.check_actions("interesting3", actions)
 
     def testInteresting5(self):
         with open("theories/interesting5.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting4", None, actions)
+        self.check_actions("interesting4", actions)
 
     def testInteresting6(self):
         with open("theories/interesting6.thy", 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("interesting5", None, actions)
+        self.check_actions("interesting5", actions)
 
     def testLeibniz03(self):
         # Inside interesting integrals, Section 3.1
@@ -341,7 +340,7 @@ class ActionTest(unittest.TestCase):
             done
         """
         try:
-            self.check_actions("interesting3", "leibniz03", actions)
+            self.check_actions("interesting3", actions)
         except compstate.CheckFinishedException as e:
             ()
 
@@ -412,7 +411,7 @@ class ActionTest(unittest.TestCase):
             done
             """
         # requires evaluation of probability integral
-        self.check_actions("interesting3", "gaussianPowerExp", actions)
+        self.check_actions("interesting3", actions)
 
     # def testFlipside08(self):
     #     actions = """
@@ -444,7 +443,7 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
         """
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testEulerFormula2(self):
         actions = """
@@ -462,72 +461,72 @@ class ActionTest(unittest.TestCase):
                 rewrite to b / (y^2 + b^2)
             done
         """
-        self.check_actions("standard", None, actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart1SectionA(self):
         with open('theories/postgradIndef1a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart1SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart1SectionB(self):
         with open('theories/postgradIndef1b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart1SectionB", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart2SectionA(self):
         with open('theories/postgradIndef2a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart2SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart2SectionB(self):
         with open('theories/postgradIndef2b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart2SectionB", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart3SectionA(self):
         with open('theories/postgradIndef3a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart3SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart4SectionA(self):
         with open('theories/postgradIndef4a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart4SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart4SectionB(self):
         with open('theories/postgradIndef4b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart4SectionB", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart5SectionA(self):
         with open('theories/postgradIndef5a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart5SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart5SectionB(self):
         with open('theories/postgradIndef5b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart5SectionB", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart6SectionA(self):
         with open('theories/postgradIndef6a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart6SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateIndefinitePart6SectionB(self):
         with open('theories/postgradIndef6b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateIndefinitePart6SectionB", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateDefinitePart1SectionA(self):
         with open('theories/postgradDef1a.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateDefinitePart1SectionA", actions)
+        self.check_actions("standard", actions)
 
     def testPostgraduateDefinitePart1SectionB(self):
         with open('theories/postgradDef1b.thy', 'r', encoding='utf-8') as file:
             actions = file.read()
-        self.check_actions("standard", "PostgraduateDefinitePart1SectionB", actions)
+        self.check_actions("standard", actions)
 
 
 if __name__ == "__main__":
