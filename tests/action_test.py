@@ -340,7 +340,7 @@ class ActionTest(unittest.TestCase):
             done
         """
         try:
-            self.check_actions("interesting", "leibniz03", actions)
+            self.check_actions("interesting3", "leibniz03", actions)
         except compstate.CheckFinishedException as e:
             ()
 
@@ -410,7 +410,8 @@ class ActionTest(unittest.TestCase):
                 apply 7 on I(0)
             done
             """
-        self.check_actions("interesting", "gaussianPowerExp", actions)
+        # requires evaluation of probability integral
+        self.check_actions("interesting3", "gaussianPowerExp", actions)
 
     # def testFlipside08(self):
     #     actions = """
