@@ -81,7 +81,7 @@ done
 // (5.1.4)
 
 prove (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2)) = pi / sqrt(a * b) * arctan(sqrt(b / a)) for a b: real, a > 0, b > 0
-define I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2))
+let I(a,b) = (INT x:[0,pi]. x * sin(x) / (a + b * cos(x) ^ 2))
 subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2))
 lhs:
     expand definition for I

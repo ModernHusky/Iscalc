@@ -206,7 +206,7 @@ class ActionTest(unittest.TestCase):
         # Irresistable Integrals, Section 2.3
         actions = """
             prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for m: int, b: real, b > 0, m >= 0
-            define I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
+            let I(m,b) = (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) for b > 0, m >= 0
             subgoal 1: (D b. I(m,b)) = -(m + 1) * I(m + 1,b)
             lhs:
                 expand definition for I (all)
@@ -284,7 +284,7 @@ class ActionTest(unittest.TestCase):
         # TODO: Still cannot remove the condition I(t) > 0
         actions = """
             prove (INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)) = sqrt(pi/2)*exp(-(t^2)/2)
-            define I(t) = INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)
+            let I(t) = INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)
             subgoal 1: I(0) = sqrt(pi/2)
             lhs:
                 expand definition for I
@@ -348,7 +348,7 @@ class ActionTest(unittest.TestCase):
         # Inside interesting integrals, Section 2.3
         actions = """
             prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n: int, n >= 0
-            define I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2))
+            let I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2))
             subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1
             lhs:
                 simplify

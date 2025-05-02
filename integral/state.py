@@ -10,7 +10,7 @@ from integral import poly
 from integral.action import Action, CalculateAction, ProveAction, LHSAction, \
     RHSAction, DefineAction, ArgAction, RewriteGoalAction, InductionAction, \
     CaseAnalysisAction, SubgoalAction, DoneAction, RuleAction, SorryAction, \
-    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction
+    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction, LetAction
 
 
 class State:
@@ -42,7 +42,7 @@ class InitialState(State):
         
         # Start a proof
         elif isinstance(action, ProveAction):
-            goal = compstate.Goal(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
+            goal = Goal(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
             return ProveState(self, goal)
         
         # Add a definition
@@ -125,8 +125,8 @@ class ProveState(State):
                     self.past.comp_file.ctx.add_indefinite_integral(self.goal.goal, self.goal.conds)
             return self.past
 
-        # Make definition
-        elif isinstance(action, DefineAction):
+        # Make local definition
+        elif isinstance(action, LetAction):
             self.goal.add_definition(action.expr, action.conditions)
             return self
         

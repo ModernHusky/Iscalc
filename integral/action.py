@@ -65,6 +65,22 @@ class ProveAction(Action):
         return ["initial"]
 
 
+class LetAction(Action):
+    """Make a local definition."""
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
+        self.expr = expr
+        self.conditions = Conditions(conditions)
+
+    def __str__(self):
+        if self.conditions:
+            return "let %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
+        else:
+            return "let %s" % self.expr
+
+    def get_start_states(self) -> list[str]:
+        return ["proof"]
+
+
 class DefineAction(Action):
     """Make a definition."""
     def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
@@ -78,7 +94,7 @@ class DefineAction(Action):
             return "define %s" % self.expr
 
     def get_start_states(self) -> list[str]:
-        return ["initial", "proof"]
+        return ["initial"]
 
 
 class SubgoalAction(Action):

@@ -472,7 +472,8 @@ class Context:
                 if isinstance(a, action.ImportsAction):
                     for book_name in a.theories:
                         self.load_book(book_name)
-
+                elif isinstance(a, action.DefineAction):
+                    self.add_definition(a.expr, conds=a.conditions)
                 elif isinstance(a, (action.AxiomAction, action.ProveAction)):
                     if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
                         self.add_indefinite_integral(a.expr, a.conditions)

@@ -39,7 +39,7 @@ done
 // Probability integral, (3.1.4)
 
 prove (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = sqrt(2 * pi)
-define g(t) = (INT x:[0,t]. exp(-(x ^ 2) / 2)) ^ 2
+let g(t) = (INT x:[0,t]. exp(-(x ^ 2) / 2)) ^ 2
 subgoal 1: (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = 2 * (LIM {t -> oo}. sqrt(g(t)))
 lhs:
     split region at 0
@@ -139,7 +139,7 @@ done
 ## Chapter 3, Section 2, An Amazing Integral
 
 prove (INT x:[0,oo]. sin(a*x)/x) = pi/2 * sgn(a)
-define g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y >= 0
+let g(y,a) = INT x:[0,oo]. exp(-x * y) * sin(a * x) / x for y >= 0
 subgoal 1: (D y. g(y, a)) = - a / (a ^ 2 + y ^ 2) for y > 0, a != 0
 lhs:
     expand definition for g(all)
@@ -214,7 +214,7 @@ done
 ## Chapter 3, Section 3, Frullani's Integral
 
 prove (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x) = pi * log(a) / 2 - pi * log(b) / 2 for a b: real, a > 0, b > 0
-define I(a,b) = (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x)
+let I(a,b) = (INT x:[0,oo]. (arctan(a * x) - arctan(b * x)) / x)
 subgoal 1: (D a. I(a,b)) = pi / (2 * a)
 lhs:
     expand definition for I (all)
@@ -273,7 +273,7 @@ done
 // (3.4.3)
 
 prove (INT x:[0,1]. (x ^ a - 1) / log(x)) = log(a + 1) for a: real, a > -1
-define I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x)
+let I(a) = INT x:[0, 1]. (x ^ a - 1) / log(x)
 subgoal 1: (D a. I(a)) = 1 / (a + 1)
 lhs:
     expand definition for I (all)
@@ -362,7 +362,7 @@ done
 // C3.1
 
 prove (INT x:[0,oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) = pi / b * log(1 + a * b) for a b: real, a > 0, b > 0
-define I(a,b) = (INT x:[0,oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2))
+let I(a,b) = (INT x:[0,oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2))
 subgoal 1: (D a. I(a,b)) = pi / (1 + a * b)
 lhs:
     expand definition for I (all)
@@ -489,7 +489,7 @@ done
 // C3.5
 
 prove (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi/4 + pi/4 * sgn(b-a) for a b: real, a > 0, b > 0
-define I(a, b) = (INT x:[0, oo]. cos(a * x) * sin(b * x) / x)
+let I(a, b) = (INT x:[0, oo]. cos(a * x) * sin(b * x) / x)
 subgoal 1: I(a, b) = 1/2 * (INT x:[0, oo]. sin((b + a) * x) / x) + 1/2 * (INT x:[0, oo]. sin((-a + b) * x) / x)
 lhs:
     expand definition for I
@@ -535,7 +535,7 @@ done
 // C3.7a
 
 prove (INT x:[-oo,oo]. x * exp(-(x ^ 2) - x)) = -1/2 * sqrt(pi * sqrt(exp(1))) for x:real
-define I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a b: real, a > 0
+let I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a b: real, a > 0
 subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a b: real, a > 0
 lhs:
     expand definition for I
@@ -571,7 +571,7 @@ done
 // C3.7b
 
 prove (INT x:[-oo,oo]. x ^ 2 * exp(-(x ^ 2) - x)) = 3/4 * sqrt(pi * sqrt(exp(1)))
-define I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a > 0
+let I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a > 0
 subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
 lhs:
     expand definition for I

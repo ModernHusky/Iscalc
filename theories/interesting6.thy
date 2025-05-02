@@ -70,7 +70,7 @@ done
 ## Chapter 6, Section 2, Ahmed's Integral
 
 prove (INT x:[0,1]. arctan(sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) = 5 * pi ^ 2 / 96
-define I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u: real, u > 0
+let I(u) = (INT x:[0,1]. arctan(u * sqrt(2 + x ^ 2)) / ((1 + x ^ 2) * sqrt(2 + x ^ 2))) for u: real, u > 0
 subgoal 1: I(1) = (INT x:[0,1]. arctan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
 lhs:
     expand definition for I

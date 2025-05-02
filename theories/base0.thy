@@ -390,3 +390,88 @@ axiom [simp] csc(arcsin(x)) = 1 / x
 
 axiom [simp] sin(arcsec(x)) = sqrt(x^2 - 1) / x
 
+### Other identities
+
+axiom arctan(a) - arctan(b) = arctan((a - b) / (1 + a * b))
+
+axiom arctan(sqrt((1 - x) / (1 + x))) = arccos(x) / 2
+
+axiom tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))
+
+axiom [simp] cos(2 * arctan(z)) = (1 - z^2) / (1 + z^2)
+
+axiom [simp] sin(2 * arctan(z)) = (2 * z) / (1 + z^2)
+
+axiom arctan(x ^ -1) = pi/2 - arctan(x) for x != 0
+
+axiom [simp] sin(2 * arcsin(x)) = 2 * x * sqrt(1 - x^2)
+
+axiom arctan(-x) = -arctan(x)
+
+axiom [bidirectional] 1 + sin(x) = (sin(x/2) + cos(x/2)) ^ 2
+
+axiom [bidirectional] sin(x) + 1 = (sin(x/2) + cos(x/2)) ^ 2
+
+axiom [bidirectional] sin(x) + cos(x) = sqrt(2) * sin(x+pi/4)
+
+## Euler's Formula and variations
+
+axiom [bidirectional] sin(x) = (exp(i*x) - exp(-i*x)) / (2*i) for x: real
+
+axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+## Factorial and binomial coefficient
+
+axiom (m + 1) * factorial(m) = factorial(m + 1)
+
+axiom [bidirectional] m * factorial(m - 1) = factorial(m)
+
+define binom(n, m) = factorial(n) / (factorial(m) * factorial(n-m))
+
+axiom binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))
+
+axiom (x + y) ^ n = SUM(k, 0, n, binom(n,k) * x^k * y^(n-k))
+
+## Discrete functions
+
+axiom [simp] sgn(x) = 1 for x > 0
+
+axiom [simp] sgn(x) = -1 for x < 0
+
+axiom [simp] sgn(0) = 0
+
+axiom [simp] sgn(a) = 0 for a = 0
+
+## Hyperbolic functions
+
+define cosh(x) = (exp(x) + exp(-x)) / 2
+
+define sinh(x) = (exp(x) - exp(-x)) / 2
+
+## Results from contour integration
+
+// Inside interesting Integrals, Section 8.10, C8.2
+
+axiom (INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * m))) / (2 * a ^ 2) for a > 0, m > 0
+
+// Inside interesting Integrals, Section 3.1.7
+
+axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b) for a > 0, b > 0 
+
+### Splitting rules for summation and product
+
+axiom [split] SUM(n, l, u, f(n)) = f(l) + SUM(n, l+1, u, f(n)) for l < u
+
+axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, u-1, f(n)) + f(u) for l < u
+
+axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a-1, f(n)) + SUM(n, a, u, f(n)) for a > l, a <= u
+
+axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a, f(n)) + SUM(n, a+1, u, f(n)) for a >= l, a < u
+
+axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a-1, f(n)) + f(a) + SUM(n, a+1, u, f(n)) for a > l, a < u
+
+axiom [split] SUM(n, 0, oo, f(n)) = SUM(n, 0, oo, f(2*n+1)) + SUM(n, 0, oo, f(2*n))
+
+axiom [split] MUL(n, l, u, f(n)) = MUL(n, l, u-1, f(n)) * f(u) for l < u
+
+axiom [split] MUL(n, l, u, f(n)) = f(l) * MUL(n, l+1, u, f(n)) for l < u
