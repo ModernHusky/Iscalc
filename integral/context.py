@@ -98,9 +98,6 @@ class Context:
         # List of simplification rules
         self.simp_identities: List[Identity] = list()
 
-        # List of tables of function values
-        self.function_tables: Dict[str, Dict[Expr, Expr]] = dict()
-
         # List of inequalities
         self.inequalities: List[Identity] = list()
 
@@ -145,9 +142,6 @@ class Context:
         res += "Simplification rules\n"
         for identity in self.get_simp_identities():
             res += str(identity) + "\n"
-        res += "Function tables\n"
-        for funcname in self.get_function_tables():
-            res += "  table for %s\n" % funcname
         res += "Inequalities\n"
         for identity in self.get_inequalities():
             res += str(identity) + "\n"
@@ -201,11 +195,6 @@ class Context:
     def get_simp_identities(self) -> List[Identity]:
         res = self.parent.get_simp_identities() if self.parent is not None else []
         res.extend(self.simp_identities)
-        return res
-
-    def get_function_tables(self) -> Dict[str, Dict[Expr, Expr]]:
-        res = self.parent.get_function_tables() if self.parent is not None else dict()
-        res.update(self.function_tables)
         return res
 
     def get_inequalities(self) -> List[Identity]:
@@ -323,13 +312,6 @@ class Context:
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
         self.simp_identities.append(Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds)))
 
-    def add_function_table(self, funcname: str, table: Dict[str, str]):
-        self.function_tables[funcname] = dict()
-        for input, output in table.items():
-            input = parser.parse_expr(input)
-            output = parser.parse_expr(output)
-            self.function_tables[funcname][input] = output
-
     def add_inequality(self, e: Expr, conds: Conditions):
         symb_e = expr_to_pattern(e)
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
@@ -429,8 +411,6 @@ class Context:
                 for cond in item['conds']:
                     conds.add_condition(parser.parse_expr(cond))
             self.add_definition(e, conds)
-        if item['type'] == 'table':
-            self.add_function_table(item['name'], item['table'])
 
     def load_book(self, book_name: str):
         """Load the book with the given name.

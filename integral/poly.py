@@ -724,20 +724,6 @@ def function_eval(e: expr.Expr, ctx: Context) -> expr.Expr:
             return -expr.Fun('sin', a.args[0])
     return e
 
-def function_table(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if not expr.is_fun(e) or len(e.args) != 1:
-        return e
-
-    func_table = ctx.get_function_tables()
-    if not e.func_name in func_table:
-        return e
-    if not e.args[0].is_constant():
-        return e
-    if e.args[0] in func_table[e.func_name]:
-        return func_table[e.func_name][e.args[0]]
-    else:
-        return e
-
 def simplify_identity(e: expr.Expr, ctx: Context) -> expr.Expr:
     for identity in ctx.get_simp_identities():
         inst = expr.match(e, identity.lhs)
@@ -1156,7 +1142,6 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
     for i in range(5):
         old_e = e
         e = from_poly(to_poly(e, ctx))
-        e = apply_subterm(e, function_table, ctx)
         e = apply_subterm(e, function_eval, ctx)
         e = apply_subterm(e, simplify_identity, ctx)
         e = apply_subterm(e, simplify_eq, ctx)

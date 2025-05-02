@@ -254,6 +254,116 @@ axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
 
 ## Trigonometric identities
 
+### Function tables
+
+axiom [simp] sin(0) = 0
+axiom [simp] sin(pi/6) = 1/2
+axiom [simp] sin(pi/4) = sqrt(2)/2
+axiom [simp] sin(pi/3) = sqrt(3)/2
+axiom [simp] sin(pi/2) = 1
+axiom [simp] sin(2*pi/3) = sqrt(3)/2
+axiom [simp] sin(3*pi/4) = sqrt(2)/2
+axiom [simp] sin(5*pi/6) = 1/2
+axiom [simp] sin(pi) = 0
+
+axiom [simp] cos(0) = 1
+axiom [simp] cos(pi/6) = sqrt(3)/2
+axiom [simp] cos(pi/4) = sqrt(2)/2
+axiom [simp] cos(pi/3) = 1/2
+axiom [simp] cos(pi/2) = 0
+axiom [simp] cos(2*pi/3) = -1/2
+axiom [simp] cos(3*pi/4) = -(sqrt(2)/2)
+axiom [simp] cos(5*pi/6) = -(sqrt(3)/2)
+axiom [simp] cos(pi) = -1
+
+axiom [simp] tan(0) = 0
+axiom [simp] tan(pi/6) = sqrt(3)/3
+axiom [simp] tan(pi/4) = 1
+axiom [simp] tan(pi/3) = sqrt(3)
+axiom [simp] tan(2*pi/3) = -sqrt(3)
+axiom [simp] tan(3*pi/4) = -1
+axiom [simp] tan(5*pi/6) = -(sqrt(3)/3)
+axiom [simp] tan(pi) = 0
+
+axiom [simp] cot(pi/6) = sqrt(3)
+axiom [simp] cot(pi/4) = 1
+axiom [simp] cot(pi/3) = sqrt(3)/3
+axiom [simp] cot(pi/2) = 0
+axiom [simp] cot(2*pi/3) = -(sqrt(3)/3)
+axiom [simp] cot(3*pi/4) = -1
+axiom [simp] cot(5*pi/6) = -sqrt(3)
+
+axiom [simp] csc(pi/6) = 2
+axiom [simp] csc(pi/4) = sqrt(2)
+axiom [simp] csc(pi/3) = 2*sqrt(3)/3
+axiom [simp] csc(pi/2) = 1
+axiom [simp] csc(2*pi/3) = 2*sqrt(3)/3
+axiom [simp] csc(3*pi/4) = sqrt(2)
+axiom [simp] csc(5*pi/6) = 2
+
+axiom [simp] sec(0) = 1
+axiom [simp] sec(pi/6) = 2*sqrt(3)/3
+axiom [simp] sec(pi/4) = sqrt(2)
+axiom [simp] sec(pi/3) = 2
+axiom [simp] sec(2*pi/3) = -2
+axiom [simp] sec(3*pi/4) = -sqrt(2)
+axiom [simp] sec(5*pi/6) = -(2*sqrt(3)/3)
+axiom [simp] sec(pi) = -1
+
+axiom [simp] arcsin(-(sqrt(3)/2)) = -(pi/3)
+axiom [simp] arcsin(-(sqrt(2)/2)) = -(pi/4)
+axiom [simp] arcsin(-1) = -(pi/2)
+axiom [simp] arcsin(-1/2) = -(pi/6)
+axiom [simp] arcsin(0) = 0
+axiom [simp] arcsin(1/2) = pi/6
+axiom [simp] arcsin(1) = pi/2
+axiom [simp] arcsin(sqrt(2)/2) = pi/4
+axiom [simp] arcsin(sqrt(3)/2) = pi/3
+
+axiom [simp] arccos(-(sqrt(3)/2)) = 5*pi/6
+axiom [simp] arccos(-(sqrt(2)/2)) = 3*pi/4
+axiom [simp] arccos(-1) = pi
+axiom [simp] arccos(-1/2) = 2*pi/3
+axiom [simp] arccos(0) = pi/2
+axiom [simp] arccos(1/2) = pi/3
+axiom [simp] arccos(1) = 0
+axiom [simp] arccos(sqrt(2)/2) = pi/4
+axiom [simp] arccos(sqrt(3)/2) = pi/6
+
+axiom [simp] arctan(-sqrt(3)) = -(pi/3)
+axiom [simp] arctan(-(sqrt(3)/3)) = -(pi/6)
+axiom [simp] arctan(-1) = -(pi/4)
+axiom [simp] arctan(0) = 0
+axiom [simp] arctan(1) = pi/4
+axiom [simp] arctan(sqrt(3)/3) = pi/6
+axiom [simp] arctan(sqrt(3)) = pi/3
+
+axiom [simp] arccot(-sqrt(3)) = 5*pi/6
+axiom [simp] arccot(-1) = 3*pi/4
+axiom [simp] arccot(-(sqrt(3)/3)) = 2*pi/3
+axiom [simp] arccot(0) = pi/2
+axiom [simp] arccot(sqrt(3)/3) = pi/3
+axiom [simp] arccot(1) = pi/4
+axiom [simp] arccot(sqrt(3)) = pi/6
+
+axiom [simp] arccsc(-2) = -(pi/6)
+axiom [simp] arccsc(-sqrt(2)) = -(pi/4)
+axiom [simp] arccsc(-(2*sqrt(3)/3)) = -(pi/3)
+axiom [simp] arccsc(-1) = -(pi/2)
+axiom [simp] arccsc(1) = pi/2
+axiom [simp] arccsc(2*sqrt(3)/3) = pi/3
+axiom [simp] arccsc(sqrt(2)) = pi/4
+axiom [simp] arccsc(2) = pi/6
+
+axiom [simp] arcsec(-2) = 2*pi/3
+axiom [simp] arcsec(-sqrt(2)) = 3*pi/4
+axiom [simp] arcsec(-(2*sqrt(3)/3)) = 5*pi/6
+axiom [simp] arcsec(-1) = pi
+axiom [simp] arcsec(1) = 0
+axiom [simp] arcsec(2*sqrt(3)/3) = pi/6
+axiom [simp] arcsec(sqrt(2)) = pi/4
+axiom [simp] arcsec(2) = pi/3
+
 ### Simple relations between trigonometric functions
 
 axiom sin(-u) = -sin(u)
