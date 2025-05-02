@@ -72,8 +72,11 @@ grammar = r"""
     ?axiom_action: "axiom" attributes expr -> axiom_action
         | "axiom" attributes expr "for" conditions -> axiom_with_condition_action
 
-    ?prove_action: "prove" expr -> prove_action
-        | "prove" expr "for" conditions -> prove_with_condition_action
+    ?prove_action: "prove" attributes expr -> prove_action
+        | "prove" attributes expr "for" conditions -> prove_with_condition_action
+
+    ?let_action: "let" expr -> let_action
+        | "let" expr "for" conditions -> let_with_condition_action
 
     ?define_action: "define" expr -> define_action
         | "define" expr "for" conditions -> define_with_condition_action
@@ -152,6 +155,7 @@ grammar = r"""
         | rewrite_goal_action
         | induction_action
         | case_analysis_action
+        | let_action
         | define_action
         | calculate_action
         | lhs_action
@@ -348,13 +352,21 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.AxiomAction(expr, conditions, attrs)
 
-    def prove_action(self, expr: Expr):
+    def prove_action(self, attrs: tuple[str], expr: Expr):
         from integral import action
-        return action.ProveAction(expr)
+        return action.ProveAction(expr, tuple(), attrs)
 
-    def prove_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
+    def prove_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
         from integral import action
-        return action.ProveAction(expr, conditions)
+        return action.ProveAction(expr, conditions, attrs)
+
+    def let_action(self, expr: Expr):
+        from integral import action
+        return action.LetAction(expr)
+
+    def let_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
+        from integral import action
+        return action.LetAction(expr, conditions)
 
     def define_action(self, expr: Expr):
         from integral import action

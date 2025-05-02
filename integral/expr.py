@@ -852,6 +852,25 @@ def exprify(value):
     raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
 
+def contains_i(e: Expr) -> bool:
+    """Check if the expression contains the imaginary unit i."""
+    if is_const(e):
+        return False
+    elif is_var(e):
+        return False
+    elif is_fun(e) and e.func_name == "i":
+        return True
+    elif is_inf(e):
+        return False
+    elif is_symbol(e):
+        return False
+    elif is_op(e):
+        return any(contains_i(arg) for arg in e.args)
+    elif is_integral(e) or is_deriv(e) or is_limit(e) or is_summation(e) or is_product(e):
+        return contains_i(e.body)
+    else:
+        return False
+
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
 

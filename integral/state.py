@@ -5,12 +5,13 @@ from typing import Optional
 from integral import expr
 from integral.rules import IntegrateByEquation, RuleException
 from integral import compstate
-from integral.compstate import Calculation, Goal, CompFile, StateException
+from integral.compstate import Calculation, Goal, StateException
+from integral.context import Context
 from integral import poly
 from integral.action import Action, CalculateAction, ProveAction, LHSAction, \
     RHSAction, DefineAction, ArgAction, RewriteGoalAction, InductionAction, \
     CaseAnalysisAction, SubgoalAction, DoneAction, RuleAction, SorryAction, \
-    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction
+    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction, LetAction
 
 
 class State:
@@ -30,24 +31,26 @@ class State:
 
 class InitialState(State):
     """Initial state."""
-    def __init__(self, comp_file: CompFile):
-        self.comp_file = comp_file
+    def __init__(self, ctx: Context):
+        self.ctx = ctx
         self.past = None
 
     def process_action(self, action: Action) -> State:
         # Start a calculation
         if isinstance(action, CalculateAction):
-            calc = Calculation(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
+            calc = Calculation(None, self.ctx, action.expr, conds=action.conditions)
             return CalculateState(self, calc)
         
         # Start a proof
         elif isinstance(action, ProveAction):
-            goal = compstate.Goal(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
+            if expr.is_equals(action.expr) and expr.is_indefinite_integral(action.expr.lhs):
+                action.conditions.add_condition(expr.isReal(expr.Var(action.expr.lhs.var)))
+            goal = Goal(None, self.ctx, action.expr, conds=action.conditions)
             return ProveState(self, goal)
         
         # Add a definition
         elif isinstance(action, DefineAction):
-            self.comp_file.ctx.add_definition(action.expr, conds=action.conditions)
+            self.ctx.add_definition(action.expr, conds=action.conditions)
             return self
 
         # Importing a theory, ignored for now        
@@ -118,17 +121,10 @@ class ProveState(State):
         # Done with current subgoal
         elif isinstance(action, DoneAction):
             self.goal.check_finished(stack=tuple())
-            if isinstance(self.past, InitialState):
-                if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
-                    self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
-                elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
-                    self.past.comp_file.ctx.add_indefinite_integral(self.goal.goal, self.goal.conds)
-                else:
-                    self.past.comp_file.ctx.add_lemma(self.goal.goal, self.goal.conds)
             return self.past
 
-        # Make definition
-        elif isinstance(action, DefineAction):
+        # Make local definition
+        elif isinstance(action, LetAction):
             self.goal.add_definition(action.expr, action.conditions)
             return self
         

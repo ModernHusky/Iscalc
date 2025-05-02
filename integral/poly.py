@@ -473,12 +473,10 @@ class Polynomial:
     def __truediv__(self, other):
         # Assume the denominator is a monomial
         if isinstance(other, Polynomial):
-            if len(other.monomials) == 0:
-                raise ZeroDivisionError
-            elif len(other.monomials) == 1:
+            if len(other.monomials) == 1 and other.monomials[0].coeff != 0:
                 return Polynomial([m / other.monomials[0] for m in self.monomials])
             else:
-                raise ValueError
+                raise ZeroDivisionError
         else:
             raise NotImplementedError
 
@@ -723,20 +721,6 @@ def function_eval(e: expr.Expr, ctx: Context) -> expr.Expr:
         if expr.is_uminus(a):
             return -expr.Fun('sin', a.args[0])
     return e
-
-def function_table(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if not expr.is_fun(e) or len(e.args) != 1:
-        return e
-
-    func_table = ctx.get_function_tables()
-    if not e.func_name in func_table:
-        return e
-    if not e.args[0].is_constant():
-        return e
-    if e.args[0] in func_table[e.func_name]:
-        return func_table[e.func_name][e.args[0]]
-    else:
-        return e
 
 def simplify_identity(e: expr.Expr, ctx: Context) -> expr.Expr:
     for identity in ctx.get_simp_identities():
@@ -1121,12 +1105,6 @@ def simplify_exp(e:expr.Expr, ctx:Context):
         return expr.Integral(e.var, simplify_exp(e.lower,ctx), simplify_exp(e.upper,ctx), simplify_exp(e.body,ctx))
     return e
 
-def simplify_abs(e:expr.Expr, ctx:Context):
-    if expr.is_fun(e) and e.func_name == "abs":
-        if ctx.check_condition(expr.Op(">=", e.args[0], expr.Const(0))):
-            return e.args[0]
-    return e
-
 def normal_const(e:expr.Expr, ctx:Context):
     if e.is_constant():
         return normalize(e, ctx)
@@ -1142,8 +1120,7 @@ def normal_const(e:expr.Expr, ctx:Context):
     elif expr.is_limit(e):
         return expr.Limit(e.var, normal_const(e.lim, ctx), normal_const(e.body, ctx))
     elif expr.is_integral(e):
-        e:expr.Integral
-        return expr.Integral(e.var, normal_const(e.lower,ctx), normal_const(e.upper,ctx),\
+        return expr.Integral(e.var, normal_const(e.lower,ctx), normal_const(e.upper,ctx),
                              normal_const(e.body,ctx))
     raise NotImplementedError(str(e))
 
@@ -1156,7 +1133,6 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
     for i in range(5):
         old_e = e
         e = from_poly(to_poly(e, ctx))
-        e = apply_subterm(e, function_table, ctx)
         e = apply_subterm(e, function_eval, ctx)
         e = apply_subterm(e, simplify_identity, ctx)
         e = apply_subterm(e, simplify_eq, ctx)
@@ -1170,7 +1146,6 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_sum, ctx)
         e = apply_subterm(e, simplify_skolem, ctx)
         e = apply_subterm(e, simplify_exp, ctx)
-        e = apply_subterm(e, simplify_abs, ctx)
         if e == old_e:
             break
 

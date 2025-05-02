@@ -1,6 +1,6 @@
 imports standard
 
-# Chapter 1
+# Inside Interesting Integrals, Chapter 1
 
 ## Chapter 1, Section 5, Some Examples of Tricks
 
@@ -24,6 +24,8 @@ lhs:
 done
 
 ## Chapter 1, Section 10, Challenge Problems
+
+// C1.5
 
 prove (INT x:[0,pi / 3]. 1 / cos(x)) = log(2 + sqrt(3))
 lhs:

@@ -290,6 +290,8 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     
     # Rewrite all absolute value conditions
     for cond in conds.data:
+        if not (expr.is_compare(cond) or expr.is_fun(cond)):
+            continue
         x = subject_of(cond)
         add_condition(all_conds, x, cond)
             
@@ -753,9 +755,6 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     
     ineqs = copy(standard_inequalities)
     ineqs.extend(ctx.get_inequalities())
-    for lemma in ctx.get_lemmas():
-        if lemma.expr.is_compare():
-            ineqs.append(lemma)
 
     saturate(subject_of(e), ineqs, all_conds)
     return len(check_cond(e, all_conds, dict())) == 1

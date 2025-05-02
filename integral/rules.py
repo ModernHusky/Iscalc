@@ -39,7 +39,6 @@ class RuleException(expr.IscalcException):
             "rule_name": self.rule_name,
             "msg": self.msg
         }
-
     @staticmethod
     def from_json(data: dict):
         return RuleException(data["rule_name"], data["msg"])
@@ -263,7 +262,7 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 rec(arg, ctx)
             if e.is_divides():
                 # if the denominator has i, and var is real, then the expression is not 0
-                if Expr.contains_i(e.args[1]):
+                if expr.contains_i(e.args[1]):
                     # collect the variables in the expression
                     vars_in_expr = e.args[1].get_vars()
                     if vars_in_expr:
@@ -601,6 +600,10 @@ class PartialFractionDecomposition(Rule):
         if not sympywrapper.is_rational(e.body):
             raise RuleException("PartialFractionDecomposition", "cannot be applied to non-rational body")
 
+        if len(e.body.get_vars()) > 1:
+            raise RuleException("PartialFractionDecomposition",
+                                "cannot be applied to expression with more than one variable")
+
         new_body = normalize(sympywrapper.partial_fraction(e.body), ctx)
         if expr.is_integral(e):
             return expr.Integral(e.var, e.lower, e.upper, new_body)
@@ -816,7 +819,24 @@ class EvaluateDefiniteIntegral(Rule):
         assert isinstance(e, Integral)
 
         ctx2 = context.body_conds(e, ctx)
-        # First, try indefinite integral identities
+
+        # First, look for definite integral identities
+        for identity in ctx.get_definite_integrals():
+            inst = expr.match(e, identity.lhs)
+            if inst is None:
+                continue
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+            if satisfied:
+                return identity.rhs.inst_pat(inst)
+
+        # Next, try indefinite integral identities
         for identity in ctx.get_indefinite_integrals():
             assert isinstance(identity.lhs, IndefiniteIntegral)
             inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
@@ -838,22 +858,6 @@ class EvaluateDefiniteIntegral(Rule):
                 assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
                 pat_rhs = identity.rhs.args[0]
                 return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
-
-        # Next, look for definite integral identities
-        for identity in ctx.get_definite_integrals():
-            inst = expr.match(e, identity.lhs)
-            if inst is None:
-                continue
-
-            # Check conditions
-            satisfied = True
-            for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
-                cond = cond.inst_pat(inst)
-                if not ctx2.check_condition(cond):
-                    satisfied = False
-            if satisfied:
-                return normalize(identity.rhs.inst_pat(inst), ctx2)
 
         # No matching identity found
         return e
@@ -1012,7 +1016,7 @@ class OnLocation(Rule):
         return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        def rec(cur_e, loc, ctx):
+        def rec(cur_e: Expr, loc: expr.Location, ctx: Context):
             if loc.is_empty():
                 return self.rule.eval(cur_e, ctx)
             elif expr.is_var(cur_e) or expr.is_const(cur_e):
@@ -1075,7 +1079,8 @@ class OnLocation(Rule):
                     raise AssertionError("OnLocation: invalid location")
             elif expr.is_indefinite_integral(cur_e):
                 assert loc.head == 0, "OnLocation: invalid location"
-                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx), cur_e.skolem_args)
+                ctx2 = body_conds(cur_e, ctx)
+                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx2), cur_e.skolem_args)
             elif expr.is_summation(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 if loc.head == 0:
@@ -1203,7 +1208,7 @@ class Simplify(Rule):
 class ApplyEquation(Rule):
     """Apply the given equation for rewriting."""
 
-    def __init__(self, eq: Union[Expr, str], source: Expr):
+    def __init__(self, eq: str, source: Expr):
         self.name = "ApplyEquation"
         self.eq = eq
         self.source = source
@@ -1217,7 +1222,7 @@ class ApplyEquation(Rule):
     def export(self):
         res = {
             "name": self.name,
-            "eq": str(self.eq),
+            "eq": self.eq,
             "str": str(self),
             "latex_str": self.latex_str()
         }
@@ -1237,37 +1242,11 @@ class ApplyEquation(Rule):
         assert self.source == e or self.source is None
 
         # Find lemma
-        found = False
-        conds = None
-        found_eq = None
-        for identity in ctx.get_lemmas():
-            if self.eq == identity.expr:
-                found = True
-                found_eq = self.eq
-                conds = identity.conds.data
-        if isinstance(self.eq, str):
-            res = ctx.get_subgoal(self.eq)
-            if res:
-                found = True
-                found_eq = res.expr
-                conds = res.conds.data
-        for item in ctx.get_eq_conds().data:
-            if self.eq == item:
-                if self.source is None:
-                    if e == item.lhs:
-                        return item.rhs
-                    if e == item.rhs:
-                        return item.lhs
-                else:
-                    if self.source == item.lhs:
-                        return item.rhs
-                    if self.source == item.rhs:
-                        return item.lhs
-                found = True
-                found_eq = self.eq
-                conds = []
-        if not found:
+        res = ctx.get_subgoal(self.eq)
+        if not res:
             raise RuleException("ApplyEquation", f"lemma {self.eq} not found")
+        found_eq = res.expr
+        conds = res.conds.data
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)
