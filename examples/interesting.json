@@ -103,7 +103,6 @@
             "type": "problem"
         },
         {
-            "category": "new trick",
             "expr": "(INT x:[0,1]. log(x+1) / (x^2 + 1)) = pi / 8 * log(2)",
             "path": "trick2d",
             "type": "problem"
@@ -568,7 +567,6 @@
             "type": "definition"
         },
         {
-            "category": "gamma-beta",
             "conds": [
                 "n > 0",
                 "type(n, 0)"
@@ -578,7 +576,6 @@
             "type": "problem"
         },
         {
-            "category": "gamma-beta",
             "expr": "Gamma(n) = (n - 1) * Gamma(n - 1)",
             "path": "GammaFunction",
             "type": "problem"

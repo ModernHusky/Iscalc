@@ -104,6 +104,12 @@ def approx_real(a: Expr) -> bool:
     except:
         return False
 
+def approx_not_real(a: Expr) -> bool:
+    try:
+        a_val = complex(eval_expr(a))
+        return abs(a_val.imag) > tol
+    except:
+        return False
 
 def update_inst(k: str, v: Expr, inst: dict[str, Expr]) -> dict[str, Expr]:
     """Update instantiation without changing the original."""
@@ -170,16 +176,16 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
         elif expr.is_less_eq(cond) and cond.args[1].is_constant():
             if approx_less_eq(x, cond.args[1]):
                 return [inst]
-        elif expr.is_fun(cond) and cond.func_name == 'isInt':
+        elif expr.is_fun(cond, "isInt"):
             if approx_integer(x):
                 return [inst]
-        elif expr.is_fun(cond) and cond.func_name == 'isEven':
+        elif expr.is_fun(cond, "isEven"):
             if approx_even(x):
                 return [inst]
-        elif expr.is_fun(cond) and cond.func_name == 'isReal':
+        elif expr.is_fun(cond, "isReal"):
             if approx_real(x):
                 return [inst]
-        elif expr.is_fun(cond) and cond.func_name == 'isComplex':
+        elif expr.is_fun(cond, "isComplex"):
             return [inst]
 
     # If the goal is of form x ?= c, where c is a constant, try to
@@ -288,11 +294,11 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
         add_condition(all_conds, x, cond)
             
         # Handle absolute value conditions
-        if expr.is_fun(x) and x.func_name == 'abs' and expr.is_less(cond):
+        if expr.is_fun(x, 'abs') and expr.is_less(cond):
             # abs(x) < c  -->  -c < x < c
             add_condition(all_conds, x.args[0], Op("<", x.args[0], cond.args[1]))
             add_condition(all_conds, x.args[0], Op(">", x.args[0], -cond.args[1]))
-        if expr.is_fun(x) and x.func_name == 'abs' and expr.is_less_eq(cond):
+        if expr.is_fun(x, 'abs') and expr.is_less_eq(cond):
             # abs(x) <= c  -->  -c <= x <= c
             add_condition(all_conds, x.args[0], Op("<=", x.args[0], cond.args[1]))
             add_condition(all_conds, x.args[0], Op(">=", x.args[0], -cond.args[1]))
@@ -397,6 +403,10 @@ def get_standard_inequalities() -> list[Identity]:
         (["a >= b"], "c + a >= c + b"),
         (["a <= b"], "a + c <= b + c"),
         (["a <= b"], "c + a <= c + b"),
+        (["a != -b"], "a + b != 0"),
+        (["a != b"], "a - b != 0"),
+        (["a < 0", "isReal(b)"], "a + b * i != 0"),
+        (["a < 0", "isReal(b)"], "a - b * i != 0"),
         (["a >= b", "c > d"], "a + c > b + d"),
         (["a > b", "c >= d"], "a + c > b + d"),
         (["a <= b", "c < d"], "a + c < b + d"),
@@ -680,11 +690,16 @@ def check_condition(e: Expr, ctx: Context) -> bool:
         return check_condition(Op(">=", e.args[0].body, Const(0)), ctx2)
     
     # abs(s) < t <-- -t < s < t &&
-    if expr.is_less(e) and expr.is_fun(e.args[0]) and e.args[0].func_name == 'abs':
+    if expr.is_less(e) and expr.is_fun(e.args[0], 'abs'):
         arg = e.args[0].args[0]
         e1 = Op("<", arg, e.args[1])
         e2 = Op(">", arg, -e.args[1])
         return check_condition(e1, ctx) and check_condition(e2,ctx)
+
+    # real vs. non-real
+    if expr.is_not_equals(e) and e.rhs.is_constant() and approx_not_real(e.rhs):
+        if check_condition(expr.isReal(e.lhs), ctx):
+            return True
 
     # Substitute for equations in the context
     if ctx.get_substs():

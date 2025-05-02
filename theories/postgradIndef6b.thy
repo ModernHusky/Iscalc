@@ -22,7 +22,7 @@ calculate INT x. x/((x-1)*(x^2+1))
     simplify
 done
 
-calculate INT x. x^3/(x+3)
+calculate INT x. x^3/(x+3) for x != -3
     partial fraction decomposition
     apply integral identity
     simplify

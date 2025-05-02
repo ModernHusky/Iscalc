@@ -28,7 +28,7 @@ calculate INT x. 1 / (2-3*x)^(1/3)
     simplify
 done
 
-calculate INT x. sin(a*x) - exp(x/b)
+calculate INT x. sin(a*x) - exp(x/b) for a != 0, b != 0
     apply integral identity
     substitute u for x / b
     apply integral identity

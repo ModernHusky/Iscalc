@@ -231,17 +231,17 @@ class Expr:
 
     @property
     def lhs(self) -> "Expr":
-        if self.is_equals():
+        if self.is_compare():
             return self.args[0]
         else:
-            raise AssertionError(f"lhs: term {self} is not an equality")
+            raise AssertionError(f"lhs: term {self} is not a comparison")
 
     @property
     def rhs(self) -> "Expr":
-        if self.is_equals():
+        if self.is_compare():
             return self.args[1]
         else:
-            raise AssertionError("rhs: term is not an equality")
+            raise AssertionError(f"rhs: term {self} is not a comparison")
 
     def __le__(self, other):
         if isinstance(other, (int, Fraction)):
@@ -880,8 +880,11 @@ def is_const(e: Expr) -> TypeGuard["Const"]:
 def is_op(e: Expr) -> TypeGuard["Op"]:
     return e.ty == OP
 
-def is_fun(e: Expr) -> TypeGuard["Fun"]:
-    return e.ty == FUN
+def is_fun(e: Expr, name: str = "") -> TypeGuard["Fun"]:
+    if name == "":
+        return e.ty == FUN
+    else:
+        return e.ty == FUN and e.func_name == name
 
 def is_deriv(e: Expr) -> TypeGuard["Deriv"]:
     return e.ty == DERIV
@@ -1081,7 +1084,7 @@ def expr_to_pattern(e: Expr) -> Expr:
         elif _e.ty == EVAL_AT:
             return EvalAt(_e.var, rec(_e.lower), rec(_e.upper), rec(_e.body))
         elif _e.ty == INDEFINITEINTEGRAL:
-            return IndefiniteIntegral(_e.var, rec(_e.body), e.skolem_args)
+            return IndefiniteIntegral(_e.var, rec(_e.body), _e.skolem_args)
         elif _e.ty == LIMIT:
             return Limit(_e.var, rec(_e.lim), rec(_e.body), _e.drt)
         elif _e.ty == DERIV:

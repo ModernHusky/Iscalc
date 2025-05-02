@@ -2,14 +2,21 @@
 
 imports base
 
-prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
+prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x != -a
 lhs:
     substitute u for x + a
     apply integral identity
     replace substitution
 done
 
-prove (INT x. 1 / (-x + a)) = -log(abs(-x + a)) + SKOLEM_CONST(C) for -x + a != 0
+prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for x != a
+lhs:
+    substitute u for x - a
+    apply integral identity
+    replace substitution
+done
+
+prove (INT x. 1 / (-x + a)) = -log(abs(-x + a)) + SKOLEM_CONST(C) for x != a
 sorry
 
 prove (INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C) for a != 0
@@ -94,10 +101,10 @@ sorry
 prove (INT x. tan(a * x - b)) = log(abs(sec(a*x - b))) / a + SKOLEM_CONST(C) for a != 0
 sorry
 
-prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C)
+prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for x - a != 0
 sorry
 
-prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)
+prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x + a != 0
 sorry
 
 prove (INT x. 1 / (b - a * x)) = -log(abs(b - a * x)) / a + SKOLEM_CONST(C) for a != 0

@@ -352,6 +352,8 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
+        elif expr.is_indefinite_integral(e):
+            rec(e.body, body_conds(e, ctx))
         elif expr.is_deriv(e):
             rec(e.body, ctx)
         elif expr.is_summation(e):
@@ -679,61 +681,6 @@ class ApplyIdentity(Rule):
         raise RuleException("ApplyIdentity", "no matching identity for %s" % e)
 
 
-class DefiniteIntegralIdentity(Rule):
-    """Apply definite integral identity in current theory."""
-
-    def __init__(self):
-        self.name = "DefiniteIntegralIdentity"
-
-    def __str__(self):
-        return "apply integral identity"
-
-    def export(self):
-        return {
-            "name": self.name,
-            "str": str(self)
-        }
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        # Apply linearity
-        if expr.is_integral(e) or expr.is_indefinite_integral(e):
-            e = Linearity().eval(e, ctx)
-
-        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
-            sep_ints = e.separate_integral()
-            for _, loc in sep_ints:
-                e = OnLocation(self, loc).eval(e, ctx)
-            return e
-
-        # First, look for indefinite integrals identities
-        for identity in ctx.get_indefinite_integrals():
-            inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
-            if inst is None:
-                continue
-
-            inst[identity.lhs.var] = Var(e.var)
-            assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
-            pat_rhs = identity.rhs.args[0]  # remove Skolem constant C
-            return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
-
-        # Look for definite integral identities
-        for identity in ctx.get_definite_integrals():
-            inst = expr.match(e, identity.lhs)
-            if inst is not None:
-                # Check conditions
-                satisfied = True
-                for cond in identity.conds.data:
-                    cond = expr.expr_to_pattern(cond)
-                    cond = cond.inst_pat(inst)
-                    if not ctx.check_condition(cond):
-                        satisfied = False
-                if satisfied:
-                    return normalize(identity.rhs.inst_pat(inst), ctx)
-
-        # No matching identity found
-        return e
-
-
 class SeriesExpansionIdentity(Rule):
     """Apply series expansion in the current theory."""
 
@@ -772,10 +719,20 @@ class SeriesExpansionIdentity(Rule):
             inst = expr.match(e, identity.lhs)
             if inst is None:
                 continue
-            res = identity.rhs.inst_pat(inst)
-            assert expr.is_summation(res)
-            res = res.alpha_convert(self.index_var)
-            return res
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                res = identity.rhs.inst_pat(inst)
+                assert expr.is_summation(res)
+                return res.alpha_convert(self.index_var)
+
         # No matching identity found
         return e
 
@@ -803,69 +760,18 @@ class SeriesEvaluationIdentity(Rule):
             if inst is None:
                 continue
 
-            return identity.rhs.inst_pat(inst)
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                return identity.rhs.inst_pat(inst)
+
         # No matching identity found
-        return e
-
-
-class IndefiniteIntegralIdentity(Rule):
-    """Apply indefinite integral identity in current theory."""
-
-    def __init__(self):
-        self.name = "IndefiniteIntegralIdentity"
-
-    def __str__(self):
-        return "apply indefinite integral"
-
-    def export(self):
-        return {
-            "name": self.name,
-            "str": str(self)
-        }
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        """Apply indefinite integral identity to expression."""
-        def apply(e: IndefiniteIntegral):
-            for indef in ctx.get_indefinite_integrals():
-                inst = expr.match(e, indef.lhs)
-                if inst is None:
-                    continue
-
-                inst['x'] = Var(e.var)
-                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1])
-                return indef.rhs.args[0].inst_pat(inst)
-
-            # No matching identity found
-            return e
-
-        # Apply linearity
-        if expr.is_integral(e) or expr.is_indefinite_integral(e):
-            e = Linearity().eval(e, ctx)
-
-        # Apply to right side of equation
-        if e.is_equals():
-            return OnLocation(self, "1").eval(e, ctx)
-
-        integrals = e.separate_integral()
-        skolem_args = set()
-        for sub_e, loc in integrals:
-            if expr.is_integral(sub_e):
-                raise RuleException(
-                    "apply indefinite integral",
-                    "Attempting to apply indefinite integral to a definite integral expression")
-            new_e = apply(sub_e)
-            if new_e != sub_e:
-                e = e.replace_expr(loc, new_e)
-                skolem_args = skolem_args.union(set(sub_e.skolem_args))
-
-        if expr.is_plus(e) and expr.is_skolem_func(e.args[1]):
-            # If already has Skolem variable at right
-            skolem_args = skolem_args.union(set(arg.name for arg in e.args[1].dependent_vars))
-            e = e.args[0] + expr.SkolemFunc(e.args[1].name, tuple(Var(arg) for arg in skolem_args))
-        else:
-            # If no Skolem variable at right
-            e = e + expr.SkolemFunc("C", tuple(Var(arg) for arg in skolem_args))
-
         return e
 
 
@@ -875,18 +781,28 @@ class EvaluateIndefiniteIntegral(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, IndefiniteIntegral)
+
+        ctx2 = context.body_conds(e, ctx)
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
             inst = expr.match(e, indef.lhs)
             if inst is None:
                 continue
-
             inst[indef.lhs.var] = Var(e.var)
 
-            # The right side of the identity should be of the form "expr + C"
-            # take the expr part of the expression.
-            assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
-            return indef.rhs.args[0].inst_pat(inst)
+            # Check conditions
+            satisfied = True
+            for cond in indef.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                # The right side of the identity should be of the form "expr + C"
+                # take the expr part of the expression.
+                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                return indef.rhs.args[0].inst_pat(inst)
 
         # No matching identity found
         return e
@@ -898,22 +814,9 @@ class EvaluateDefiniteIntegral(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, Integral)
 
-        # First, try indefinite integral identities
-        for identity in ctx.get_indefinite_integrals():
-            assert isinstance(identity.lhs, IndefiniteIntegral)
-            inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
-            if inst is None:
-                continue
+        ctx2 = context.body_conds(e, ctx)
 
-            inst[identity.lhs.var] = Var(e.var)
-
-            # The right side of the identity should be of the form "expr + C"
-            # take the expr part of the expression.
-            assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
-            pat_rhs = identity.rhs.args[0]
-            return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx))
-
-        # Next, look for definite integral identities
+        # First, look for definite integral identities
         for identity in ctx.get_definite_integrals():
             inst = expr.match(e, identity.lhs)
             if inst is None:
@@ -924,11 +827,33 @@ class EvaluateDefiniteIntegral(Rule):
             for cond in identity.conds.data:
                 cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
-                if not ctx.check_condition(cond):
-                    # print(f"Warning: unable to check condition {cond}")
+                if not ctx2.check_condition(cond):
                     satisfied = False
             if satisfied:
-                return normalize(identity.rhs.inst_pat(inst), ctx)
+                return identity.rhs.inst_pat(inst)
+
+        # Next, try indefinite integral identities
+        for identity in ctx.get_indefinite_integrals():
+            assert isinstance(identity.lhs, IndefiniteIntegral)
+            inst = expr.match(IndefiniteIntegral(e.var, e.body, skolem_args=tuple()), identity.lhs)
+            if inst is None:
+                continue
+            inst[identity.lhs.var] = Var(e.var)
+
+            # Check conditions
+            satisfied = True
+            for cond in identity.conds.data:
+                cond = expr.expr_to_pattern(cond)
+                cond = cond.inst_pat(inst)
+                if not ctx2.check_condition(cond):
+                    satisfied = False
+
+            if satisfied:
+                # The right side of the identity should be of the form "expr + C"
+                # take the expr part of the expression.
+                assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                pat_rhs = identity.rhs.args[0]
+                return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
 
         # No matching identity found
         return e
@@ -1087,7 +1012,7 @@ class OnLocation(Rule):
         return self.rule.update_context(e, ctx)
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        def rec(cur_e, loc, ctx):
+        def rec(cur_e: Expr, loc: expr.Location, ctx: Context):
             if loc.is_empty():
                 return self.rule.eval(cur_e, ctx)
             elif expr.is_var(cur_e) or expr.is_const(cur_e):
@@ -1150,7 +1075,8 @@ class OnLocation(Rule):
                     raise AssertionError("OnLocation: invalid location")
             elif expr.is_indefinite_integral(cur_e):
                 assert loc.head == 0, "OnLocation: invalid location"
-                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx), cur_e.skolem_args)
+                ctx2 = body_conds(cur_e, ctx)
+                return IndefiniteIntegral(cur_e.var, rec(cur_e.body, loc.rest, ctx2), cur_e.skolem_args)
             elif expr.is_summation(cur_e):
                 ctx2 = body_conds(cur_e, ctx)
                 if loc.head == 0:
@@ -1987,127 +1913,6 @@ class Rewriting(Rule):
                     return self.new_expr
         raise RuleException("Rewriting", "rewriting %s to %s failed" % (e, self.new_expr))
 
-class Equation(Rule):
-    """Apply substitution for equal expressions"""
-
-    def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
-        self.name = "Equation"
-        if isinstance(old_expr, str):
-            old_expr = parser.parse_expr(old_expr)
-        if isinstance(new_expr, str):
-            new_expr = parser.parse_expr(new_expr)
-        self.old_expr = old_expr
-        self.new_expr = new_expr
-
-    def __str__(self):
-        if self.old_expr is None:
-            return "rewrite to %s" % self.new_expr
-        else:
-            return "rewrite %s to %s" % (self.old_expr, self.new_expr)
-
-    def export(self):
-        if self.old_expr is None:
-            latex_str = "rewrite to \\(%s\\)" % latex.convert_expr(self.new_expr)
-        else:
-            latex_str = "rewrite \\(%s\\) to \\(%s\\)" % \
-                        (latex.convert_expr(self.old_expr), latex.convert_expr(self.new_expr))
-        res = {
-            "name": self.name,
-            "new_expr": str(self.new_expr),
-            "str": str(self),
-            "latex_str": latex_str
-        }
-        if self.old_expr:
-            res['old_expr'] = str(self.old_expr)
-        return res
-
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        # If old_expr is given, try to find it within e
-        if self.old_expr is not None and self.old_expr != e:
-            find_res = e.find_subexpr(self.old_expr)
-            if len(find_res) == 0:
-                print(e)
-                raise RuleException("Equation", "old expression %s not found" % self.old_expr)
-            loc = find_res[0]
-            return OnLocation(self, loc).eval(e, ctx)
-
-        # Now e is the old expression
-        assert self.old_expr is None or self.old_expr == e
-
-        r = Simplify()
-        r1, r2 = r.eval(e, ctx), r.eval(self.new_expr, ctx)
-        if r1 == r2:
-            return self.new_expr
-
-        # Rewriting 1 to sin(x)^2 + cos(x)^2
-        x = Symbol("x", [VAR, CONST, OP, FUN])
-        p = expr.sin(x) ** 2 + expr.cos(x) ** 2
-        if e == Const(1) and expr.match(self.new_expr, p):
-            return self.new_expr
-
-        if norm.eq_quotient(e, self.new_expr, ctx):
-            return self.new_expr
-
-        if norm.eq_power(e, self.new_expr, ctx):
-            return self.new_expr
-
-        if norm.eq_log(e, self.new_expr, ctx):
-            return self.new_expr
-
-        if norm.eq_definite_integral(e, self.new_expr, ctx):
-            return self.new_expr
-
-        if norm.simp_definite_integral(e, ctx) == normalize(self.new_expr, ctx):
-            return self.new_expr
-
-        # x * sum(k,l,u,body) => sum(k, l, u, x* body)
-        x = Symbol('x', [VAR, CONST, OP, FUN])
-        y = Symbol('y', [SUMMATION])
-        p = x * y
-        mapping = expr.match(e, p)
-        if mapping is not None:
-            sum = mapping[y.name]
-            idx = sum.index_var
-            out = mapping[x.name]
-            if idx not in out.get_vars():
-                e = Summation(idx, sum.lower, sum.upper, out * sum.body)
-
-        # sum(k, l, u, body1) + sum(i, l, u, body2) => sum(k, l, u, body1+body2)
-        x = Symbol('x', [SUMMATION])
-        y = Symbol('y', [SUMMATION])
-        p = x + y
-        mapping = expr.match(e, p)
-        if mapping is not None:
-            sum1: Summation = mapping[x.name]
-            sum2: Summation = mapping[y.name]
-            if sum1.lower == sum2.lower and sum1.upper == sum2.upper:
-                e = Summation(sum1.index_var, sum1.lower, sum1.upper, sum1.body + sum2.body)
-            if normalize(e, ctx) == normalize(self.new_expr, ctx):
-                return self.new_expr
-
-        if expr.is_summation(e):
-            # SUM(i, 0, oo, body) -> LIM {n->oo}. SUM(i, 0, n, body)
-            if e.upper == expr.POS_INF:
-                vars = e.get_vars(with_bd=True)
-                all_index_vars = "ijklmn"
-                flag = False
-                for v in all_index_vars:
-                    if v not in vars:
-                        tmp = Limit(v, expr.POS_INF, Summation(e.index_var, e.lower, Var(v), e.body))
-                        flag = True
-                        break
-                if not flag:
-                    raise AssertionError("all variables are run out")
-                if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
-                    return self.new_expr
-
-            if expr.is_op(e.body) and e.body.op in '+-':
-                v, l, u = e.index_var, e.lower, e.upper
-                tmp = Op(e.body.op, Summation(v, l, u, e.body.args[0]), Summation(v, l, u, e.body.args[1]))
-                if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
-                    return self.new_expr
-        raise RuleException("Equation", "rewriting %s to %s failed" % (e, self.new_expr))
-
 
 class IntegrationByParts(Rule):
     """Apply integration by parts.
@@ -2386,108 +2191,6 @@ class LHopital(Rule):
         numerator, denominator = e.body.args
         rule = DerivativeSimplify()
         return expr.Limit(e.var, e.lim, Op('/', rule.eval(Deriv(e.var, numerator), ctx),rule.eval(Deriv(e.var, denominator), ctx)), e.drt)
-
-
-def check_item(item, target=None, *, debug=False):
-    """Check application of rules in the item."""
-    problem = parser.parse_expr(item['problem'])
-
-    if debug:
-        print("\n%s: %s" % (item['name'], problem))
-
-    current = problem
-    prev_steps = []
-    ctx = Context()
-
-    for step in item['calc']:
-        reason = step['reason']
-        expected = parser.parse_expr(step['text'])
-
-        if reason == 'Initial':
-            result = current
-
-        elif reason == 'Simplification':
-            if "location" in step:
-                result = OnLocation(Simplify(), step["location"]).eval(current, ctx)
-            else:
-                result = Simplify().eval(current, ctx)
-
-        elif reason == 'Substitution':
-            var_name = step['params']['var_name']
-            f = parser.parse_expr(step['params']['f'])
-            g = parser.parse_expr(step['params']['g'])
-            rule = Substitution(var_name, g)
-            if 'location' in step:
-                result = OnLocation(rule, step['location']).eval(current, ctx)
-            else:
-                result = rule.eval(current, ctx)
-            rule.f = parser.parse_expr(str(rule.f))  # trick to eliminate difference in printing
-            if rule.f != f:
-                print("Expected f: %s" % f)
-                print("Actual f: %s" % rule.f)
-                raise AssertionError("Unexpected value of f in substitution")
-
-        elif reason == 'Integrate by parts':
-            u = parser.parse_expr(step['params']['parts_u'])
-            v = parser.parse_expr(step['params']['parts_v'])
-            rule = IntegrationByParts(u, v)
-            if 'location' in step:
-                result = OnLocation(rule, step['location']).eval(current, ctx)
-            else:
-                result = rule.eval(current, ctx)
-
-        elif reason == 'Rewrite':
-            rhs = parser.parse_expr(step['params']['rhs'])
-            if 'denom' in step['params']:
-                rule = Equation(rhs, parser.parse_expr(step['params']['denom']))
-            else:
-                rule = Equation(rhs)
-            if 'location' in step:
-                result = OnLocation(rule, step['location']).eval(current, ctx)
-            else:
-                result = rule.eval(current, ctx)
-
-        elif reason == 'Substitution inverse':
-            var_name = step['params']['var_name']
-            old_var = step['params']['old_var']
-            g = parser.parse_expr(step['params']['g'])
-            rule = SubstitutionInverse(var_name, old_var, g)
-            if 'location' in step:
-                result = OnLocation(rule, step['location']).eval(current, ctx)
-            else:
-                result = rule.eval(current, ctx)
-
-        elif reason == 'Split region':
-            c = parser.parse_expr(step['params']['c'])
-            rule = SplitRegion(c)
-            if 'location' in step:
-                result = OnLocation(rule, step['location']).eval(current, ctx)
-            else:
-                result = rule.eval(current, ctx)
-
-        elif reason == 'Solve equation':
-            prev_id = int(step['params']['prev_id'])
-            rule = IntegrateByEquation(prev_steps[prev_id])
-            result = rule.eval(current, ctx)
-
-        else:
-            print("Reason: %s" % reason)
-            raise NotImplementedError
-
-        if result != expected:
-            print("Expected: %s" % expected)
-            print("Result: %s" % result)
-            raise AssertionError("Error on intermediate step (%s)" % reason)
-
-        current = result
-        prev_steps.append(current)
-
-    if target is not None:
-        target = parser.parse_expr(target)
-        if current != target:
-            print("Target: %s" % target)
-            print("Result: %s" % current)
-            raise AssertionError("Error on final answer")
 
 
 class DerivIntExchange(Rule):

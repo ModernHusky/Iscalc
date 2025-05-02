@@ -745,7 +745,6 @@ def simplify_identity(e: expr.Expr, ctx: Context) -> expr.Expr:
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
                     satisfied = False
@@ -1122,6 +1121,12 @@ def simplify_exp(e:expr.Expr, ctx:Context):
         return expr.Integral(e.var, simplify_exp(e.lower,ctx), simplify_exp(e.upper,ctx), simplify_exp(e.body,ctx))
     return e
 
+def simplify_abs(e:expr.Expr, ctx:Context):
+    if expr.is_fun(e) and e.func_name == "abs":
+        if ctx.check_condition(expr.Op(">=", e.args[0], expr.Const(0))):
+            return e.args[0]
+    return e
+
 def normal_const(e:expr.Expr, ctx:Context):
     if e.is_constant():
         return normalize(e, ctx)
@@ -1165,6 +1170,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_sum, ctx)
         e = apply_subterm(e, simplify_skolem, ctx)
         e = apply_subterm(e, simplify_exp, ctx)
+        e = apply_subterm(e, simplify_abs, ctx)
         if e == old_e:
             break
 

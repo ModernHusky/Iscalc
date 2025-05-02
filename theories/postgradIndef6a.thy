@@ -48,7 +48,7 @@ calculate INT x. 1/((x^2+1)*(x^2+x+1))
     simplify
 done
 
-calculate INT x. (2*x+3)/(x^2+3*x-10)
+calculate INT x. (2*x+3)/(x^2+3*x-10) for x > -5, x < 2
     partial fraction decomposition
     apply integral identity
     simplify
