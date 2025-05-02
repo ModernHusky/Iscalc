@@ -42,6 +42,8 @@ class InitialState(State):
         
         # Start a proof
         elif isinstance(action, ProveAction):
+            if expr.is_equals(action.expr) and expr.is_indefinite_integral(action.expr.lhs):
+                action.conditions.add_condition(expr.isReal(expr.Var(action.expr.lhs.var)))
             goal = Goal(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
             return ProveState(self, goal)
         

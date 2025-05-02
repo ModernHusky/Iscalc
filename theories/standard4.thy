@@ -107,7 +107,7 @@ sorry
 ### 10.1.5.1
 
 // 1
-prove (INT x. arctan(x / a)) = x * arctan(x / a) - a / 2 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a: real, x: real, a != 0, x != 0
+prove (INT x. arctan(x / a)) = x * arctan(x / a) - a / 2 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a: real, a != 0, x != 0
 lhs:
     integrate by parts with u = arctan(x/a), v = x
     simplify
@@ -131,7 +131,7 @@ prove (INT x. x * arctan(x / a)) = 1 / 2 * (x ^ 2 + a ^ 2) * arctan(x / a) - 1 /
 sorry
 
 // 3
-prove (INT x. x ^ 2 * arctan(x / a)) = 1 / 3 * x ^3 * arctan(x / a) - 1 / 6 * a * x ^ 2 + 1 / 6 * a ^ 3 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for x: real, a: real, a != 0, x != 0
+prove (INT x. x ^ 2 * arctan(x / a)) = 1 / 3 * x ^3 * arctan(x / a) - 1 / 6 * a * x ^ 2 + 1 / 6 * a ^ 3 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a: real, a != 0, x != 0
 lhs:
     integrate by parts with u = arctan(x / a), v = x^3 / 3
     simplify
@@ -174,7 +174,7 @@ prove (INT x. 1 / x * arctan(x / a)) = -pi / 2 * log(abs(x)) + SUM(k, 0, oo, (-1
 sorry
 
 // 2
-prove (INT x. 1 / x ^ 2 * arctan(x / a)) = -1 / x * arctan(x / a) + 1 / (2 * a) * log(x ^ 2 / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for x: real, a: real, a != 0, x != 0
+prove (INT x. 1 / x ^ 2 * arctan(x / a)) = -1 / x * arctan(x / a) + 1 / (2 * a) * log(x ^ 2 / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for a: real, a != 0, x != 0
 lhs:
     integrate by parts with u = arctan(x / a), v = -1 / x
     simplify
