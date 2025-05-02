@@ -222,102 +222,7 @@
             "type": "axiom"
         },
         {
-            "expr": "sin(-u) = -sin(u)",
-            "type": "axiom"
-        },
-        {
-            "expr": "tan(x) = sin(x) / cos(x)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(-u) = cos(u)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(pi / 2 - u) = cos(u)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cos(pi / 2 - u) = sin(u)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sec(x)^2 = tan(x)^2 + 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sec(x)^2 = 1 + tan(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * sec(x)^2 = a * tan(x)^2 + a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * sec(x)^2 = a + a * tan(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "conds": [
-                "cos(x) != 0"
-            ],
-            "expr": "cos(x)^-1 = sec(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "conds": [
-                "cos(x) != 0"
-            ],
-            "expr": "1 / cos(x) = sec(x)",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "cos(x) != 0"
-            ],
-            "expr": "sin(x) / cos(x) = tan(x)",
-            "type": "axiom"
-        },
-        {
             "expr": "tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(x)^2 + cos(x)^2 = 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cos(-u + pi) = -cos(u)",
             "type": "axiom"
         },
         {
@@ -335,263 +240,7 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(-u + pi) = sin(u)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cot(x) = cos(x) / sin(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "cot(x)^2 = csc(x)^2 - 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "tan(x)^2 = sec(x)^2 - 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "tan(x)^2 = -1 + sec(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * tan(x)^2 = a * sec(x)^2 - a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * tan(x)^2 = -a + a * sec(x)^2",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "n != 0"
-            ],
-            "expr": "1 / sin(x) ^ n = csc(x) ^ n",
-            "type": "axiom"
-        },
-        {
-            "conds": [
-                "n != 0"
-            ],
-            "expr": "sin(x) ^ n = csc(x) ^ (-n)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sin(x)^2 = 1 - cos(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sin(x)^2 = -cos(x)^2 + 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * sin(x)^2 = a - a * cos(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * sin(x)^2 = -a * cos(x)^2 + a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * sin(x)^2 = -(a * cos(x)^2) + a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sin(x)^2 = 1/2 * (1-cos(2*x))",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "cos(x)^2 = 1 - sin(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "cos(x)^2 = -sin(x)^2 + 1",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * cos(x)^2 = a - a * sin(x)^2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * cos(x)^2 = - a * sin(x)^2 + a",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "a * cos(x)^2 = -(a * sin(x)^2) + a",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(x)^2 = (1 + cos(2*x)) / 2",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(x)^2 = 1/2*(1 + cos(2*x))",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(x)^2 = (1 - cos(2*x)) / 2",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(2*x) = 2 * cos(x)^2 - 1",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(x) = cos(x/2)^2 - sin(x/2)^2",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(2*x) = 1 - 2 * sin(x) ^ 2",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(x) = 1 - 2 * sin(x/2) ^ 2",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sin(2*x) = 2 * sin(x) * cos(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "bidirectional"
-            ],
-            "expr": "sin(x) = 2 * sin(x/2) * cos(x/2)",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a + b) = sin(a) * cos(b) + cos(a) * sin(b)",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a - b) = sin(a) * cos(b) - cos(a) * sin(b)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a + b) = cos(a) * cos(b) - sin(a) * sin(b)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(2 * x) = cos(x)^2 - sin(x)^2",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a) + sin(b) = 2 * sin((a + b) / 2) * cos((a - b) / 2)",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a) - sin(b) = 2 * cos((a + b) / 2) * sin((a - b) / 2)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a) + cos(b) = 2 * cos((a + b) / 2) * cos((a - b) / 2)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a) - cos(b) = -2 * sin((a + b) / 2) * sin((a - b) / 2)",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a) * sin(b) = (1 / 2) * (sin(a + b) - sin(a - b))",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a) * cos(b) = (1 / 2) * (sin(a + b) + sin(a - b))",
-            "type": "axiom"
-        },
-        {
-            "expr": "cos(a) * cos(b) = (1 / 2) * (cos(a - b) + cos(a + b))",
-            "type": "axiom"
-        },
-        {
-            "expr": "sin(a) * sin(b) = -(1 / 2) * (cos(a - b) - cos(a + b))",
-            "type": "axiom"
-        },
-        {
             "expr": "arctan(x ^ -1) = pi/2 - arctan(x)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "conds": [
-                "x >= -pi / 2",
-                "x <= pi / 2"
-            ],
-            "expr": "arcsin(sin(x)) = x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(arccos(x)) = sqrt(1-x^2)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cos(arcsin(x)) = sqrt(1-x^2)",
             "type": "axiom"
         },
         {
@@ -602,80 +251,9 @@
             "type": "axiom"
         },
         {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "tan(arcsec(x)) = sqrt(x ^ 2 - 1)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "tan(arcsin(x)) = x / sqrt(1 - x ^ 2)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cos(arctan(x)) = 1 / sqrt(x ^ 2 + 1)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(arctan(x)) = x / sqrt(x ^ 2 + 1)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sec(arctan(x)) = sqrt(x ^ 2 + 1)",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cot(arctan(x)) = 1 / x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "csc(arctan(x)) = sqrt(x^2 + 1) / x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "cot(arcsin(x)) = sqrt(1 - x^2) / x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "csc(arcsin(x)) = 1 / x",
-            "type": "axiom"
-        },
-        {
-            "attributes": [
-                "simplify"
-            ],
-            "expr": "sin(arcsec(x)) = sqrt(x^2 - 1) / x",
-            "type": "axiom"
-        },
-        {
             "attributes": [],
             "conds": [],
             "expr": "arctan(-x) = -arctan(x)",
-            "reference": "",
             "type": "axiom"
         },
         {
@@ -683,7 +261,6 @@
                 "bidirectional"
             ],
             "expr": "1+sin(x) = (sin(x/2)+cos(x/2))^2",
-            "reference": "",
             "type": "axiom"
         },
         {
@@ -691,7 +268,6 @@
                 "bidirectional"
             ],
             "expr": "sin(x)+1 = (sin(x/2)+cos(x/2))^2",
-            "reference": "",
             "type": "axiom"
         },
         {
@@ -699,7 +275,6 @@
                 "bidirectional"
             ],
             "expr": "sin(x)+cos(x) = sqrt(2)*sin(x+pi/4)",
-            "reference": "",
             "type": "axiom"
         },
         {
@@ -769,11 +344,6 @@
         },
         {
             "level": 1,
-            "name": "Derived integrals",
-            "type": "header"
-        },
-        {
-            "level": 1,
             "name": "Results from contour integration",
             "type": "header"
         },
@@ -793,11 +363,6 @@
             ],
             "expr": "(INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b)",
             "reference": "Inside interesting Integrals, Section 3.1.7",
-            "type": "axiom"
-        },
-        {
-            "expr": "(INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = pi / sin(m * pi)",
-            "reference": "Inside interesting Integrals, Section 8.7.9",
             "type": "axiom"
         },
         {
@@ -938,25 +503,6 @@
                 "a < u"
             ],
             "expr": "MUL(n, l, u, f(n)) = f(l) * MUL(n, l+1, u, f(n))",
-            "type": "axiom"
-        },
-
-        {
-            "level": 1,
-            "name": "Ramanujan series",
-            "type": "header"
-        },
-        {
-            "expr": "SUM(n, 0, oo, (4 * n + 1) * binom(2 * n, n) ^ 3 / (-64) ^ n) = 2 / pi",
-            "type": "axiom"
-        },
-        {
-            "level": 1,
-            "name": "Stirling's formula",
-            "type": "header"
-        },
-        {
-            "expr": "(LIM {n -> oo}. factorial(n) / (sqrt(2 * pi * n) * (n / exp(1)) ^ n)) = 1",
             "type": "axiom"
         }
     ],

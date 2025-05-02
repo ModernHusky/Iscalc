@@ -510,6 +510,7 @@ class Context:
                         self.add_series_evaluation(a.expr, a.conditions)
                     elif isinstance(a, action.AxiomAction) and 'simp' in a.attrs:
                         self.add_simp_identity(a.expr, a.conditions)
+                        self.add_other_identities(a.expr, a.attrs, a.conditions)
                     else:
                         self.add_other_identities(a.expr, a.attrs, a.conditions)
 
