@@ -5,7 +5,7 @@
 
 ### 2.7.2.5
 
-//1
+// 1
 prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) * log(x) - (INT x. (a + b * x) ^ (m + 1)/x)) + SKOLEM_CONST(C)
 sorry
 
@@ -15,7 +15,7 @@ sorry
 
 ### 2.7.2.6
 // 1
-prove (INT x. (a + b * x) * log(x)) = ((a + b * x) ^ 2/(2 * b) - a ^ 2/(2 * b)) * log(x) - (a * x + 1/4 * b * x ^ 2) + SKOLEM_CONST(C) for x > 0, b != 0
+prove (INT x. (a + b * x) * log(x)) = ((a + b * x) ^ 2/(2 * b) - a ^ 2/(2 * b)) * log(x) - (a * x + 1/4 * b * x ^ 2) + SKOLEM_CONST(C) for x > 0, b: real, b != 0
 lhs:
     integrate by parts with u = log(x), v = a*x + (b*x^2)/2
     simplify
@@ -30,7 +30,7 @@ lhs:
 done
 
 // 2
-prove (INT x. (a + b * x) ^ 2 * log(x)) = 1/(3 * b) * ((a + b * x) ^ 3 - a ^ 3) * log(x) - (a ^ 2 * x + a * b * x ^ 2/2 + b ^ 2 * x ^ 3/9 ) + SKOLEM_CONST(C) for x > 0, b != 0
+prove (INT x. (a + b * x) ^ 2 * log(x)) = 1/(3 * b) * ((a + b * x) ^ 3 - a ^ 3) * log(x) - (a ^ 2 * x + a * b * x ^ 2/2 + b ^ 2 * x ^ 3/9 ) + SKOLEM_CONST(C) for x: real, x > 0, b: real, b != 0
 lhs:
     integrate by parts with u = log(x), v = (a + b * x)^3 / (3 * b)
     simplify
@@ -45,7 +45,7 @@ lhs:
 done
 
 // 3
-prove (INT x. (a + b * x) ^ 3 * log(x)) = 1/(4 * b) * ((a + b * x) ^ 4 - a ^ 4) * log(x) - (a ^ 3 * x + 3/4 * a ^ 2 * b * x ^ 2 + 1/3 * a * b ^ 2 * x ^ 3 + 1/16 * b^3 * x^4) + SKOLEM_CONST(C) for x > 0, b != 0
+prove (INT x. (a + b * x) ^ 3 * log(x)) = 1/(4 * b) * ((a + b * x) ^ 4 - a ^ 4) * log(x) - (a ^ 3 * x + 3/4 * a ^ 2 * b * x ^ 2 + 1/3 * a * b ^ 2 * x ^ 3 + 1/16 * b^3 * x^4) + SKOLEM_CONST(C) for x: real, x > 0, b: real, b != 0
 lhs:
     integrate by parts with u = log(x), v = (a + b*x)^4 / (4*b)
     simplify
@@ -128,7 +128,7 @@ lhs:
 done
 
 // 2
-prove (INT x. x * log(x ^ 2 + a ^ 2)) = 1/2 * ((x ^ 2 + a ^ 2) * log(x ^ 2 + a ^ 2) - x ^ 2) + SKOLEM_CONST(C) for x^2 + a^2 > 0
+prove (INT x. x * log(x ^ 2 + a ^ 2)) = 1/2 * ((x ^ 2 + a ^ 2) * log(x ^ 2 + a ^ 2) - x ^ 2) + SKOLEM_CONST(C) for x: real, a: real, x^2 + a^2 > 0
 lhs:
     integrate by parts with u = log(x^2 + a^2), v = x^2/2
     simplify
