@@ -1636,7 +1636,7 @@ class SubstitutionInverse(Rule):
             # dx = f'(u) * du
             subst_deriv = deriv(new_var, self.var_subst, ctx)
         except NotImplementedError:
-            raise RuleException('Inverse Substitute', f"{self.var_subst} can not be derived")
+            raise RuleException('SubstitutionInverse', f"no derivative found for {self.var_subst}")
 
         # Replace x with f(u)
         new_e_body = e.body.replace(Var(e.var), self.var_subst)
@@ -1647,9 +1647,10 @@ class SubstitutionInverse(Rule):
         # Solve the equations f(u) = x for u
         inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
         if inv_f is None:
-            raise RuleException("SubstitutionInverse", "cannot solve equation %s = %s for %s" % (
-                self.var_subst, e.var, new_var
-            ))
+            raise RuleException(
+                "SubstitutionInverse",
+                f"cannot solve equation {self.var_subst} = {e.var} for {new_var}"
+            )
 
         if expr.is_integral(e):
             lower = limits.reduce_inf_limit(inv_f.subst(e.var, (1 / Var(e.var)) + e.lower), e.var, ctx)
