@@ -38,11 +38,11 @@ sorry
 
 #### 4.2.2.2
 // 1
-prove (INT x. x / (a + b * x)) = x / b - a / b ^ 2 * log(a + b * x) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
+prove (INT x. x / (a + b * x)) = x / b - a / b ^ 2 * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
 sorry
 
 // 2
-prove (INT x. x / (a + b * x) ^ 2) = -x / (b * (a + b * x)) + 1 / (b ^ 2) * log(a + b * x) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
+prove (INT x. x / (a + b * x) ^ 2) = -x / (b * (a + b * x)) + 1 / (b ^ 2) * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
 sorry
 
 // 3
