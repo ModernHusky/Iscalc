@@ -12,17 +12,17 @@ axiom (INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C) for a != 0
 
 axiom (INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C) for a != 0
 
-axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)
+axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C) for x != 0
 
-axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C)
+axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C) for x != 0
 
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
-axiom (INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C) for n != 1
+axiom (INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C) for x != 0, n != 1
 
-axiom (INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C)
+axiom (INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C) for x >= 0
 
-axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C)
+axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C) for x > 0
 
 axiom (INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)
 
@@ -53,46 +53,6 @@ axiom (INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
 axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
-
-axiom (INT x. 1 / (x - i)) = log(x - i) + SKOLEM_CONST(C)
-
-axiom (INT x:[a,b]. 1 / (x - i)) = [log(x - i)]_x=a,b for a b: real
-
-axiom (INT x:[a,b]. 1 / (c * x - i)) = 1 / c * [log(c * x - i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (x - d * i)) = [log(x - d * i)]_x=a,b for a b d: real
-
-axiom (INT x:[a,b]. 1 / (c * x - d * i)) = 1 / c * [log(c * x - d * i)]_x=a,b for a b c d: real
-
-axiom (INT x. 1 / (a * (x - i))) = 1 / a * log(x - i) + SKOLEM_CONST(C) for a: real, a != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x - i))) = 1 / c * [log(x - i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (d * (c * x - i))) = 1 / (d * c) * [log(c * x - i)]_x=a,b for a b c d: real, c != 0, d != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x - d * i))) = 1 / c * [log(x - d * i)]_x=a,b for a b c d: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (e * (c * x - d * i))) = 1 / c * [log(c * x - d * i)]_x=a,b for a b c d e: real, e != 0
-
-axiom (INT x. 1 / (x + i)) = log(x + i) + SKOLEM_CONST(C)
-
-axiom (INT x:[a,b]. 1 / (x + i)) = [log(x + i)]_x=a,b for a b: real
-
-axiom (INT x:[a,b]. 1 / (c * x + i)) = 1 / c * [log(c * x + i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (x + d * i)) = [log(x + d * i)]_x=a,b for a b d: real
-
-axiom (INT x:[a,b]. 1 / (c * x + d * i)) = 1 / c * [log(c * x + d * i)]_x=a,b for a b c d: real
-
-axiom (INT x. 1 / (a * (x + i))) = 1 / a * log(x + i) + SKOLEM_CONST(C) for a: real, a != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x + i))) = 1 / c * [log(x + i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (d * (c * x + i))) = 1 / (d * c) * [log(c * x + i)]_x=a,b for a b c d: real, c != 0, d != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x + d * i))) = 1 / c * [log(x + d * i)]_x=a,b for a b c d: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (e * (c * x + d * i))) = 1 / c * [log(c * x + d * i)]_x=a,b for a b c d e: real, e != 0
 
 # Common series expansion
 

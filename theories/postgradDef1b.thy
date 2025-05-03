@@ -28,7 +28,6 @@ calculate INT x:[1, exp(1)]. sin(log(x))
     integrate by parts with u=exp(u), v=sin(u)
     simplify
     solve integral INT u:[0,1]. exp(u)*sin(u)
-    simplify
 done
 
 // 2*arcsin(sqrt(2/3))-pi/2 is the answer in the book

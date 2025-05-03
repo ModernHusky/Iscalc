@@ -12,12 +12,11 @@ done
 
 calculate INT x. log(x) for x > 0
     integrate by parts with u = log(x), v = x
-    simplify
     apply integral identity
     simplify
 done
 
-calculate INT x. arcsin(x)
+calculate INT x. arcsin(x) for x > -1, x < 1
     integrate by parts with u = arcsin(x), v = x
     substitute u for -(x^2) + 1
     apply integral identity
@@ -43,8 +42,6 @@ calculate INT x. exp(-x) * cos(x)
     integrate by parts with u = exp(-x), v = -cos(x)
     simplify
     solve integral INT x. exp(-x) * cos(x)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. exp(-2*x) * sin(x/2)
@@ -53,8 +50,6 @@ calculate INT x. exp(-2*x) * sin(x/2)
     integrate by parts with u = exp(-2*x), v = 2*sin(x/2)
     simplify
     solve integral INT x. exp(-2*x) * sin(x/2)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. x * cos(x/2)
@@ -125,12 +120,10 @@ calculate INT x. x^2 * cos(x/2)^2
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    simplify
 done
 
 calculate INT x. x * log(x - 1) for x > 1
     integrate by parts with u = log(x - 1), v = x^2/2
-    simplify
     substitute u for 2*x-2
     expand polynomial
     simplify
@@ -179,8 +172,6 @@ calculate INT x. cos(log(x)) for x > 0
     integrate by parts with u = sin(log(x)), v = x
     simplify
     solve integral INT x. cos(log(x))
-    apply integral identity
-    simplify
 done
 
 calculate INT x. arcsin(x)^2 for x > -1, x < 1

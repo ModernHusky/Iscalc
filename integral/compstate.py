@@ -515,6 +515,8 @@ class Calculation(StateItem):
             ctx = step.rule.update_context(cur_e, ctx)
             cur_e = step.res
         new_e = rule.eval(e, ctx)
+        if str(new_e) == str(e):  # check equality ignoring alpha equivalence
+            raise rules.RuleException(rules.get_rule_name(rule), "Applying the rule has no effect")
         step = CalculationStep(self, rule, new_e, id + 1)
         self.add_step(step)
 

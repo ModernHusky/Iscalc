@@ -164,7 +164,6 @@ calculate INT x. cos(x) * log(sin(x)) / sin(x)
     substitute u for log(sin(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. sec(x) * tan(x) * sqrt(4 + 3 * sec(x))
@@ -179,7 +178,6 @@ calculate INT x. exp(x) * cos(exp(x))
     substitute u for exp(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. x * sin(3 * x)
@@ -195,7 +193,6 @@ calculate INT x. x ^ 2 * cos(x)
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    simplify
 done
 
 calculate INT x. sin(x) * cos(x) * exp(sin(x))
@@ -212,8 +209,6 @@ calculate INT x. exp(x) * sin(x)
     simplify
     integrate by parts with u = exp(x), v = sin(x)
     solve integral INT x. exp(x) * sin(x)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. cos(4 * x) * sin(3 * x)
@@ -222,8 +217,6 @@ calculate INT x. cos(4 * x) * sin(3 * x)
     integrate by parts with u = cos(3 * x), v = -cos(4 * x) / 4
     simplify
     solve integral INT x. cos(4 * x) * sin(3 * x)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. sec(x) * sqrt(sec(x) + tan(x))

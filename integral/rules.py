@@ -2,7 +2,7 @@
 import re
 from decimal import Decimal
 from fractions import Fraction
-from typing import Optional, Dict, Tuple, Union, List, Set
+from typing import Optional, Dict, Tuple, Union, List
 import functools
 import operator
 
@@ -103,9 +103,8 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
                     return normal(e * rec(y * expr.log(x)))
-
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"deriv: {e}")
         elif expr.is_fun(e):
             if e.func_name == "sin":
                 x, = e.args
@@ -179,7 +178,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
         elif expr.is_inf(e):
             return Const(0)
         else:
-            raise NotImplementedError(f"{e}, {type(e)}")
+            raise NotImplementedError(f"deriv: {e}, {type(e)}")
 
     return rec(e)
 
@@ -878,7 +877,7 @@ class IntegralIdentity(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
 
-        # If incoming expression is equality, apply to the right side of equation
+        # If incoming expression is equality, apply to both sides of equation
         if e.is_equals():
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
@@ -1396,7 +1395,7 @@ class Substitution(Rule):
             else:
                 e, _ = sep_lims[0]
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             ctx2.add_subst(self.var_name, self.var_subst)
             return ctx2
@@ -1429,8 +1428,14 @@ class Substitution(Rule):
         # Expression used for substitution
         var_subst = self.var_subst
 
+        if expr.is_compare(var_subst):
+            raise RuleException("Substitution", f"expression {var_subst} should not be (in)equality")
+
         if e.var not in var_subst.get_vars():
-            raise RuleException("Substitution", "variable %s not found" % e.var)
+            raise RuleException("Substitution", f"variable {e.var} not found in substituted expression")
+        
+        if self.var_name in ctx.get_vars() or self.var_name in ctx.get_substs():
+            raise RuleException("Substitution", f"variable {self.var_name} is already used")
 
         ctx2 = body_conds(e, ctx)
 
@@ -1595,7 +1600,7 @@ class SubstitutionInverse(Rule):
 
         new_var = new_vars.pop()
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
             ctx2.add_subst(new_var, inv_f)
@@ -1631,7 +1636,7 @@ class SubstitutionInverse(Rule):
             # dx = f'(u) * du
             subst_deriv = deriv(new_var, self.var_subst, ctx)
         except NotImplementedError:
-            raise RuleException('Inverse Substitute', f"{self.var_subst} can not be derived")
+            raise RuleException('SubstitutionInverse', f"no derivative found for {self.var_subst}")
 
         # Replace x with f(u)
         new_e_body = e.body.replace(Var(e.var), self.var_subst)
@@ -1642,9 +1647,10 @@ class SubstitutionInverse(Rule):
         # Solve the equations f(u) = x for u
         inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
         if inv_f is None:
-            raise RuleException("SubstitutionInverse", "cannot solve equation %s = %s for %s" % (
-                self.var_subst, e.var, new_var
-            ))
+            raise RuleException(
+                "SubstitutionInverse",
+                f"cannot solve equation {self.var_subst} = {e.var} for {new_var}"
+            )
 
         if expr.is_integral(e):
             lower = limits.reduce_inf_limit(inv_f.subst(e.var, (1 / Var(e.var)) + e.lower), e.var, ctx)
@@ -1724,7 +1730,7 @@ class ExpandPolynomial(Rule):
 
 class Rewriting(Rule):
     def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
-        self.name = "Equation"
+        self.name = "Rewriting"
         if isinstance(old_expr, str):
             old_expr = parser.parse_expr(old_expr)
         if isinstance(new_expr, str):
@@ -2310,7 +2316,7 @@ class IntegralEquation(Rule):
     """
 
     def __init__(self):
-        self.name = "IntegrateBothSide"
+        self.name = "IntegralEquation"
 
     def eval(self, e: Expr, ctx: Context):
         assert e.is_equals() and expr.is_deriv(e.lhs)
@@ -2923,3 +2929,13 @@ class LimRewrite(Rule):
             if res != None and normalize(res, ctx) == normalize(self.target, ctx):
                 return self.target
         return e
+    
+
+def get_rule_name(rule: Rule) -> str:
+    """Obtain name of rule."""
+    if isinstance(rule, OnSubterm):
+        return get_rule_name(rule.rule)
+    elif isinstance(rule, OnCount):
+        return get_rule_name(rule.rule)
+    else:
+        return type(rule).__name__

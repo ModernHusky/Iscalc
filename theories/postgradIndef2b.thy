@@ -10,7 +10,6 @@ calculate INT x. exp(exp(x)*sin(x))*(sin(x)+cos(x))*exp(x) for cos(x) + sin(x) !
     substitute u for exp(x)*sin(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. exp(arcsin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
@@ -18,14 +17,12 @@ calculate INT x. exp(arcsin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
     substitute u for arcsin(sqrt(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2 for sec(1/x) != 0, x != 0
     substitute u for tan(1/x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x))
@@ -35,7 +32,7 @@ calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x))
     simplify
 done
 
-calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2))
+calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2)) for 2-3*x*exp(x^2) != 0
     substitute u for 2-3*x*exp(x^2)
     apply integral identity
     replace substitution
@@ -45,7 +42,6 @@ done
 calculate INT x. sin(x)*cos(x)^3 / (1+cos(x)^2) for sin(x) != 0, cos(x) != 0
     substitute u for cos(x)
     substitute v for u^2
-    simplify
     partial fraction decomposition
     apply integral identity
     replace substitution
@@ -60,7 +56,6 @@ calculate INT x. 1 / (arcsin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
     substitute u for arcsin(sqrt(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1 / (sqrt(1+x)+(1+x)^(3/2)) for x > -1
@@ -148,7 +143,7 @@ calculate INT x. sqrt(x/(1-x^3)) for  x != 0
     simplify
 done
 
-calculate INT x. exp(x/2) / (16-exp(x))     
+calculate INT x. exp(x/2) / (16-exp(x)) for 16-exp(x) != 0, exp(x/2)/4 != 1, exp(x/2)/4 != -1
     rewrite exp(x) to exp(x/2)^2
     substitute u for exp(x/2)
     substitute v for u/4
@@ -165,7 +160,6 @@ calculate INT x. cos(x) / sqrt(2+cos(2*x))
     rewrite cos(x)^2 to 1-sin(x)^2
     simplify
     substitute u for sin(x)
-    apply integral identity
     substitute v for sqrt(2)*u/sqrt(3)
     rewrite sqrt(-(3 * v ^ 2) + 3) to sqrt(3) * sqrt(1-v^2)
     apply integral identity
@@ -198,10 +192,9 @@ calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1, x * exp(x) != 1
     substitute u for x*exp(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
+calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0, 1-exp(x)/x != 0
     rewrite exp(x)*(x-1)/(x-exp(x))^2 to (exp(x)*(x-1)/x^2) / (1 - exp(x)/x)^2
     substitute u for exp(x)/x
     substitute v for 1-u
@@ -210,7 +203,7 @@ calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
     simplify
 done
 
-calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2
+calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 for -(x*tan(x))+1 != 0
     rewrite (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 to (x * (1/cos(x)^2) + sin(x)/cos(x)) / (1 - x * (sin(x)/cos(x)))^2
     rewrite 1/cos(x)^2 to sec(x)^2
     rewrite sin(x)/cos(x) to tan(x)

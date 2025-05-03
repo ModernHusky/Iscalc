@@ -180,7 +180,6 @@ calculate INT x. exp(arctan(x))/(1+x^2)^(3/2)
     simplify
     solve integral INT u. cos(u)*exp(u)
     replace substitution
-    apply integral identity
     simplify
 done
 

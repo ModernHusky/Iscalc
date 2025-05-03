@@ -13,7 +13,6 @@ done
 calculate INT x. (2*x + 3) / (x^2 + 3*x - 10) for x > -5, x < 2
     partial fraction decomposition
     apply integral identity
-    simplify
 done
 
 calculate INT x. (x + 1) / (x^2 - 2*x + 5)
@@ -29,7 +28,7 @@ calculate INT x. (x + 1) / (x^2 - 2*x + 5)
     simplify
 done
 
-calculate INT x. 1 / (x * (x^2 + 1))
+calculate INT x. 1 / (x * (x^2 + 1)) for x != 0
     partial fraction decomposition
     apply integral identity
     substitute u for x^2 + 1
@@ -55,7 +54,7 @@ calculate INT x. 3 / (x^3 + 1) for x != -1
     simplify
 done
 
-calculate INT x. (x^2 + 1) / ((x+1)^2 * (x-1))
+calculate INT x. (x^2 + 1) / ((x+1)^2 * (x-1)) for x != 1, x != -1
     partial fraction decomposition
     apply integral identity
     substitute u for x + 1
@@ -164,11 +163,9 @@ done
 calculate INT x. 1 / (1 + sin(x) + cos(x))
     substitute u for tan(x/2)
     rewrite 2 / ((u ^ 2 + 1) * ((-(u ^ 2) + 1) / (u ^ 2 + 1) + 2 * u / (u ^ 2 + 1) + 1)) to 1 / (1 + u)
-    apply integral identity
     simplify
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1 / (2*sin(x) - cos(x) + 5)

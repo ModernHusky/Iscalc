@@ -469,7 +469,6 @@ lhs:
     apply integral identity
     simplify
     expand polynomial
-    simplify
 done
 
 ## Chapter 2, Section 5, Challenge Problems
@@ -533,7 +532,6 @@ lhs:
 done
 subgoal 3:3/2*(INT u:[-1/2,1/2]. 1/(u^2+3/4)) = pi/sqrt(3)
 lhs:
-    simplify
     rewrite 1 / (u ^ 2 + 3/4) to (4/3)/((4/3)*u^2+(4/3)*(3/4))
     simplify
     substitute t for (2*u)/sqrt(3)

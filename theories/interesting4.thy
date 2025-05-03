@@ -26,7 +26,6 @@ induction on n starting from 1
     induct:
     lhs:
         rewrite Gamma(n + 1) to n * Gamma(n)
-        simplify
         apply induction hypothesis (all)
         rewrite n * factorial(n - 1) to factorial(n)
     done

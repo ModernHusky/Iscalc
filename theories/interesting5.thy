@@ -168,7 +168,6 @@ from 1:
     rewrite 1 / (-x + 1) - 1 / (x + 1) to 2 * (x / (1-x^2))
     solve equation for x / (1-x^2)
     rewrite (-1) ^ k * (-x) ^ k to x ^ k
-    expand polynomial
     rewrite (SUM(k, 0, oo, x ^ k) - SUM(k, 0, oo, x ^ k * (-1) ^ k)) / 2 to 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k)
 done
 subgoal 3:(INT y:[0,1]. (SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k))) = -SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2)
@@ -179,17 +178,14 @@ lhs:
     simplify
     apply integral identity
     simplify
-    apply series evaluation
 done
 subgoal 4:(INT y:[0,1]. SUM(k, 0, oo, log(y) * y ^ k)) = -SUM(k, 0, oo, 1 / (k + 1) ^ 2)
 lhs:
     exchange integral and sum
-    apply integral identity
     integrate by parts with u=log(y),v=y^(k+1)/(k+1)
     simplify
     apply integral identity
     simplify
-    apply series evaluation
 done
 subgoal 5: SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2) = pi^2/12
 lhs:

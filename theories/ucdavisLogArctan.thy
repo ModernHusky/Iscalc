@@ -172,7 +172,6 @@ calculate INT x:[1, 4]. (9 + 6*sqrt(x) + x)/(4*sqrt(x) + x)
     rewrite 4*sqrt(x) + x to sqrt(x) * (4 + sqrt(x))
     substitute (u - 4)^2 for x
     substitute t for u - 4
-    simplify
     partial fraction decomposition
     apply integral identity
     simplify
