@@ -3,7 +3,7 @@
 
 # page 199
 
-calculate INT x. 1/(x*(x^2+1))
+calculate INT x. 1/(x*(x^2+1)) for x != 0
     partial fraction decomposition
     apply integral identity
     substitute u for x^2
@@ -11,7 +11,7 @@ calculate INT x. 1/(x*(x^2+1))
     replace substitution
 done
 
-calculate INT x. 1/(x^4-1)
+calculate INT x. 1/(x^4-1) for x != -1, x != 1
     partial fraction decomposition
     apply integral identity
     simplify

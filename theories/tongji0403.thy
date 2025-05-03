@@ -16,7 +16,7 @@ calculate INT x. log(x) for x > 0
     simplify
 done
 
-calculate INT x. arcsin(x)
+calculate INT x. arcsin(x) for x > -1, x < 1
     integrate by parts with u = arcsin(x), v = x
     substitute u for -(x^2) + 1
     apply integral identity

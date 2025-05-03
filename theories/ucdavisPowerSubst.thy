@@ -14,7 +14,7 @@ calculate INT x. 1 / (1 + sqrt(x))
     replace substitution
 done
 
-calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))
+calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x)) for sqrt(x) - 3 != 0
     substitute u for sqrt(x)
     partial fraction decomposition
     simplify
@@ -24,7 +24,7 @@ calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))
     simplify
 done
 
-calculate INT x. 3 / (4 + x ^ (1/3))
+calculate INT x. 3 / (4 + x ^ (1/3)) for x ^ (1/3) + 4 != 0
     substitute u for x ^ (1/3)
     simplify
     partial fraction decomposition

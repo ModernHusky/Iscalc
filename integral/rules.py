@@ -1395,7 +1395,7 @@ class Substitution(Rule):
             else:
                 e, _ = sep_lims[0]
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             ctx2.add_subst(self.var_name, self.var_subst)
             return ctx2
@@ -1600,7 +1600,7 @@ class SubstitutionInverse(Rule):
 
         new_var = new_vars.pop()
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
             ctx2.add_subst(new_var, inv_f)

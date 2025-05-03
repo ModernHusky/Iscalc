@@ -32,7 +32,7 @@ calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x))
     simplify
 done
 
-calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2))
+calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2)) for 2-3*x*exp(x^2) != 0
     substitute u for 2-3*x*exp(x^2)
     apply integral identity
     replace substitution
@@ -143,7 +143,7 @@ calculate INT x. sqrt(x/(1-x^3)) for  x != 0
     simplify
 done
 
-calculate INT x. exp(x/2) / (16-exp(x))     
+calculate INT x. exp(x/2) / (16-exp(x)) for 16-exp(x) != 0, exp(x/2)/4 != 1, exp(x/2)/4 != -1
     rewrite exp(x) to exp(x/2)^2
     substitute u for exp(x/2)
     substitute v for u/4
@@ -194,7 +194,7 @@ calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1, x * exp(x) != 1
     replace substitution
 done
 
-calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
+calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0, 1-exp(x)/x != 0
     rewrite exp(x)*(x-1)/(x-exp(x))^2 to (exp(x)*(x-1)/x^2) / (1 - exp(x)/x)^2
     substitute u for exp(x)/x
     substitute v for 1-u
@@ -203,7 +203,7 @@ calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
     simplify
 done
 
-calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2
+calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 for -(x*tan(x))+1 != 0
     rewrite (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 to (x * (1/cos(x)^2) + sin(x)/cos(x)) / (1 - x * (sin(x)/cos(x)))^2
     rewrite 1/cos(x)^2 to sec(x)^2
     rewrite sin(x)/cos(x) to tan(x)

@@ -11,7 +11,7 @@ calculate INT x. 1 / sqrt(x-x^2)
     simplify
 done
 
-calculate INT x. 1/x^2
+calculate INT x. 1/x^2 for x != 0
     apply integral identity
     simplify
 done

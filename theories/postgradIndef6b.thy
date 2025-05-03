@@ -3,7 +3,7 @@
 
 # page 200
 
-calculate INT x. (x^2+1)/((x-1)*(x+1)^2)
+calculate INT x. (x^2+1)/((x-1)*(x+1)^2) for x != -1, x != 1
     partial fraction decomposition
     apply integral identity
     substitute u for x+1
@@ -28,7 +28,7 @@ calculate INT x. x^3/(x+3) for x != -3
     simplify
 done
 
-calculate INT x. 1/(x*(x^6+3))
+calculate INT x. 1/(x*(x^6+3)) for x != 0, 18*x^6 + 18 != 0
     partial fraction decomposition
     apply integral identity
     substitute u for x^6
@@ -51,7 +51,7 @@ calculate INT x. x^2/(1+x^2)^2
     simplify
 done
 
-calculate INT x. 1/(x*(1+x^4))
+calculate INT x. 1/(x*(1+x^4)) for x != 0, 4*x^4 + 4 != 0
     partial fraction decomposition
     simplify
     apply integral identity

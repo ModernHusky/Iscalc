@@ -12,7 +12,7 @@ calculate INT x. arctan(sqrt(x))
     simplify
 done
 
-calculate INT x. arctan(x)/x^2
+calculate INT x. arctan(x)/x^2 for x != 0
     integrate by parts with u=arctan(x), v=-1/x
     partial fraction decomposition
     apply integral identity

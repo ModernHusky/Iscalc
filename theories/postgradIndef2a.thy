@@ -66,7 +66,7 @@ calculate INT x. sin(sqrt(1+x^2))*x/sqrt(1+x^2) for x != 0
     simplify
 done
 
-calculate INT x. 1/(2-3*x)^(1/3)
+calculate INT x. 1/(2-3*x)^(1/3) for 2-3*x != 0
     substitute u for 2-3*x
     simplify
     apply integral identity
@@ -74,21 +74,21 @@ calculate INT x. 1/(2-3*x)^(1/3)
     simplify
 done
 
-calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
+calculate INT x. sin(x) / cos(x)^3 for cos(x) != 0
     substitute u for cos(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. x / sqrt(2-3*x^2)
+calculate INT x. x / sqrt(2-3*x^2) for 2-3*x^2 > 0
     substitute u for 2-3*x^2
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. (1+log(x))/(x*log(x))^2 for x > exp(-1)
+calculate INT x. (1+log(x))/(x*log(x))^2 for x > exp(-1), x*log(x) != 0
     substitute u for x*log(x)
     apply integral identity
     replace substitution
@@ -109,7 +109,7 @@ calculate INT x. 1 / (arcsin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
     simplify
 done
 
-calculate INT x. (sin(x)+cos(x))/(sin(x)-cos(x))^(1/3) for x>0, x < pi/2
+calculate INT x. (sin(x)+cos(x))/(sin(x)-cos(x))^(1/3) for x>0, x < pi/2, sin(x)-cos(x) != 0
     substitute u for sin(x)-cos(x)
     apply integral identity
     replace substitution
@@ -134,7 +134,7 @@ calculate INT x. 3*x^2/(1-x^4)
     simplify
 done
 
-calculate INT x. 3*x^3/(1-x^4)
+calculate INT x. 3*x^3/(1-x^4) for x^4 != 1
     substitute u for x^4
     apply integral identity
     replace substitution

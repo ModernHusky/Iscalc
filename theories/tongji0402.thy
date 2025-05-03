@@ -15,13 +15,13 @@ calculate INT x. (3 - 2*x)^3
     simplify
 done
 
-calculate INT x. 1 / (1 - 2*x)
+calculate INT x. 1 / (1 - 2*x) for x != 1/2
     simplify
     apply integral identity
     simplify
 done
 
-calculate INT x. 1 / (2-3*x)^(1/3)
+calculate INT x. 1 / (2-3*x)^(1/3) for 2-3*x != 0
     substitute u for 2-3*x
     apply integral identity
     replace substitution
@@ -56,21 +56,21 @@ calculate INT x. x * cos(x^2)
     simplify
 done
 
-calculate INT x. x / sqrt(2 - 3*x^2) for x!=0
+calculate INT x. x / sqrt(2 - 3*x^2) for 2 - 3*x^2 > 0
     substitute u for 2 - 3*x^2
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 3*x^3 / (1 - x^4)
+calculate INT x. 3*x^3 / (1 - x^4) for 1-x^4 != 0
     substitute u for 1 - x^4
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. (x + 1) / (x^2 + 2*x + 5)
+calculate INT x. (x + 1) / (x^2 + 2*x + 5) for x^2 + 2*x + 5 != 0
     rewrite x + 1 to (2*x + 2) / 2
     substitute u for x^2 + 2*x + 5
     apply integral identity
@@ -86,14 +86,14 @@ calculate INT t. cos(w * t + phi) ^ 2 * sin(w * t + phi) for w != 0, sin(t*w+phi
     simplify
 done
 
-calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
+calculate INT x. sin(x) / cos(x)^3 for cos(x) != 0
     substitute u for cos(x)
     apply integral identity
     simplify
     replace substitution
 done
 
-calculate INT x. (sin(x) + cos(x)) / (sin(x) - cos(x))^(1/3)
+calculate INT x. (sin(x) + cos(x)) / (sin(x) - cos(x))^(1/3) for sin(x) - cos(x) != 0
     rewrite sin(x) + cos(x) to cos(x) + sin(x)
     substitute u for sin(x) - cos(x)
     apply integral identity
@@ -109,13 +109,13 @@ calculate INT x. tan(x)^10 * sec(x)^2
     replace substitution
 done
 
-calculate INT x. 1 / (x * log(x) * log(log(x)))
+calculate INT x. 1 / (x * log(x) * log(log(x))) for log(log(x)) != 0
     substitute u for log(log(x))
     apply integral identity
     replace substitution
 done
 
-calculate INT x. 1 / (arcsin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1
+calculate INT x. 1 / (arcsin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1, arcsin(x) != 0
     substitute u for arcsin(x)
     apply integral identity
     replace substitution
@@ -242,7 +242,7 @@ calculate INT x. x^3 / (9 + x^2) for x != 0
     replace substitution
 done
 
-calculate INT x. 1 / (2*x^2 - 1)
+calculate INT x. 1 / (2*x^2 - 1) for x != sqrt(2)/2, x != -sqrt(2)/2
     substitute u for sqrt(2) * x
     rewrite 2*u^2 - 2 to 2 * (u^2-1)
     simplify
