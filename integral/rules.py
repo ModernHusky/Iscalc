@@ -2,7 +2,7 @@
 import re
 from decimal import Decimal
 from fractions import Fraction
-from typing import Optional, Dict, Tuple, Union, List, Set
+from typing import Optional, Dict, Tuple, Union, List
 import functools
 import operator
 
@@ -103,9 +103,8 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
                     return normal(e * rec(y * expr.log(x)))
-
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"deriv: {e}")
         elif expr.is_fun(e):
             if e.func_name == "sin":
                 x, = e.args
@@ -179,7 +178,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
         elif expr.is_inf(e):
             return Const(0)
         else:
-            raise NotImplementedError(f"{e}, {type(e)}")
+            raise NotImplementedError(f"deriv: {e}, {type(e)}")
 
     return rec(e)
 
@@ -1428,6 +1427,9 @@ class Substitution(Rule):
 
         # Expression used for substitution
         var_subst = self.var_subst
+
+        if expr.is_compare(var_subst):
+            raise RuleException("Substitution", f"expression {var_subst} should not be (in)equality")
 
         if e.var not in var_subst.get_vars():
             raise RuleException("Substitution", f"variable {e.var} not found in substituted expression")
