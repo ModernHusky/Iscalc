@@ -24,19 +24,39 @@ lhs:
 done
 
 prove (INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C) for a != 0, a * x + b != 0
-sorry
+lhs:
+    substitute u for a * x + b
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (a * x)) = log(abs(a * x)) / a + SKOLEM_CONST(C) for a != 0, x != 0
-sorry
+lhs:
+    substitute u for a * x
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (a * x - b)) = log(abs(a * x - b)) / a + SKOLEM_CONST(C) for a != 0, a * x - b != 0
-sorry
+lhs:
+    substitute u for a * x - b
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (-(a * x) + b)) = log(abs(-(a * x) + b)) / (-a) + SKOLEM_CONST(C) for a != 0, -(a * x) + b != 0
-sorry
+lhs:
+    substitute u for -(a * x) + b
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (-(a * x) - b)) = log(abs(-(a * x) - b)) / (-a) + SKOLEM_CONST(C) for a != 0, -(a * x) - b != 0
-sorry
+lhs:
+    substitute u for -(a * x) - b
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C) for a != 0
 lhs:
@@ -156,10 +176,18 @@ lhs:
 done
 
 prove (INT x. 1 / (b - a * x)) = -log(abs(b - a * x)) / a + SKOLEM_CONST(C) for a != 0, b - a * x != 0
-sorry
+lhs:
+    substitute u for b - a * x
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (b + a * x)) = log(abs(b + a * x)) / a + SKOLEM_CONST(C) for a != 0, b + a * x != 0
-sorry
+lhs:
+    substitute u for b + a * x
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * arctan(x / a) + SKOLEM_CONST(C) for a != 0
 lhs:
