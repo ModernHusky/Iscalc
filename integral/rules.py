@@ -877,7 +877,7 @@ class IntegralIdentity(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
 
-        # If incoming expression is equality, apply to the right side of equation
+        # If incoming expression is equality, apply to both sides of equation
         if e.is_equals():
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
@@ -1729,7 +1729,7 @@ class ExpandPolynomial(Rule):
 
 class Rewriting(Rule):
     def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
-        self.name = "Equation"
+        self.name = "Rewriting"
         if isinstance(old_expr, str):
             old_expr = parser.parse_expr(old_expr)
         if isinstance(new_expr, str):
@@ -2315,7 +2315,7 @@ class IntegralEquation(Rule):
     """
 
     def __init__(self):
-        self.name = "IntegrateBothSide"
+        self.name = "IntegralEquation"
 
     def eval(self, e: Expr, ctx: Context):
         assert e.is_equals() and expr.is_deriv(e.lhs)
@@ -2928,3 +2928,13 @@ class LimRewrite(Rule):
             if res != None and normalize(res, ctx) == normalize(self.target, ctx):
                 return self.target
         return e
+    
+
+def get_rule_name(rule: Rule) -> str:
+    """Obtain name of rule."""
+    if isinstance(rule, OnSubterm):
+        return get_rule_name(rule.rule)
+    elif isinstance(rule, OnCount):
+        return get_rule_name(rule.rule)
+    else:
+        return type(rule).__name__

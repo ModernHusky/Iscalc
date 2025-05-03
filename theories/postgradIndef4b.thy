@@ -78,7 +78,6 @@ calculate INT x. x*exp(x) / (1+x)^2 for x != -1
     rewrite -(x * exp(x)) - exp(x) to -exp(x) * (x+1)
     simplify
     apply integral identity
-    simplify
 done
 
 calculate INT x. x*exp(-x) / (1-x)^2 for x != 1
@@ -134,7 +133,6 @@ calculate INT x. sqrt(a^2+x^2) for a > 0
     simplify
     apply integral identity
     solve integral INT x. sqrt(a^2+x^2)
-    apply integral identity
     replace substitution
     simplify
 done
@@ -146,8 +144,6 @@ calculate INT x. sqrt(a^2-x^2) for a > 0
     rewrite -(sqrt(a ^ 2 - x ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 - x ^ 2) to -sqrt(a^2-x^2)+a^2/sqrt(a^2-x^2)
     apply integral identity
     solve integral INT x. sqrt(a^2-x^2)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. sec(x)^3
@@ -156,8 +152,6 @@ calculate INT x. sec(x)^3
     expand polynomial
     apply integral identity
     solve integral INT x. sec(x)^3
-    apply integral identity
-    simplify
 done
 
 calculate INT x. csc(x)^3
@@ -166,8 +160,6 @@ calculate INT x. csc(x)^3
     expand polynomial
     apply integral identity
     solve integral INT x. csc(x)^3
-    apply integral identity
-    simplify
 done
 
 calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
@@ -177,9 +169,7 @@ calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
     simplify
     solve integral INT x. exp(a*x)*sin(b*x)
     expand polynomial
-    apply integral identity
     expand polynomial
-    simplify
 done
 
 calculate INT x. exp(a*x)*cos(b*x) for a > 0, b > 0
@@ -189,9 +179,7 @@ calculate INT x. exp(a*x)*cos(b*x) for a > 0, b > 0
     simplify
     solve integral INT x. exp(a*x)*cos(b*x)
     expand polynomial
-    apply integral identity
     expand polynomial
-    simplify
 done
 
 calculate INT x. exp(x) * ((1-x)/(1+x^2))^2
@@ -436,7 +424,6 @@ calculate INT x. tan(x)^4
     rewrite tan(x)^2 to sec(x)^2-1
     apply integral identity
     solve integral INT x. tan(x)^4
-    apply integral identity
     expand polynomial
     simplify
 done
@@ -448,7 +435,6 @@ calculate INT x. 1/sin(x)^3 for x>0, x<pi
     expand polynomial
     apply integral identity
     solve integral INT x. csc(x)^3
-    apply integral identity
     expand polynomial
     simplify
 done

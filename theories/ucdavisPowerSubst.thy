@@ -12,7 +12,6 @@ calculate INT x. 1 / (1 + sqrt(x))
     substitute v for u + 1
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))

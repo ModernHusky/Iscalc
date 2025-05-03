@@ -107,7 +107,6 @@ lhs:
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    simplify
     rewrite 3 * x ^ 2 * sin(x) - x ^ 3 * cos(x) + 6 * x * cos(x) - 6 * sin(x) to (3 * x ^ 2 - 6) * sin(x) - (x ^ 3 - 6 * x) * cos(x)
 done
 
@@ -156,11 +155,6 @@ lhs:
     expand polynomial
     apply integral identity
     integrate by parts with u = x, v = sin(2 * x)/2
-    simplify
-    apply integral identity
-    simplify
-    apply integral identity
-    simplify
     simplify
     rewrite (INT x. sin(2 * x)) / 4 to (INT x. sin(2 * x) / 4)
     substitute u for 2 * x
@@ -301,12 +295,10 @@ lhs:
     rewrite cos(x)^3 * (1 - cos(x)^2) to cos(x)^3 - cos(x)^5
     rewrite 4 * (INT x. cos(x)^3 - cos(x)^5) to 4 * (INT x. cos(x)^3) - 4 * (INT x. cos(x)^5)
     solve integral INT x. cos(x)^5
-    simplify
     rewrite INT x. cos(x)^3 to INT x. cos(x)^2 * cos(x)
     rewrite cos(x)^2 to 1 - sin(x)^2
     rewrite (1 - sin(x)^2) * cos(x) to cos(x) - sin(x)^2 * cos(x)
     rewrite INT x. cos(x) - sin(x)^2 * cos(x) to (INT x. cos(x)) - (INT x. sin(x)^2 * cos(x))
-    apply integral identity
     apply integral identity
     substitute u for sin(x)
     apply integral identity
@@ -326,7 +318,6 @@ sorry
 prove (INT x. x * cos(x))  = cos(x) + x * sin(x) + SKOLEM_CONST(C)
 lhs:
     integrate by parts with u = x, v = sin(x)
-    simplify
     apply integral identity
     simplify
 done
@@ -339,7 +330,6 @@ lhs:
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    simplify
     rewrite x^2 * sin(x) + 2 * x * cos(x) - 2 * sin(x) to (x^2 - 2) * sin(x) + 2 * x * cos(x)
 done
 
@@ -371,7 +361,6 @@ lhs:
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    simplify
     rewrite -(12 * x ^ 2 * sin(x)) + 4 * x ^ 3 * cos(x) + x ^ 4 * sin(x) - 24 * x * cos(x) + 24 * sin(x) + SKOLEM_CONST(C) to (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
 done
 

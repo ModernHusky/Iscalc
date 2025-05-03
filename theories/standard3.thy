@@ -119,8 +119,6 @@ lhs:
     rewrite 2 * a ^ 2 * (INT x. 1 / (a ^ 2 + x ^ 2)) to 2 * a * (INT x. a / (a ^ 2 + x ^ 2))
     substitute u for x/a
     simplify
-    apply integral identity
-    simplify
     rewrite 1 / (a^2 * u^2 + a^2) to (1/a^2) * (1 / (u^2 + 1))
     simplify
     apply integral identity
@@ -131,16 +129,12 @@ done
 prove (INT x. x * log(x ^ 2 + a ^ 2)) = 1/2 * ((x ^ 2 + a ^ 2) * log(x ^ 2 + a ^ 2) - x ^ 2) + SKOLEM_CONST(C) for a: real, x^2 + a^2 > 0
 lhs:
     integrate by parts with u = log(x^2 + a^2), v = x^2/2
-    simplify
     rewrite x^3/(a^2 + x^2) to x - (a^2*x)/(x^2 + a^2)
     simplify
     apply integral identity
-    simplify
     rewrite x^2*log(a^2 + x^2)/2 to (1/2)*(x^2 + a^2)*log(x^2 + a^2) - (a^2/2)*log(x^2 + a^2)
     simplify
     substitute u for x^2 + a^2
-    simplify
-    apply integral identity
     simplify
     rewrite sqrt(-(a^2) + u)/(u * sqrt(-(a^2) + u)) to 1/u
     simplify
@@ -163,8 +157,6 @@ lhs:
     simplify
     substitute u for x/a
     simplify
-    apply integral identity
-    simplify
     rewrite 1/(a^2*u^2 + a^2) to 1/(a^2*(u^2 + 1))
     simplify
     apply integral identity
@@ -185,10 +177,8 @@ lhs:
     simplify
     apply integral identity
     simplify
-    simplify
     substitute u for x/a
     simplify
-    apply integral identity
     rewrite 1/(a^2*u^2 + a^2) to (1/a^2)/(u^2 + 1)
     simplify
     apply integral identity

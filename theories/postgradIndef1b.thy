@@ -109,7 +109,6 @@ done
 
 calculate INT x. 1/sqrt(exp(2*x)+1)
     substitute u for exp(x)
-    simplify
     substitute tan(v) for u
     rewrite tan(v)^2 + 1 to sec(v)^2
     simplify
@@ -123,7 +122,6 @@ done
 
 calculate INT x. 1/sqrt(exp(2*x)-1) for x > 0
     substitute u for exp(x)
-    simplify
     substitute sec(v) for u
     rewrite sec(v)^2 - 1 to tan(v)^2
     simplify
@@ -136,7 +134,6 @@ calculate INT x. sqrt((exp(x)-1)/(exp(x)+1)) for x > 0
     rewrite (exp(x)-1)/(exp(x)+1) to (exp(x)-1)^2/(exp(2*x)-1)
     simplify
     substitute u for exp(x)
-    simplify
     substitute sec(v) for u
     rewrite sec(v)^2 - 1 to tan(v)^2
     simplify

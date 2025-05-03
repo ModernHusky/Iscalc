@@ -91,7 +91,6 @@ calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
     apply integral identity
     simplify
     replace substitution
-    simplify
 done
 
 calculate INT x. (sin(x) + cos(x)) / (sin(x) - cos(x))^(1/3)
@@ -167,7 +166,6 @@ calculate INT x. log(tan(x)) / (cos(x) * sin(x))
     substitute u for log(tan(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. cos(x)^3
@@ -238,12 +236,10 @@ done
 calculate INT x. x^3 / (9 + x^2) for x != 0
     partial fraction decomposition
     substitute u for x ^ 2 + 9
-    expand polynomial
     simplify
     apply integral identity
     simplify
     replace substitution
-    simplify
 done
 
 calculate INT x. 1 / (2*x^2 - 1)
@@ -259,7 +255,6 @@ done
 calculate INT x. 1 / ((x + 1) * (x - 2))
     partial fraction decomposition
     apply integral identity
-    simplify
 done
 
 calculate INT x. x / (x^2 - x - 2)
@@ -282,7 +277,6 @@ done
 
 calculate INT x. 1 / (x * sqrt(x^2 - 1)) for x > 1
     substitute t for sqrt(x^2-1)
-    simplify
     apply integral identity
     replace substitution
 done
@@ -311,7 +305,6 @@ done
 
 calculate INT x. 1 / (1 + sqrt(2*x)) for x > 0
     substitute t for sqrt(2*x)
-    simplify
     partial fraction decomposition
     apply integral identity
     replace substitution

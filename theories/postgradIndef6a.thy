@@ -9,7 +9,6 @@ calculate INT x. 1/(x*(x^2+1))
     substitute u for x^2
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1/(x^4-1)
@@ -51,7 +50,6 @@ done
 calculate INT x. (2*x+3)/(x^2+3*x-10) for x > -5, x < 2
     partial fraction decomposition
     apply integral identity
-    simplify
 done
 
 calculate INT x. (x+1)/(x^2-2*x+5)

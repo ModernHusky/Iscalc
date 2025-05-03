@@ -135,7 +135,6 @@ lhs:
     simplify
     apply integral identity
     replace substitution
-    simplify
     rewrite -(a / 2 * (-(a * arctan(x / a)) + x)) + x ^ 2 / 2 * arctan(x / a) to (a^2 / 2 + x^2 / 2) * arctan(x / a) - a * x / 2
     simplify
 done
@@ -150,7 +149,6 @@ lhs:
     rewrite x ^ 3 / (a ^ 2 + x ^ 2) to x - (a ^ 2 * x) / (a ^ 2 + x ^ 2)
     simplify
     apply integral identity
-    simplify
     substitute u for a^2 + x^2
     simplify
     apply integral identity
@@ -169,8 +167,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    apply integral identity
-    apply integral identity
     rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
     substitute u for x/a
     apply integral identity
@@ -237,7 +233,6 @@ lhs:
     rewrite 1 / (x ^ 2 * ((x ^ 2 + a ^ 2) / a ^ 2)) to a ^ 2 / (x ^ 2 * (x ^ 2 + a ^ 2))
     substitute u for x/a
     simplify
-    apply integral identity
     rewrite 1 / (u ^ 2 * (a ^ 2 * u ^ 2 + a ^ 2)) to 1 / (a ^ 2 * u ^ 2 * (u ^ 2 + 1))
     rewrite 1 / (a ^ 2 * u ^ 2 * (u ^ 2 + 1)) to (1 / (a ^ 2 * u ^ 2)) - (1 / (a ^ 2 * (u ^ 2 + 1)))
     apply integral identity

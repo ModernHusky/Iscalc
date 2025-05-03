@@ -120,7 +120,6 @@ lhs:
     simplify
     apply integral identity
     replace substitution
-    simplify
 done
 
 prove (INT x. 1 / (a + x ^ 2)) = (1 / sqrt(a)) * arctan(x / sqrt(a)) + SKOLEM_CONST(C) for a > 0
@@ -146,8 +145,6 @@ base:
     lhs:
         apply integral identity
         simplify
-    rhs:
-        simplify
     done
 induct:
     lhs:
@@ -157,8 +154,6 @@ induct:
         simplify
         rewrite to (-1) ^ (n + 1) * (m + 1) ^ (-n - 2) * ((n + 1) * factorial(n))
         rewrite (n + 1) * factorial(n) to factorial(n + 1)
-        simplify
-    rhs:
         simplify
     done
 done

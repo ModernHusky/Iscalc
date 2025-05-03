@@ -24,7 +24,6 @@ calculate INT x. arcsin(2*x-1) for x > 0, x < 1
     rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
-    expand polynomial
     apply integral identity
     replace substitution
     simplify
@@ -38,7 +37,6 @@ calculate INT x. arccos(1-2*x) for x > 0, x < 1
     rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
-    expand polynomial
     apply integral identity
     replace substitution
     simplify
@@ -143,14 +141,11 @@ calculate INT x. cos(x/2)^2
     simplify
     apply integral identity
     solve integral INT x. cos(x/2)^2
-    apply integral identity
-    simplify
 done
 
 calculate INT x. sec(x)*(sec(x)-tan(x))
     expand polynomial
     apply integral identity
-    simplify
 done
 
 calculate INT x. tan(x)^2

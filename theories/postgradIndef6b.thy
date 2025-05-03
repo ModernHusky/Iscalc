@@ -58,7 +58,6 @@ calculate INT x. 1/(x*(1+x^4))
     substitute u for x^4
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1/(x^4*(1+x^2))

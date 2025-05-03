@@ -130,7 +130,6 @@ calculate INT x. sqrt(x^2+25)
     expand polynomial
     apply integral identity
     solve integral 25 * (INT u. sec(u)^3)
-    apply integral identity
     expand polynomial
     simplify
     replace substitution
@@ -214,7 +213,6 @@ calculate INT x. sqrt((x-1) / x) for x > 1
     integrate by parts with u=tan(v),v=sec(v)
     rewrite sec(v)^3 to sec(v)*sec(v)^2
     rewrite sec(v)^2 to tan(v)^2 + 1
-    expand polynomial
     expand polynomial
     simplify
     solve integral 2 * INT v. sec(v)*tan(v)^2

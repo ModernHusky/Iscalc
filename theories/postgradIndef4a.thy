@@ -42,8 +42,6 @@ calculate INT x. exp(-x) * cos(x)
     integrate by parts with u = sin(x), v = -exp(-x)
     simplify
     solve integral INT x. exp(-x) * cos(x)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. x*cos(x/2)
@@ -109,7 +107,6 @@ done
 
 calculate INT x. x*log(x-1)
     integrate by parts with u=log(x-1),v=x^2/2
-    simplify
     partial fraction decomposition
     apply integral identity
     simplify
