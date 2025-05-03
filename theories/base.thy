@@ -54,46 +54,6 @@ axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
-axiom (INT x. 1 / (x - i)) = log(x - i) + SKOLEM_CONST(C)
-
-axiom (INT x:[a,b]. 1 / (x - i)) = [log(x - i)]_x=a,b for a b: real
-
-axiom (INT x:[a,b]. 1 / (c * x - i)) = 1 / c * [log(c * x - i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (x - d * i)) = [log(x - d * i)]_x=a,b for a b d: real
-
-axiom (INT x:[a,b]. 1 / (c * x - d * i)) = 1 / c * [log(c * x - d * i)]_x=a,b for a b c d: real
-
-axiom (INT x. 1 / (a * (x - i))) = 1 / a * log(x - i) + SKOLEM_CONST(C) for a: real, a != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x - i))) = 1 / c * [log(x - i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (d * (c * x - i))) = 1 / (d * c) * [log(c * x - i)]_x=a,b for a b c d: real, c != 0, d != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x - d * i))) = 1 / c * [log(x - d * i)]_x=a,b for a b c d: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (e * (c * x - d * i))) = 1 / c * [log(c * x - d * i)]_x=a,b for a b c d e: real, e != 0
-
-axiom (INT x. 1 / (x + i)) = log(x + i) + SKOLEM_CONST(C)
-
-axiom (INT x:[a,b]. 1 / (x + i)) = [log(x + i)]_x=a,b for a b: real
-
-axiom (INT x:[a,b]. 1 / (c * x + i)) = 1 / c * [log(c * x + i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (x + d * i)) = [log(x + d * i)]_x=a,b for a b d: real
-
-axiom (INT x:[a,b]. 1 / (c * x + d * i)) = 1 / c * [log(c * x + d * i)]_x=a,b for a b c d: real
-
-axiom (INT x. 1 / (a * (x + i))) = 1 / a * log(x + i) + SKOLEM_CONST(C) for a: real, a != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x + i))) = 1 / c * [log(x + i)]_x=a,b for a b c: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (d * (c * x + i))) = 1 / (d * c) * [log(c * x + i)]_x=a,b for a b c d: real, c != 0, d != 0
-
-axiom (INT x:[a,b]. 1 / (c * (x + d * i))) = 1 / c * [log(x + d * i)]_x=a,b for a b c d: real, c != 0
-
-axiom (INT x:[a,b]. 1 / (e * (c * x + d * i))) = 1 / c * [log(c * x + d * i)]_x=a,b for a b c d e: real, e != 0
-
 # Common series expansion
 
 axiom exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))
