@@ -968,6 +968,10 @@ class IntegralIdentity(Rule):
             "name": self.name,
             "str": str(self)
         }
+    
+    
+
+
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
@@ -1018,6 +1022,9 @@ class IntegralIdentity(Rule):
             else:
                 # If no Skolem variable at right
                 e = e + expr.SkolemFunc("C", tuple(Var(arg) for arg in skolem_args))
+
+       
+
         return e
 
 class ReplaceSubstitution(Rule):
@@ -3055,3 +3062,70 @@ class LimRewrite(Rule):
             if res != None and normalize(res, ctx) == normalize(self.target, ctx):
                 return self.target
         return e
+
+class MergeEvalAt(Rule):
+    """合并具有相同变量和上下限的EvalAt表达式"""
+
+    def __init__(self):
+        self.name = "MergeEvalAt"
+
+    def __str__(self):
+        return "merge evalat expressions"
+
+    def export(self):
+        return {
+            "name": self.name,
+            "str": str(self)
+        }
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        """将包含多个EvalAt的表达式合并成单一EvalAt表达式"""
+        # 如果不是操作符表达式,直接返回
+        if not (isinstance(e, Op) and e.op in ['+', '-', '*', '/']):
+            return e
+            
+        # 收集所有的EvalAt表达式
+        evalats = []
+        
+        def collect_evalats(expr):
+            if isinstance(expr, EvalAt):
+                evalats.append(expr)
+                return True
+            elif isinstance(expr, Op) and expr.op in ['+', '-', '*', '/']:
+                left = collect_evalats(expr.args[0])
+                right = collect_evalats(expr.args[1])
+                return left or right
+            return False
+            
+        has_evalats = collect_evalats(e)
+        if not has_evalats or len(evalats) <= 1:
+            return e
+            
+        # 检查所有EvalAt是否有相同的变量和上下限
+        var_name = evalats[0].var
+        lower = evalats[0].lower
+        upper = evalats[0].upper
+        
+        for evalat in evalats:
+            if evalat.var != var_name or evalat.lower != lower or evalat.upper != upper:
+                return e
+        
+        # 替换所有EvalAt为它们的函数体
+        def replace_evalat(expr):
+            if isinstance(expr, EvalAt):
+                return expr.body
+            elif isinstance(expr, Op):
+                if expr.op == '+':
+                    return replace_evalat(expr.args[0]) + replace_evalat(expr.args[1])
+                elif expr.op == '-':
+                    return replace_evalat(expr.args[0]) - replace_evalat(expr.args[1])
+                elif expr.op == '*':
+                    return replace_evalat(expr.args[0]) * replace_evalat(expr.args[1])
+                elif expr.op == '/':
+                    return replace_evalat(expr.args[0]) / replace_evalat(expr.args[1])
+            return expr
+            
+        # 创建合并后的函数体
+        combined_body = replace_evalat(e)
+        
+        return EvalAt(var_name, lower, upper, combined_body)
