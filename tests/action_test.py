@@ -1482,17 +1482,25 @@ class ActionTest(unittest.TestCase):
         self.check_actions("interesting", "Chapter1Practice0101", actions)
 
     def testEulerFormula1(self):
-        # TODO ([log(x)]_x=1,oo) - 1/2 * ([log(x - i)]_x=1,oo) - 1/2 * ([log(x + i)]_x=1,oo) ->
-        #                                        [(log(x)) - 1/2 * (log(x - i)) - 1/2 * (log(x + i))]_x=1,oo
         actions = """
             prove (INT x:[1,oo]. 1/(x*(x^2+1))) = log(2)/2 for x:real, x!=0
             lhs:
                 rewrite 1/(x*(x^2+1)) to 1/x - 1/(2*(x-i)) - 1/(2*(x+i))
                 apply integral identity
+                merge evalat
+                rewrite 1/2 * log(x - i) to log((x-i)^(1/2))
+                rewrite 1/2 * log(x + i) to log((x+i)^(1/2))
+                rewrite log(x) - log((x - i) ^ (1/2)) to log(x/(x - i) ^ (1/2))
+                rewrite log(x / (x - i) ^ (1/2)) - log((x + i) ^ (1/2)) to - log((x + i) ^ (1/2))+log(x / (x - i) ^ (1/2)) 
+                rewrite - log((x + i) ^ (1/2)) to log((x + i) ^ (-1/2))
+                rewrite log((x + i) ^ (-1/2)) + log(x / (x - i) ^ (1/2)) to log(((x + i) ^ (-1/2)) * (x / (x - i) ^ (1/2)))
                 simplify
-                rewrite to (log(-i + 1) + log(i + 1)) / 2
-                rewrite log(-i + 1) + log(i + 1) to log((-i + 1)*(i + 1))
-                rewrite (-i + 1)*(i + 1) to (-i*i-i+i+1)
+                rewrite (sqrt(x + i) * sqrt(x - i)) to sqrt(x^2+1)
+                rewrite (LIM {x -> oo}. log(x / sqrt(x ^ 2 + 1))) to log(1)
+                simplify
+                rewrite log(-i + 1) / 2 + log(i + 1) / 2 to (log(-i + 1)+ log(i + 1)) / 2
+                rewrite log(-i + 1)+ log(i + 1) to log((-i + 1)*(i + 1))
+                rewrite (-i + 1)*(i + 1) to -i*i-i+i+1
                 simplify
             done
         """
