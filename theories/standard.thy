@@ -151,7 +151,11 @@ lhs:
     replace substitution
 done
 
-prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C) for cos(-x) != 0, cos(x) != 0
+prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C) for cos(x) != 0
+subgoal 1: cos(-x) != 0
+lhs:
+    simplify
+done
 lhs:
     substitute y for -x
     apply integral identity
@@ -302,8 +306,18 @@ lhs:
     simplify
 done
 
-prove (INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C)
-sorry
+prove (INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C) for cos(x) != 0
+subgoal 1: sec(x) + tan(x) != 0
+lhs:
+    rewrite to (sin(x) + 1) / cos(x)
+done
+lhs:
+    rewrite sec(x) to sec(x)*(sec(x)+tan(x))/(sec(x)+tan(x))
+    rewrite sec(x)*(sec(x)+tan(x)) to sec(x)*tan(x) + sec(x)^2
+    substitute u for sec(x) + tan(x)
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. sec(-x)) = -log(abs(sec(-x)+tan(-x))) + SKOLEM_CONST(C)
 sorry

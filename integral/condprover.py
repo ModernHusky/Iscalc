@@ -485,6 +485,9 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > 0"], "a / c <= b / c"),
         (["a >= b", "c < 0"], "a / c <= b / c"),
         (["a <= b", "c < 0"], "a / c >= b / c"),
+        (["a > 0", "b != 0"], "a / b != 0"),
+        (["a < 0", "b != 0"], "a / b != 0"),
+        (["a != 0", "b != 0"], "a / b != 0"),
         (["x > 1"], "1 / x < 1"),
         (["x > 0"], "1 / x > 0"),
         (["x > -a", "x < a"], "x / a < 1"),
@@ -737,6 +740,9 @@ def check_condition(e: Expr, ctx: Context) -> bool:
                 
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
+    for _, g in ctx.get_all_subgoals().items():
+        if not g.conds.data and expr.is_compare(g.expr) and not expr.is_equals(g.expr):
+            conds.add_condition(g.expr)
     all_conds = init_all_conds(conds)
     
     # Check all subexpressions of e

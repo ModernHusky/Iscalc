@@ -1483,9 +1483,11 @@ class Substitution(Rule):
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx2)
             if gu is None:
-                raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
-                    var_subst, var_name, e.var, body_subst
-                ))
+                raise RuleException(
+                    "Substitution",
+                    f"unable to solve equation {var_subst} = {var_name} for {e.var}. "
+                    f"Note: it may be helpful to isolate d({var_subst}) = {dfx} in the integrand."
+                )
 
             gu = normalize(gu, ctx2)
             c = e.body.replace(Var(e.var), gu)
