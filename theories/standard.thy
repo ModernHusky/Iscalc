@@ -235,11 +235,21 @@ lhs:
     replace substitution
 done
 
-prove (INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C) for a > 0, b > 0
-sorry
+prove (INT x. 1 / (a + b * x ^ 2)) = (1 / sqrt(a*b)) * arctan(sqrt(b/a)*x) + SKOLEM_CONST(C) for a > 0, b > 0
+lhs:
+    rewrite 1/(a + b*x^2) to (1/a) / (1 + (x/sqrt(a/b))^2)
+    substitute u for x/sqrt(a/b)
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite sqrt(b) * x / sqrt(a) to sqrt(b/a) * x
+done
 
-prove (INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * arctan(sqrt(a/b)*x) + SKOLEM_CONST(C) for a > 0, b > 0
-sorry
+prove (INT x. 1 / (b * x ^ 2 + a)) = (1 / sqrt(a*b)) * arctan(sqrt(b/a)*x) + SKOLEM_CONST(C) for a > 0, b > 0
+lhs:
+    rewrite 1/(b*x^2 + a) to 1/(a + b*x^2)
+    apply integral identity
+done
 
 prove (INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C) for x > 0, k != -1
 lhs:
