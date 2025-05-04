@@ -733,7 +733,7 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
                     return Const(0)  
         elif expr.is_plus(arg) or expr.is_minus(arg):
             for term in arg.args:
-                if not term.contains_i() and term.contains_var(var_name):
+                if not expr.contains_i(term) and term.contains_var(var_name):
                     real_part = term
                     break
             if real_part is not None:

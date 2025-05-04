@@ -528,23 +528,6 @@ class Expr:
                              self.body.subst(var, e))
         else:
             raise NotImplementedError(f"subst: {type(self)}")
-        
-    def contains_i(self) -> bool:
-        """check if the expression contains i"""
-        if is_fun(self) and self.func_name == "i":
-            return True
-        elif is_op(self):
-            return any(arg.contains_i() for arg in self.args)
-        elif is_fun(self):
-            return any(arg.contains_i() for arg in self.args)
-        elif is_integral(self):
-            return self.body.contains_i()
-        elif is_deriv(self):
-            return self.body.contains_i()
-        elif is_summation(self):
-            return self.body.contains_i() or self.lower.contains_i() or self.upper.contains_i()
-        else:
-            return False
 
     def is_constant(self):
         """Determine whether expr is a number.
@@ -708,7 +691,7 @@ class Expr:
         return self.find_subexpr_pred(lambda e: is_integral(e) or is_indefinite_integral(e))
 
     def separate_limits(self) -> list[tuple["Limit", Location]]:
-        """Collect the list of all integrals appearing in self."""
+        """Collect the list of all limits appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
 
     @property

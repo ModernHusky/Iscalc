@@ -587,6 +587,12 @@ def body_conds(e: Expr, ctx: Context) -> Context:
             ctx2.add_condition(expr.Op("<=", expr.Var(e.index_var), e.upper))
             ctx2.add_condition(expr.Op(">=", e.upper - expr.Var(e.index_var), Const(0)))
         ctx2.add_condition(expr.Fun("isInt", expr.Var(e.index_var)))
+    elif expr.is_evalat(e):
+        ctx2.add_condition(expr.isReal(expr.Var(e.var)))
+        if e.lower != expr.NEG_INF:
+            ctx2.add_condition(Op(">", expr.Var(e.var), e.lower))
+        if e.upper != expr.POS_INF:
+            ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
     else:
         raise TypeError
     return ctx2

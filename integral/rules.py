@@ -858,6 +858,104 @@ class EvaluateDefiniteIntegral(Rule):
         # No matching identity found
         return e
 
+class EvaluateIntegralFi(Rule):
+    """Process integral calculations on complex domains, especially cases containing complex units i"""
+    
+    def __init__(self):
+        self.name = "EvaluateIntegralFi"
+        
+    def __str__(self):
+        return "evaluate complex integral"
+        
+    def export(self):
+        return {
+            "name": self.name,
+            "str": str(self)
+        }
+        
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        assert isinstance(e, (IndefiniteIntegral, Integral))
+        
+        ctx2 = context.body_conds(e, ctx)
+        
+        # Handle special form: integral of 1 /(a*x +/-c*i)
+        if expr.is_divides(e.body) and e.body.args[0] == Const(1):
+            denom = e.body.args[1]
+            
+            # Check if the denominator is a*x +/-c*i form
+            if (expr.is_minus(denom) or expr.is_plus(denom)) and (
+                (denom.args[1] == Fun("i")) or
+                (expr.is_times(denom.args[1]) and Fun("i") in denom.args[1].args)
+            ):
+                # Extract the coefficient of x
+                x_coeff = None
+                if expr.is_times(denom.args[0]):
+                    for arg in denom.args[0].args:
+                        if expr.is_var(arg) and arg.name == e.var:
+                            other_factors = [f for f in denom.args[0].args if f != arg]
+                            if other_factors:
+                                x_coeff = functools.reduce(operator.mul, other_factors)
+                            else:
+                                x_coeff = Const(1)
+                            break
+                else:
+                    # If the first term is x, the coefficient is 1
+                    if expr.is_var(denom.args[0]) and denom.args[0].name == e.var:
+                        x_coeff = Const(1)
+                
+                if x_coeff is None:
+                    return e
+                    
+                if isinstance(e, IndefiniteIntegral):
+                    # return 1/a * log(a*x +/- c*i) + C
+                    if x_coeff == Const(1):
+                        result = Fun("log", denom)
+                    else:
+                        result = (1 / x_coeff) * Fun("log", denom)
+                    return result
+                elif isinstance(e, Integral):
+                    if x_coeff == Const(1):
+                        return EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
+                    else:
+                        return (1 / x_coeff) * EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
+        
+        # Handle special form: integral of (x+a*i)^n or (a*x+b*i)^n
+        elif expr.is_power(e.body):
+            base = e.body.args[0]
+            exponent = e.body.args[1]
+            
+            # Check if it is in the form (x+a*i)
+            if expr.contains_i(base) and not expr.contains_i(exponent) and exponent.is_constant():
+                # Check if the base is linear
+                if (expr.is_plus(base) or expr.is_minus(base)) and \
+                   (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
+                   (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
+
+                    n = exponent.val
+                    if isinstance(n, (int, float, Fraction)) and n != -1:
+                        # use ∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
+                        n_plus_1 = Const(n + 1)
+                        
+                        # Extract the coefficient of x
+                        x_coeff = Const(1)
+                        if expr.is_times(base.args[0]):
+                            for arg in base.args[0].args:
+                                if expr.is_var(arg) and arg.name == e.var:
+                                    other_factors = [f for f in base.args[0].args if f != arg]
+                                    if other_factors:
+                                        x_coeff = functools.reduce(operator.mul, other_factors)
+                                    break
+                        
+                        coeff = normalize(x_coeff * n_plus_1, ctx)
+                        if isinstance(e, IndefiniteIntegral):
+                            return normalize(1 / coeff * (base ^ n_plus_1), ctx) + SkolemFunc("C", e.skolem_args)
+                        elif isinstance(e, Integral):
+                            return EvalAt(e.var, e.lower, e.upper, 1 / coeff * (base ^ n_plus_1))
+              
+        # TODO Handle special integral forms on other complex domains.
+        return e
+
+
 class IntegralIdentity(Rule):
     def __init__(self):
         self.name = "IntegralIdentity"
@@ -889,14 +987,26 @@ class IntegralIdentity(Rule):
         skolem_args = set()
         exist_indefinite_integral = False
         for sub_e, loc in integrals:
+            # Check whether the integrator contains complex units i
+            has_complex = expr.contains_i(sub_e.body)
+            
             if isinstance(sub_e, IndefiniteIntegral):
-                e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
+                if has_complex:
+                    # If the complex unit i is contained, use the integral rule on the complex domain
+                    e = OnLocation(EvaluateIntegralFi(), loc).eval(e, ctx)
+                else:
+                    e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
+                
                 new_e = e.get_subexpr(loc)
                 if new_e != sub_e:
                     exist_indefinite_integral = True
                     skolem_args = skolem_args.union(sub_e.skolem_args)
             elif isinstance(sub_e, Integral):
-                e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
+                if has_complex:
+                    # If the complex unit i is contained, use the integral rule on the complex domain
+                    e = OnLocation(EvaluateIntegralFi(), loc).eval(e, ctx)
+                else:
+                    e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
             else:
                 raise AssertionError
 
