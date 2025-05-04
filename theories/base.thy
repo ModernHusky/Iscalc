@@ -4,17 +4,7 @@ axiom (INT x. c) = c * x + SKOLEM_CONST(C)
 
 axiom (INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)
 
-axiom (INT x. -x) = -x ^ 2 / 2 + SKOLEM_CONST(C)
-
-axiom (INT x. a * x) = x ^ 2 / a + SKOLEM_CONST(C) for a != 0
-
-axiom (INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C) for a != 0
-
-axiom (INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C) for a != 0
-
 axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C) for x != 0
-
-axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C) for x != 0
 
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
