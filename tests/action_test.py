@@ -11,14 +11,13 @@ from integral import state
 from integral import parser
 from integral import expr
 from integral import context
-from integral import rules
+
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, content: str, base_file: str, 
-                      *, print_lines=False, print_state=False, write_stats=False, filename=""):
+    def check_actions(self, content: str, *, print_lines=False, print_state=False,
+                      write_stats=False, filename=""):
         actions = content.split('\n')
         ctx = context.Context()
-        ctx.load_book(base_file)
         st = state.InitialState(ctx)
         start_time = None
         cur_goal = None
@@ -32,12 +31,15 @@ class ActionTest(unittest.TestCase):
                 # title or comment
                 continue
             a = parser.parse_action(act)
+            if isinstance(a, state.ImportsAction):
+                for thy_name in a.theories:
+                    ctx.load_book(thy_name)
             if isinstance(a, (state.ProveAction, state.CalculateAction)):
                 cur_goal = a
                 if write_stats:
                     start_time = time.time()
                     with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                        stats_file.write(f"{cur_goal}\n")
+                        stats_file.write(f"{filename} {i} {cur_goal}\n")
             try:
                 st = st.process_action(a)
                 if isinstance(st, state.InitialState):
@@ -62,11 +64,11 @@ class ActionTest(unittest.TestCase):
         if not print_state and not isinstance(st, state.InitialState):
             raise AssertionError("Does not end in initial state (add print_state=True to debug)")
                 
-    def check_file(self, filename: str, base_file: str,
-                   *, print_lines=False, print_state=False, write_stats=False):
+    def check_file(self, filename: str, *, print_lines=False, print_state=False,
+                   write_stats=False):
         with open(f'theories/{filename}.thy', 'r', encoding='utf-8') as f:
             content = f.read()
-        self.check_actions(content, base_file, print_lines=print_lines, print_state=print_state,
+        self.check_actions(content, print_lines=print_lines, print_state=print_state,
                            write_stats=write_stats, filename=filename)
 
     def testCalculationFinished(self):
@@ -106,84 +108,86 @@ class ActionTest(unittest.TestCase):
         self.assertTrue(st.is_finished())
 
     def testStandard(self):
-        self.check_file("standard", "base")
+        self.check_file("standard")
 
     def testStandard2(self):
-        self.check_file("standard2", "base")
+        self.check_file("standard2")
 
     def testStandard3(self):
-        self.check_file("standard3", "base")
+        self.check_file("standard3")
 
     def testStandard4(self):
-        self.check_file("standard4", "base")
+        self.check_file("standard4")
 
     def testMIT2019(self):
-        self.check_file("mit2019", "standard")
+        self.check_file("mit2019")
 
     def testLHopital(self):
-        self.check_file("lhopital", "standard")
+        self.check_file("lhopital")
 
     def testTongji(self):
-        self.check_file("tongji05", "standard")
+        self.check_file("tongji05")
 
     def testTongjiIndefSubstitution(self):
-        self.check_file("tongji0402", "standard")
+        self.check_file("tongji0402")
 
     def testTongjiIndefByParts(self):
-        self.check_file("tongji0403", "standard")
+        self.check_file("tongji0403")
 
     def testTongjiIndefRational(self):
-        self.check_file("tongji0404", "standard")
+        self.check_file("tongji0404")
 
     def testUSubstitution(self):
-        self.check_file("ucdavisUSubst", "standard")
+        self.check_file("ucdavisUSubst")
 
     def testUCDavisPartialFraction(self):
-        self.check_file("ucdavisPartial", "standard")
+        self.check_file("ucdavisPartial")
 
     def testIntegrateByParts(self):
-        self.check_file("ucdavisByParts", "standard")
+        self.check_file("ucdavisByParts")
 
     def testExponential(self):
-        self.check_file("ucdavisExponential", "standard")
+        self.check_file("ucdavisExponential")
 
     def testTrigonometric(self):
-        self.check_file("ucdavisTrigonometric", "standard")
+        self.check_file("ucdavisTrigonometric")
 
     def testLogAndArcTangent(self):
-        self.check_file("ucdavisLogArctan", "standard")
+        self.check_file("ucdavisLogArctan")
 
     def testPowerSubstitution(self):
-        self.check_file("ucdavisPowerSubst", "standard")
+        self.check_file("ucdavisPowerSubst")
 
     def testTrigSubstitution(self):
-        self.check_file("ucdavisTrigSubst", "standard")
+        self.check_file("ucdavisTrigSubst")
 
     def testWallis(self):
-        self.check_file("irresistable", "standard")
+        self.check_file("irresistable")
 
     def testInteresting1(self):
-        self.check_file("interesting1", "standard")
+        self.check_file("interesting1")
 
     def testInteresting2(self):
-        self.check_file("interesting2", "interesting1")
+        self.check_file("interesting2")
 
     def testInteresting3(self):
-        self.check_file("interesting3", "interesting2")
+        self.check_file("interesting3")
 
     def testInteresting4(self):
-        self.check_file("interesting4", "interesting3")
+        self.check_file("interesting4")
 
     def testInteresting5(self):
-        self.check_file("interesting5", "interesting4")
+        self.check_file("interesting5")
 
     def testInteresting6(self):
-        self.check_file("interesting6", "interesting5")
+        self.check_file("interesting6")
 
     def testLeibniz03(self):
         # Inside interesting integrals, Section 3.1
         # TODO: Still cannot remove the condition I(t) > 0
         actions = """
+            imports interesting3
+
             prove (INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)) = sqrt(pi/2)*exp(-(t^2)/2)
             let I(t) = INT x:[0,oo]. cos(t*x)*exp(-(x^2)/2)
             subgoal 1: I(0) = sqrt(pi/2)
@@ -241,13 +245,15 @@ class ActionTest(unittest.TestCase):
             done
         """
         try:
-            self.check_actions(actions, "interesting3")
+            self.check_actions(actions)
         except compstate.CheckFinishedException as e:
             ()
 
     def testGaussianPowerExp(self):
         # Inside interesting integrals, Section 2.3
         actions = """
+            imports interesting3
+
             prove (INT x:[0, oo]. x^(2*n) * exp(-x^2)) = factorial(2*n)/(4^n*factorial(n))*(1/2)*sqrt(pi) for n: int, n >= 0
             let I(n) = (INT x:[0, oo]. x^(2*n) * exp(-x^2))
             subgoal 1: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = 0 for n>=1
@@ -311,7 +317,7 @@ class ActionTest(unittest.TestCase):
             done
             """
         # requires evaluation of probability integral
-        self.check_actions(actions, "interesting3")
+        self.check_actions(actions)
 
     # def testFlipside08(self):
     #     actions = """
@@ -332,6 +338,7 @@ class ActionTest(unittest.TestCase):
         # TODO ([log(x)]_x=1,oo) - 1/2 * ([log(x - i)]_x=1,oo) - 1/2 * ([log(x + i)]_x=1,oo) ->
         #                                        [(log(x)) - 1/2 * (log(x - i)) - 1/2 * (log(x + i))]_x=1,oo
         actions = """
+            imports standard
             prove (INT x:[1,oo]. 1/(x*(x^2+1))) = log(2)/2 for x:real, x!=0
             lhs:
                 rewrite 1/(x*(x^2+1)) to 1/x - 1/(2*(x-i)) - 1/(2*(x+i))
@@ -343,10 +350,11 @@ class ActionTest(unittest.TestCase):
                 simplify
             done
         """
-        self.check_actions(actions, "standard")
+        self.check_actions(actions)
 
     def testEulerFormula2(self):
         actions = """
+            imports standard
             prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for b: real, y > 0
             lhs:
                 rewrite sin(b*x) to (exp(i*(b*x)) - exp(-i*(b*x))) / (2*i)
@@ -361,46 +369,46 @@ class ActionTest(unittest.TestCase):
                 rewrite to b / (y^2 + b^2)
             done
         """
-        self.check_actions(actions, "standard")
+        self.check_actions(actions)
 
     def testPostgraduateIndefinitePart1SectionA(self):
-        self.check_file("postgradIndef1a", "standard")
+        self.check_file("postgradIndef1a")
 
     def testPostgraduateIndefinitePart1SectionB(self):
-        self.check_file("postgradIndef1b", "standard")
+        self.check_file("postgradIndef1b")
 
     def testPostgraduateIndefinitePart2SectionA(self):
-        self.check_file("postgradIndef2a", "standard")
+        self.check_file("postgradIndef2a")
 
     def testPostgraduateIndefinitePart2SectionB(self):
-        self.check_file("postgradIndef2b", "standard")
+        self.check_file("postgradIndef2b")
 
     def testPostgraduateIndefinitePart3SectionA(self):
-        self.check_file("postgradIndef3a", "standard")
+        self.check_file("postgradIndef3a")
 
     def testPostgraduateIndefinitePart4SectionA(self):
-        self.check_file("postgradIndef4a", "standard")
+        self.check_file("postgradIndef4a")
 
     def testPostgraduateIndefinitePart4SectionB(self):
-        self.check_file("postgradIndef4b", "standard")
+        self.check_file("postgradIndef4b")
 
     def testPostgraduateIndefinitePart5SectionA(self):
-        self.check_file("postgradIndef5a", "standard")
+        self.check_file("postgradIndef5a")
 
     def testPostgraduateIndefinitePart5SectionB(self):
-        self.check_file("postgradIndef5b", "standard")
+        self.check_file("postgradIndef5b")
 
     def testPostgraduateIndefinitePart6SectionA(self):
-        self.check_file("postgradIndef6a", "standard")
+        self.check_file("postgradIndef6a")
 
     def testPostgraduateIndefinitePart6SectionB(self):
-        self.check_file("postgradIndef6b", "standard")
+        self.check_file("postgradIndef6b")
 
     def testPostgraduateDefinitePart1SectionA(self):
-        self.check_file("postgradDef1a", "standard")
+        self.check_file("postgradDef1a")
 
     def testPostgraduateDefinitePart1SectionB(self):
-        self.check_file("postgradDef1b", "standard")
+        self.check_file("postgradDef1b")
 
 
 if __name__ == "__main__":

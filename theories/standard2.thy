@@ -1,3 +1,5 @@
+imports base
+
 ## 9.2 Integrands involving powers of x and powers of sin x or cos x
 
 ### 9.2.1 Integrands involving x^n sin^m x

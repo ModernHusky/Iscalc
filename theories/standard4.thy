@@ -1,3 +1,5 @@
+imports base
+
 # Indefinite Integrals of Inverse Trigonometric Functions
 # Handbook of mathematical formulas and integrals
 # Page 225

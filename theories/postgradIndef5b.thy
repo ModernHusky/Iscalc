@@ -1,3 +1,5 @@
+imports standard
+
 # 4.5 Trigonometric functions
 # Section B
 

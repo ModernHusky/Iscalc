@@ -1,6 +1,6 @@
-# Standard integrals
-
 imports base
+
+# Standard integrals
 
 prove (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for x != -a
 lhs:
@@ -143,8 +143,13 @@ lhs:
     rewrite sin(x) to -sin(-x)
 done
 
-prove (INT x. tan(x)) = -log(abs(cos(x))) + SKOLEM_CONST(C)
-sorry
+prove (INT x. tan(x)) = -log(abs(cos(x))) + SKOLEM_CONST(C) for cos(x) != 0
+lhs:
+    rewrite tan(x) to sin(x) / cos(x)
+    substitute u for cos(x)
+    apply integral identity
+    replace substitution
+done
 
 prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C)
 sorry
