@@ -319,17 +319,122 @@ lhs:
     replace substitution
 done
 
-prove (INT x. sec(-x)) = -log(abs(sec(-x)+tan(-x))) + SKOLEM_CONST(C)
-sorry
+prove (INT x. sec(-x)) = -log(abs(sec(x)-tan(x))) + SKOLEM_CONST(C) for cos(x) != 0
+subgoal 1: cos(-x) != 0
+lhs:
+    simplify
+done
+subgoal 2: sec(x) - tan(x) != 0
+lhs:
+    rewrite to (1 - sin(x)) / cos(x)
+done
+lhs:
+    substitute y for -x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. sec(a*x)) = log(abs(sec(a*x)+tan(a*x))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. sec(a*x)) = log(abs(sec(a*x)+tan(a*x))) / a + SKOLEM_CONST(C) for a != 0, cos(a * x) != 0
+subgoal 1: sec(a * x) + tan(a * x) != 0
+lhs:
+    rewrite to (1 + sin(a * x)) / cos(a * x)
+done
+lhs:
+    substitute y for a * x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. sec(a*x + b)) = log(abs(sec(a*x+b)+tan(a*x+b))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. sec(a*x + b)) = log(abs(sec(a*x+b)+tan(a*x+b))) / a + SKOLEM_CONST(C) for a != 0, cos(a*x + b) != 0
+subgoal 1: sec(a * x + b) + tan(a * x + b) != 0
+lhs:
+    rewrite to (1 + sin(a * x + b)) / cos(a * x + b)
+done
+lhs:
+    substitute y for a * x + b
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. sec(a*x - b)) = log(abs(sec(a*x-b)+tan(a*x-b))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. sec(a*x - b)) = log(abs(sec(a*x-b)+tan(a*x-b))) / a + SKOLEM_CONST(C) for a != 0, cos(a*x - b) != 0
+subgoal 1: sec(a * x - b) + tan(a * x - b) != 0
+lhs:
+    rewrite to (1 + sin(a * x - b)) / cos(a * x - b)
+done
+lhs:
+    substitute y for a * x - b
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. csc(x)) = -log(abs(csc(x)+cot(x))) + SKOLEM_CONST(C) for sin(x) != 0
+subgoal 1: csc(x) + cot(x) != 0
+lhs:
+    rewrite to (1 + cos(x)) / sin(x)
+done
+lhs:
+    rewrite csc(x) to csc(x) * (csc(x) + cot(x)) / (csc(x) + cot(x))
+    rewrite csc(x) * (csc(x) + cot(x)) to -1 * (-(cot(x) * csc(x)) - csc(x) ^ 2)
+    substitute u for csc(x) + cot(x)
+    apply integral identity
+    replace substitution
+done
+
+prove (INT x. csc(-x)) = log(abs(-cot(x)-csc(x))) + SKOLEM_CONST(C) for sin(x) != 0
+subgoal 1: sin(-x) != 0
+lhs:
+    simplify
+done
+subgoal 2: -cot(x) - csc(x) != 0
+lhs:
+    rewrite to (-cos(x) - 1) / sin(x)
+done
+lhs:
+    substitute y for -x
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. csc(a*x)) = -log(abs(cot(a*x)+csc(a*x))) / a + SKOLEM_CONST(C) for a != 0, sin(a*x) != 0
+subgoal 1: cot(a * x) + csc(a * x) != 0
+lhs:
+    rewrite to (cos(a * x) + 1) / sin(a * x)
+done
+lhs:
+    substitute y for a * x
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. csc(a*x+b)) = -log(abs(cot(a*x+b)+csc(a*x+b))) / a + SKOLEM_CONST(C) for a != 0, sin(a*x+b) != 0
+subgoal 1: cot(a * x + b) + csc(a * x + b) != 0
+lhs:
+    rewrite to (cos(a * x + b) + 1) / sin(a * x + b)
+done
+lhs:
+    substitute y for a * x + b
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. csc(a*x-b)) = -log(abs(cot(a*x-b)+csc(a*x-b))) / a + SKOLEM_CONST(C) for a != 0, sin(a*x-b) != 0
+subgoal 1: cot(a * x - b) + csc(a * x - b) != 0
+lhs:
+    rewrite to (cos(a * x - b) + 1) / sin(a * x - b)
+done
+lhs:
+    substitute y for a * x - b
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 prove (INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C)
 sorry
