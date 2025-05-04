@@ -487,17 +487,39 @@ lhs:
     simplify
 done
 
-prove (INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C)
-sorry
+prove (INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C) for x > -1, x < 1
+lhs:
+    substitute sin(u) for x
+    rewrite 1 - sin(u)^2 to cos(u)^2
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. 1/sqrt(-(x^2)+1)) = arcsin(x) + SKOLEM_CONST(C)
-sorry
+prove (INT x. 1/sqrt(-(x^2)+1)) = arcsin(x) + SKOLEM_CONST(C) for x > -1, x < 1
+lhs:
+    rewrite -(x^2)+1 to 1-x^2
+    apply integral identity
+done
 
-prove (INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
-sorry
+prove (INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > -sqrt(a), x < sqrt(a), a-x^2>0
+lhs:
+    substitute y for x / sqrt(a)
+    rewrite sqrt(a) / sqrt(-(a*y^2)+a) to 1/sqrt(1-y^2)
+    apply integral identity
+    replace substitution
+done
 
-prove (INT x. 1/sqrt(-(x^2)+a)) = arcsin(x/sqrt(a))+ SKOLEM_CONST(C) for a > 0
-sorry
+prove (INT x. 1/sqrt(-(x^2)+a)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > -sqrt(a), x < sqrt(a), a-x^2>0
+subgoal 1: -(x^2)+a > 0
+lhs:
+    rewrite to a - x^2
+done
+lhs:
+    rewrite -(x^2) + a to a - x^2
+    apply integral identity
+done
 
 prove (INT x. 1/sqrt(x^2-1)) = arccos(x) + SKOLEM_CONST(C)
 sorry

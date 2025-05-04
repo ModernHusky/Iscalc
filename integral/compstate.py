@@ -626,9 +626,9 @@ class CalculationProof(StateItem):
 
     def check_finished(self, stack: tuple[str]):
         if self.predicate in ('=', '>', '<', '<=', '>=', '!='):
-            lhs = normalize(self.lhs_calc.last_expr, self.ctx)
-            rhs = normalize(self.rhs_calc.last_expr, self.ctx)
-            if self.predicate == '=' and lhs != rhs:
+            lhs = self.lhs_calc.last_expr
+            rhs = self.rhs_calc.last_expr
+            if self.predicate == '=' and normalize(lhs, self.ctx) != normalize(rhs, self.ctx):
                 raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
             if self.predicate == '>' and not self.ctx.is_greater(lhs, rhs):
                 raise CheckFinishedException(stack, f"calculation: {lhs} > {rhs}")
