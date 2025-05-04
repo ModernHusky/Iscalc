@@ -328,17 +328,18 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 else:
                     add_obligation(Op(">=", e.args[0], Const(-1)), ctx)
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
-            if e.func_name == 'tan':
-                tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(expr.isInt(tmp))
-                f2 = ctx.check_condition(expr.isEven(tmp))
-
-                if not f1 or f2:
+            if e.func_name == 'tan' or e.func_name == 'sec':
+                f1 = ctx.check_condition(Op("!=", Fun("cos", e.args[0]), Const(0)))
+                if f1:
                     pass
                 else:
-                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
-                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
-                    add_obligation([branch1, branch2], ctx)
+                    add_obligation(Op("!=", Fun("cos", e.args[0]), Const(0)), ctx)
+            if e.func_name == 'cot' or e.func_name == 'csc':
+                f1 = ctx.check_condition(Op("!=", Fun("sin", e.args[0]), Const(0)))
+                if f1:
+                    pass
+                else:
+                    add_obligation(Op("!=", Fun("sin", e.args[0]), Const(0)), ctx)
             if e.func_name == 'factorial':
                 if not ctx.check_condition(expr.isInt(e.args[0])):
                     add_obligation(expr.isInt(e.args[0]), ctx)

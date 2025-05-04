@@ -58,6 +58,13 @@ lhs:
     replace substitution
 done
 
+prove (INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)
+lhs:
+    substitute y for -x
+    apply integral identity
+    replace substitution
+done
+
 prove (INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C) for a != 0
 lhs:
     substitute u for a * x
@@ -431,6 +438,50 @@ lhs:
 done
 lhs:
     substitute y for a * x - b
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C) for cos(x) != 0
+lhs:
+    substitute u for tan(x)
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. 1 / cos(x)^2) = tan(x) + SKOLEM_CONST(C) for cos(x) != 0
+lhs:
+    rewrite 1/cos(x)^2 to sec(x)^2
+    apply integral identity
+done
+
+prove (INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    substitute u for cot(x)
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. 1 / sin(x)^2) = -cot(x) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    rewrite 1/sin(x)^2 to csc(x)^2
+    apply integral identity
+done
+
+prove (INT x. cot(x) * csc(x)) = -csc(x) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    substitute u for csc(x)
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. sec(x) * tan(x)) = sec(x) + SKOLEM_CONST(C) for cos(x) != 0
+lhs:
+    substitute u for sec(x)
     apply integral identity
     replace substitution
     simplify
