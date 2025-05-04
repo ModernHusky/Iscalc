@@ -151,20 +151,44 @@ lhs:
     replace substitution
 done
 
-prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C)
-sorry
+prove (INT x. tan(-x)) = log(abs(cos(x))) + SKOLEM_CONST(C) for cos(-x) != 0, cos(x) != 0
+lhs:
+    substitute y for -x
+    apply integral identity
+    replace substitution
+done
 
-prove (INT x. cot(x)) = -log(abs(sin(-x))) + SKOLEM_CONST(C)
-sorry
+prove (INT x. cot(x)) = log(abs(sin(x))) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    rewrite cot(x) to cos(x) / sin(x)
+    substitute u for sin(x)
+    apply integral identity
+    replace substitution
+done
 
-prove (INT x. tan(a * x)) = log(abs(sec(a*x))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. tan(a * x)) = -log(abs(cos(a * x))) / a + SKOLEM_CONST(C) for a != 0, cos(a * x) != 0
+lhs:
+    substitute y for a * x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. tan(a * x + b)) = log(abs(sec(a*x + b))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. tan(a * x + b)) = -log(abs(cos(a*x + b))) / a + SKOLEM_CONST(C) for a != 0, cos(a * x + b) != 0
+lhs:
+    substitute y for a * x + b
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. tan(a * x - b)) = log(abs(sec(a*x - b))) / a + SKOLEM_CONST(C) for a != 0
-sorry
+prove (INT x. tan(a * x - b)) = -log(abs(cos(a*x - b))) / a + SKOLEM_CONST(C) for a != 0, cos(a * x - b) != 0
+lhs:
+    substitute y for a * x - b
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 prove (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for x - a != 0
 lhs:
