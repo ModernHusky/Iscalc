@@ -54,6 +54,10 @@ axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
+# Common limites
+
+axiom (LIM {x -> oo}. log(x / sqrt(x ^ 2 + 1))) = log(1)
+
 # Common series expansion
 
 axiom exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))
