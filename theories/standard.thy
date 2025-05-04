@@ -521,14 +521,27 @@ lhs:
     apply integral identity
 done
 
-prove (INT x. 1/sqrt(x^2-1)) = arccos(x) + SKOLEM_CONST(C)
+prove (INT x. 1/sqrt(x^2-1)) = log(sqrt(x^2 - 1) + x) + SKOLEM_CONST(C) for x > 1
+lhs:
+    substitute sec(u) for x
+    rewrite sec(u)^2 - 1 to tan(u)^2
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+prove (INT x. 1/sqrt(x^2-1)) = log(-sqrt(x^2 - 1) - x) + SKOLEM_CONST(C) for x < -1
 sorry
 
-prove (INT x. 1/sqrt(-1+x^2)) = arccos(x) + SKOLEM_CONST(C)
+prove (INT x. 1/sqrt(-1+x^2)) = log(sqrt(x^2 - 1) + x) + SKOLEM_CONST(C) for x > 1
+lhs:
+    rewrite -1+x^2 to x^2-1
+    apply integral identity
+done
+
+prove (INT x. 1/sqrt(x^2-a)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a)
 sorry
 
-prove (INT x. 1/sqrt(x^2-a)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
-sorry
-
-prove (INT x. 1/sqrt(-a+x^2)) = arccos(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0
+prove (INT x. 1/sqrt(-a+x^2)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a)
 sorry
