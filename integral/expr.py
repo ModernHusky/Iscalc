@@ -329,10 +329,10 @@ class Expr:
         elif is_op(self) or is_fun(self):
             assert loc.head < len(self.args), "get_subexpr: invalid location"
             return self.args[loc.head].get_subexpr(loc.rest)
-        elif is_deriv(self):
+        elif is_deriv(self) or is_indefinite_integral(self) or is_limit(self):
             assert loc.head == 0, "get_subexpr: invalid location"
             return self.body.get_subexpr(loc.rest)
-        elif is_integral(self) or is_evalat(self):
+        elif is_integral(self) or is_evalat(self) or is_summation(self):
             if loc.head == 0:
                 return self.body.get_subexpr(loc.rest)
             elif loc.head == 1:
@@ -341,12 +341,8 @@ class Expr:
                 return self.upper.get_subexpr(loc.rest)
             else:
                 raise AssertionError("get_subexpr: invalid location")
-        elif is_limit(self):
-            assert loc.head == 0, "get_subexpr: invalid location"
-            return self.body.get_subexpr(loc.rest)
-
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"get_subexpr: {type(self)}")
 
     def replace_expr(self, loc, new_expr: "Expr") -> "Expr":
         """Replace self's subexpr at location."""
@@ -420,20 +416,15 @@ class Expr:
             elif is_op(exp) or is_fun(exp):
                 for i in range(len(exp.args)):
                     get(exp.args[i], loc + "." + str(i))
-            elif is_integral(exp) or is_evalat(exp):
+            elif is_integral(exp) or is_evalat(exp) or is_summation(exp):
                 get(exp.lower, loc + ".1")
                 get(exp.upper, loc + ".2")
                 get(exp.body, loc + ".0")
-            elif is_deriv(exp) or is_summation(exp) or is_limit(exp):
+            elif is_deriv(exp) or is_limit(exp):
                 get(exp.body, loc + ".0")
 
         get(self)
         return location[0]
-    def get_all_func_name(self) -> Set[str]:
-        return set([pair[0].func_name for pair in self.find_all_subexpr() if is_fun(pair[0])])
-
-    def get_all_symbols(self) -> Set["Symbol"]:
-        return set([pair[0] for pair in self.find_all_subexpr() if is_symbol(pair[0])])
 
     def find_subexpr(self, subexpr: "Expr") -> List[Location]:
         """Returns the location of a subexpression."""
@@ -445,43 +436,36 @@ class Expr:
             elif is_op(e) or is_fun(e):
                 for i, arg in enumerate(e.args):
                     find(arg, loc.append(i))
-            elif is_integral(e) or is_evalat(e):
+            elif is_integral(e) or is_evalat(e) or is_summation(e):
                 find(e.lower, loc.append(1))
                 find(e.upper, loc.append(2))
                 find(e.body, loc.append(0))
             elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e):
                 find(e.body, loc.append(0))
-            elif is_summation(e):
-                find(e.body, loc.append(0))
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
+
         find(self, Location(""))
         return locations
 
-    def find_subexpr_pred(self, pred: Callable[["Expr"], bool]) -> List[Tuple["Expr", Location]]:
-        """Find list of subexpressions satisfying a given predicate.
-
-        Larger expressions are placed later.
-
-        """
+    def find_subexpr_pred(self, pred: Callable[["Expr"], bool],
+                          is_nested=True) -> list[tuple["Expr", Location]]:
+        """Find list of subexpressions satisfying a given predicate."""
         results = []
 
         def find(e: Expr, loc: Location):
-            if is_op(e) or is_fun(e):
-                for i, arg in enumerate(e.args):
-                    find(arg, loc.append(i))
-            elif is_integral(e) or is_evalat(e):
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
-                find(e.body, loc.append(0))
-            elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e):
-                find(e.body, loc.append(0))
-            elif is_summation(e):
-                find(e.body, loc.append(0))
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
+            found = pred(e)
 
-            if pred(e):
+            if not found or is_nested:
+                if is_op(e) or is_fun(e):
+                    for i, arg in enumerate(e.args):
+                        find(arg, loc.append(i))
+                elif is_integral(e) or is_evalat(e) or is_summation(e):
+                    find(e.lower, loc.append(1))
+                    find(e.upper, loc.append(2))
+                    find(e.body, loc.append(0))
+                elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e):
+                    find(e.body, loc.append(0))
+
+            if found:
                 results.append((e, Location(loc)))
 
         find(self, Location(""))
@@ -710,6 +694,10 @@ class Expr:
     def separate_limits(self) -> list[tuple["Limit", Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
+
+    def separate_summation(self) -> list[tuple["Summation", Location]]:
+        """Collect the list of all summations appearing in self."""
+        return self.find_subexpr_pred(lambda e: is_summation(e))
 
     @property
     def depth(self):

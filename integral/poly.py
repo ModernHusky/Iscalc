@@ -1000,13 +1000,22 @@ def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
 
     return e
 
-def simplify_sum(e: expr.Expr, ctx:Context) -> expr.Expr:
+def simplify_sum(e: expr.Expr, ctx: Context) -> expr.Expr:
     if expr.is_summation(e):
         if e.lower == e.upper and e.lower not in (expr.POS_INF, expr.NEG_INF):
+            # Sum on a single value
             return e.body.subst(e.index_var, e.lower)
         if e.body == expr.Const(0):
+            # Body is zero
             return e.body
-    elif e.is_plus():
+        if expr.is_const(e.lower) and expr.is_const(e.upper):
+            l, u = e.lower.val, e.upper.val
+            if isinstance(l, int) and isinstance(u, int):
+                sum = e.body.subst(e.index_var, expr.Const(l))
+                for k in range(l+1, u+1):
+                    sum = sum + e.body.subst(e.index_var, expr.Const(k))
+            return sum
+    elif expr.is_plus(e):
         a = expr.Symbol('a',[expr.SUMMATION])
         b = expr.Symbol('b',[expr.SUMMATION])
         pat_list = [a+b, -(a)+b, a - b, -(a) - b]

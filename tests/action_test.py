@@ -45,9 +45,9 @@ class ActionTest(unittest.TestCase):
                 if isinstance(st, state.InitialState):
                     if isinstance(cur_goal, state.ProveAction):
                         if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
-                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions)
+                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                         elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
-                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions)
+                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                         else:
                             ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
                     if cur_goal and write_stats:
