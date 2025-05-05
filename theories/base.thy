@@ -4,17 +4,7 @@ axiom (INT x. c) = c * x + SKOLEM_CONST(C)
 
 axiom (INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)
 
-axiom (INT x. -x) = -x ^ 2 / 2 + SKOLEM_CONST(C)
-
-axiom (INT x. a * x) = x ^ 2 / a + SKOLEM_CONST(C) for a != 0
-
-axiom (INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C) for a != 0
-
-axiom (INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C) for a != 0
-
 axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C) for x != 0
-
-axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C) for x != 0
 
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
@@ -26,33 +16,11 @@ axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C) for x > 0
 
 axiom (INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)
 
-axiom (INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)
-
 axiom (INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)
 
 axiom (INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)
-
-axiom (INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C)
-
-axiom (INT x. 1 / cos(x)^2) = tan(x) + SKOLEM_CONST(C)
-
-axiom (INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)
-
-axiom (INT x. 1 / sin(x)^2) = -cot(x) + SKOLEM_CONST(C)
-
-axiom (INT x. cot(x) * csc(x)) = -csc(x) + SKOLEM_CONST(C)
-
-axiom (INT x. sec(x) * tan(x)) = sec(x) + SKOLEM_CONST(C)
-
-axiom (INT x. sec(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
-
-axiom (INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
-
-axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
-
-axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 # Common series expansion
 
@@ -326,9 +294,17 @@ axiom [simp] arcsec(2) = pi/3
 
 ### Simple relations between trigonometric functions
 
-axiom sin(-u) = -sin(u)
+axiom [simp] sin(-u) = -sin(u)
 
-axiom cos(-u) = cos(u)
+axiom [simp] cos(-u) = cos(u)
+
+axiom [simp] tan(-u) = -tan(u)
+
+axiom [simp] cot(-u) = -cot(u)
+
+axiom [simp] sec(-u) = sec(u)
+
+axiom [simp] csc(-u) = -csc(u)
 
 axiom [simp] sin(pi / 2 - u) = cos(u)
 
@@ -489,6 +465,14 @@ axiom [bidirectional] sin(x) + cos(x) = sqrt(2) * sin(x+pi/4)
 axiom [bidirectional] sin(x) = (exp(i*x) - exp(-i*x)) / (2*i) for x: real
 
 axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom sin(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, (-1)^(n+k-1) * binom(2*n-1, k) * sin((2*n - 2*k - 1) * x))
+
+axiom sin(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, (-1)^(n-k) * 2 * binom(2*n, k) * cos(2*(n-k)*x))
+
+axiom cos(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, binom(2*n-1, k) * cos((2*n - 2*k - 1) * x))
+
+axiom cos(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, 2 * binom(2*n, k) * cos(2*(n-k)*x))
 
 ## Factorial and binomial coefficient
 

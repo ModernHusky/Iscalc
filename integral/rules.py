@@ -328,17 +328,18 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 else:
                     add_obligation(Op(">=", e.args[0], Const(-1)), ctx)
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
-            if e.func_name == 'tan':
-                tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(expr.isInt(tmp))
-                f2 = ctx.check_condition(expr.isEven(tmp))
-
-                if not f1 or f2:
+            if e.func_name == 'tan' or e.func_name == 'sec':
+                f1 = ctx.check_condition(Op("!=", Fun("cos", e.args[0]), Const(0)))
+                if f1:
                     pass
                 else:
-                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
-                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
-                    add_obligation([branch1, branch2], ctx)
+                    add_obligation(Op("!=", Fun("cos", e.args[0]), Const(0)), ctx)
+            if e.func_name == 'cot' or e.func_name == 'csc':
+                f1 = ctx.check_condition(Op("!=", Fun("sin", e.args[0]), Const(0)))
+                if f1:
+                    pass
+                else:
+                    add_obligation(Op("!=", Fun("sin", e.args[0]), Const(0)), ctx)
             if e.func_name == 'factorial':
                 if not ctx.check_condition(expr.isInt(e.args[0])):
                     add_obligation(expr.isInt(e.args[0]), ctx)
@@ -779,8 +780,9 @@ class SeriesEvaluationIdentity(Rule):
 
 
 class EvaluateIndefiniteIntegral(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "EvaluateIndefiniteIntegral"
+        self.attrs = attrs
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, IndefiniteIntegral)
@@ -788,6 +790,11 @@ class EvaluateIndefiniteIntegral(Rule):
         ctx2 = context.body_conds(e, ctx)
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
+
+            # Check attributes
+            if self.attrs != indef.attrs:
+                continue
+
             inst = expr.match(e, indef.lhs)
             if inst is None:
                 continue
@@ -804,15 +811,17 @@ class EvaluateIndefiniteIntegral(Rule):
             if satisfied:
                 # The right side of the identity should be of the form "expr + C"
                 # take the expr part of the expression.
-                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1]), \
+                    "indefinite integral does not conclude with +C"
                 return indef.rhs.args[0].inst_pat(inst)
 
         # No matching identity found
         return e
 
 class EvaluateDefiniteIntegral(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "EvaluateDefiniteIntegral"
+        self.attrs = attrs
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, Integral)
@@ -823,6 +832,10 @@ class EvaluateDefiniteIntegral(Rule):
         for identity in ctx.get_definite_integrals():
             inst = expr.match(e, identity.lhs)
             if inst is None:
+                continue
+
+            # Check attributes
+            if self.attrs != identity.attrs:
                 continue
 
             # Check conditions
@@ -854,7 +867,7 @@ class EvaluateDefiniteIntegral(Rule):
             if satisfied:
                 # The right side of the identity should be of the form "expr + C"
                 # take the expr part of the expression.
-                assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                assert expr.is_plus(identity.rhs) and expr.is_skolem_func(identity.rhs.args[1])
                 pat_rhs = identity.rhs.args[0]
                 return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
 
@@ -862,8 +875,9 @@ class EvaluateDefiniteIntegral(Rule):
         return e
 
 class IntegralIdentity(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "IntegralIdentity"
+        self.attrs = attrs
 
     def __str__(self):
         return "apply integral identity"
@@ -893,13 +907,13 @@ class IntegralIdentity(Rule):
         exist_indefinite_integral = False
         for sub_e, loc in integrals:
             if isinstance(sub_e, IndefiniteIntegral):
-                e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
+                e = OnLocation(EvaluateIndefiniteIntegral(self.attrs), loc).eval(e, ctx)
                 new_e = e.get_subexpr(loc)
                 if new_e != sub_e:
                     exist_indefinite_integral = True
                     skolem_args = skolem_args.union(sub_e.skolem_args)
             elif isinstance(sub_e, Integral):
-                e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
+                e = OnLocation(EvaluateDefiniteIntegral(self.attrs), loc).eval(e, ctx)
             else:
                 raise AssertionError
 
@@ -1483,9 +1497,11 @@ class Substitution(Rule):
             # Substitution is unable to clear x, need to solve for x
             gu = solve_equation(var_subst, var_name, e.var, ctx2)
             if gu is None:
-                raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
-                    var_subst, var_name, e.var, body_subst
-                ))
+                raise RuleException(
+                    "Substitution",
+                    f"unable to solve equation {var_subst} = {var_name} for {e.var}. "
+                    f"Note: it may be helpful to isolate d({var_subst}) = {dfx} in the integrand."
+                )
 
             gu = normalize(gu, ctx2)
             c = e.body.replace(Var(e.var), gu)
@@ -2472,11 +2488,24 @@ class IntSumExchange(Rule):
     #     return False
 
     def eval(self, e: Expr, ctx: Context):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_summation(e)):
+            parts = e.find_subexpr_pred(
+                lambda e: expr.is_integral(e) or expr.is_indefinite_integral(e) or
+                          expr.is_summation(e), is_nested=False)
+            for sub_e, loc in parts:
+                e = OnLocation(self, loc).eval(e, ctx)
+            return e
+
         if expr.is_integral(e) and expr.is_summation(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
             # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
             return Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+        if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
+            ctx2 = body_conds(e, body_conds(e.body, ctx))
+            s = e.body
+            # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
+            return Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
         elif expr.is_summation(e) and expr.is_integral(e.body):
             ctx2 = body_conds(e, body_conds(e.body, ctx))
             i = e.body

@@ -1,3 +1,5 @@
+imports standard
+
 ## Indefinite integrals, method of substitution
 
 // Source:
@@ -130,7 +132,7 @@ calculate INT x. 10^(2*arccos(x)) / sqrt(1 - x^2) for x > -1, x < 1
     simplify
 done
 
-calculate INT x. tan(sqrt(1 + x^2)) * x / sqrt(1 + x^2)
+calculate INT x. tan(sqrt(1 + x^2)) * x / sqrt(1 + x^2) for cos(sqrt(x^2 + 1)) != 0
     simplify
     substitute u for sqrt(x^2 + 1)
     apply integral identity

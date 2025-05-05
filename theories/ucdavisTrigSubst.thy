@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on trigonometric substitution
 
 // Source:

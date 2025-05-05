@@ -485,6 +485,9 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > 0"], "a / c <= b / c"),
         (["a >= b", "c < 0"], "a / c <= b / c"),
         (["a <= b", "c < 0"], "a / c >= b / c"),
+        (["a > 0", "b != 0"], "a / b != 0"),
+        (["a < 0", "b != 0"], "a / b != 0"),
+        (["a != 0", "b != 0"], "a / b != 0"),
         (["x > 1"], "1 / x < 1"),
         (["x > 0"], "1 / x > 0"),
         (["x > -a", "x < a"], "x / a < 1"),
@@ -505,6 +508,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > y", "y >= 0", "z > 0"], "x ^ z > y ^ z"),
         (["x < a", "x > -a"], "x ^ 2 < a ^ 2"),
         (["x > a", "a >= 0"], "x ^ 2 > a ^ 2"),
+        (["x < -1"], "x ^ 2 > 1"),
         (["x <= a", "x >= -a"], "x ^ 2 <= a ^ 2"),
         (["x >= a", "a >= 0"], "x ^ 2 >= a ^ 2"),
         (["x != y"], "x ^ 2 - y ^ 2 != 0"),
@@ -545,6 +549,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > 0", "x < pi / 2"], "tan(x) > 0"),
         (["cos(x) != 0"], "sin(x) > -1"),
         (["cos(x) != 0"], "sin(x) < 1"),
+        (["sin(x) != 0"], "cos(x) > -1"),
+        (["sin(x) != 0"], "cos(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sec(x) >= 1"),
         (["x > pi / 4", " x < pi / 2"], "sec(x) < sqrt(2)"),
 
@@ -737,6 +743,9 @@ def check_condition(e: Expr, ctx: Context) -> bool:
                 
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
+    for _, g in ctx.get_all_subgoals().items():
+        if not g.conds.data and expr.is_compare(g.expr) and not expr.is_equals(g.expr):
+            conds.add_condition(g.expr)
     all_conds = init_all_conds(conds)
     
     # Check all subexpressions of e

@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on rational functions, resulting in log or arctangent functions
 
 // Source:

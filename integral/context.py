@@ -2,7 +2,6 @@
 
 from typing import Iterable, Optional, List, Dict, Union, Callable
 import os
-import json
 
 from integral import expr
 from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
@@ -13,18 +12,19 @@ from integral import action
 dirname = os.path.dirname(__file__)
 
 class Identity:
-    def __init__(self, expr: Union[str, Expr], *,
-                 conds: Optional[Conditions] = None):
+    def __init__(self, expr: Union[str, Expr], *, conds: Optional[Conditions] = None,
+                 attrs: Iterable[str] = tuple()):
         if isinstance(expr, str):
             expr = parser.parse_expr(expr)
         self.expr = expr
         if conds is None:
             conds = Conditions()
         self.conds = conds
+        self.attrs = attrs
 
     def __eq__(self, other: "Identity"):
         return isinstance(other, Identity) and self.expr == other.expr and \
-            self.conds == other.conds
+            self.conds == other.conds and self.attrs == other.attrs
 
     @property
     def lhs(self):
@@ -261,21 +261,21 @@ class Context:
         symb_conds = [expr_to_pattern(cond) for cond in conds.data]
         self.definitions.append(Identity(symb_e, conds=Conditions(symb_conds)))
 
-    def add_indefinite_integral(self, eq: Expr, conds: Conditions):
+    def add_indefinite_integral(self, eq: Expr, conds: Conditions, attrs: Iterable[str]):
         if not (eq.is_equals() and expr.is_indefinite_integral(eq.lhs)):
             raise TypeError
 
         symb_lhs = expr_to_pattern(eq.lhs)
         symb_rhs = expr_to_pattern(eq.rhs)
-        self.indefinite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.indefinite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds, attrs=attrs))
 
-    def add_definite_integral(self, eq: Expr, conds: Conditions):
+    def add_definite_integral(self, eq: Expr, conds: Conditions, attrs: Iterable[str]):
         if not (eq.is_equals() and expr.is_integral(eq.lhs)):
             raise TypeError
 
         symb_lhs = expr_to_pattern(eq.lhs)
         symb_rhs = expr_to_pattern(eq.rhs)
-        self.definite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.definite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds, attrs=attrs))
 
     def add_series_expansion(self, eq: Expr, conds: Conditions):
         if not (eq.is_equals() and not expr.is_summation(eq.lhs) and expr.is_summation(eq.rhs)):
@@ -378,14 +378,14 @@ class Context:
                 self.add_definition(a.expr, conds=a.conditions)
             elif isinstance(a, (action.AxiomAction, action.ProveAction)):
                 if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
-                    self.add_indefinite_integral(a.expr, a.conditions)
+                    self.add_indefinite_integral(a.expr, a.conditions, a.attrs)
                 elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
-                    self.add_definite_integral(a.expr, a.conditions)
+                    self.add_definite_integral(a.expr, a.conditions, a.attrs)
                 elif a.expr.is_equals() and not expr.is_summation(a.expr.lhs) and expr.is_summation(a.expr.rhs):
                     self.add_series_expansion(a.expr, a.conditions)
                 elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not expr.is_summation(a.expr.rhs):
                     self.add_series_evaluation(a.expr, a.conditions)
-                elif isinstance(a, action.AxiomAction) and 'simp' in a.attrs:
+                elif 'simp' in a.attrs:
                     self.add_simp_identity(a.expr, a.conditions)
                     self.add_other_identities(a.expr, a.attrs, a.conditions)
                 else:
@@ -509,4 +509,3 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
         else:
             raise NotImplementedError
     return rec(e, ctx)
-

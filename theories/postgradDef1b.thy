@@ -1,3 +1,5 @@
+imports standard
+
 // page 210
 
 calculate INT x:[0, 2]. x^2*sqrt(4-x^2)

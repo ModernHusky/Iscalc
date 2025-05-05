@@ -1,3 +1,5 @@
+imports standard
+
 # Irresistable Integrals, Section 2.3
 
 prove (INT x:[0,oo]. 1 / (x ^ 2 + b) ^ (m + 1)) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2)) for m: int, b: real, b > 0, m >= 0

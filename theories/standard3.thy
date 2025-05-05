@@ -1,3 +1,5 @@
+imports base
+
 ## 2.7 Logarithms and Inverse-Hyperbolic Functions
 
 ### 2.7.2 - 2.7.3 Combinations of logarithms and algebraic functions
