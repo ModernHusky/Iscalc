@@ -531,17 +531,31 @@ lhs:
     simplify
 done
 
-prove (INT x. 1/sqrt(x^2-1)) = log(-sqrt(x^2 - 1) - x) + SKOLEM_CONST(C) for x < -1
-sorry
-
 prove (INT x. 1/sqrt(-1+x^2)) = log(sqrt(x^2 - 1) + x) + SKOLEM_CONST(C) for x > 1
 lhs:
     rewrite -1+x^2 to x^2-1
     apply integral identity
 done
 
-prove (INT x. 1/sqrt(x^2-a)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a)
-sorry
+prove (INT x. 1/sqrt(x^2-a)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a), x^2 - a > 0, x^2/a - 1 >= 0
+subgoal 1: x/sqrt(a) > 1
+rhs:
+    rewrite to sqrt(a)/sqrt(a)
+done
+lhs:
+    substitute y for x/sqrt(a)
+    rewrite sqrt(a) / sqrt(a * y ^ 2 - a) to 1/sqrt(y^2-1)
+    apply integral identity
+    replace substitution
+    simplify
+done
 
-prove (INT x. 1/sqrt(-a+x^2)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a)
-sorry
+prove (INT x. 1/sqrt(-a+x^2)) = log(sqrt(x^2/a - 1) + x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > sqrt(a), x^2 - a > 0, x^2/a - 1 >= 0
+subgoal 1: -a + x^2 > 0
+lhs:
+    rewrite to x^2 - a
+done
+lhs:
+    rewrite -a+x^2 to x^2-a
+    apply integral identity
+done
