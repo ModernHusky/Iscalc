@@ -173,8 +173,20 @@ lhs:
 done
 
 // 16
-prove (INT x. x ^ 2 * sin(x) ^ 2) = 1/6 * x ^ 3 -1/4 * x * cos(2 * x) -1/4 * (x ^ 2 - 1/2) * sin(2 * x) + SKOLEM_CONST(C)
-sorry
+prove (INT x. x ^ 2 * sin(x) ^ 2) = 1/6 * x ^ 3 - 1/4 * x * cos(2 * x) - 1/4 * (x ^ 2 - 1/2) * sin(2 * x) + SKOLEM_CONST(C)
+lhs:
+    rewrite sin(x)^2 to (1-cos(2*x)) / 2
+    expand polynomial
+    apply integral identity
+    integrate by parts with u = x^2, v = sin(2*x)/2
+    simplify
+    integrate by parts with u = x, v = -cos(2*x)/2
+    simplify
+    apply integral identity
+    simplify
+rhs:
+    expand polynomial
+done
 
 // 17
 prove (INT x. x ^ m * sin(x) ^ n) = x ^ (m - 1) * sin(x) ^ (n - 1) * x / n ^ 2 * (m * sin(x) - n * x * cos(x)) + (n - 1) / n * (INT x. x ^ m * sin(x) ^ (n - 2)) - m * (m -1)/n ^ 2 * (INT x. x ^ (m - 2) * sin(x) ^ n)
@@ -223,23 +235,52 @@ sorry
 #### 9.2.3.1
 
 // 1a
-prove (INT x. 1 / sin(x)) = log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x) < pi
-sorry
+prove [weierstrass] (INT x. 1 / sin(x)) = log(abs(tan(x/2))) + SKOLEM_CONST(C) for x > 0, x < pi
+lhs:
+    rewrite sin(x) to 2*sin(x/2)*cos(x/2)
+    rewrite 1/(2*sin(x/2)*cos(x/2)) to sec(x/2)^2/(2*tan(x/2))
+    substitute u for tan(x/2)
+    apply integral identity
+    replace substitution
+done
 
 // 1b
-prove (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for abs(x) < pi
-sorry
+prove [partial_fraction] (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    rewrite 1/sin(x) to sin(x)/sin(x)^2
+    rewrite sin(x)^2 to 1 - cos(x)^2
+    substitute u for cos(x)
+    partial fraction decomposition
+    apply integral identity
+    simplify
+    rewrite log(-(2 * u) + 2) / 2 - log(2 * u + 2) / 2 to -1/2 * (log(2*u+2) - log(-(2*u)+2))
+    rewrite log(2*u+2) - log(-(2*u)+2) to log((2*u+2) / (-(2*u)+2))
+    rewrite (2*u+2) / (-(2*u)+2) to (1+u)/(1-u)
+    replace substitution
+done
 
 // 2
-prove (INT x. 1 / sin(x) ^ 2) = -cot(x) + SKOLEM_CONST(C) for abs(x)<pi
-sorry
+prove (INT x. 1 / sin(x) ^ 2) = -cot(x) + SKOLEM_CONST(C) for sin(x) != 0
+lhs:
+    apply integral identity
+done
 
 // 3
-prove (INT x. 1 / sin(x) ^ 3) = -cos(x)/(2 * sin(x) ^ 2) + 1/2 * log(abs(tan(x/2))) + SKOLEM_CONST(C) for abs(x)<pi
-sorry
+prove [weierstrass] (INT x. 1 / sin(x) ^ 3) = -cos(x)/(2 * sin(x) ^ 2) + 1/2 * log(abs(tan(x/2))) + SKOLEM_CONST(C) for x > 0, x < pi
+lhs:
+    rewrite 1/sin(x)^3 to csc(x)^3
+    integrate by parts with u = csc(x), v = -cot(x)
+    simplify
+    rewrite cot(x)^2 to csc(x)^2 - 1
+    expand polynomial
+    rewrite csc(x) to 1/sin(x) (at 2)
+    apply integral identity [weierstrass]
+    solve integral INT x. csc(x) ^ 3
+    rewrite -(cot(x) * csc(x) / 2) to -cos(x)/(2 * sin(x) ^ 2)
+done
 
 // 4
-prove (INT x. 1 / sin(x) ^ n) = -cos(x)/((n - 1) * sin(x) ^ (n - 1)) + (n - 2) / (n - 1) * (INT x. 1/sin(x) ^ (n - 2)) + SKOLEM_CONST(C) for abs(x) < pi, n > 1
+prove [weierstrass] (INT x. 1 / sin(x) ^ n) = -cos(x)/((n - 1) * sin(x) ^ (n - 1)) + (n - 2) / (n - 1) * (INT x. 1/sin(x) ^ (n - 2)) + SKOLEM_CONST(C) for x > 0, x < pi, n: int, n > 1
 sorry
 
 // The rest involves Bernoulli numbers
