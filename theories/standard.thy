@@ -306,13 +306,6 @@ lhs:
     simplify
 done
 
-prove (INT x. cos(x) ^ 2) = 1/2 * (sin(2 * x) / 2 + x) + SKOLEM_CONST(C)
-lhs:
-    rewrite cos(x) ^ 2 to (1 + cos(2 * x)) / 2
-    apply integral identity
-    simplify
-done
-
 prove (INT x. sec(x)) = log(abs(sec(x)+tan(x))) + SKOLEM_CONST(C) for cos(x) != 0
 subgoal 1: sec(x) + tan(x) != 0
 lhs:

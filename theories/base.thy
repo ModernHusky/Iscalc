@@ -470,6 +470,10 @@ axiom sin(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, (-1)^(n+k-1) * binom(2*n-1
 
 axiom sin(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, (-1)^(n-k) * 2 * binom(2*n, k) * cos(2*(n-k)*x))
 
+axiom cos(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, binom(2*n-1, k) * cos((2*n - 2*k - 1) * x))
+
+axiom cos(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, 2 * binom(2*n, k) * cos(2*(n-k)*x))
+
 ## Factorial and binomial coefficient
 
 axiom (m + 1) * factorial(m) = factorial(m + 1)
