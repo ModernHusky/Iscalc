@@ -4,7 +4,7 @@ imports interesting2
 
 ## Chapter 3, Section 1, Leibniz's formula
 
-prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a) for a > 0
+prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a) for a: real, a > 0
 lhs:
     substitute a * u for x
     simplify
@@ -23,6 +23,24 @@ from 1:
     differentiate both sides at a
     simplify
     solve equation for INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 2
+done
+
+prove [no_subgoal] (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a > 0
+lhs:
+    substitute u for x / a
+    simplify
+    substitute theta for arctan(u)
+    rewrite (a ^ 2 * tan(theta) ^ 2 + a ^ 2) ^ 2 to (a ^ 2 * (tan(theta) ^ 2 + 1)) ^ 2
+    rewrite tan(theta) ^ 2 + 1 to sec(theta) ^ 2
+    simplify
+    rewrite 1 / sec(theta) ^ 2 to cos(theta) ^ 2
+    rewrite cos(theta) ^ 2 to (1 + cos(2 * theta)) / 2
+    simplify
+    apply integral identity
+    simplify
+    substitute phi for 2 * theta
+    apply integral identity
+    simplify
 done
 
 prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 3) = 3 * pi / (16 * a ^ 5) for a > 0
