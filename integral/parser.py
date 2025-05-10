@@ -6,9 +6,9 @@ from decimal import Decimal
 from fractions import Fraction
 
 from integral import expr
-from integral import rules
 from integral.expr import Expr
-
+from integral import rules
+from integral import action
 
 grammar = r"""
     ?atom: CNAME -> var_expr
@@ -338,7 +338,6 @@ class ExprTransformer(Transformer):
         return tuple(res)
 
     def imports_action(self, *theories: Token):
-        from integral import action
         theories = [str(s) for s in theories]
         return action.ImportsAction(theories)
 

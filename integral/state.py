@@ -8,7 +8,6 @@ from integral import compstate
 from integral.compstate import Calculation, Goal, StateException
 from integral.context import Context
 from integral import poly
-from integral import parser
 from integral.action import Action, CalculateAction, ProveAction, LHSAction, \
     RHSAction, DefineAction, ArgAction, RewriteGoalAction, InductionAction, \
     CaseAnalysisAction, SubgoalAction, DoneAction, RuleAction, SorryAction, \
@@ -339,6 +338,8 @@ def process_file(filename: str) -> list[ProblemInfo]:
         list of problem infos contained in the file.
 
     """
+    from integral import parser
+
     result = []
     with open(f'../iscalc/theories/{filename}.thy', 'r', encoding="utf-8") as problem_file:
         lines = [s for s in problem_file.read().split('\n') if s.strip()]

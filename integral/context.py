@@ -5,17 +5,14 @@ import os
 
 from integral import expr
 from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
-from integral import parser
 from integral.conditions import Conditions
 from integral import action
 
 dirname = os.path.dirname(__file__)
 
 class Identity:
-    def __init__(self, expr: Union[str, Expr], *, conds: Optional[Conditions] = None,
+    def __init__(self, expr: Expr, *, conds: Optional[Conditions] = None,
                  attrs: Iterable[str] = tuple()):
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
         self.expr = expr
         if conds is None:
             conds = Conditions()
@@ -327,16 +324,11 @@ class Context:
         if tmp not in self.split_identities:
             self.split_identities.append(tmp)
 
-    def add_induct_hyp(self, e: Union[Expr, str]):
-        if isinstance(e, str):
-            e = parser.parse_expr(e)
-
+    def add_induct_hyp(self, e: Expr):
         # Note: no conversion to symbols for inductive hypothesis
         self.induct_hyps.append(Identity(e))
 
-    def add_condition(self, cond: Union[Expr, str]):
-        if isinstance(cond, str):
-            cond = parser.parse_expr(cond)
+    def add_condition(self, cond: Expr):
         if cond not in self.conds.data:
             self.conds.add_condition(cond)
 
@@ -359,6 +351,8 @@ class Context:
         This function recursively loads imported books.
         
         """
+        from integral import parser
+
         assert isinstance(book_name, str)
         root_dir = os.path.dirname(dirname)
 

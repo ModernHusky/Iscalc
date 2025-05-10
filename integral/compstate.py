@@ -2,14 +2,12 @@
 
 from typing import List, Optional, Union
 
-from integral.expr import Expr, Var, Const, Op
+from integral.expr import Expr, Var, Const
 from integral import rules, expr
 from integral.rules import Rule, check_wellformed
 from integral.conditions import Conditions
 from integral import condprover
 from integral.context import Context, Identity
-from integral import latex
-from integral import parser
 from integral.poly import normalize
 from integral import utils
 
@@ -304,8 +302,7 @@ class Goal(StateItem):
             
         return False
 
-    def add_subgoal(self, name: str, expr: Union[str, Expr],
-                    conds: Optional[list[Union[str, Expr]]] = None) -> "Goal":
+    def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> "Goal":
         """Add subgoal with given name and expression."""
 
         # Form context of the subgoal by adding existing subgoal and definitions
@@ -315,8 +312,6 @@ class Goal(StateItem):
             ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
         for funcdef in self.definitions:
             ctx.add_definition(funcdef.eq, funcdef.conds)
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
         self.subgoals.append((name, Goal(self, ctx, expr, conds=Conditions(conds))))
 
         # Recheck wellformedness conditions
@@ -336,10 +331,7 @@ class Goal(StateItem):
 
         return self.subgoals[-1][1]
 
-    def add_definition(self, expr: Union[str, Expr],
-                       conds: Optional[List[Union[str, Expr]]] = None) -> FuncDef:
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
+    def add_definition(self, expr: Expr, conds: Optional[list[Expr]] = None) -> FuncDef:
         self.definitions.append(FuncDef(self, self.ctx, expr, conds=Conditions(conds)))
         return self.definitions[-1]
 
@@ -531,9 +523,6 @@ class Calculation(StateItem):
             return self.steps[label.head]
         else:
             raise AssertionError("get_by_label: invalid label")
-
-    def parse_expr(self, s: str) -> Expr:
-        return parser.parse_expr(s)
 
 
 class CalculationProof(StateItem):
@@ -998,85 +987,20 @@ class CompFile:
             res += str(st)
         return res
 
-    def add_definition(self, funcdef: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> FuncDef:
-        """Add a function definition.
-
-        funcdef: statement of the definition.
-        conds: list of conditions for the definition. This is ignored if input
-               is already of type FuncDef.
-
-        """
-        if conds is not None:
-            if isinstance(conds, Conditions):
-                pass
-            else:
-                for i in range(len(conds)):
-                    if isinstance(conds[i], str):
-                        conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-        if isinstance(funcdef, str):
-            funcdef = parser.parse_expr(funcdef)
-        if isinstance(funcdef, Expr):
-            if funcdef.is_equals():
-                self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds)))
-            else:
-                raise NotImplementedError
-        else:
-            raise NotImplementedError
-
+    def add_definition(self, funcdef: Expr, *, conds: list[Expr] = None) -> FuncDef:
+        """Add a function definition."""
+        self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds)))
         return self.content[-1]
 
-    def add_calculation(self, calc: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> Calculation:
+    def add_calculation(self, calc: Expr, *, conds: list[Expr] = None) -> Calculation:
         """Add a calculation."""
-        if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-        conds = Conditions(conds)
-        if isinstance(calc, str):
-            self.content.append(Calculation(self, self.ctx, parser.parse_expr(calc), conds=conds))
-        elif isinstance(calc, Expr):
-            self.content.append(Calculation(self, self.ctx, calc, conds=conds))
-        else:
-            raise NotImplementedError
+        self.content.append(Calculation(self, self.ctx, calc, conds=Conditions(conds)))
         return self.content[-1]
-
-    def make_goal(self, goal: Union[str, Expr, Goal], *,
-                  conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
-        if isinstance(goal, Goal):
-            self.content.append(goal)
-            return self.content[-1]
-
-        # Parse goal statement
-        if isinstance(goal, str):
-            goal = parser.parse_expr(goal)
-        assert isinstance(goal, Expr)
-
-        # Parse conditions
-        if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-
-        conds = Conditions(conds)
-        ctx = self.get_context()
-        return Goal(self, ctx, goal, conds=conds)
 
     def add_goal(self, goal: Union[str, Expr, Goal], *,
                  conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
-        """Add a goal.
-
-        goal: statement of the goal.
-        conds: list of conditions for the goal. This is ignored if input goal
-               is already of type Goal.
-
-        """
-        self.content.append(self.make_goal(goal, conds=conds))
+        """Add a goal."""
+        self.content.append(Goal(self, self.ctx, goal, conds))
         return self.content[-1]
 
     def add_item(self, item: StateItem):
