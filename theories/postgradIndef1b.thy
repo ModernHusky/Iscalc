@@ -18,11 +18,23 @@ calculate INT x. x^4 / (1 + x^2)
     simplify
 done
 
-calculate INT x. 1 / (2-3*x^2) for x != sqrt(2/3), x != -sqrt(2/3)
+calculate INT x. 1 / (2-3*x^2) for x > 0, x < sqrt(2/3)
     substitute u for (sqrt(3/2)*x)
     substitute sin(v) for u
     rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
     simplify
+    rewrite 1 / cos(v) to sec(v)
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+calculate INT x. 1 / (2-3*x^2) for x < 0, x > -sqrt(2/3)
+    substitute u for (sqrt(3/2)*x)
+    substitute sin(v) for u
+    rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
+    simplify
+    rewrite 1 / cos(v) to sec(v)
     apply integral identity
     replace substitution
     simplify
@@ -104,6 +116,7 @@ calculate INT x. 1 / (exp(x)-exp(-x)) for x > 0
     rewrite sec(v) to 1/cos(v)
     rewrite tan(v) to sin(v)/cos(v)
     simplify
+    rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
     simplify
@@ -117,6 +130,7 @@ calculate INT x. 1/sqrt(exp(2*x)+1)
     rewrite sec(v) to 1/cos(v)
     rewrite tan(v) to sin(v)/cos(v)
     simplify
+    rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
     simplify
