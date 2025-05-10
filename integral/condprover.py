@@ -438,6 +438,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > d"], "a - c < b - d"),
         (["a >= b", "c <= d"], "a - c >= b - d"),
         (["a <= b", "c >= d"], "a - c <= b - d"),
+        (["a < b"], "a - b < 0"),
 
         # Multiplication (simple)
         (["a != 0", "b != 0"], "a * b != 0"),

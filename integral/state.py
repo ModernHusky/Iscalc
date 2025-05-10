@@ -195,7 +195,11 @@ class CalculateState(State):
         # Go to the other branch
         elif isinstance(action, RHSAction):
             return self.past.process_action(action)
-        
+
+        elif isinstance(action, SubgoalAction):
+            subgoal = self.calc.add_subgoal(action.name, action.expr, action.conditions)
+            return ProveState(self, subgoal)
+
         # Other cases are invalid
         else:
             raise StateException(

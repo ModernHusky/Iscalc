@@ -136,7 +136,7 @@ done
 
 // page 177
 
-calculate INT x. sqrt(x/(1-x^3)) for  x != 0
+calculate INT x. sqrt(x/(1-x^3)) for  x > 0, x < 1
     rewrite x^3 to x^(3/2)^2
     substitute u for x^(3/2)
     simplify
@@ -169,7 +169,13 @@ calculate INT x. cos(x) / sqrt(2+cos(2*x))
     simplify
 done
 
-calculate INT x. 1/sqrt((x-a)*(x-b)) for a < b
+calculate INT x. 1/sqrt((x-a)*(x-b)) for x < a,  a < b
+subgoal 1: (x - (a + b) / 2) / ((a - b) / 2) > 1
+lhs:
+    rewrite (x - (a + b) / 2) / ((a - b) / 2) to (2 * x - a - b) / (a - b)
+    rewrite 2 * x - a - b to (a - b) + 2*(x-a)
+    rewrite (a - b + 2 * (x - a)) / (a - b) to 1 + 2 * (x-a) / (a-b)
+done
     rewrite (x-a)*(x-b) to (x-(a+b)/2)^2 - ((a-b)/2)^2
     substitute u for (x-(a+b)/2)/((a-b)/2)
     simplify
