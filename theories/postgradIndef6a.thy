@@ -19,7 +19,7 @@ calculate INT x. 1/(x^4-1) for x != -1, x != 1
     simplify
 done
 
-calculate INT x. (x^2+1)/((x+1)^2*(x-1))
+calculate INT x. (x^2+1)/((x+1)^2*(x-1)) for x != -1, x != 1
     partial fraction decomposition
     apply integral identity
     substitute u for x+1

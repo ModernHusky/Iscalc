@@ -370,14 +370,14 @@ done
 
 // page 191
 
-calculate INT x. log(1+x)/x^2
+calculate INT x. log(1+x)/x^2 for x > -1, x != 0
     integrate by parts with u=-log(1+x), v=1/x
     partial fraction decomposition
     apply integral identity
     simplify
 done
 
-calculate INT x. log(1+x^2)/x^2 for x!=0
+calculate INT x. log(1+x^2)/x^2 for x != 0
     integrate by parts with u=log(1+x^2), v=-1/x
     apply integral identity
     simplify
@@ -426,7 +426,7 @@ done
 
 // page 192
 
-calculate INT x. tan(x)^4
+calculate INT x. tan(x)^4 for cos(x) != 0
     rewrite tan(x)^4 to tan(x)^2^2
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial

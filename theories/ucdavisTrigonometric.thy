@@ -16,7 +16,7 @@ calculate INT x. tan(5 * x) for x > 0, x < pi/10
     simplify
 done
 
-calculate INT x. 5 * sec(4 * x) * tan(4 * x)
+calculate INT x. 5 * sec(4 * x) * tan(4 * x) for cos(4*x) != 0
     rewrite sec(4 * x) to 1 / cos(4 * x)
     rewrite tan(4 * x) to sin(4 * x) / cos(4 * x)
     simplify
@@ -46,7 +46,7 @@ calculate INT x. 3 * cos(5 * x) ^ 2
     simplify
 done
 
-calculate INT x. (2 + tan(x)) ^ 2
+calculate INT x. (2 + tan(x)) ^ 2 for cos(x) != 0
     expand polynomial
     simplify
     apply integral identity
@@ -77,7 +77,7 @@ calculate INT x. cos(5 * x) / (3 + sin(5 * x)) for x > 0, x < pi/10
     simplify
 done
 
-calculate INT x. cos(x) ^ 2 / (1 + sin(x))
+calculate INT x. cos(x) ^ 2 / (1 + sin(x)) for sin(x) + 1 != 0
     rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2
     rewrite 1 - sin(x) ^ 2 to (1 + sin(x)) * (1 - sin(x))
     simplify
@@ -85,7 +85,7 @@ calculate INT x. cos(x) ^ 2 / (1 + sin(x))
     simplify
 done
 
-calculate INT x. sin(x) / (1 + sin(x))
+calculate INT x. sin(x) / (1 + sin(x)) for cos(x) != 0
     rewrite sin(x) / (1 + sin(x)) to sin(x) * (1 - sin(x)) / (1 - sin(x) ^ 2)
     rewrite 1 - sin(x) ^ 2 to cos(x) ^ 2
     rewrite sin(x) * (1 - sin(x)) / cos(x) ^ 2 to 1 / cos(x) * (sin(x) / cos(x)) - (sin(x) / cos(x)) ^ 2
@@ -98,7 +98,7 @@ calculate INT x. sin(x) / (1 + sin(x))
     simplify
 done
 
-calculate INT x. (csc(3 * x) + cot(3 * x)) ^ 2
+calculate INT x. (csc(3 * x) + cot(3 * x)) ^ 2 for sin(3*x) != 0
     expand polynomial
     rewrite cot(3 * x) ^ 2 to csc(3 * x) ^ 2 - 1
     simplify
@@ -112,14 +112,14 @@ calculate INT x. (csc(3 * x) + cot(3 * x)) ^ 2
     simplify
 done
 
-calculate INT x. sec(x) ^ 2 * sqrt(5 + tan(x))
+calculate INT x. sec(x) ^ 2 * sqrt(5 + tan(x)) for 5 + tan(x) >= 0
     substitute u for 5 + tan(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. tan(x) ^ 5
+calculate INT x. tan(x) ^ 5 for cos(x) != 0
     rewrite tan(x) ^ 5 to tan(x) ^ 3 * tan(x) ^ 2
     rewrite tan(x) ^ 2 to sec(x) ^ 2 - 1
     expand polynomial
@@ -169,7 +169,7 @@ calculate INT x. cos(x) * log(sin(x)) / sin(x)
     replace substitution
 done
 
-calculate INT x. sec(x) * tan(x) * sqrt(4 + 3 * sec(x))
+calculate INT x. sec(x) * tan(x) * sqrt(4 + 3 * sec(x)) for cos(x) != 0, 4 + 3 * sec(x) >= 0
     rewrite sec(x) * tan(x) * sqrt(4 + 3 * sec(x)) to sqrt(4 + 3 * sec(x)) / 3 * (3 * sec(x) * tan(x))
     substitute u for 4 + 3 * sec(x)
     apply integral identity
@@ -229,7 +229,7 @@ calculate INT x. sec(x) * sqrt(sec(x) + tan(x))
     replace substitution
 done
 
-calculate INT x. (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x))
+calculate INT x. (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x)) for sin(2*x) + cos(2*x) != 0
     rewrite (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x)) to -1 / (2 * (sin(2 * x) + cos(2 * x))) * (2 * cos(2 * x) - 2 * sin(2 * x))
     substitute u for sin(2 * x) + cos(2 * x)
     simplify
@@ -238,7 +238,7 @@ calculate INT x. (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x))
     simplify
 done
 
-calculate INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x))
+calculate INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x)) for 1 + exp(x) * sin(x) != 0
     rewrite (sin(x) + cos(x)) / (exp(-x) + sin(x)) to 1 / (1 + exp(x) * sin(x)) * (cos(x) * exp(x) + exp(x) * sin(x))
     substitute u for 1 + exp(x) * sin(x)
     apply integral identity

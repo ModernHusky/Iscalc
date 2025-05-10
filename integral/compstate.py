@@ -352,32 +352,17 @@ class Calculation(StateItem):
 
         self.subgoals = list()
 
-    def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> "Goal":
+    def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> Goal:
         """Add subgoal with given name and expression."""
 
         # Form context of the subgoal by adding existing subgoal and definitions
         # in the current goal.
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        self.subgoals.append((name, Goal(self, ctx, expr, conds=Conditions(conds))))
-
-        # Recheck wellformedness conditions
-        ctx = Context(ctx)
-        ctx.subgoals[name] = Identity(expr, conds=Conditions(conds))
-        proof_obligations_raw = check_wellformed(self.start, ctx)
-        self.proof_obligations = []
-        for oblig in proof_obligations_raw:
-            found = False
-            for _, subgoal in self.subgoals:
-                if subgoal.covers_obligation(oblig):
-                    found = True
-                    break
-            if not found:
-                self.proof_obligations.append(oblig)
-        self.wellformed = (len(self.proof_obligations) == 0)
-
-        return self.subgoals[-1][1]
+        conds = Conditions(conds)
+        goal = Goal(self, self.ctx, expr, conds=Conditions(conds))
+        self.subgoals.append((name, goal))
+        self.ctx = Context(self.ctx)
+        self.ctx.add_subgoal(name, Identity(expr, conds=conds))
+        return goal
 
     def __eq__(self, other):
         if not isinstance(other, Calculation):

@@ -55,7 +55,7 @@ calculate INT x. (3 * x + 2) / sqrt(x - 9) for x > 9
     simplify
 done
 
-calculate INT x. 1 / (x ^ (2/3) - x ^ (1/3))
+calculate INT x. 1 / (x ^ (2/3) - x ^ (1/3)) for x^(1/3) - 1 != 0
     substitute u for x ^ (1/3)
     partial fraction decomposition
     substitute v for u - 1

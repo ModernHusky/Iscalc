@@ -46,7 +46,7 @@ calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
     simplify
 done
 
-calculate INT x. sqrt(x^2 + 1) / x
+calculate INT x. sqrt(x^2 + 1) / x for x != 0
     substitute u for arctan(x)
     rewrite tan(u)^2 + 1 to sec(u)^2
     simplify

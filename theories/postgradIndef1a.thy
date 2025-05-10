@@ -87,24 +87,24 @@ done
 
 // page 167
 
-calculate INT x. (1-x)^2 / sqrt(x)
+calculate INT x. (1-x)^2 / sqrt(x) for x > 0
     expand polynomial
     simplify
     apply integral identity
     simplify
 done
 
-calculate INT x. 2*exp(x)+3/x
+calculate INT x. 2*exp(x)+3/x for x != 0
     apply integral identity
     simplify
 done
 
-calculate INT x. (3/(1+x^2)-2/sqrt(1-x^2))
+calculate INT x. 3 / (1+x^2) - 2 / sqrt(1-x^2) for x > -1, x < 1
     apply integral identity
     simplify
 done
 
-calculate INT x. exp(x)*(1-exp(-x)/sqrt(x))
+calculate INT x. exp(x) * (1 - exp(-x) / sqrt(x)) for x > 0
     expand polynomial
     simplify
     apply integral identity
@@ -145,18 +145,18 @@ calculate INT x. cos(x/2)^2
     solve integral INT x. cos(x/2)^2
 done
 
-calculate INT x. sec(x)*(sec(x)-tan(x))
+calculate INT x. sec(x) * (sec(x) - tan(x)) for cos(x) != 0
     expand polynomial
     apply integral identity
 done
 
-calculate INT x. tan(x)^2
+calculate INT x. tan(x)^2 for cos(x) != 0
     rewrite tan(x)^2 to sec(x)^2 - 1
     apply integral identity
     simplify
 done
 
-calculate INT x. cot(x)^2
+calculate INT x. cot(x)^2 for sin(x) != 0
     rewrite cot(x)^2 to csc(x)^2 - 1
     apply integral identity
     simplify

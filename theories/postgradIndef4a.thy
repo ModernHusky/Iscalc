@@ -71,7 +71,7 @@ calculate INT x. x^2*arctan(x)
     simplify
 done
 
-calculate INT x. x*tan(x)^2
+calculate INT x. x*tan(x)^2 for cos(x) != 0
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial
     apply integral identity
@@ -107,7 +107,7 @@ calculate INT x. x^2*cos(x/2)^2
     simplify
 done
 
-calculate INT x. x*log(x-1)
+calculate INT x. x*log(x-1) for x > 1
     integrate by parts with u=log(x-1),v=x^2/2
     partial fraction decomposition
     apply integral identity
@@ -127,7 +127,7 @@ calculate INT x. cos(sqrt(x))^2
     simplify
 done
 
-calculate INT x. log(x+2)/(x+1)^2
+calculate INT x. log(x+2)/(x+1)^2 for x > -2, x != -1
     integrate by parts with u=log(x+2),v=-1/(x+1)
     partial fraction decomposition
     apply integral identity

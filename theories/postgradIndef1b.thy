@@ -79,7 +79,7 @@ calculate INT x. x / (4 + x^2) for x>0
     simplify
 done
 
-calculate INT x. 1 / (1 + sin(x))
+calculate INT x. 1 / (1 + sin(x)) for sin(x/2 + pi/4) != 0
     rewrite 1 + sin(x) to (sin(x/2) + cos(x/2))^2
     rewrite sin(x/2)+cos(x/2) to sqrt(2)*sin(x/2+pi/4)
     simplify
@@ -100,7 +100,7 @@ calculate INT x. sqrt((1-x)/(1+x)) for x > -1, x < 1
     simplify
 done
 
-calculate INT x. 1 / (16-x^4)
+calculate INT x. 1 / (16-x^4) for x > -2, x < 2
     partial fraction decomposition
     apply integral identity
     simplify

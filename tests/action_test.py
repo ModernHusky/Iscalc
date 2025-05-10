@@ -269,7 +269,7 @@ class ActionTest(unittest.TestCase):
             rhs:
                 expand definition for I
             done
-            subgoal 4: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n>=1
+            subgoal 4: (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2))) = (2*n-1)*I(n-1) - 2 * I(n) for n >= 1
             lhs:
                 apply 2 on (D x. x^(2*n-1)*exp(-x^2))
                 simplify
@@ -277,7 +277,7 @@ class ActionTest(unittest.TestCase):
                 rewrite (INT x:[0,oo]. x ^ (2 * n - 2) * exp(-(x ^ 2))) to (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
                 apply 3 on (INT x:[0,oo]. x ^ (2 * (n - 1)) * exp(-(x ^ 2)))
             done
-            subgoal 5: I(n) = I(n-1)*(2*n-1)/2
+            subgoal 5: I(n) = I(n-1)*(2*n-1)/2 for n >= 1
             from 4:
                 apply 1 on (INT x:[0, oo]. (D x. x^(2*n-1)*exp(-x^2)))
                 solve equation for I(n)

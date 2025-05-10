@@ -146,7 +146,7 @@ calculate INT x. arctan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
     simplify
 done
 
-calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2
+calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2 for x != 0, x * log(x) != 0
     rewrite 1 + log(x) to log(x) + 1
     substitute u for x * log(x)
     apply integral identity
@@ -154,7 +154,7 @@ calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2
     simplify
 done
 
-calculate INT x. 1 / (sin(x) * cos(x))
+calculate INT x. 1 / (sin(x) * cos(x)) for sin(2*x) != 0
     rewrite 1 / (sin(x) * cos(x)) to 2 / (2 * sin(x) * cos(x))
     rewrite 2 * sin(x) * cos(x) to sin(2*x)
     rewrite 2 / sin(2*x) to 2 * csc(2*x)
@@ -255,12 +255,12 @@ calculate INT x. 1 / (2*x^2 - 1) for x != sqrt(2)/2, x != -sqrt(2)/2
     simplify
 done
 
-calculate INT x. 1 / ((x + 1) * (x - 2))
+calculate INT x. 1 / ((x + 1) * (x - 2)) for x != -1, x != 2
     partial fraction decomposition
     apply integral identity
 done
 
-calculate INT x. x / (x^2 - x - 2)
+calculate INT x. x / (x^2 - x - 2) for x != -1, x != 2
     partial fraction decomposition
     apply integral identity
     simplify
@@ -280,6 +280,7 @@ done
 
 calculate INT x. 1 / (x * sqrt(x^2 - 1)) for x > 1
     substitute t for sqrt(x^2-1)
+    simplify
     apply integral identity
     replace substitution
 done
@@ -331,7 +332,7 @@ calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x > -1, x < 1
     simplify
     sorry
 
-calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1
+calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, cos(arcsin(x)) + sin(arcsin(x)) != 0
     substitute sin(t) for x
     rewrite 1 - sin(t)^2 to cos(t)^2
     simplify

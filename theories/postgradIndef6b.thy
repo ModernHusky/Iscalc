@@ -14,7 +14,7 @@ calculate INT x. (x^2+1)/((x-1)*(x+1)^2) for x != -1, x != 1
     simplify
 done
 
-calculate INT x. x/((x-1)*(x^2+1))
+calculate INT x. x/((x-1)*(x^2+1)) for x != 1
     partial fraction decomposition
     expand polynomial
     apply integral identity
@@ -62,7 +62,7 @@ calculate INT x. 1/(x*(1+x^4)) for x != 0, 4*x^4 + 4 != 0
     replace substitution
 done
 
-calculate INT x. 1/(x^4*(1+x^2))
+calculate INT x. 1/(x^4*(1+x^2)) for x != 0
     partial fraction decomposition
     apply integral identity
     simplify

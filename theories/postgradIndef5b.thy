@@ -22,7 +22,7 @@ calculate INT x. 1/(cos(x)*sin(x)^3) for x > 0, x < pi/2
     simplify
 done
 
-calculate INT x. (3*cos(x)-sin(x)) / (cos(x)+sin(x))
+calculate INT x. (3*cos(x)-sin(x)) / (cos(x)+sin(x)) for cos(x) + sin(x) != 0
     rewrite 3*cos(x)-sin(x) to (cos(x)+sin(x))+2*(cos(x)-sin(x))
     rewrite (cos(x) + sin(x) + 2 * (cos(x) - sin(x))) / (cos(x) + sin(x)) to 1 + 2 * (cos(x) - sin(x)) / (cos(x) + sin(x))
     simplify
@@ -66,7 +66,7 @@ calculate INT x. sin(x)*cos(x)^3 / (1+sin(x)^2) for x > 0, x < pi / 2
     simplify
 done
 
-calculate INT x. 1/(1+4*cos(x))
+calculate INT x. 1/(1+4*cos(x)) for sqrt(3/5)*tan(x/2) != -1, sqrt(3/5)*tan(x/2) != 1
     substitute t for tan(x/2)
     rewrite (-(4 * t ^ 2) + 4) / (t ^ 2 + 1) + 1 to (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) 
     rewrite (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) to (5-3*t^2)/(t^2+1)
@@ -79,7 +79,7 @@ calculate INT x. 1/(1+4*cos(x))
     expand polynomial
 done
 
-calculate INT x. 1/(sqrt(sin(x))*cos(x)) for x > 0, x < pi
+calculate INT x. 1/(sqrt(sin(x))*cos(x)) for x > 0, x < pi, cos(x) != 0
     substitute u for sqrt(sin(x))
     simplify
     partial fraction decomposition

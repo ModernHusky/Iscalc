@@ -32,7 +32,7 @@ calculate INT x. x * exp(-x)
     simplify
 done
 
-calculate INT x. x^2 * log(x)
+calculate INT x. x^2 * log(x) for x > 0
     integrate by parts with u = log(x), v = 1/3*x^3
     apply integral identity
     simplify
@@ -73,7 +73,7 @@ calculate INT x. x^2 * arctan(x)
     simplify
 done
 
-calculate INT x. x * tan(x)^2
+calculate INT x. x * tan(x)^2 for cos(x) != 0
     rewrite tan(x)^2 to sec(x)^2 - 1
     expand polynomial
     apply integral identity
@@ -146,7 +146,7 @@ calculate INT x. (x^2-1) * sin(2*x)
     simplify
 done
 
-calculate INT x. log(x)^3 / x^2
+calculate INT x. log(x)^3 / x^2 for x > 0
     integrate by parts with u = log(x)^3, v = -1/x
     simplify
     integrate by parts with u = log(x)^2, v = -1/x
@@ -195,7 +195,7 @@ calculate INT x. exp(x) * sin(x)^2
     simplify
     sorry
 
-calculate INT x. x * log(x)^2
+calculate INT x. x * log(x)^2 for x > 0
     integrate by parts with u = log(x)^2, v = x^2/2
     integrate by parts with u = log(x), v = x^2/2
     apply integral identity

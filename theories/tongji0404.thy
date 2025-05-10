@@ -77,7 +77,7 @@ calculate INT x. (x^5 + x^4 - 8) / (x^3 - x) for x > 0, x < 1
     simplify
 done
 
-calculate INT x. 1 / ((x^2 + 1) * (x^2 + x))
+calculate INT x. 1 / ((x^2 + 1) * (x^2 + x)) for x != 0, x != -1
     partial fraction decomposition
     apply integral identity
     rewrite 2 * x^2 + 2 to 2 * (x^2 + 1)
@@ -90,7 +90,7 @@ calculate INT x. 1 / ((x^2 + 1) * (x^2 + x))
     simplify
 done
 
-calculate INT x. 1 / (x^4 - 1)
+calculate INT x. 1 / (x^4 - 1) for x != -1, x != 1
     partial fraction decomposition
     rewrite 2 * x^2 + 2 to 2 * (x^2 + 1)
     apply integral identity
@@ -162,7 +162,7 @@ calculate INT x. 1 / (2 + sin(x))
     simplify
 done
 
-calculate INT x. 1 / (1 + sin(x) + cos(x))
+calculate INT x. 1 / (1 + sin(x) + cos(x)) for tan(x/2) + 1 != 0
     substitute u for tan(x/2)
     rewrite 2 / ((u ^ 2 + 1) * ((-(u ^ 2) + 1) / (u ^ 2 + 1) + 2 * u / (u ^ 2 + 1) + 1)) to 1 / (1 + u)
     simplify
@@ -181,7 +181,7 @@ calculate INT x. 1 / (2*sin(x) - cos(x) + 5)
     simplify
 done
 
-calculate INT x. 1 / (1 + (x + 1)^(1/3))
+calculate INT x. 1 / (1 + (x + 1)^(1/3)) for (x+1)^(1/3) + 1 != 0
     substitute u for (x + 1)^(1/3)
     partial fraction decomposition
     apply integral identity
