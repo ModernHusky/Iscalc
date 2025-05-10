@@ -289,3 +289,95 @@ class CaseAnalysisState(State):
     
     def is_finished(self) -> bool:
         return self.case_proof.is_finished()
+
+
+
+class ProblemInfo:
+    """Information about a single problem.
+    
+    Attributes
+    ----------
+    filename : str
+        name of the file, used for output
+    index : int
+        index of the problem, 1-based
+    context : Context
+        context for the problem
+    problem : str
+        statement of the problem
+    steps : list[str]
+        available answer for the problem
+
+    """
+    def __init__(self, filename: str, index: int, context: Context, problem: str, steps: list[str]):
+        self.filename = filename
+        self.index = index
+        self.context = context
+        self.problem = problem
+        self.steps = steps
+
+    def __str__(self):
+        res = f"{self.filename}_{self.index}"
+        if self.steps == ["sorry"]:
+            res += "?"
+        res += " " + self.problem
+        return res
+
+
+def process_file(filename: str) -> list[ProblemInfo]:
+    """Process the content of a file containing calculations.
+    
+    Parameters
+    ----------
+    filename : str
+        name of the file, in `iscalc/theories`.
+
+    Returns
+    -------
+    list[ProblemInfo]
+        list of problem infos contained in the file.
+
+    """
+    from integral import parser
+
+    result = []
+    with open(f'../iscalc/theories/{filename}.thy', 'r', encoding="utf-8") as problem_file:
+        lines = [s for s in problem_file.read().split('\n') if s.strip()]
+        cur_goal = None
+        steps = []
+        i = 0
+        ctx = Context()
+        ctx.load_book("base")
+        for line in lines:
+            line = line.strip()
+            if line.startswith('#') or line.startswith('//'):
+                # title or comment
+                continue
+            a = parser.parse_action(line)
+            if isinstance(a, ImportsAction):
+                for theory in a.theories:
+                    if theory != 'base':
+                        ctx.load_book(theory)
+            if isinstance(a, (ProveAction, CalculateAction)):
+                if cur_goal:
+                    # First create problem using context *without* adding the current
+                    # goal as theorem.
+                    result.append(ProblemInfo(filename, i, Context(ctx), problem, steps))
+                    ctx = Context(ctx)
+
+                    # Then add current theorem to context.
+                    if isinstance(cur_goal, ProveAction):
+                        if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        else:
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
+                cur_goal = a
+                problem = line
+                steps = []
+                i += 1
+            elif line and line != 'done':
+                steps.append(line)
+        result.append(ProblemInfo(filename, i, ctx, problem, steps))
+    return result

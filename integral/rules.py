@@ -11,7 +11,6 @@ from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, \
     SkolemFunc, decompose_expr_factor2, is_const, exprify
-from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
 from integral import limits
@@ -621,12 +620,8 @@ class ApplyIdentity(Rule):
 
     """
 
-    def __init__(self, source: Union[str, Expr], target: Union[str, Expr]):
+    def __init__(self, source: Expr, target: Expr):
         self.name = "ApplyIdentity"
-        if isinstance(source, str):
-            source = parser.parse_expr(source)
-        if isinstance(target, str):
-            target = parser.parse_expr(target)
         self.source = source
         self.target = target
 
@@ -688,10 +683,8 @@ class ApplyIdentity(Rule):
 class SeriesExpansionIdentity(Rule):
     """Apply series expansion in the current theory."""
 
-    def __init__(self, *, old_expr: Optional[Union[str, Expr]] = None, index_var: str = 'n'):
+    def __init__(self, *, old_expr: Optional[Expr] = None, index_var: str = 'n'):
         self.name = "SeriesExpansionIdentity"
-        if isinstance(old_expr, str):
-            old_expr = parser.parse_expr(old_expr)
         self.old_expr = old_expr
         self.index_var = index_var
 
@@ -1376,9 +1369,7 @@ class Substitution(Rule):
 
     """
 
-    def __init__(self, var_name: str, var_subst: Union[Expr, str]):
-        if isinstance(var_subst, str):
-            var_subst = parser.parse_expr(var_subst)
+    def __init__(self, var_name: str, var_subst: Expr):
         assert isinstance(var_name, str) and isinstance(var_subst, Expr)
         self.name = "Substitution"
         self.var_name = var_name
@@ -1579,11 +1570,9 @@ class SubstitutionInverse(Rule):
         expression containing the new variable.
 
     """
-    def __init__(self, old_var: str, var_subst: Union[Expr, str]):
+    def __init__(self, old_var: str, var_subst: Expr):
         self.name = "SubstitutionInverse"
         self.old_var = old_var
-        if isinstance(var_subst, str):
-            var_subst = parser.parse_expr(var_subst)
         self.var_subst = var_subst
 
     def __str__(self):
@@ -1745,12 +1734,8 @@ class ExpandPolynomial(Rule):
             return e
 
 class Rewriting(Rule):
-    def __init__(self, old_expr: Optional[Union[str, Expr]], new_expr: Union[str, Expr]):
+    def __init__(self, old_expr: Optional[Expr], new_expr: Expr):
         self.name = "Rewriting"
-        if isinstance(old_expr, str):
-            old_expr = parser.parse_expr(old_expr)
-        if isinstance(new_expr, str):
-            new_expr = parser.parse_expr(new_expr)
         self.old_expr = old_expr
         self.new_expr = new_expr
 
@@ -1922,12 +1907,8 @@ class IntegrationByParts(Rule):
 
     """
 
-    def __init__(self, u: Union[str, Expr], v: Union[str, Expr]):
+    def __init__(self, u: Expr, v: Expr):
         self.name = "IntegrationByParts"
-        if isinstance(u, str):
-            u = parser.parse_expr(u)
-        if isinstance(v, str):
-            v = parser.parse_expr(v)
         assert isinstance(u, Expr) and isinstance(v, Expr)
         self.u = u
         self.v = v
@@ -1982,10 +1963,8 @@ class IntegrationByParts(Rule):
 class SplitRegion(Rule):
     """Split integral into two parts at a point."""
 
-    def __init__(self, c: Union[Expr, str]):
+    def __init__(self, c: Expr):
         self.name = "SplitRegion"
-        if isinstance(c, str):
-            c = parser.parse_expr(c)
         self.c = c
 
     def __str__(self):
@@ -2019,12 +1998,14 @@ class SplitRegion(Rule):
 
 
 class IntegrateByEquation(Rule):
-    """When the initial integral occurs in the steps."""
-
-    def __init__(self, lhs: Union[str, Expr]):
+    """Evaluate integral by solving an equation.
+    
+    This step can be used when the current integral occurs in one of
+    the earlier steps.
+    
+    """
+    def __init__(self, lhs: Expr):
         self.name = "IntegrateByEquation"
-        if isinstance(lhs, str):
-            lhs = parser.parse_expr(lhs)
         self.lhs = lhs
 
     def __str__(self):
@@ -2359,15 +2340,12 @@ class IntegralEquation(Rule):
 
 
 class SummationEquation(Rule):
-    '''
-    a(n) = b(n) => Sum(n, lower, upper ,a(n)) = Sum(n, lower, upper, b(n))
-    '''
+    """Applies summation to both sides of equality.
 
-    def __init__(self, index_var: str, lower: Union[Expr, str], upper: Union[Expr, str]):
-        if isinstance(lower, str):
-            lower = parser.parse_expr(lower)
-        if isinstance(upper, str):
-            upper = parser.parse_expr(upper)
+    a(n) = b(n) => Sum(n, lower, upper, a(n)) = Sum(n, lower, upper, b(n))
+
+    """
+    def __init__(self, index_var: str, lower: Expr, upper: Expr):
         self.name = "SummationEquation"
         self.index_var = index_var
         self.lower = lower
@@ -2393,13 +2371,14 @@ class SummationEquation(Rule):
 
 
 class ChangeSummationIndex(Rule):
-    '''
-    sum(n, 1, oo, a(n)) => sum(n, 0, oo, a(n+1))
-    '''
+    """Change index of summation from 1 to 0.
 
-    def __init__(self, new_lower: Union[Expr, str]):
+    sum(n, 1, oo, a(n)) => sum(n, 0, oo, a(n+1))
+
+    """
+    def __init__(self, new_lower: Expr):
         self.name = "ChangeSummationIndex"
-        self.new_lower = new_lower if isinstance(new_lower, Expr) else parser.parse_expr(new_lower)
+        self.new_lower = new_lower
 
     def eval(self, e: Expr, ctx: Context):
         if not expr.is_summation(e):
@@ -2772,26 +2751,20 @@ class IntExchange(Rule):
 
 class VarSubsOfEquation(Rule):
     """Substitute variable for any expression in an equation.
-    """
 
-    def __init__(self, subst: Dict[str, Union[str, Expr]]):
+    """
+    def __init__(self, subst: dict[str, Expr]):
         self.name = "VarSubsOfEquation"
-        for i in range(len(subst)):
-            if isinstance(subst[i]['expr'], str):
-                if subst[i]['expr'] == "":
-                    subst[i]['expr'] = None
-                else:
-                    subst[i]['expr'] = parser.parse_expr(subst[i]['expr'])
-        self.subst = subst
+        self.subst = subst.copy()
 
     def __str__(self):
-        str_of_substs = ', '.join(item['var'] + " for " + str(item['expr']) for item in self.subst
-                                  if item['expr'] is not None)
+        str_of_substs = ', '.join(item['var'] + " for " + str(item['expr'])
+                                  for item in self.subst)
         return "substitute " + str_of_substs + " in equation"
 
     def export(self):
         latex_str_of_substs = ', '.join('\\(' + item['var'] + "\\) for \\(" + latex.convert_expr(item['expr']) + '\\)'
-                                        for item in self.subst if item['expr'] is not None)
+                                        for item in self.subst)
         json_substs = list()
         for item in self.subst:
             json_substs.append({'var': item['var'], 'expr': str(item['expr'])})
@@ -2805,8 +2778,7 @@ class VarSubsOfEquation(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         if e.is_equals():
             for item in self.subst:
-                if item['expr'] is not None:
-                    e = e.subst(item['var'], item['expr'])
+                e = e.subst(item['var'], item['expr'])
             return poly.normal_const(e, ctx)
         else:
             return e
@@ -2865,9 +2837,7 @@ class DerivEquation(Rule):
 class SolveEquation(Rule):
     """Solve equation for the given expression."""
 
-    def __init__(self, solve_for: Union[Expr, str]):
-        if isinstance(solve_for, str):
-            solve_for = parser.parse_expr(solve_for)
+    def __init__(self, solve_for: Expr):
         self.solve_for = solve_for
         self.name = "SolveEquation"
 

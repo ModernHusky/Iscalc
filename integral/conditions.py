@@ -1,26 +1,23 @@
 """Conditions"""
 
-from typing import Union
+from typing import Union, Iterable
 
 from integral.expr import Expr
 from integral import latex
-from integral import parser
 
 
 class Conditions:
     """A condition is represented by a list of boolean expressions."""
-    def __init__(self, conds: Union["Conditions", list[Union[str, Expr]]] = None):
+    def __init__(self, conds: Union["Conditions", Iterable[Expr]] = None):
         self.data: list[Expr] = list()
-        if isinstance(conds, Conditions):
+        if conds is None:
+            pass
+        elif isinstance(conds, Conditions):
             self.data.extend(conds.data)
-        elif conds is not None:
-            for cond in conds:
-                if isinstance(cond, str):
-                    self.data.append(parser.parse_expr(cond))
-                elif isinstance(cond, Expr):
-                    self.data.append(cond)
-                else:
-                    raise TypeError
+        else:
+            conds = list(conds)
+            assert all(isinstance(cond, Expr) for cond in conds)
+            self.data.extend(conds)
 
     def __hash__(self):
         return hash(tuple(self.data))
