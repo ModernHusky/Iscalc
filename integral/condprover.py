@@ -515,6 +515,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["y != x"], "x ^ 2 - y ^ 2 != 0"),
         (["x != y"], "x ^ 4 - y ^ 4 != 0"),
         (["y != x"], "x ^ 4 - y ^ 4 != 0"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y < 1"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y > 0"),
 
         # Log
         (["x >= 1"], "log(x) >= 0"),
@@ -548,6 +550,10 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= -pi", "x <= 0"], "sin(x) <= 0"),
         (["x > -pi / 2", "x < pi / 4"], "tan(x) < 1"),
         (["x > 0", "x < pi / 2"], "tan(x) > 0"),
+        (["cos(x) != 0"], "sin(x) > -1"),
+        (["cos(x) != 0"], "sin(x) < 1"),
+        (["sin(x) != 0"], "cos(x) > -1"),
+        (["sin(x) != 0"], "cos(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sec(x) >= 1"),
         (["x > pi / 4", " x < pi / 2"], "sec(x) < sqrt(2)"),
 
