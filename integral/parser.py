@@ -6,6 +6,7 @@ from decimal import Decimal
 from fractions import Fraction
 
 from integral import expr
+from integral import rules
 from integral.expr import Expr
 
 
@@ -457,134 +458,102 @@ class ExprTransformer(Transformer):
         return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
-        from integral import rules
         return rules.Substitution(str(var_name), expr)
 
     def inverse_substitute_rule(self, expr: Expr, old_var: Token):
-        from integral import rules
         return rules.SubstitutionInverse(str(old_var), expr)
 
     def integral_identity_rule(self, attrs: tuple[str]):
-        from integral import rules
         return rules.IntegralIdentity(attrs)
     
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
-        from integral import rules
         return rules.IntegrationByParts(u_expr, v_expr)
 
     def split_region_rule(self, expr: Expr):
-        from integral import rules
         return rules.SplitRegion(expr)
     
     def equation_rule(self, old_expr: Expr, new_expr: Expr):
-        from integral import rules
         return rules.Rewriting(old_expr, new_expr)
 
     def equation_none_rule(self, new_expr: Expr):
-        from integral import rules
         return rules.Rewriting(old_expr=None, new_expr=new_expr)
 
     def expand_polynomial_rule(self):
-        from integral import rules
         return rules.ExpandPolynomial()
     
     def partial_fraction_decomposition_rule(self):
-        from integral import rules
         return rules.PartialFractionDecomposition()
 
     def apply_identity_rule(self, old_expr: Expr, new_expr: Expr):
-        from integral import rules
         return rules.ApplyIdentity(old_expr, new_expr)
     
     def solve_integral_rule(self, expr: Expr):
-        from integral import rules
         return rules.IntegrateByEquation(expr)
 
     def solve_equation_rule(self, expr: Expr):
-        from integral import rules
         return rules.SolveEquation(expr)
 
     def deriv_equation_rule(self, var: Token):
-        from integral import rules
         return rules.DerivEquation(str(var))
     
     def integral_equation_rule(self):
-        from integral import rules
         return rules.IntegralEquation()
     
     def apply_equation_rule(self, name: Token, source: Expr):
-        from integral import rules
         return rules.ApplyEquation(str(name), source)
     
     def apply_equation_expr_rule(self, eq: Expr, source: Expr):
-        from integral import rules
         return rules.ApplyEquation(eq, source)
 
     def apply_limit_rule(self, var_name: Token, limit: Expr):
-        from integral import rules
         return rules.LimitEquation(str(var_name), limit)
 
     def expand_definition_rule(self, func_name: Token):
-        from integral import rules
         return rules.ExpandDefinition(str(func_name))
 
     def fold_definition_rule(self, func_name):
-        from integral import rules
         return rules.FoldDefinition(str(func_name))
 
     def exchange_deriv_int_rule(self):
-        from integral import rules
         return rules.DerivIntExchange()
     
     def inst_equation(self, var_name: Token, expr: Expr):
         return {'var': str(var_name), 'expr': expr}
     
     def inst_equation_rule(self, *insts):
-        from integral import rules
         return rules.VarSubsOfEquation(list(insts))
 
     def apply_series_expansion_rule(self, old_expr: Expr, index_var: Token):
-        from integral import rules
         return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
 
     def apply_series_evaluation_rule(self):
-        from integral import rules
         return rules.SeriesEvaluationIdentity()
 
     def exchange_integral_sum_rule(self):
-        from integral import rules
         return rules.IntSumExchange()
 
     def exchange_integral_rule(self):
-        from integral import rules
         return rules.IntExchange()
 
     def apply_induction_hypothesis_rule(self):
-        from integral import rules
         return rules.ApplyInductHyp()
 
     def elim_improper_integral_rule(self, var_name: Token):
-        from integral import rules
         return rules.ElimInfInterval(new_var=str(var_name))
 
     def replace_substitution_rule(self):
-        from integral import rules
         return rules.ReplaceSubstitution()
 
     def full_simplify_rule(self):
-        from integral import rules
         return rules.Simplify()
     
     def lhopitals_rule(self):
-        from integral import rules
         return rules.LHopital()
 
     def on_count_rule(self, rule, n: Token):
-        from integral import rules
         return rules.OnCount(rule, int(str(n)))
     
     def on_subterms_rule(self, rule):
-        from integral import rules
         return rules.OnSubterm(rule)
 
     def rule_action(self, rule):
