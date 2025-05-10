@@ -17,6 +17,7 @@ done
 prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a > 0
 subgoal 1: (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a)
 lhs:
+    rewrite x^2 + a^2 to a^2 + x^2
     apply integral identity
 done
 from 1:
@@ -36,9 +37,6 @@ lhs:
     rewrite 1 / sec(theta) ^ 2 to cos(theta) ^ 2
     rewrite cos(theta) ^ 2 to (1 + cos(2 * theta)) / 2
     simplify
-    apply integral identity
-    simplify
-    substitute phi for 2 * theta
     apply integral identity
     simplify
 done
@@ -461,6 +459,7 @@ lhs:
     simplify
     rewrite sin(2 * u) to 2 * sin(u) * cos(u)
     simplify
+    rewrite cos(u) ^ 2 to 1/2 * (1 + cos(2*u))
     apply integral identity
     simplify
 done

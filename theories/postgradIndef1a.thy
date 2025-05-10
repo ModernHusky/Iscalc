@@ -4,7 +4,7 @@ imports standard
 # Section A
 // page 166
 
-calculate INT x. 1 / sqrt(x-x^2)
+calculate INT x. 1 / sqrt(x-x^2) for x > 1 / 2, x < 1
     rewrite x - x^2 to 1/4 - (x-1/2)^2
     substitute u for arcsin(x-1/2)
     substitute v for sin(u)

@@ -83,6 +83,7 @@ calculate INT x:[0, pi]. 1 - sin(x) ^ 3
 done
 
 calculate INT x:[pi/6, pi/2]. cos(x) ^ 2
+    rewrite cos(x) ^ 2 to 1/2 * (1 + cos(2*x))
     apply integral identity
     simplify
 done
@@ -91,6 +92,7 @@ calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
     substitute sin(u) for x
     rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2
     simplify
+    rewrite cos(u) ^ 2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done
@@ -101,6 +103,7 @@ calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
     rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
     rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done
@@ -111,6 +114,7 @@ calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
     rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
     rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     expand polynomial
 done
@@ -185,6 +189,7 @@ calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4
     expand polynomial
     substitute u for 2 * x
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done

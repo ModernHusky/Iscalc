@@ -75,7 +75,7 @@ calculate INT x. sin(x)^4
     simplify
 done
 
-calculate INT x. tan(x)^4
+calculate INT x. tan(x)^4 for cos(x) != 0
     rewrite tan(x)^4 to tan(x)^2^2
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial

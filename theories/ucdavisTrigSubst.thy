@@ -12,6 +12,7 @@ calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
     rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     replace substitution
     simplify
@@ -200,6 +201,7 @@ calculate INT x. x * sqrt(10*x - x^2) for x > 0, x < 10
     expand polynomial
     simplify
     substitute w for cos(v)
+    rewrite cos(v)^2 to 1/2*(1+cos(2*v))
     apply integral identity
     simplify
     replace substitution

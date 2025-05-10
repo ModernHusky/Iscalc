@@ -40,6 +40,7 @@ done
 
 calculate INT x. 3 * cos(5 * x) ^ 2
     substitute u for 5 * x
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     replace substitution
     simplify

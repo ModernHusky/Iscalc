@@ -183,6 +183,7 @@ done
 
 calculate INT t. cos(w*t + phi)^2
     substitute u for w*t + phi
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     replace substitution
     simplify
@@ -370,6 +371,7 @@ calculate INT x. (x^3 + 1) / (x^2 + 1)^2
     substitute u for cos(t)
     apply integral identity
     substitute u for cos(t)
+    rewrite cos(t)^2 to 1/2*(1+cos(2*t))
     apply integral identity
     replace substitution
     simplify

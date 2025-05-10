@@ -438,6 +438,10 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > d"], "a - c < b - d"),
         (["a >= b", "c <= d"], "a - c >= b - d"),
         (["a <= b", "c >= d"], "a - c <= b - d"),
+        (["a < b"], "a - b < 0"),
+        (["a < b"], "b - a > 0"),
+        (["a > -b"], "a + b > 0"),
+        (["a > -b"], "b + a > 0"),
 
         # Multiplication (simple)
         (["a != 0", "b != 0"], "a * b != 0"),
@@ -499,6 +503,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
         (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
+        (["a >= 0"], "sqrt(a ^ 2) = a"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
@@ -515,6 +520,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["y != x"], "x ^ 2 - y ^ 2 != 0"),
         (["x != y"], "x ^ 4 - y ^ 4 != 0"),
         (["y != x"], "x ^ 4 - y ^ 4 != 0"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y < 1"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y > 0"),
 
         # Log
         (["x >= 1"], "log(x) >= 0"),
@@ -539,6 +546,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > pi / 2", "x < 3 * pi / 2"], "cos(x) < 0"),
         (["x >= -pi / 2", "x <= pi / 2"], "cos(x) >= 0"),
         (["x >= pi / 2", "x <= 3 * pi / 2"], "cos(x) <= 0"),
+        (["x > 0", "x < 2 * pi"], "cos(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) > -1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) < 1"),
         (["x > 0", "x < pi"], "sin(x) > 0"),
@@ -563,6 +571,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= 0", "x <= 1"], "arcsin(x) >= 0"),
         (["x < 0", "x >= -1"], "arcsin(x) < 0"),
         (["x <= 0", "x >= -1"], "arcsin(x) <= 0"),
+        (["x > 0", "x < 1 / 2"], "arcsin(x) < pi / 6"),
         (["x != -1"], "arcsin(x) != -pi/2"),
         (["x != 1"], "arcsin(x) != pi/2"),
         (["x >= -1", "x <= 1"], "arccos(x) >= 0"),
@@ -626,6 +635,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x != 0"], "arctan(x) < 0"),
         (["x > 0", "x < pi/2"], "sin(x) > 0"),
         (["x < 0", "x > -pi/2"], "sin(x) < 0"),
+        (["x > 0", "x < pi / 6"], "sin(x) < 1 / 2"),
 
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
