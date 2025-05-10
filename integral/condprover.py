@@ -563,6 +563,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= 0", "x <= 1"], "arcsin(x) >= 0"),
         (["x < 0", "x >= -1"], "arcsin(x) < 0"),
         (["x <= 0", "x >= -1"], "arcsin(x) <= 0"),
+        (["x > 0", "x < 1 / 2"], "arcsin(x) < pi / 6"),
         (["x != -1"], "arcsin(x) != -pi/2"),
         (["x != 1"], "arcsin(x) != pi/2"),
         (["x >= -1", "x <= 1"], "arccos(x) >= 0"),
@@ -626,6 +627,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x != 0"], "arctan(x) < 0"),
         (["x > 0", "x < pi/2"], "sin(x) > 0"),
         (["x < 0", "x > -pi/2"], "sin(x) < 0"),
+        (["x > 0", "x < pi / 6"], "sin(x) < 1 / 2"),
 
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
