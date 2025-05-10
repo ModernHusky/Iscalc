@@ -759,8 +759,13 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
     for _, g in ctx.get_all_subgoals().items():
-        if not g.conds and expr.is_compare(g.expr) and not expr.is_equals(g.expr):
-            conds.add_condition(g.expr)
+        if expr.is_compare(g.expr) and not expr.is_equals(g.expr):
+            satisfied = True
+            for cond in g.conds.data:
+                if cond in ctx.get_conds().data:
+                    satisfied = True
+            if satisfied:
+                conds.add_condition(g.expr)
     all_conds = init_all_conds(conds)
     
     # Check all subexpressions of e
