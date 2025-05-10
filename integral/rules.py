@@ -713,7 +713,7 @@ class SeriesExpansionIdentity(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                raise AssertionError("Equation: old expression not found")
+                raise RuleException("SeriesExpansionIdentity", f"old expression {str(self.old_expr)} not found")
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
