@@ -139,7 +139,19 @@ calculate INT x. sqrt(a^2+x^2) for a > 0
     simplify
 done
 
-calculate INT x. sqrt(a^2-x^2) for a > 0
+calculate INT x. sqrt(a^2-x^2) for a:real, a > 0, x > -a, x < a
+subgoal 1: a ^ 2 - x ^ 2 > 0
+lhs:
+    rewrite a ^ 2 - x ^ 2  to (a - x) * (a + x)
+done
+subgoal 2: x > -sqrt(a ^ 2)
+rhs:
+    simplify
+done
+subgoal 3: x < sqrt(a ^ 2)
+rhs:
+    simplify
+done
     integrate by parts with u=sqrt(a^2-x^2),v=x
     simplify
     rewrite x^2 to -(sqrt(a^2-x^2)^2 - a^2)
@@ -148,7 +160,7 @@ calculate INT x. sqrt(a^2-x^2) for a > 0
     solve integral INT x. sqrt(a^2-x^2)
 done
 
-calculate INT x. sec(x)^3
+calculate INT x. sec(x)^3 for cos(x) != 0
     integrate by parts with u=sec(x), v=tan(x)
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial
@@ -156,7 +168,7 @@ calculate INT x. sec(x)^3
     solve integral INT x. sec(x)^3
 done
 
-calculate INT x. csc(x)^3
+calculate INT x. csc(x)^3 for sin(x) != 0
     integrate by parts with u=-csc(x), v=cot(x)
     rewrite cot(x)^2 to csc(x)^2-1
     expand polynomial
@@ -271,7 +283,7 @@ calculate INT x. arcsin(sqrt(x))/sqrt(x) for x > 0, x < 1
     simplify
 done
 
-calculate INT x. arcsin(exp(x)) / exp(x)
+calculate INT x. arcsin(exp(x)) / exp(x) for x < 0
     substitute u for exp(x)
     substitute sin(v) for u
     simplify

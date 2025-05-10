@@ -439,6 +439,9 @@ def get_standard_inequalities() -> list[Identity]:
         (["a >= b", "c <= d"], "a - c >= b - d"),
         (["a <= b", "c >= d"], "a - c <= b - d"),
         (["a < b"], "a - b < 0"),
+        (["a < b"], "b - a > 0"),
+        (["a > -b"], "a + b > 0"),
+        (["a > -b"], "b + a > 0"),
 
         # Multiplication (simple)
         (["a != 0", "b != 0"], "a * b != 0"),
@@ -500,6 +503,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
         (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
+        (["a >= 0"], "sqrt(a ^ 2) = a"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
