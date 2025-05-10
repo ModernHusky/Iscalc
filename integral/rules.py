@@ -2335,7 +2335,8 @@ class IntegralEquation(Rule):
         self.name = "IntegralEquation"
 
     def eval(self, e: Expr, ctx: Context):
-        assert e.is_equals() and expr.is_deriv(e.lhs)
+        if not (e.is_equals() and expr.is_deriv(e.lhs)):
+            raise RuleException("IntegralEquation", f"{str(e)} is not an equation expression or its left side is not a derivation expression")
 
         # Variable to differentiate, this will also be the variable
         # of integration.

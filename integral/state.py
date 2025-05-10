@@ -116,6 +116,10 @@ class ProveState(State):
 
         # Start a subgoal
         elif isinstance(action, SubgoalAction):
+            if self.goal.parent is not None and isinstance(self.goal.parent, Goal):
+                raise StateException(
+                "Prove",
+                f"Sub-goals cannot be nested.")
             subgoal = self.goal.add_subgoal(action.name, action.expr, action.conditions)
             return ProveState(self, subgoal)
         
