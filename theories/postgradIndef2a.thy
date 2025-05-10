@@ -164,7 +164,7 @@ calculate INT x. 1 / (x*log(x)*log(log(x))) for x > 1
     replace substitution
 done
 
-calculate INT x. 1 / sqrt(4-9*x^2)
+calculate INT x. 1 / sqrt(4-9*x^2) for x < 2 / 3, x > -2 / 3
     rewrite 4-9*x^2 to 4*(1 - (3/2*x)^2)
     rewrite sqrt(4*(1 - (3/2*x)^2)) to 2 * sqrt(1 - (3/2*x)^2)
     substitute u for 3/2*x
