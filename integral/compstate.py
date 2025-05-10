@@ -4,10 +4,10 @@ from typing import List, Optional, Union
 
 from integral.expr import Expr, Var, Const
 from integral import rules, expr
-from integral.rules import Rule, check_wellformed
+from integral.rules import Rule, check_wellformed, ProofObligation
 from integral.conditions import Conditions
 from integral import condprover
-from integral.context import Context, Identity
+from integral.context import Context, Definition, Identity
 from integral.poly import normalize
 from integral import utils
 
@@ -116,50 +116,6 @@ class StateItem:
         return True
 
 
-class FuncDef(StateItem):
-    """Introduce a new function definition."""
-
-    def __init__(self, parent: Optional[StateItem], ctx: Context, eq: Expr, conds: Optional[Conditions] = None):
-        if not eq.is_equals():
-            raise StateException("FuncDef", "input should be an equation")
-
-        self.parent = parent
-        self.ctx = ctx
-        self.eq = eq
-        if expr.is_fun(self.eq.lhs):
-            self.symb = self.eq.lhs.func_name
-            self.args = self.eq.lhs.args
-        elif expr.is_var(self.eq.lhs):
-            self.symb = self.eq.lhs.name
-            self.args = []
-        else:
-            raise StateException("FuncDef", "left side of equation must be variable or function")
-        self.body = self.eq.rhs
-
-        if any(not expr.is_var(arg) for arg in self.args) or len(self.args) != len(set(self.args)):
-            raise StateException("FuncDef", "arguments should be distinct variables")
-
-        if conds is None:
-            conds = Conditions()
-        self.conds = conds
-
-    def __str__(self):
-        res = "Definition\n"
-        res += "  %s\n" % self.eq
-        return res
-
-    def __eq__(self, other):
-        return isinstance(other, FuncDef) and self.eq == other.eq and self.conds == other.conds
-
-    def get_by_label(self, label: Label):
-        if not label.empty():
-            raise AssertionError("get_by_label: invalid label")
-        return self
-
-    def get_facts(self):
-        return [self.eq]
-
-
 class Goal(StateItem):
     """Goal to be proved.
     
@@ -188,30 +144,19 @@ class Goal(StateItem):
             conds = Conditions()
         self.conds = conds
 
-        self.proof = None
+        # Initialize context
         self.ctx = Context(ctx)
-
         self.ctx.extend_vars(goal.get_vars())
         self.ctx.extend_condition(self.conds)
 
-        # Check well-formedness of the goal
-        proof_obligations_raw = check_wellformed(goal, self.ctx)
-        self.proof_obligations: list[rules.ProofObligation] = []
-        for oblig in proof_obligations_raw:
-            found = False
-            for _, subgoal in self.ctx.get_all_subgoals().items():
-                if subgoal.covers_obligation(oblig):
-                    found = True
-                    break
-            if not found:
-                self.proof_obligations.append(oblig)
-        self.wellformed = (len(self.proof_obligations) == 0)
+        # Initialize proof
+        self.proof = None
+
+        # List of local definitions
+        self.definitions: list[Definition] = list()
 
         # List of subgoals, as (name, goal) pairs
         self.subgoals: list[tuple[str, Goal]] = list()
-
-        # List of temporary definitions
-        self.definitions: list[FuncDef] = list()
 
     def __str__(self):
         if self.is_finished():
@@ -222,6 +167,8 @@ class Goal(StateItem):
         if self.conds.data:
             res += " for %s" % (", ".join(str(cond) for cond in self.conds.data))
         res += "\n"
+        for definition in self.definitions:
+            res += str(definition) + "\n"
         for n, subgoal in self.subgoals:
             res += "subgoal %s\n" % n
             res += str(subgoal)
@@ -236,10 +183,7 @@ class Goal(StateItem):
             else:
                 print("prove %s" % self.goal)
         for func_def in self.definitions:
-            if func_def.conds and func_def.conds.data:
-                print("define %s for %s" % (func_def.eq, ', '.join(str(cond) for cond in func_def.conds.data)))
-            else:
-                print("define %s" % func_def.eq)
+            print(func_def)
         for n, subgoal in self.subgoals:
             if subgoal.conds and subgoal.conds.data:
                 print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
@@ -260,25 +204,17 @@ class Goal(StateItem):
             return False
         return self.proof == other.proof
 
-    def is_finished(self):
-        if self.proof is None:
-            return False
-        if not self.wellformed:
-            return False
-        for _, subgoal in self.subgoals:
-            if not subgoal.is_finished():
-                return False
-        return self.proof.is_finished()
-
     def check_finished(self, stack: tuple[str]):
         goal_str = str(self.goal)
         if self.conds:
             goal_str += " for " + ', '.join(str(cond) for cond in self.conds.data)
         if self.proof is None:
             raise CheckFinishedException(stack, f"goal {goal_str} has no proof")
-        if not self.wellformed:
+        
+        proof_obligs: list[ProofObligation] = check_wellformed(self.goal, self.ctx)
+        if proof_obligs:
             msg = f"goal {self.goal} is not wellformed."
-            for i, obligation in enumerate(self.proof_obligations, 1):
+            for i, obligation in enumerate(proof_obligs, 1):
                 msg += f"\nObligation {i}\n"
                 msg += utils.indent(str(obligation))
             raise CheckFinishedException(stack, msg)
@@ -289,88 +225,41 @@ class Goal(StateItem):
     def clear(self):
         self.proof = None
 
-    def covers_obligation(self, oblig: rules.ProofObligation) -> bool:
-        # List of conditions is a subset of conditions on obligation
-        for cond in self.conds.data:
-            if cond not in oblig.conds.data:
-                return False
-
-        # Satisfies the goal in one branch
-        for branch in oblig.branches:
-            if len(branch.exprs) == 1 and self.goal == branch.exprs[0]:
-                return True
-            
-        return False
-
     def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> "Goal":
         """Add subgoal with given name and expression."""
 
         # Form context of the subgoal by adding existing subgoal and definitions
         # in the current goal.
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.subgoals.append((name, Goal(self, ctx, expr, conds=Conditions(conds))))
+        conds = Conditions(conds)
+        goal = Goal(self, self.ctx, expr, conds=conds)
+        self.subgoals.append((name, goal))
+        self.ctx = Context(self.ctx)
+        self.ctx.add_subgoal(name, Identity(expr, conds=conds))
+        return goal
 
-        # Recheck wellformedness conditions
-        ctx = Context(ctx)
-        ctx.subgoals[name] = Identity(expr, conds=Conditions(conds))
-        proof_obligations_raw = check_wellformed(self.goal, ctx)
-        self.proof_obligations = []
-        for oblig in proof_obligations_raw:
-            found = False
-            for _, subgoal in self.subgoals:
-                if subgoal.covers_obligation(oblig):
-                    found = True
-                    break
-            if not found:
-                self.proof_obligations.append(oblig)
-        self.wellformed = (len(self.proof_obligations) == 0)
+    def add_definition(self, eq: Expr, conds: Optional[list[Expr]] = None):
+        if not eq.is_equals():
+            raise AssertionError(f"define: {eq}")
 
-        return self.subgoals[-1][1]
+        self.ctx = Context(self.ctx)
+        self.ctx.add_definition(eq, conds)
 
-    def add_definition(self, expr: Expr, conds: Optional[list[Expr]] = None) -> FuncDef:
-        self.definitions.append(FuncDef(self, self.ctx, expr, conds=Conditions(conds)))
-        return self.definitions[-1]
-
-    def proof_by_rewrite_goal(self, *, begin: str):
+    def proof_by_rewrite_goal(self, *, begin: str) -> "RewriteGoalProof":
         if not isinstance(begin, str):
             raise StateException("RewriteGoalProof", "begin should be a string")
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = RewriteGoalProof(self, ctx, self.goal, start=begin)
+        self.proof = RewriteGoalProof(self, self.ctx, self.goal, start=begin)
         return self.proof
 
-    def proof_by_calculation(self):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = CalculationProof(self, ctx, self.goal)
+    def proof_by_calculation(self) -> "CalculationProof":
+        self.proof = CalculationProof(self, self.ctx, self.goal)
         return self.proof
 
-    def proof_by_induction(self, induct_var: str, start: int = 0):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = InductionProof(self, ctx, self.goal, induct_var, start=start)
+    def proof_by_induction(self, induct_var: str, start: int = 0) -> "InductionProof":
+        self.proof = InductionProof(self, self.ctx, self.goal, induct_var, start=start)
         return self.proof
 
-    def proof_by_case(self, split_cond: Expr):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = CaseProof(self, ctx, self.goal, split_cond=split_cond)
+    def proof_by_case(self, split_cond: Expr) -> "CaseProof":
+        self.proof = CaseProof(self, self.ctx, self.goal, split_cond=split_cond)
         return self.proof
 
     def get_by_label(self, label: Label):
@@ -456,7 +345,7 @@ class Calculation(StateItem):
         self.conds = conds
         self.connection_symbol = connection_symbol
 
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.ctx.extend_vars(start.get_vars())
         if conds is not None:
             self.ctx.extend_condition(self.conds)
@@ -534,7 +423,7 @@ class CalculationProof(StateItem):
     def __init__(self, parent, ctx: Context, goal: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.calcs: list[Calculation] = []
         if expr.is_compare(goal):
             self.predicate = goal.op
@@ -665,7 +554,7 @@ class InductionProof(StateItem):
         self.parent = parent
         self.goal = goal
         self.induct_var = induct_var
-        self.ctx = ctx
+        self.ctx = Context(ctx)
 
         if isinstance(start, int):
             self.start = Const(start)
@@ -757,7 +646,7 @@ class CaseProof(StateItem):
     def __init__(self, parent: Goal, ctx: Context, goal: Expr, *, split_cond: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.split_cond = split_cond
         self.split_type = ""
         self.cases: List[Goal] = []
@@ -906,7 +795,7 @@ class RewriteGoalProof(StateItem):
             raise StateException("RewriteGoalProof", f"goal {goal} is not an equality.")
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.start = start
         start_goal = ctx.get_subgoal(start)
         if not start_goal:
@@ -987,9 +876,9 @@ class CompFile:
             res += str(st)
         return res
 
-    def add_definition(self, funcdef: Expr, *, conds: list[Expr] = None) -> FuncDef:
+    def add_definition(self, funcdef: Expr, *, conds: list[Expr] = None) -> Definition:
         """Add a function definition."""
-        self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds)))
+        self.content.append(Definition(funcdef, Conditions(conds)))
         return self.content[-1]
 
     def add_calculation(self, calc: Expr, *, conds: list[Expr] = None) -> Calculation:
@@ -1034,7 +923,7 @@ class CompFile:
             elif isinstance(root, CaseProof):
                 for i, c in enumerate(root.cases):
                     rec(c, loc.append(i))
-            elif isinstance(root, FuncDef) or isinstance(root, CalculationStep):
+            elif isinstance(root, Definition) or isinstance(root, CalculationStep):
                 pass
             elif isinstance(root, Calculation):
                 for i, step in enumerate(root.steps):

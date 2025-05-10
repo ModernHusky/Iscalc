@@ -49,7 +49,7 @@ class ActionTest(unittest.TestCase):
                         elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
                             ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                         else:
-                            ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                     if cur_goal and write_stats:
                         elapsed_time = time.time() - start_time
                         with open("stats.txt", "a", encoding='utf-8') as stats_file:

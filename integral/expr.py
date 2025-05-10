@@ -25,7 +25,9 @@ VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINT
 SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
 
 op_priority = {
-    "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
+    "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75,
+    "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50,
+    "&&": 45, "||": 35
 }
 
 class Location:
@@ -767,7 +769,7 @@ class Expr:
             subs.remove(self)
         return tuple(subs)
 
-    def inst_pat(self, mapping: Dict) -> "Expr":
+    def inst_pat(self, mapping: dict[str, "Expr"]) -> "Expr":
         """Instantiate by replacing symbols in term with mapping."""
         if is_var(self) or is_const(self) or is_inf(self):
             return self
@@ -951,6 +953,12 @@ def is_not_equals(e: Expr) -> TypeGuard["Op"]:
 
 def is_compare(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op in ('<', '>', '<=', '>=', '=', '!=')
+
+def is_conj(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '&&'
+
+def is_disj(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '||'
 
 def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     """Match expr with given pattern.
@@ -1300,9 +1308,9 @@ class Op(Expr):
         if len(args) == 1:
             assert op == "-"
         elif len(args) == 2:
-            assert op in ["+", "-", "*", "/", "%", "^", "=", "!=", "<", "<=", ">", ">="]
+            assert op in ["+", "-", "*", "/", "%", "^", "=", "!=", "<", "<=", ">", ">=", "&&", "||"]
         else:
-            raise NotImplementedError
+            assert op in ["&&", "||"]
         self.ty = OP
         self.op = op
         self.args: tuple[Expr, ...] = tuple(args)
@@ -1314,7 +1322,11 @@ class Op(Expr):
         return isinstance(other, Op) and self.op == other.op and self.args == other.args
 
     def __str__(self):
-        if len(self.args) == 1:
+        if self.op == "&&":
+            return "(" + ", ".join(str(arg) for arg in self.args) + ")"
+        elif self.op == "||":
+            return " or ".join(str(arg) for arg in self.args)
+        elif len(self.args) == 1:
             a, = self.args
             s = str(a)
             if a.priority() < self.priority():

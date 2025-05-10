@@ -61,10 +61,14 @@ grammar = r"""
 
     ?expr: compare
 
-    ?condition: expr -> expr_condition
-        | (expr)+ ":" expr -> member_condition
+    ?atom_condition: (expr)+ ":" expr -> member_condition
+        | "(" or_condition ("," or_condition)+ ")" -> and_condition
+        | expr
 
-    ?conditions: condition ("," condition)* -> conditions
+    ?or_condition: atom_condition ("or" atom_condition)+ -> or_condition
+        | atom_condition
+
+    ?conditions: or_condition ("," or_condition)* -> conditions
 
     ?imports_action: "imports" CNAME ("," CNAME)* -> imports_action
 
@@ -81,6 +85,9 @@ grammar = r"""
 
     ?define_action: "define" expr -> define_action
         | "define" expr "for" conditions -> define_with_condition_action
+
+    ?axiom_define_action: "axiom_define" expr -> axiom_define_action
+        | "axiom_define" expr "for" conditions -> axiom_define_with_condition_action
 
     ?calculate_action: "calculate" expr -> calculate_action
         | "calculate" expr "for" conditions -> calculate_with_condition_action
@@ -158,6 +165,7 @@ grammar = r"""
         | case_analysis_action
         | let_action
         | define_action
+        | axiom_define_action
         | calculate_action
         | lhs_action
         | rhs_action
@@ -311,12 +319,8 @@ class ExprTransformer(Transformer):
 
     def limit_r_expr(self, var, lim, body):
         return expr.Limit(str(var), lim, body, "+")
-    
-    def expr_condition(self, cond: Expr) -> tuple[Expr]:
-        return (cond,)
-    
-    def member_condition(self, *args: Expr) -> tuple[Expr]:
-        # last argument is the set
+        
+    def member_condition(self, *args: Expr) -> Expr:
         assert len(args) >= 2
         mem_exprs, set_expr = args[:-1], args[-1]
         res: list[Expr] = []
@@ -329,12 +333,26 @@ class ExprTransformer(Transformer):
                 res.append(expr.Fun("isComplex", mem_expr))
             else:
                 raise NotImplementedError(f"set_expr = {set_expr}")
-        return tuple(res)
+        if len(res) == 1:
+            return res[0]
+        else:
+            return expr.Op("&&", *res)
+    
+    def and_condition(self, *args: Expr) -> Expr:
+        assert len(args) >= 2
+        return expr.Op("&&", *args)
 
-    def conditions(self, *exprs: tuple[Expr]) -> tuple[Expr]:
+    def or_condition(self, *args: tuple[Expr]) -> Expr:
+        assert len(args) >= 2
+        return expr.Op("||", *args)
+
+    def conditions(self, *conds: Expr) -> tuple[Expr]:
         res = list()
-        for expr_list in exprs:
-            res.extend(expr_list)
+        for cond in conds:
+            if expr.is_conj(cond):
+                res.extend(cond.args)
+            else:
+                res.append(cond)
         return tuple(res)
 
     def imports_action(self, *theories: Token):
@@ -345,115 +363,93 @@ class ExprTransformer(Transformer):
         return tuple(str(attr) for attr in attrs)
 
     def axiom_action(self, attrs: tuple[str], expr: Expr):
-        from integral import action
         return action.AxiomAction(expr, tuple(), attrs)
     
     def axiom_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.AxiomAction(expr, conditions, attrs)
 
     def prove_action(self, attrs: tuple[str], expr: Expr):
-        from integral import action
         return action.ProveAction(expr, tuple(), attrs)
 
     def prove_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.ProveAction(expr, conditions, attrs)
 
     def let_action(self, expr: Expr):
-        from integral import action
         return action.LetAction(expr)
 
     def let_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.LetAction(expr, conditions)
 
     def define_action(self, expr: Expr):
-        from integral import action
         return action.DefineAction(expr)
     
     def define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.DefineAction(expr, conditions)
 
+    def axiom_define_action(self, expr: Expr):
+        return action.AxiomDefineAction(expr)
+    
+    def axiom_define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
+        return action.AxiomDefineAction(expr, conditions)
+
     def calculate_action(self, expr: Expr):
-        from integral import action
         return action.CalculateAction(expr)
     
     def calculate_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
-        from integral import action
         return action.CalculateAction(expr, conditions)
 
     def subgoal_action(self, name: Token, expr: Expr):
-        from integral import action
         return action.SubgoalAction(str(name), expr)
     
     def subgoal_with_condition_action(self, name: Token, expr: Expr, conditions: Tuple[Expr]):
-        from integral import action
         return action.SubgoalAction(str(name), expr, conditions)
     
     def done_action(self):
-        from integral import action
         return action.DoneAction()
 
     def sorry_action(self):
-        from integral import action
         return action.SorryAction()
  
     def rewrite_goal_action(self, name: Token):
-        from integral import action
         return action.RewriteGoalAction(str(name))
     
     def induction_action(self, var_name: Token):
-        from integral import action
         return action.InductionAction(str(var_name), expr.Const(0))
 
     def induction_starting_action(self, var_name: Token, start: Expr):
-        from integral import action
         return action.InductionAction(str(var_name), start)
 
     def case_analysis_action(self, split_cond: Expr):
-        from integral import action
         return action.CaseAnalysisAction(split_cond)
 
     def lhs_action(self):
-        from integral import action
         return action.LHSAction()
 
     def rhs_action(self):
-        from integral import action
         return action.RHSAction()
 
     def arg_action(self):
-        from integral import action
         return action.ArgAction()
 
     def base_case_action(self):
-        from integral import action
         return action.BaseCaseAction()
     
     def induct_case_action(self):
-        from integral import action
         return action.InductCaseAction()
 
     def case_true(self):
-        from integral import action
         return action.CaseAction("true")
 
     def case_false(self):
-        from integral import action
         return action.CaseAction("false")
 
     def case_negative(self):
-        from integral import action
         return action.CaseAction("negative")
 
     def case_zero(self):
-        from integral import action
         return action.CaseAction("zero")
 
     def case_positive(self):
-        from integral import action
         return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
@@ -561,6 +557,7 @@ class ExprTransformer(Transformer):
 
 transformer = ExprTransformer()
 expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)
+condition_parser = Lark(grammar, start="or_condition", parser="lalr", transformer=transformer)
 action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
 
 
@@ -585,9 +582,17 @@ class ParseException(expr.IscalcException):
 
 
 def parse_expr(s: str) -> Expr:
-    """Parse an integral expression."""
+    """Parse an expression."""
     try:
         res = expr_parser.parse(s)
+        return res
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
+        raise ParseException(s, str(e))
+
+def parse_condition(s: str) -> Expr:
+    """Parse a condition."""
+    try:
+        res = condition_parser.parse(s)
         return res
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
         raise ParseException(s, str(e))

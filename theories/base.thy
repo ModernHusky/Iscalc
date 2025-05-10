@@ -182,6 +182,13 @@ axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
 
 ## Trigonometric identities
 
+axiom_define tan(x) for cos(x) != 0
+axiom_define sec(x) for cos(x) != 0
+axiom_define cot(x) for sin(x) != 0
+axiom_define csc(x) for sin(x) != 0
+axiom_define arccos(x) for x >= -1, x <= 1
+axiom_define arcsin(x) for x >= -1, x <= 1
+
 ### Function tables
 
 axiom [simp] sin(0) = 0
@@ -476,15 +483,17 @@ axiom cos(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, 
 
 ## Factorial and binomial coefficient
 
-axiom (m + 1) * factorial(m) = factorial(m + 1)
+axiom_define factorial(n) for n: int, n >= 0
 
-axiom [bidirectional] m * factorial(m - 1) = factorial(m)
+axiom (m + 1) * factorial(m) = factorial(m + 1) for m >= 0
 
-define binom(n, m) = factorial(n) / (factorial(m) * factorial(n-m))
+axiom [bidirectional] m * factorial(m - 1) = factorial(m) for m > 0
+
+define binom(n, m) = factorial(n) / (factorial(m) * factorial(n - m)) for m n: int, m >= 0
 
 axiom binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))
 
-axiom (x + y) ^ n = SUM(k, 0, n, binom(n,k) * x^k * y^(n-k))
+axiom (x + y) ^ n = SUM(k, 0, n, binom(n, k) * x^k * y^(n-k))
 
 ## Discrete functions
 

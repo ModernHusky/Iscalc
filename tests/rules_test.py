@@ -3,7 +3,7 @@
 import unittest
 
 from integral import parser
-from integral.parser import parse_expr
+from integral.parser import parse_expr, parse_condition
 from integral import context
 from integral import rules
 from integral import condprover
@@ -13,11 +13,25 @@ from integral.rules import RuleException
 
 class RulesTest(unittest.TestCase):
     def testCheckWellformed(self):
-        data = ["tan(pi)"]
+        data = [
+            ("a ^ b", ["a > 0 or (isInt(b), b >= 0)"]),
+            ("factorial(n)", ["isInt(n)", "n >= 0"]),
+            ("binom(n, m)", ["isInt(m)", "isInt(n)", "m >= 0", "n >= m"]),
+            ("tan(x)", ["cos(x) != 0"]),
+            ("cot(x)", ["sin(x) != 0"]),
+            ("sec(x)", ["cos(x) != 0"]),
+            ("csc(x)", ["sin(x) != 0"])
+        ]
+
         ctx = context.Context()
-        for e in data:
+        ctx.load_book("base")
+        for e, expected_conds in data:
             e = parse_expr(e)
-            assert len(rules.check_wellformed(e, ctx) == 0)
+            expected_conds = list(parse_condition(cond) for cond in expected_conds)
+            conds = rules.check_wellformed(e, ctx)
+            self.assertEqual(len(conds), len(expected_conds))
+            for cond, expected_cond in zip(conds, expected_conds):
+                self.assertEqual(cond.expr, expected_cond)
 
     def testSubstitutionIndefinite(self):
         ctx = context.Context()

@@ -206,7 +206,7 @@ lhs:
 done
 
 prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for a: real, cos(a) != 0
-subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
+subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0
 case analysis on x != 0
     case true:
     lhs:
@@ -219,7 +219,7 @@ case analysis on x != 0
         simplify                    
     done
 done
-subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0 for cos(a) != 0
+subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0
 case analysis on x != 0
     case true:
     lhs:

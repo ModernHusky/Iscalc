@@ -4,7 +4,7 @@ imports interesting3
 
 ## Chapter 4, Section 1, Euler's Gamma functions
 
-define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n: real, n > 0
+define Gamma(n) = (INT x:[0,oo]. exp(-x) * x^(n-1)) for n: real, n > 0 or (n < 0, notInt(n))
 
 prove [bidirectional] Gamma(n) = (n - 1) * Gamma(n - 1) for n: real, n > 1
 lhs:

@@ -690,6 +690,11 @@ def check_condition(e: Expr, ctx: Context) -> bool:
 
     ### Some special checks ###
 
+    if expr.is_conj(e):
+        return all(check_condition(arg, ctx) for arg in e.args)
+    if expr.is_disj(e):
+        return any(check_condition(arg, ctx) for arg in e.args)
+
     # If integrand is non-negative, then the integral is non-negative
     if expr.is_greater_eq(e) and expr.is_integral(e.args[0]) and e.args[1] == Const(0):
         ctx2 = Context(ctx)
@@ -744,7 +749,7 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
     for _, g in ctx.get_all_subgoals().items():
-        if not g.conds.data and expr.is_compare(g.expr) and not expr.is_equals(g.expr):
+        if not g.conds and expr.is_compare(g.expr) and not expr.is_equals(g.expr):
             conds.add_condition(g.expr)
     all_conds = init_all_conds(conds)
     

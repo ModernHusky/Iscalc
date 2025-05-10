@@ -18,9 +18,7 @@ from integral import norm
 from integral.context import Context, apply_subterm, body_conds
 from integral import poly
 from integral.poly import from_poly, to_poly, normalize
-from integral.conditions import Conditions
 from integral import sympywrapper
-from integral import utils
 
 
 class RuleException(expr.IscalcException):
@@ -182,60 +180,28 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
     return rec(e)
 
 
-class ProofObligationBranch:
-    """Represents a single branch of proof obligation."""
-    def __init__(self, exprs: list[Expr], flags: list[bool] = None):
-        self.exprs = exprs  # satisfy all expressions
-        if flags is None or len(flags) != len(exprs):
-            self.need_to_be_satisfied = [True for i in range(len(exprs))]
-        else:
-            self.need_to_be_satisfied = flags
-
-    def __str__(self):
-        return ", ".join(f"{e} ({b})" for e, b in zip(self.exprs, self.need_to_be_satisfied))
-
-    def export(self):
-        res = {
-            'exprs': [str(e) for e in self.exprs]
-        }
-        return res
-
-
 class ProofObligation:
-    """Represents a proof obligation to prove e using the conditions
-    in conds.
-
-    """
-
-    def __init__(self, branches: list[ProofObligationBranch], conds: Conditions):
-        # if any branch is satisfied then the proof obligation is carried out
-        self.branches = branches
-        self.conds = conds
+    """Represents a proof obligation."""
+    def __init__(self, expr: Expr, ctx: Context):
+        self.expr = expr
+        self.ctx = ctx
 
     def __eq__(self, other):
         return isinstance(other, ProofObligation) and \
-            self.branches == other.branches and self.conds == other.conds
+            self.expr == other.expr and self.ctx == other.ctx
 
     def __str__(self):
-        res = ""
-        for i, branch in enumerate(self.branches, 1):
-            res += "Branch " + str(i) + ":\n"
-            res += utils.indent(str(branch)) + '\n'
-        res += "Conds: " + str(self.conds)
-        return res
+        conds = self.ctx.get_conds()
+        if conds.data:
+            return f"{self.expr} for {conds}"
+        else:
+            return str(self.expr)
 
     def __repr__(self):
         return str(self)
 
     def __hash__(self):
-        return hash(tuple(self.branches))
-
-    def export(self):
-        res = {
-            'branches': [branch.export() for branch in self.branches],
-            'conds': self.conds.export()
-        }
-        return res
+        return hash(tuple(self.expr), tuple(self.ctx.conds.data))
 
 
 def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
@@ -243,14 +209,12 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
     a set of wellformed-ness conditions if otherwise.
 
     """
-    obligations: List[ProofObligation] = list()
+    obligations: list[ProofObligation] = list()
 
-    def add_obligation(branches: Union[List[ProofObligationBranch], Expr], ctx: Context):
-        if isinstance(branches, Expr):
-            branches = [ProofObligationBranch([branches])]
-        obligation = ProofObligation(branches, ctx.get_conds())
-        if obligation not in obligations:
-            obligations.append(obligation)
+    def add_obligation(expr: Expr, ctx: Context):
+        oblig = ProofObligation(expr, ctx)
+        if oblig not in obligations and not ctx.check_condition(expr):
+            obligations.append(oblig)
 
     def rec(e: Expr, ctx: Context):
         if expr.is_var(e) or expr.is_const(e):
@@ -259,96 +223,30 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             for arg in e.args:
                 rec(arg, ctx)
             if e.is_divides():
-                # if the denominator has i, and var is real, then the expression is not 0
-                if expr.contains_i(e.args[1]):
-                    # collect the variables in the expression
-                    vars_in_expr = e.args[1].get_vars()
-                    if vars_in_expr:
-                        # iterate over all variables
-                        for var_name in vars_in_expr:
-                            var = Var(var_name)
-                            is_real = any(expr.is_fun(cond) and cond.func_name == "isReal" and
-                                        expr.is_var(cond.args[0]) and cond.args[0].name == var_name
-                                        for cond in ctx.get_conds().data)
-                            not_zero = any(expr.is_op(cond) and cond.op == "!=" and
-                                         expr.is_var(cond.args[0]) and cond.args[0].name == var_name and
-                                         expr.is_const(cond.args[1]) and cond.args[1] == Const(0)
-                                         for cond in ctx.get_conds().data)
-
-                            if is_real and not_zero:
-                                pass
-                            else:
-                                add_obligation(Op("!=", e.args[1], Const(0)), ctx)
-                    else:
-                        pass
-                else:
-                    if ctx.check_condition(Op("!=", e.args[1], Const(0))):
-                        pass
-                    else:
-                        add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                add_obligation(Op("!=", e.args[1], Const(0)), ctx)
             if e.is_power():
-                if ctx.check_condition(Op(">", e.args[0], Const(0))):
-                    pass
-                elif ctx.check_condition(Fun("isInt", e.args[1])) and ctx.check_condition(
-                        Op(">=", e.args[1], Const(0))):
-                    pass
-                else:
-                    add_obligation(Op(">", e.args[0], Const(0)), ctx)
-                    add_obligation(Fun("isInt", e.args[1]), ctx)
-                    add_obligation(Op(">=", e.args[1], Const(0)), ctx)
+                # x > y for x > 0 or y: int, y >= 0
+                add_obligation(Op("||",
+                                  Op(">", e.args[0], Const(0)),
+                                  Op("&&", Fun("isInt", e.args[1]), Op(">=", e.args[1], Const(0)))), ctx)
         elif expr.is_fun(e):
             for arg in e.args:
                 rec(arg, ctx)
             if e.func_name == 'log':
-                if ctx.check_condition(Op(">", e.args[0], Const(0))):
-                    pass
-                else:
-                    add_obligation(Op(">", e.args[0], Const(0)), ctx)
-            if e.func_name == 'sqrt':
-                if ctx.check_condition(Op(">=", e.args[0], Const(0))):
-                    pass
-                else:
-                    add_obligation(Op(">=", e.args[0], Const(0)), ctx)
-            if e.func_name == 'gamma':
-                f1 = ctx.check_condition(Op(">", e.args[0], Const(0)))
-                f2 = ctx.check_condition(Op('<'), e.args[0], Const(0)) and \
-                     ctx.check_condition(Fun("notInt", e.args[0]))
-                if f1 or f2:
-                    pass
-                else:
-                    branch1 = ProofObligationBranch([Op(">", e.args[0], Const(0))])
-                    branch2 = ProofObligationBranch([Op("<", e.args[0], Const(0)), Fun("notInt", e.args[0])])
-                    add_obligation([branch1, branch2], ctx)
-            if e.func_name == "arccos" or e.func_name == "arcsin":
-                f1 = ctx.check_condition(Op(">=", e.args[0], Const(-1)))
-                f2 = ctx.check_condition(Op("<=", e.args[0], Const(1)))
-                if f1 and f2:
-                    pass
-                else:
-                    add_obligation(Op(">=", e.args[0], Const(-1)), ctx)
-                    add_obligation(Op("<=", e.args[0], Const(1)), ctx)
-            if e.func_name == 'tan' or e.func_name == 'sec':
-                f1 = ctx.check_condition(Op("!=", Fun("cos", e.args[0]), Const(0)))
-                if f1:
-                    pass
-                else:
-                    add_obligation(Op("!=", Fun("cos", e.args[0]), Const(0)), ctx)
-            if e.func_name == 'cot' or e.func_name == 'csc':
-                f1 = ctx.check_condition(Op("!=", Fun("sin", e.args[0]), Const(0)))
-                if f1:
-                    pass
-                else:
-                    add_obligation(Op("!=", Fun("sin", e.args[0]), Const(0)), ctx)
-            if e.func_name == 'factorial':
-                if not ctx.check_condition(expr.isInt(e.args[0])):
-                    add_obligation(expr.isInt(e.args[0]), ctx)
-            if e.func_name == 'binom':
-                if not ctx.check_condition(expr.isInt(e.args[0])):
-                    add_obligation(expr.isInt(e.args[0]), ctx)
-                if not ctx.check_condition(expr.isInt(e.args[1])):
-                    add_obligation(expr.isInt(e.args[1]), ctx)
+                add_obligation(Op(">", e.args[0], Const(0)), ctx)
+            elif e.func_name == 'sqrt':
+                add_obligation(Op(">=", e.args[0], Const(0)), ctx)
+            else:
+                defs = ctx.get_definitions()
+                if e.func_name in defs:
+                    def_e = defs[e.func_name]
+                    pat_inst: dict[str, Expr] = dict()
+                    for arg_name, arg in zip(def_e.args, e.args):
+                        pat_inst[arg_name] = arg
+                    for cond in def_e.conds.data:
+                        cond = expr.expr_to_pattern(cond)
+                        add_obligation(cond.inst_pat(pat_inst), ctx)
 
-            # TODO: add checks for other functions
         elif expr.is_integral(e):
             rec(e.body, body_conds(e, ctx))
         elif expr.is_indefinite_integral(e):
@@ -720,7 +618,6 @@ class SeriesExpansionIdentity(Rule):
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
                     satisfied = False
@@ -760,7 +657,6 @@ class SeriesEvaluationIdentity(Rule):
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx.check_condition(cond):
                     satisfied = False
@@ -796,7 +692,6 @@ class EvaluateIndefiniteIntegral(Rule):
             # Check conditions
             satisfied = True
             for cond in indef.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx2.check_condition(cond):
                     satisfied = False
@@ -834,7 +729,6 @@ class EvaluateDefiniteIntegral(Rule):
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx2.check_condition(cond):
                     satisfied = False
@@ -852,7 +746,6 @@ class EvaluateDefiniteIntegral(Rule):
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx2.check_condition(cond):
                     satisfied = False
@@ -2236,22 +2129,27 @@ class ExpandDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        definitions = ctx.get_definitions()
+        if self.func_name not in definitions:
+            raise RuleException("ExpandDefinition", f"{self.func_name} is not defined")
+        definition = definitions[self.func_name]
+        if definition.define_eq is None:
+            raise RuleException("ExpandDefinition", f"{self.func_name} is defined axiomatically")
+
         # Function case
-        if expr.is_fun(e) and e.func_name == self.func_name:
-            for identity in ctx.get_definitions():
-                if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
-                    inst = expr.match(e, identity.lhs)
-                    if inst is None:
-                        continue
-                    inst_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
-                    if all(ctx.check_condition(cond) for cond in inst_conds):
-                        return normalize(identity.rhs.inst_pat(inst), ctx)
+        if expr.is_fun(e, self.func_name):
+            inst = expr.match(e, expr.expr_to_pattern(definition.define_eq.lhs))
+            assert inst is not None
+            inst_conds = [expr.expr_to_pattern(cond).inst_pat(inst) for cond in definition.conds.data]
+            for cond in inst_conds:
+                if not ctx.check_condition(cond):
+                    # Check condition failed
+                    return e
+            return normalize(expr.expr_to_pattern(definition.define_eq.rhs).inst_pat(inst), ctx)
 
         # Constant case
         if expr.is_var(e) and e.name == self.func_name:
-            for identity in ctx.get_definitions():
-                if expr.is_var(identity.lhs) and identity.lhs.name == self.func_name:
-                    return identity.rhs
+            return definition.define_eq.rhs
 
         # Not found
         return e
@@ -2290,18 +2188,24 @@ class FoldDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        for identity in ctx.get_definitions():
-            if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
-                inst = expr.match(e, identity.rhs)
-                if inst:
-                    return normalize(identity.lhs.inst_pat(inst), ctx)
+        definitions = ctx.get_definitions()
+        if self.func_name not in definitions:
+            raise RuleException("FoldDefinition", f"{self.func_name} is not defined")
+        definition = definitions[self.func_name]
+        if definition.define_eq is None:
+            raise RuleException("FoldDefinition", f"{self.func_name} is defined axiomatically")
 
-            if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:
-                if e == identity.rhs:
-                    return identity.lhs
+        # Function case
+        inst = expr.match(e, expr.expr_to_pattern(definition.define_eq.rhs))
+        if inst is None:
+            return e
 
-        # Not found
-        return e
+        inst_conds = [expr.expr_to_pattern(cond).inst_pat(inst) for cond in definition.conds.data]
+        for cond in inst_conds:
+            if not ctx.check_condition(cond):
+                # Check condition failed
+                return e
+        return normalize(expr.expr_to_pattern(definition.define_eq.lhs).inst_pat(inst), ctx)
 
 
 class IntegralEquation(Rule):

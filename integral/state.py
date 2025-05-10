@@ -73,6 +73,7 @@ class ProveState(State):
     """State when performing a proof."""
     def __init__(self, past: State, goal: Goal):
         self.past = past
+        assert goal is not None
         self.goal = goal
 
     def process_action(self, action: Action) -> State:
@@ -309,10 +310,10 @@ class ProblemInfo:
         available answer for the problem
 
     """
-    def __init__(self, filename: str, index: int, context: Context, problem: str, steps: list[str]):
+    def __init__(self, filename: str, index: int, ctx: Context, problem: str, steps: list[str]):
         self.filename = filename
         self.index = index
-        self.context = context
+        self.context = Context(ctx)
         self.problem = problem
         self.steps = steps
 
@@ -362,7 +363,7 @@ def process_file(filename: str) -> list[ProblemInfo]:
                 if cur_goal:
                     # First create problem using context *without* adding the current
                     # goal as theorem.
-                    result.append(ProblemInfo(filename, i, Context(ctx), problem, steps))
+                    result.append(ProblemInfo(filename, i, ctx, problem, steps))
                     ctx = Context(ctx)
 
                     # Then add current theorem to context.
@@ -372,7 +373,7 @@ def process_file(filename: str) -> list[ProblemInfo]:
                         elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
                             ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                         else:
-                            ctx.add_other_identities(cur_goal.expr, cur_goal.attrs, cur_goal.conditions)
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
                 cur_goal = a
                 problem = line
                 steps = []

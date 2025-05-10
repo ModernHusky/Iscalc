@@ -19,6 +19,9 @@ class Conditions:
             assert all(isinstance(cond, Expr) for cond in conds)
             self.data.extend(conds)
 
+    def __bool__(self):
+        return bool(self.data)
+
     def __hash__(self):
         return hash(tuple(self.data))
 
