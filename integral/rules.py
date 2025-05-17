@@ -1,5 +1,6 @@
 """Rules for integration."""
 import re
+import math
 from decimal import Decimal
 from fractions import Fraction
 from typing import Optional, Dict, Tuple, Union, List, Set
@@ -9,8 +10,8 @@ import operator
 from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
-    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, \
-    SkolemFunc, decompose_expr_factor2, is_const, exprify
+    Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, SkolemFunc, decompose_expr_factor2, is_const, exprify, \
+    Fraction, find_poles, compute_residue, CompoundContourIntegral, CirclePath, LinePath, PolePath, RectanglePath
 from integral import parser
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
@@ -969,10 +970,6 @@ class IntegralIdentity(Rule):
             "str": str(self)
         }
     
-    
-
-
-
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
 
@@ -1022,8 +1019,6 @@ class IntegralIdentity(Rule):
             else:
                 # If no Skolem variable at right
                 e = e + expr.SkolemFunc("C", tuple(Var(arg) for arg in skolem_args))
-
-       
 
         return e
 
@@ -1303,6 +1298,13 @@ class Simplify(Rule):
         }
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        if hasattr(e, 'needs_contour'):
+            if e.needs_contour:
+                raise RuleException(
+                    "Simplify",
+                    "ContourIntegral have no paths,please rewrite the expression."
+                )
+        
         counter = 0
         current = e
         while True:
@@ -1552,13 +1554,16 @@ class Substitution(Rule):
         specify the substitution.
 
         """
-        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e)):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e) or expr.is_cintegral(e)):
             sep_ints = e.separate_integral()
             sep_lims = e.separate_limits()
-            if len(sep_ints) == 0 and len(sep_lims) == 0:
+            sep_cints = e.separate_cintegral()
+            if len(sep_ints) == 0 and len(sep_lims) == 0 and len(sep_cints) == 0:
                 raise RuleException("Substitution", "integral or limit not found")
             elif len(sep_ints) != 0:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
+            elif len(sep_cints) != 0:
+                return OnLocation(self, sep_cints[0][1]).eval(e, ctx)
             else:
                 return OnLocation(self, sep_lims[0][1]).eval(e, ctx)
 
@@ -1568,7 +1573,58 @@ class Substitution(Rule):
         # Expression used for substitution
         var_subst = self.var_subst
 
-        if e.var not in var_subst.get_vars():
+        # 特殊处理复数围道积分转极坐标形式
+        if expr.is_cintegral(e):
+            # 检查是否是复合围道积分
+            # TODO others
+            if isinstance(e, expr.CompoundContourIntegral):
+                # 检查复合路径中是否只包含一个圆形路径
+                circle_paths = [p for p in e.paths if isinstance(p, expr.CirclePath)]
+                if len(circle_paths) != 1:
+                    raise RuleException("Substitution", "Complex substitution only supports single circle path")
+                circle_path = circle_paths[0]
+                begin_a = circle_path.begin_a
+                end_a = circle_path.end_a
+                direction = circle_path.direction
+                radius = circle_path.end_r
+                center = circle_path.center
+            else:
+                raise RuleException("Substitution", "Complex substitution only supports circle path")
+            
+            # 检查替换是否为极坐标形式 z = r*exp(i*phi)
+            i = Fun("i")
+            r = Var("r")
+            phi = Var("phi")
+            if var_subst == r * Fun("exp", i * phi):
+                # 计算 dz/dphi = i*r*exp(i*phi)
+                dz_dphi = i * r * Fun("exp", i * phi)
+                
+                # 替换积分体中的变量
+                new_body = e.body.replace(Var(e.var), var_subst)
+                
+                radius_str = radius.__str__()
+                
+                # 乘上变换的雅可比行列式 dz/dphi
+                new_body = new_body * dz_dphi
+                
+                # 根据方向确定积分区间
+                if direction == "ccw":  # 逆时针
+                    if radius_str == 'oo':
+                        return expr.Limit('r', expr.POS_INF, expr.Integral("phi", begin_a, end_a, new_body), None)
+                    return expr.Integral("phi", begin_a, end_a, new_body)
+                else:  # 顺时针
+                    if radius_str == 'oo':
+                        return - expr.Limit('r', expr.POS_INF, expr.Integral("phi", end_a, begin_a, new_body), None)
+                    return expr.Integral("phi", end_a, begin_a, new_body)
+            else:
+                dfx = deriv(e.var, var_subst, ctx)
+        else:
+            if e.var not in var_subst.get_vars():
+                raise RuleException("Substitution", "variable %s not found" % e.var)
+            dfx = deriv(e.var, var_subst, ctx)
+
+
+        if e.var not in var_subst.get_vars() and not expr.is_cintegral(e):
             raise RuleException("Substitution", "variable %s not found" % e.var)
 
         ctx2 = body_conds(e, ctx)
@@ -1743,14 +1799,17 @@ class SubstitutionInverse(Rule):
             return ctx
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_cintegral(e)):
             sep_ints = e.separate_integral()
-            if len(sep_ints) == 0:
+            sep_cints = e.separate_cintegral()
+            if len(sep_ints) == 0 and len(sep_cints) == 0:
                 raise RuleException("SubstitutionInverse", "no integral found in expression")
+            elif expr.is_cintegral(e):
+                return OnLocation(self, sep_cints[0][1]).eval(e, ctx)
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
-        if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_cintegral(e)):
             raise RuleException("SubstitutionInverse", "input is not integral")
 
         if e.var != self.old_var:
@@ -1797,6 +1856,8 @@ class SubstitutionInverse(Rule):
                 return expr.Integral(new_var, lower, upper, new_e_body)
         elif expr.is_indefinite_integral(e):
             return expr.IndefiniteIntegral(new_var, new_e_body, skolem_args=e.skolem_args)
+        elif expr.is_cintegral(e):
+            return expr.Integral(new_var, e.paths[0].begin_a, e.paths[0].end_a, new_e_body)
         else:
             raise AssertionError("SubstitutionInverse")
 
@@ -1894,6 +1955,39 @@ class Rewriting(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        
+        # 检查是否是复数域扩展后的积分
+        if hasattr(e, 'needs_contour'):
+            # 检查新表达式是否是合法的围道积分
+            if not isinstance(self.new_expr, (
+                CompoundContourIntegral
+            )):
+                raise RuleException(
+                    "Rewriting",
+                    "CINT Illegal"
+                )
+            
+            # 检查积分体是否一致
+            if expr.is_integral(e) and e.body != self.new_expr.body:
+                raise RuleException(
+                    "Rewriting",
+                    "CINT.body has changed"
+                )
+                
+            # 如果是围道积分，检查围道是否封闭
+            if hasattr(self.new_expr, 'paths') and self.new_expr.paths:
+                if not is_closed_contour(self.new_expr.paths):
+                    raise RuleException(
+                        "Rewriting",
+                        "Contour must be closed"
+                    )
+            
+            # 销毁 needs_contour 标记
+            if hasattr(self.new_expr, 'needs_contour'):
+                delattr(self.new_expr, 'needs_contour')
+            
+            return self.new_expr
+            
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
@@ -2015,6 +2109,31 @@ class Rewriting(Rule):
                 tmp = Op(e.body.op, Summation(v, l, u, e.body.args[0]), Summation(v, l, u, e.body.args[1]))
                 if normalize(tmp, ctx) == normalize(self.new_expr, ctx):
                     return self.new_expr
+        elif expr.is_cintegral(e):
+            if isinstance(e,CompoundContourIntegral):
+                if len(e.paths) > 1:
+                    if e.paths[0].ty == expr.LINEPATH:
+                        tem = Integral(e.var,e.paths[0].start,e.paths[0].end,e.body)
+                    else:
+                        tem = CompoundContourIntegral(e.var,e.paths[0],e.body)
+                    for path in e.paths[1:]:
+                        if path.ty == expr.LINEPATH:
+                            tem = Op('+',tem,Integral(e.var,path.start,path.end,e.body))
+                        else:
+                            tem = Op('+',tem,CompoundContourIntegral(e.var,path,e.body))
+                    if normalize(tem, ctx) == normalize(self.new_expr,ctx):
+                        return self.new_expr
+            return e
+        elif expr.is_fun(e) and e.func_name == "Gamma":
+            # 确保 Gamma 函数只有一个参数
+            if len(e.args) == 1:
+                arg = e.args[0]
+                conds = ctx.get_conds(arg)
+                # 检查参数是否为整数表达式
+                if expr.is_var(arg) and "isInt" in conds:
+                    # 创建 factorial(n-1) 表达式
+                    return expr.Fun("factorial", expr.Op("-", arg, expr.Const(1)))
+                
         # apply identity
         for identity in ctx.get_other_identities():
             inst = expr.match(e, identity.lhs)
@@ -3129,3 +3248,348 @@ class MergeEvalAt(Rule):
         combined_body = replace_evalat(e)
         
         return EvalAt(var_name, lower, upper, combined_body)
+    
+class ResidueTheorem(Rule):
+    """Apply residue theorem."""
+    def __init__(self):
+        self.name = "residue theorem"
+
+    def __str__(self):
+        return "apply residue theorem"
+
+    def export(self):
+        return {"name": "residue theorem"}
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+
+        # 检查是否是需要先定义围道的情况
+        if hasattr(e, 'needs_contour'):
+            if e.needs_contour:
+                raise RuleException(
+                    "Simplify",
+                    "ContourIntegral have no paths,please rewrite the expression."
+                )
+
+        # 检查输入是否是围道积分
+        if not expr.is_cintegral(e):
+            raise RuleException("ResidueTheorem", "not a complex integral")
+
+        # 获取积分路径和被积函数
+        paths = e.paths
+        f = e.body
+        
+        # 检查围道是否封闭
+        if not is_closed_contour(paths):
+            raise RuleException("ResidueTheorem", "围道必须是封闭的才能应用留数定理")
+        
+        # 找到所有极点
+        poles = find_poles(e.var, f, ctx)
+        if not poles:
+            return Const(0)  # 如果没有极点，积分为0
+
+        # 使用绕数法判断每个极点是否在围道内部
+        inside_poles = []
+        for pole in poles:
+            wind_num = winding_number(pole, paths, ctx)
+            if wind_num != 0:
+                inside_poles.append((pole, wind_num))
+        
+        # 如果没有极点在路径内，积分为0
+        if not inside_poles:
+            return Const(0)
+            
+        # 计算每个极点的留数，并乘以其绕数，然后求和
+        result = Const(0)
+        for pole, wind_num in inside_poles:
+            # 计算极点的阶数（默认为1）
+            order = 1  # 更复杂的情况需要确定极点的阶数
+            residue = compute_residue(f, pole, order)
+            # 乘以绕数
+            term = Op("*", Const(wind_num), residue)
+            result = Op("+", result, term)
+            
+        # 乘以2πi
+        result = Op("*", Op("*", Const(2), expr.pi), Op("*", expr.i, result))
+            
+        return result
+
+
+class ComplexExtension(Rule):
+    """将实函数扩展到复变函数
+    
+    主要处理以下几种情况：
+    1. 基本初等函数的解析延拓
+    2. 有理函数的自然扩张
+    3. 复合函数的扩展
+    """
+    def __init__(self):
+        self.name = "ComplexExtension"
+        
+    def __str__(self):
+        return "apply complex extension"
+        
+    def export(self):
+        return {"name": self.name}
+        
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        """将实函数扩展为复变函数。"""
+        conds = ctx.get_conds()
+        if expr.is_integral(e):
+            # 对于积分表达式，添加一个标记表示需要定义围道
+            result = e
+            z_var = 'z'
+            z = Var(z_var)
+            new_body = result.body.subst(e.var, z)
+            conds = conds.add_condition(Fun('isComplex', z))
+            new_integral = CompoundContourIntegral(z_var, [], self.eval(new_body, ctx))
+            new_integral.needs_contour = True
+            return new_integral
+        
+        if expr.is_const(e):
+            return e
+            
+        elif expr.is_var(e):
+            # 变量可以直接视为复变量
+            conds = conds.add_condition(Fun('isComplex', e))
+            return e
+            
+        elif e.is_plus() or e.is_minus() or e.is_times() or e.is_divides():
+            # 对算术运算进行扩展
+            new_args = [self.eval(arg, ctx) for arg in e.args]
+            return Op(e.op, *new_args)
+            
+        elif e.is_power():
+            base, exp = e.args
+            # 处理幂函数扩展
+            if expr.is_const(exp):
+                if isinstance(exp.val, int):
+                    # 整数幂可以直接扩展
+                    return Op("^", self.eval(base, ctx), exp)
+                elif isinstance(exp.val, float) and exp.val.is_integer():
+                    # 浮点数形式的整数幂
+                    return Op("^", self.eval(base, ctx), Const(int(exp.val)))
+            # 一般幂函数需要使用主值
+            return Fun("exp", self.eval(exp, ctx) * Fun("log", self.eval(base, ctx)))
+                
+        elif expr.is_fun(e):
+            if e.func_name in ["sin", "cos", "tan", "cot", "sec", "csc"]:
+                # 三角函数的解析延拓
+                new_args = [self.eval(arg, ctx) for arg in e.args]
+                return Fun(e.func_name, *new_args)
+                
+            elif e.func_name in ["arcsin", "arccos", "arctan", "arccot", "arcsec", "arccsc"]:
+                # 反三角函数的主值分支
+                new_args = [self.eval(arg, ctx) for arg in e.args]
+                return Fun(e.func_name, *new_args)
+                
+            elif e.func_name == "log":
+                # 对数函数的主值分支
+                new_args = [self.eval(arg, ctx) for arg in e.args]
+                if len(new_args) == 1:
+                    return Fun("log", *new_args)
+                else:
+                    # log_b(x) = ln(x)/ln(b)
+                    return Fun("log", new_args[1]) / Fun("log", new_args[0])
+                
+            elif e.func_name == "exp":
+                # 指数函数的自然扩展
+                new_args = [self.eval(arg, ctx) for arg in e.args]
+                return Fun("exp", *new_args)
+                
+            elif e.func_name == "sqrt":
+                # 平方根的主值分支
+                new_args = [self.eval(arg, ctx) for arg in e.args]
+                return Fun("sqrt", *new_args)
+                
+        return e
+
+def is_closed_contour(paths: List[Union[CirclePath, LinePath, PolePath, RectanglePath]]) -> bool:
+    """判断围道是否封闭。
+
+    对于单一路径，检查其是否自然封闭（例如完整的圆或矩形）。
+    对于多条路径组成的围道，验证它们是否首尾相连形成闭合回路。
+
+    参数：
+        paths: 路径对象列表(CirclePath、LinePath、PolePath、RectanglePath)。
+
+    返回：
+        bool: 如果围道封闭，返回 True;否则返回 False.
+    """
+    if not paths:
+        return False
+
+    # 单一路径情况
+    if len(paths) == 1:
+        path = paths[0]
+        if isinstance(path, CirclePath):
+            # 检查圆形路径是否完整（角度差是否为 2π）
+            begin_a = path.begin_a
+            end_a = path.end_a
+            if is_const(begin_a) and is_const(end_a):
+                begin_val = expr.eval_expr(begin_a) if begin_a.is_evaluable() else 0
+                end_val = expr.eval_expr(end_a) if end_a.is_evaluable() else 2 * math.pi
+                diff = abs(end_val - begin_val)
+                return math.isclose(diff, 2 * math.pi, rel_tol=1e-9) or math.isclose(diff, 0, rel_tol=1e-9)
+            else:
+                # 符号表达式情况：简化角度差
+                diff = Op("-", end_a, begin_a)
+                simplified_diff = normalize(diff, Context())
+                if simplified_diff.is_const():
+                    val = expr.eval_expr(simplified_diff)
+                    return math.isclose(val, 2 * math.pi, rel_tol=1e-9) or math.isclose(val, 0, rel_tol=1e-9)
+                return False  # 对于无法解析的符号表达式，保守返回 False
+
+        elif isinstance(path, RectanglePath) or isinstance(path, PolePath):
+            # 矩形路径和极点路径固有封闭
+            return True
+
+        elif isinstance(path, LinePath):
+            # 单一线段仅当起点和终点相同时封闭
+            return path.start == path.end
+
+    # 多条路径情况：检查是否形成闭合回路
+    endpoints = []
+    for path in paths:
+        if isinstance(path, LinePath):
+            endpoints.append((path.start, path.end))
+        elif isinstance(path, CirclePath):
+            # 计算起点和终点坐标：z = center + r * e^(i*θ)
+            r = path.end_r
+            center = path.center
+            begin_angle = path.begin_a
+            end_angle = path.end_a
+            begin_point = Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), begin_angle))))
+            end_point = Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), end_angle))))
+            endpoints.append((begin_point, end_point))
+        elif isinstance(path, RectanglePath):
+            # 假设存在顶点列表；起点为第一个顶点，终点为最后一个顶点
+            vertices = path.z1, path.z2, path.z3, path.z4
+            for v in vertices:
+                if v.is_evaluable():
+                    endpoints.append((v, v))
+                else:
+                    endpoints.append((v, v))
+        elif isinstance(path, PolePath):
+            # 极点路径是一个小圆；起点和终点相同
+            return True
+
+    # 检查端点是否首尾相连形成回路
+    for i in range(len(endpoints)):
+        _, end = endpoints[i]
+        start_next, _ = endpoints[(i + 1) % len(endpoints)]
+        if not are_equal(end, start_next):
+            return False
+
+    return True
+
+def are_equal(expr1, expr2):
+    """比较两个数学表达式是否相等。
+
+    首先使用符号简化，若失败则尝试数值评估。
+
+    参数：
+        expr1: 第一个表达式。
+        expr2: 第二个表达式。
+
+    返回：
+        bool: 如果表达式相等，返回 True;否则返回 False。
+    """
+    # 符号比较
+    diff = Op("-", expr1, expr2)
+    simplified = normalize(diff, Context())
+    if simplified == expr.Const(0):
+        return True
+
+    # 数值比较作为备用
+    try:
+        val1 = expr.eval_expr(expr1)
+        val2 = expr.eval_expr(expr2)
+        return math.isclose(val1, val2, rel_tol=1e-9)
+    except:
+        return False  # 如果评估失败，保守返回 False
+
+def winding_number(point: Expr, paths: List[Union[CirclePath, LinePath, PolePath, RectanglePath]], ctx) -> int:
+    """计算围道绕点的绕数。
+    
+    绕数表示围道绕点的次数，用于判断点是否在围道内部。
+    
+    Args:
+        point: 要判断的点
+        paths: 围道路径列表
+        ctx: 上下文环境
+        
+    Returns:
+        int: 绕数。非零表示点在围道内部。
+    """
+    # 对于单个封闭路径的情况可以简化判断
+    if len(paths) == 1:
+        path = paths[0]
+        if isinstance(path, CirclePath):
+            return 1 if path.is_inside(point, ctx) else 0
+        elif isinstance(path, RectanglePath):
+            # 简化判断：检查点是否在矩形内
+            try:
+                # 假设z1,z2,z3,z4是矩形的四个顶点
+                # 获取矩形的边界
+                from integral.poly import normalize
+                
+                # 提取各点的实部和虚部
+                def get_real_imag(z):
+                    if z.is_const() or z.is_var():
+                        return z, Const(0)
+                    if z.is_op() and z.op == '+' and len(z.args) == 2:
+                        real_part, imag_part = z.args
+                        if z.is_fun() and z.func_name == 'i':
+                            return real_part, Const(1)
+                        elif z.is_op() and z.op == '*' and any(arg.is_fun() and arg.func_name == 'i' for arg in z.args):
+                            for i, arg in enumerate(z.args):
+                                if arg.is_fun() and arg.func_name == 'i':
+                                    return real_part, z.args[1-i]
+                    return z, Const(0)
+                
+                z1, z2, z3, z4 = path.z1, path.z2, path.z3, path.z4
+                point_real, point_imag = get_real_imag(point)
+                
+                # 获取矩形边界
+                x_values = [get_real_imag(z)[0] for z in [z1, z2, z3, z4]]
+                y_values = [get_real_imag(z)[1] for z in [z1, z2, z3, z4]]
+                
+                # 如果坐标可以直接求值
+                if all(v.is_evaluable() for v in x_values + y_values + [point_real, point_imag]):
+                    x_min = min(expr.eval_expr(v) for v in x_values)
+                    x_max = max(expr.eval_expr(v) for v in x_values)
+                    y_min = min(expr.eval_expr(v) for v in y_values)
+                    y_max = max(expr.eval_expr(v) for v in y_values)
+                    
+                    pr = expr.eval_expr(point_real)
+                    pi = expr.eval_expr(point_imag)
+                    
+                    return 1 if (x_min <= pr <= x_max and y_min <= pi <= y_max) else 0
+                
+                # 否则进行符号比较
+                x_min = normalize(min(x_values, key=lambda x: str(x)), ctx)
+                x_max = normalize(max(x_values, key=lambda x: str(x)), ctx)
+                y_min = normalize(min(y_values, key=lambda x: str(x)), ctx)
+                y_max = normalize(max(y_values, key=lambda x: str(x)), ctx)
+                
+                in_x_range = Op(">=", point_real, x_min) and Op("<=", point_real, x_max)
+                in_y_range = Op(">=", point_imag, y_min) and Op("<=", point_imag, y_max)
+                
+                return 1 if ctx.check_condition(in_x_range) and ctx.check_condition(in_y_range) else 0
+            except:
+                # 如果无法确定，保守返回0
+                return 0
+    
+    # 对于复杂的围道，需要精确计算绕数
+    winding = 0
+    for path in paths:
+        if isinstance(path, CirclePath):
+            # 圆形路径的绕数贡献
+            if path.is_inside(point, ctx):
+                winding += 1 if path.direction == "ccw" else -1
+        elif isinstance(path, LinePath):
+            # 线段对绕数的贡献 - 需要更复杂的计算
+            # 这里简化处理，实际应用中需要更精确的计算
+            continue
+    
+    return winding

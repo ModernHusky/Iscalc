@@ -35,6 +35,15 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
+        | "CINT" CNAME ":" "poles" "(" expr "," expr ("," expr "," expr)* ")" "." expr -> multi_pole_contour_expr
+        | "CINT" CNAME ":" "com" "(" contour_path ("," contour_path)* ")" "." expr -> com_contour_expr
+
+    ?contour_path: 
+        | "circle" "(" "(" expr "," expr ")" "," expr "," expr "," expr "," expr ")" -> circle_path_with_dir
+        | "circle" "(" "(" expr "," expr ")" "," expr "," expr "," expr ")" -> circle_path
+        | "pole" "(" expr "," expr ")" -> pole_path
+        | "rectangle" "(" "(" expr "," expr ")" "," "(" expr "," expr ")" "," "(" expr "," expr ")" "," "(" expr "," expr ")" ")" -> rectangle_path
+        | "line" "(" expr "," expr ")" -> line_path
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -132,6 +141,8 @@ grammar = r"""
         | "apply" "series" "evaluation" -> apply_series_evaluation_rule
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "exchange" "integral" "and" "integral" -> exchange_integral_rule
+        | "apply" "residue" "theorem" -> residue_theorem_rule
+        | "apply" "complex" "extension" -> complex_extension_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "linearity" -> apply_linearity_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
@@ -587,6 +598,83 @@ class ExprTransformer(Transformer):
     def rule_action(self, rule):
         from integral import action
         return action.RuleAction(rule)
+
+    def multi_pole_contour_expr(self, var, *args):
+        """Transform multi-pole contour integral."""
+        body = args[-1]
+        poles = []
+        radii = []
+        for i in range(0, len(args)-1, 2):
+            poles.append(args[i])
+            radii.append(args[i+1])
+        return expr.MultiPoleContourIntegral(str(var), poles, radii, body)
+
+    def com_contour_expr(self, var, *args):
+        """Transform compound contour integral."""
+        body = args[-1]
+        paths = list(args[:-1])
+        return expr.CompoundContourIntegral(str(var), paths, body)
+
+    def circle_path_with_dir(self, center_x, center_y, radius, begin_a, end_a, direction):
+        """Transform circle path with explicit direction.
+        
+        Args:
+            center_x: x-coordinate of circle center
+            center_y: y-coordinate of circle center
+            radius: circle radius
+            begin_a: starting angle
+            end_a: ending angle
+            direction: direction of integration ("ccw" or "cw")
+        """
+        # 创建复数形式的圆心
+        if expr.is_inf(center_y):
+            # 如果虚部是无穷大，保持原样
+            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
+        else:
+            # 正常情况下创建复数形式的圆心
+            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
+        return expr.CirclePath(center, radius, begin_a, end_a, str(direction))
+
+    def circle_path(self, center_x, center_y, radius, begin_a, end_a):
+        """Transform circle path with default direction (ccw).
+        
+        Args:
+            center_x: x-coordinate of circle center
+            center_y: y-coordinate of circle center
+            radius: circle radius
+            begin_a: starting angle
+            end_a: ending angle
+        """
+        # 创建复数形式的圆心
+        if expr.is_inf(center_y):
+            # 如果虚部是无穷大，保持原样
+            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
+        else:
+            # 正常情况下创建复数形式的圆心
+            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
+        return expr.CirclePath(center, radius, begin_a, end_a, "ccw")
+
+    def pole_path(self, point, radius):
+        """Transform pole path."""
+        return expr.PolePath(point, radius)
+
+    def rectangle_path(self, Re1, Im1, Re2, Im2, Re3, Im3, Re4, Im4):
+        """Transform rectangle path."""
+        return expr.RectanglePath(Re1, Im1, Re2, Im2, Re3, Im3, Re4, Im4)
+
+    def line_path(self, start, end):
+        """Transform line path."""
+        return expr.LinePath(start, end)
+
+    def residue_theorem_rule(self):
+        """Transform residue theorem rule."""
+        from integral import rules
+        return rules.ResidueTheorem()
+    
+    def complex_extension_rule(self):
+        """Transform complex extension rule."""
+        from integral import rules
+        return rules.ComplexExtension()
 
 transformer = ExprTransformer()
 expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)

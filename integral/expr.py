@@ -21,8 +21,8 @@ class IscalcException(Exception):
         raise NotImplementedError(f"from_json: {__class__.__name__}")
 
 
-VAR, CONST, OP, FUN, DERIV, INTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
-SKOLEMFUNC, SUMMATION, PRODUCT= range(14)
+VAR, CONST, OP, FUN, DERIV, INTEGRAL,CINTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
+SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CIRCLEPATH, POLEPATH, RECTANGLEPATH, LINEPATH = range(21)
 
 op_priority = {
     "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
@@ -162,6 +162,8 @@ class Expr:
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
         elif is_product(self):
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
+        elif is_cintegral(self):
+            return 1 + sum(path.size() for path in self.paths) + self.body.size()        
         else:
             raise NotImplementedError
 
@@ -173,6 +175,9 @@ class Expr:
 
     def is_minus(self):
         return self.ty == OP and self.op == '-' and len(self.args) == 2
+
+    def is_uminus(self):
+        return self.ty == OP and self.op == '-' and len(self.args) == 1
 
     def is_times(self):
         return self.ty == OP and self.op == '*'
@@ -308,7 +313,7 @@ class Expr:
                 raise NotImplementedError
         elif self.ty in (FUN, SUMMATION, PRODUCT):
             return 95
-        elif self.ty in (DERIV, INTEGRAL, EVAL_AT, INDEFINITEINTEGRAL):
+        elif self.ty in (DERIV, INTEGRAL, EVAL_AT, INDEFINITEINTEGRAL, CINTEGRAL, COMPOUNDCONTOUR):
             return 10
         elif self.ty == LIMIT:
             return 5
@@ -406,6 +411,8 @@ class Expr:
                 return Summation(self.index_var, self.lower, self.upper.replace_expr(loc.rest, new_expr), self.body)
             else:
                 raise AssertionError("replace_expr: invalid location")
+        elif is_cintegral(self):
+            return CIntegral(self.var, self.paths, self.body.replace(loc.rest, new_expr))
         else:
             raise NotImplementedError(self)
 
@@ -474,7 +481,7 @@ class Expr:
                 find(e.lower, loc.append(1))
                 find(e.upper, loc.append(2))
                 find(e.body, loc.append(0))
-            elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e):
+            elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e) or is_cintegral(e):
                 find(e.body, loc.append(0))
             elif is_summation(e):
                 find(e.body, loc.append(0))
@@ -518,6 +525,8 @@ class Expr:
             return Integral(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
         elif is_indefinite_integral(self):
             return IndefiniteIntegral(self.var, self.body.subst(var, e), self.skolem_args)
+        elif is_cintegral(self):
+            return CIntegral(self.var, self.paths, self.body.subst(var,e))
         elif is_evalat(self):
             return EvalAt(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
         elif is_summation(self):
@@ -605,6 +614,9 @@ class Expr:
                 t:SkolemFunc
                 for var in t.dependent_vars:
                     rec(var, bd_vars)
+            elif is_cintegral(t):
+                t:CompoundContourIntegral   #TODO: add other types of contour integrals
+                rec(t.body, bd_vars + [t.var])
             else:
                 print(t, type(t))
                 raise NotImplementedError
@@ -616,28 +628,6 @@ class Expr:
         """Whether self contains variable x."""
         assert isinstance(x, str)
         return x in self.get_vars()
-
-    def contains_integral(self) -> bool:
-        if is_var(self) or is_const(self) or is_skolem_func(self):
-            return False
-        elif is_integral(self) or is_indefinite_integral(self):
-            return True
-        elif is_op(self) or is_fun(self):
-            return any(arg.contains_integral() for arg in self.args)
-        else:
-            return False
-
-    def contains_indefinite_integral(self) -> bool:
-        if is_var(self) or is_const(self) or is_skolem_func(self):
-            return False
-        elif is_integral(self):
-            return False
-        elif is_indefinite_integral(self):
-            return True
-        elif is_op(self) or is_fun(self):
-            return any(arg.contains_indefinite_integral() for arg in self.args)
-        else:
-            return False
 
     def contains_skolem_func(self):
         if is_skolem_func(self):
@@ -682,6 +672,8 @@ class Expr:
             return Product(self.index_var, nl, nu, nbody)
         elif is_limit(self):
             return Limit(self.var, self.lim.replace(e, repl_e), self.body.replace(e, repl_e), self.drt)
+        elif is_cintegral(self):
+            return CIntegral(self.var, self.paths, self.body.replace(e, repl_e))
         else:
             print(self, e, repl_e)
             raise NotImplementedError
@@ -693,6 +685,10 @@ class Expr:
     def separate_limits(self) -> list[tuple["Limit", Location]]:
         """Collect the list of all limits appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
+    
+    def separate_cintegral(self) -> List[Tuple["Expr", Location]]:
+        """Collect the list of all integrals appearing in self."""
+        return self.find_subexpr_pred(lambda e: is_cintegral(e))
 
     @property
     def depth(self):
@@ -834,7 +830,6 @@ def exprify(value):
     # 对于其他类型的输入，抛出异常
     raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
-
 def contains_i(e: Expr) -> bool:
     """Check if the expression contains the imaginary unit i."""
     if is_const(e):
@@ -880,6 +875,18 @@ def is_symbol(e: Expr) -> TypeGuard["Symbol"]:
 
 def is_integral(e: Expr) -> TypeGuard["Integral"]:
     return e.ty == INTEGRAL
+
+def is_cintegral(e: Expr) -> TypeGuard["CIntegral"]:
+    return e.ty == COMPOUNDCONTOUR or e.ty == MULTIPOLECONTOUR or e.ty == CINTEGRAL
+
+def is_circlepath(e: Expr) -> TypeGuard["CirclePath"]:
+    return e.ty == CIRCLEPATH
+
+def is_rectanglepath(e: Expr) -> TypeGuard["RectanglePath"]:
+    return e.ty == RECTANGLEPATH
+
+def is_polepath(e: Expr) -> TypeGuard["PolePath"]:
+    return e.ty == POLEPATH
 
 def is_indefinite_integral(e: Expr) -> TypeGuard["IndefiniteIntegral"]:
     return e.ty == INDEFINITEINTEGRAL
@@ -1852,3 +1859,736 @@ def neg_expr(e: Expr):
             raise NotImplementedError(f"neg_expr: {e}")
     else:
         raise NotImplementedError(f"neg_expr: {e}")
+
+class MultiPoleContourIntegral(Expr):
+    """Multi-pole contour integral of an expression.
+    
+    The contour consists of small circles around multiple poles.
+    """
+    def __init__(self, var: str, poles: List[Expr], radii: List[Expr], body: Expr):
+        assert isinstance(var, str) and isinstance(poles, list) and \
+               isinstance(radii, list) and isinstance(body, Expr)
+        assert len(poles) == len(radii)
+        self.ty = MULTIPOLECONTOUR
+        self.var = var
+        self.poles = poles  # List of pole points
+        self.radii = radii  # List of radii
+        self.body = body.subst(var, Var(var))
+
+    def __hash__(self):
+        return hash((MULTIPOLECONTOUR, self.var, tuple(self.poles), tuple(self.radii),
+                    self.body.subst(self.var, Var("_u"))))
+
+    def __eq__(self, other):
+        return isinstance(other, MultiPoleContourIntegral) and \
+               self.poles == other.poles and self.radii == other.radii and \
+               self.body == other.alpha_convert(self.var).body
+
+    def __str__(self):
+        pole_str = ",".join("%s,%s" % (str(p), str(r)) for p, r in zip(self.poles, self.radii))
+        return "CINT %s:poles(%s). %s" % (self.var, pole_str, str(self.body))
+
+    def __repr__(self):
+        return "MultiPoleContourIntegral(%s,%s,%s,%s)" % (
+            self.var, repr(self.poles), repr(self.radii), repr(self.body))
+
+    def alpha_convert(self, new_name):
+        """Change the variable of integration to new_name."""
+        assert isinstance(new_name, str), "alpha_convert"
+        return MultiPoleContourIntegral(new_name, self.poles, self.radii,
+                                      self.body.subst(self.var, Var(new_name)))
+
+class CirclePath:
+    """Circle path for compound contour integral."""
+    def __init__(self, center: Expr, end_r: Expr, begin_a: Expr, end_a: Expr, direction: str):
+        assert isinstance(center, Expr) and isinstance(end_r, Expr) and \
+               isinstance(begin_a, Expr) and isinstance(end_a, Expr) and isinstance(direction, str)
+        assert direction in ["cw", "ccw"]
+        self.ty = CIRCLEPATH
+        # 处理圆心的复数形式
+        if center.is_plus() and len(center.args) == 2 and \
+           center.args[1].is_times() and center.args[1].args[1] == i:
+            self.center = center
+        else:
+            # 如果不是复数形式，尝试转换
+            self.center = center
+        self.end_r = end_r
+        self.begin_a = begin_a
+        self.end_a = end_a
+        self.direction = direction
+
+    def __hash__(self):
+        return hash((self.center, self.end_r, self.begin_a, self.end_a, self.direction))
+
+    def get_vars(self) -> Set[str]:
+        """获取路径中的所有变量"""
+        vars = set()
+        vars.update(self.center.get_vars())
+        vars.update(self.end_r.get_vars())
+        vars.update(self.begin_a.get_vars())
+        vars.update(self.end_a.get_vars())
+        return vars
+
+    def is_inside(self, point: Expr, ctx) -> bool:
+        """判断一个点是否在圆形路径内部。
+        
+        Args:
+            point: 要判断的点
+            ctx: 上下文环境
+        
+        Returns:
+            bool: 点在圆内返回True，否则返回False
+        """
+        from integral.poly import normalize
+        
+        # 如果点就是圆心，点在圆内
+        if point == self.center:
+            return True
+            
+        # 计算点到圆心的距离
+        distance = Fun("abs", Op("-", point, self.center))
+        distance = normalize(distance, ctx)
+        radius = normalize(self.end_r, ctx)
+        
+        # 如果距离和半径都可以直接求值
+        if distance.is_evaluable() and radius.is_evaluable():
+            return distance < radius
+        # 否则进行符号比较
+        comparison = Op("<", distance, radius)
+        return ctx.check_condition(comparison)
+
+    def __eq__(self, other):
+        return isinstance(other, CirclePath) and \
+               self.center == other.center and self.end_r == other.end_r and \
+               self.begin_a == other.begin_a and self.end_a == other.end_a and \
+               self.direction == other.direction
+
+    def __str__(self):
+        # 正确处理圆心的复数形式
+        if self.center.is_plus() and len(self.center.args) == 2 and \
+           self.center.args[1].is_times() and self.center.args[1].args[1] == i:
+            real_part = self.center.args[0]
+            imag_part = self.center.args[1].args[0]
+            return "circle((%s,%s),%s,%s,%s,%s)" % (
+                real_part, imag_part, self.end_r, self.begin_a, self.end_a, self.direction)
+        else:
+            return "circle((%s,0),%s,%s,%s,%s)" % (
+                self.center, self.end_r, self.begin_a, self.end_a, self.direction)
+
+    def __repr__(self):
+        return "CirclePath(%s,%s,%s,%s,%s)" % (
+            repr(self.center), repr(self.end_r), repr(self.begin_a), repr(self.end_a), repr(self.direction))
+    
+    def size(self):
+        return 1 + self.center.size() + self.end_r.size() + self.begin_a.size() + self.end_a.size()
+
+class LinePath:
+    """Line path for compound contour integral."""
+    def __init__(self, start: Expr, end: Expr):
+        assert isinstance(start, Expr) and isinstance(end, Expr)
+        self.ty = LINEPATH
+        self.start = start
+        self.end = end
+
+    def get_vars(self) -> Set[str]:
+        """获取路径中的所有变量"""
+        vars = set()
+        vars.update(self.start.get_vars())
+        vars.update(self.end.get_vars())
+        return vars
+    
+    def __hash__(self):
+        return hash((self.start, self.end))
+
+    def __eq__(self, other):
+        return isinstance(other, LinePath) and \
+               self.start == other.start and self.end == other.end
+
+    def __str__(self):
+        return "line(%s,%s)" % (str(self.start), str(self.end))
+
+    def __repr__(self):
+        return "LinePath(%s,%s)" % (repr(self.start), repr(self.end))
+    
+    def size(self):
+        return 1 + self.start.size() + self.end.size()
+
+class PolePath:
+    """Pole path for compound contour integral."""
+    def __init__(self, Re: Expr, Im: Expr):
+        assert isinstance(Re, Expr) and isinstance(Im, Expr)
+        self.ty = POLEPATH
+        self.Re = Re
+        self.Im = Im
+        self.point = Op("+", Re, Op("*", Im, Fun("i")))
+
+    def get_vars(self) -> Set[str]:
+        """获取路径中的所有变量"""
+        vars = set()
+        vars.update(self.Re.get_vars())
+        vars.update(self.Im.get_vars())
+        return vars
+
+    def __eq__(self, other):
+        return isinstance(other, PolePath) and \
+               self.Re == other.Re and self.Im == other.Im
+    
+    def __hash__(self):
+        return hash((self.Re, self.Im))
+
+    def __str__(self):
+        return "pole(%s,%s)" % (str(self.Re), str(self.Im))
+
+    def __repr__(self):
+        return "PolePath(%s,%s)" % (repr(self.Re), repr(self.Im))
+    
+    def size(self):
+        return 1 + self.Re.size() + self.Im.size()
+
+class RectanglePath:
+    """Rectangle path for compound contour integral."""
+    def __init__(self, Re1: Expr, Im1: Expr, Re2: Expr, Im2: Expr, Re3: Expr, Im3: Expr, Re4: Expr, Im4: Expr):
+        assert isinstance(Re1, Expr) and isinstance(Im1, Expr) and \
+               isinstance(Re2, Expr) and isinstance(Im2, Expr) and \
+               isinstance(Re3, Expr) and isinstance(Im3, Expr) and \
+               isinstance(Re4, Expr) and isinstance(Im4, Expr)
+        self.ty = RECTANGLEPATH
+        self.Re1 = Re1
+        self.Im1 = Im1
+        self.Re2 = Re2
+        self.Im2 = Im2
+        self.Re3 = Re3
+        self.Im3 = Im3
+        self.Re4 = Re4
+        self.Im4 = Im4
+
+    def get_vars(self) -> Set[str]:
+        """获取路径中的所有变量"""
+        vars = set()
+        vars.update(self.Re1.get_vars())
+        vars.update(self.Im1.get_vars())
+        vars.update(self.Re2.get_vars())
+        vars.update(self.Im2.get_vars())
+        vars.update(self.Re3.get_vars())
+        vars.update(self.Im3.get_vars())
+        vars.update(self.Re4.get_vars())
+        vars.update(self.Im4.get_vars())
+        return vars
+
+    def __eq__(self, other):
+        return isinstance(other, RectanglePath) and \
+               self.Re1 == other.Re1 and self.Im1 == other.Im1 and \
+               self.Re2 == other.Re2 and self.Im2 == other.Im2 and \
+               self.Re3 == other.Re3 and self.Im3 == other.Im3 and \
+               self.Re4 == other.Re4 and self.Im4 == other.Im4
+    
+    def __hash__(self):
+        return hash((self.Re1, self.Im1, self.Re2, self.Im2, self.Re3, self.Im3, self.Re4, self.Im4))
+
+    def __str__(self):
+        return "rectangle((%s,%s),(%s,%s),(%s,%s),(%s,%s))" % (
+            str(self.Re1), str(self.Im1), str(self.Re2), str(self.Im2), str(self.Re3), str(self.Im3), str(self.Re4), str(self.Im4))
+
+    def __repr__(self):
+        return "RectanglePath((%s,%s),(%s,%s),(%s,%s),(%s,%s))" % (
+            repr(self.Re1), repr(self.Im1), repr(self.Re2), repr(self.Im2), repr(self.Re3), repr(self.Im3), repr(self.Re4), repr(self.Im4))
+
+    def size(self):
+        return 1 + self.Re1.size() + self.Im1.size() + self.Re2.size() + self.Im2.size() + self.Re3.size() + self.Im3.size() + self.Re4.size() + self.Im4.size()
+
+class CompoundContourIntegral(Expr):
+    """Compound contour integral of an expression.
+    
+    The contour is composed of multiple paths.
+    """
+    def __init__(self, var: str, paths: List[Union[CirclePath, PolePath, RectanglePath]], body: Expr):
+        assert isinstance(var, str) and isinstance(body, Expr)
+        self.ty = COMPOUNDCONTOUR
+        self.var = var
+        # 确保paths是列表
+        self.paths = [paths] if not isinstance(paths, list) else paths
+        self.body = body.subst(var, Var(var))
+
+    def __hash__(self):
+        # 为每个路径创建一个唯一的哈希值
+        path_hashes = []
+        for p in self.paths:
+            if isinstance(p, CirclePath):
+                path_hashes.append(hash((CIRCLEPATH, str(p.center), str(p.end_r), str(p.begin_a), str(p.end_a), p.direction)))
+            elif isinstance(p, LinePath):
+                path_hashes.append(hash((LINEPATH, str(p.start), str(p.end))))
+            elif isinstance(p, PolePath):
+                path_hashes.append(hash((POLEPATH, str(p.point), str(p.radius))))
+            elif isinstance(p, RectanglePath):
+                path_hashes.append(hash((RECTANGLEPATH, str(p.z1), str(p.z2), str(p.z3), str(p.z4))))
+        return hash((COMPOUNDCONTOUR, self.var, tuple(path_hashes),
+                    self.body.subst(self.var, Var("_u"))))
+
+    def __eq__(self, other):
+        return isinstance(other, CompoundContourIntegral) and \
+               self.paths == other.paths and \
+               self.body == other.alpha_convert(self.var).body
+
+    def __str__(self):
+        paths_str = ",".join(str(p) for p in self.paths)
+        return "CINT %s:com(%s). %s" % (self.var, paths_str, str(self.body))
+
+    def __repr__(self):
+        return "CompoundContourIntegral(%s,%s,%s)" % (
+            self.var, repr(self.paths), repr(self.body))
+
+    def alpha_convert(self, new_name):
+        """Change the variable of integration to new_name."""
+        assert isinstance(new_name, str), "alpha_convert"
+        return CompoundContourIntegral(new_name, self.paths,
+                                     self.body.subst(self.var, Var(new_name)))
+
+class ComplexNumber:
+    """Complex number representation."""
+    def __init__(self, real, imag):
+        self.real = real
+        self.imag = imag
+
+    def __str__(self):
+        if self.imag == 0:
+            return str(self.real)
+        if self.real == 0:
+            return str(self.imag) + "*"+"i"
+        if self.imag < 0:
+            return f"{self.real}{self.imag}*i"
+        return f"{self.real}+{self.imag}*i"
+
+    def __add__(self, other):
+        return ComplexNumber(self.real + other.real, self.imag + other.imag)
+
+    def __mul__(self, other):
+        return ComplexNumber(
+            self.real * other.real - self.imag * other.imag,
+            self.real * other.imag + self.imag * other.real
+        )
+
+    def conjugate(self):
+        return ComplexNumber(self.real, -self.imag)
+
+def find_poles(var, expr, ctx=None):
+    """
+    查找复函数的极点。
+
+    Args:
+        var: 要查找极点的变量
+        expr: 要查找极点的表达式
+        ctx: 上下文环境(可选)
+        
+    Returns:
+        极点列表
+    """
+    from integral import solve
+    
+    if ctx is None:
+        from integral.context import Context
+        ctx = Context()
+
+    poles = []
+
+    # 处理分式表达式
+    if is_op(expr) and expr.op == '/':
+        # 获取分母的零点
+        denominator = expr.args[1]
+        if denominator.contains_var(var):
+            try:
+                # 尝试解方程找到极点
+                zeros = solve.solve_equation(denominator, Const(0), var, ctx)
+                if isinstance(zeros, list):
+                    poles.extend(zeros)
+                else:
+                    poles.append(zeros)
+            except:
+                pass
+    
+    # 处理特殊情况: 1/(z^2+1)
+    if is_op(expr) and expr.op == '/' and len(expr.args) == 2:
+        num, denom = expr.args
+        if is_const(num) and num.val == 1:
+            if denom.is_plus() and len(denom.args) == 2:
+                # 检查是否是 z^2 + 1 的形式
+                if (denom.args[0].is_power() and 
+                    is_var(denom.args[0].args[0]) and
+                    is_const(denom.args[0].args[1]) and
+                    denom.args[0].args[1].val == 2 and
+                    is_const(denom.args[1]) and
+                    denom.args[1].val == 1):
+                    
+                    # 返回极点 i 和 -i
+                    poles.extend([Fun("i"), Op("*", Const(-1), Fun("i"))])
+    
+    # 处理三角函数
+    if is_fun(expr):
+        if expr.func_name == "tan":
+            # tan(z)在z = (n + 1/2)π处有极点
+            poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
+        elif expr.func_name == "cot":
+            # cot(z)在z = nπ处有极点
+            poles.append(Fun("pi"))
+        elif expr.func_name == "csc":
+            # csc(z)在z = nπ处有极点
+            poles.append(Fun("pi"))
+        elif expr.func_name == "sec":
+            # sec(z)在z = (n + 1/2)π处有极点
+            poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
+    
+    # 递归处理复合表达式
+    if is_op(expr):
+        if expr.op in ['+', '-', '*']:
+            for arg in expr.args:
+                poles.extend(find_poles(var, arg, ctx))
+    
+    # 去重
+    unique_poles = []
+    for pole in poles:
+        if pole not in unique_poles:
+            unique_poles.append(pole)
+    
+    return unique_poles
+
+def compute_residue(expr, pole, order=1):
+    """Compute residue at a pole.
+    
+    Args:
+        expr: The expression to compute residue for.
+        pole: The pole to compute residue at.
+        order: Order of the pole (default is 1 for simple poles).
+        
+    Returns:
+        The residue at the pole.
+    """
+    if order == 1:
+        # 对于一阶极点，使用极限公式
+        # Res(f,a) = lim(z->a) (z-a)f(z)
+        z = Var('z')
+        # 确保表达式中的变量被正确替换为z
+        if isinstance(expr, Expr):
+            vars = expr.get_vars()
+            if len(vars) == 1:
+                var = list(vars)[0]
+                expr = expr.subst(var, z)
+        residue = Limit('z', pole, (z - pole) * expr)
+        return residue
+    else:
+        # 对于高阶极点，使用导数公式
+        # Res(f,a) = 1/(n-1)! * lim(z->a) d^(n-1)/dz^(n-1) [(z-a)^n * f(z)]
+        z = Var('z')
+        # 确保表达式中的变量被正确替换为z
+        if isinstance(expr, Expr):
+            vars = expr.get_vars()
+            if len(vars) == 1:
+                var = list(vars)[0]
+                expr = expr.subst(var, z)
+        n = order
+        expr_mult = ((z - pole) ** n) * expr
+        
+        # 计算n-1阶导数
+        for _ in range(n-1):
+            expr_mult = Deriv('z', expr_mult)
+            
+        # 计算极限
+        residue = Limit('z', pole, expr_mult) / factorial(n-1)
+        return residue
+
+def factorial(n):
+    """计算阶乘。"""
+    if n <= 0:
+        return Const(1)
+    result = 1
+    for i in range(1, n+1):
+        result *= i
+    return Const(result)
+
+def is_inside_contour(point: Expr, contour: Union[MultiPoleContourIntegral, MultiPoleContourIntegral]) -> bool:
+    """判断点是否在围道内。
+    
+    使用绕数(winding number)方法判断点是否在围道内。
+    对于简单闭合曲线,如果绕数不为0,则点在曲线内部。
+    
+    Args:
+        point: 要判断的点
+        contour: 围道积分
+        
+    Returns:
+        bool: 点是否在围道内
+    """
+    if isinstance(contour, MultiPoleContourIntegral):
+        # 对于多极点围道，判断点是否在任一小圆内
+        for pole, radius in zip(contour.poles, contour.radii):
+            if abs(point - pole) < radius:
+                return True
+        return False
+        
+    elif isinstance(contour, InfinityContourIntegral):
+        # 对于无穷远点围道，判断点是否在大圆内
+        return abs(point) < contour.radius
+        
+    return False
+
+def is_complex_analytic(e: Expr) -> bool:
+    """判断表达式是否为解析函数。"""
+    if is_const(e) or is_var(e):
+        return True
+        
+    elif e.is_plus() or e.is_minus() or e.is_times():
+        return all(is_complex_analytic(arg) for arg in e.args)
+        
+    elif e.is_divides():
+        # 分母不为0时解析
+        return is_complex_analytic(e.args[0]) and is_complex_analytic(e.args[1])
+        
+    elif e.is_power():
+        base, exp = e.args
+        if is_const(exp) and isinstance(exp.val, int) and exp.val >= 0:
+            return is_complex_analytic(base)
+        return False
+        
+    elif is_fun(e):
+        if e.func_name in ["sin", "cos", "tan", "exp", "log"]:
+            return all(is_complex_analytic(arg) for arg in e.args)
+        return False
+        
+    return False
+
+def get_branch_points(e: Expr) -> List[Expr]:
+    """获取复变函数的分支点。"""
+    from integral import solve
+    points = []
+    
+    if e.is_divides():
+        # 分母的零点是极点
+        zeros = solve.solve_equation(e.args[1], Const(0))
+        points.extend(zeros)
+        
+    elif e.is_power():
+        base, exp = e.args
+        if not (is_const(exp) and isinstance(exp.val, int) and exp.val >= 0):
+            # 非整数幂的底数零点是分支点
+            zeros = solve.solve_equation(base, Const(0))
+            points.extend(zeros)
+            
+    elif is_fun(e):
+        if e.func_name == "log":
+            # 对数函数在0处有分支点
+            points.append(Const(0))
+            
+        elif e.func_name == "sqrt":
+            # 平方根在0处有分支点
+            points.append(Const(0))
+            
+        elif e.func_name in ["arcsin", "arccos"]:
+            # 反三角函数在±1处有分支点
+            points.extend([Const(1), Const(-1)])
+            
+    return points
+
+def get_singular_points(e: Expr) -> List[Tuple[Expr, str]]:
+    """获取复变函数的奇点。
+    
+    返回值是一个列表，每个元素是(point, type)的元组，
+    其中type可以是:
+    - "pole": 极点
+    - "essential": 本性奇点
+    - "branch": 分支点
+    """
+    from integral import solve
+    points = []
+    
+    if e.is_divides():
+        # 分母的零点是极点
+        zeros = solve.solve_equation(e.args[1], Const(0))
+        for zero in zeros:
+            points.append((zero, "pole"))
+            
+    elif is_fun(e):
+        if e.func_name == "tan":
+            # 正切函数在kπ处有极点
+            points.append((Fun("pi"), "pole"))
+            
+        elif e.func_name == "log":
+            # 对数在0处有分支点
+            points.append((Const(0), "branch"))
+            
+        elif e.func_name == "exp":
+            # 指数函数在无穷远处有本性奇点
+            points.append((POS_INF, "essential"))
+            
+    # 递归处理子表达式
+    if e.is_plus() or e.is_minus() or e.is_times() or e.is_divides():
+        for arg in e.args:
+            points.extend(get_singular_points(arg))
+            
+    return points
+
+class CIntegral(Expr):
+    """Contour integral of an expression."""
+    def __init__(self, var: str, paths: List[Union[CirclePath, PolePath, RectanglePath]], body: Expr):
+        assert isinstance(var, str) and isinstance(body, Expr)
+        self.ty = CINTEGRAL
+        self.var = var
+        self.paths = paths
+        self.body = body.subst(var, Var(var))
+    
+    def __hash__(self):
+        # 确保paths是一个元组，并且每个path都是可哈希的
+        path_tuple = tuple(hash(p) for p in self.paths)
+        return hash((CINTEGRAL, self.var, path_tuple, self.body))
+    
+    def __eq__(self, other):
+        return isinstance(other, CIntegral) and self.var == other.var and self.paths == other.paths and self.body == other.body
+
+    def __str__(self):
+        return "CINT %s:com(%s). %s" % (self.var, ",".join(str(p) for p in self.paths), str(self.body))
+    
+    def alpha_convert(self, new_name):
+        """Change the variable of integration to new_name."""
+        assert isinstance(new_name, str), "alpha_convert: new_name must be a string"
+        return CIntegral(new_name, self.paths, self.body.subst(self.var, Var(new_name)))
+
+def compute_residue(f: Expr, pole: Expr, order: int = 1) -> Expr:
+    """计算函数f在极点pole处的留数
+    
+    对于简单极点（order=1），留数计算公式为：
+    Res(f, pole) = lim_{z->pole} (z-pole) * f(z)
+    
+    对于高阶极点，留数计算公式为：
+    Res(f, pole) = (1/(order-1)!) * lim_{z->pole} (d^(order-1)/dz^(order-1)) [(z-pole)^order * f(z)]
+    
+    Args:
+        f: 复变函数表达式
+        pole: 极点
+        order: 极点的阶数，默认为1（简单极点）
+    
+    Returns:
+        Expr: 留数表达式
+    """
+    var = "z"  # 假设变量是z
+    z = Var(var)
+    
+    if order == 1:  # 简单极点
+        # 留数 = lim_{z->pole} (z-pole) * f(z)
+        expr_to_limit = Op("*", Op("-", z, pole), f)
+        return Limit(var, pole, expr_to_limit)
+    else:  # 高阶极点
+        # 对于高阶极点，需要进行复杂的计算
+        # (z-pole)^order * f(z)
+        expr_to_diff = Op("*", Op("^", Op("-", z, pole), Const(order)), f)
+        
+        # 对上面的表达式求(order-1)阶导数
+        expr_derivative = expr_to_diff
+        for _ in range(order - 1):
+            expr_derivative = Deriv(var, expr_derivative)
+        
+        # 计算常数系数 1/(order-1)!
+        factorial = 1
+        for i in range(1, order):
+            factorial *= i
+        coef = Op("/", Const(1), Const(factorial))
+        
+        # 计算留数表达式
+        return Op("*", coef, Limit(var, pole, expr_derivative))
+
+def is_polynomial(expr: Expr, var: str) -> bool:
+    """判断表达式是否为关于var的多项式"""
+    if is_const(expr):
+        return True
+    elif is_var(expr) and expr.name == var:
+        return True
+    elif expr.is_plus() or expr.is_minus():
+        return all(is_polynomial(arg, var) for arg in expr.args)
+    elif expr.is_times():
+        return all(is_polynomial(arg, var) for arg in expr.args)
+    elif expr.is_power():
+        base, exp = expr.args
+        return is_var(base) and base.name == var and is_const(exp) and isinstance(exp.val, int) and exp.val >= 0
+    return False
+
+def solve_polynomial_zeros(polynomial: Expr, var: str) -> List[Expr]:
+    """求解多项式的零点"""
+    # 这是一个简化版的求解函数，实际应用中可能需要更复杂的实现
+    # 对于一阶多项式 ax + b = 0
+    if is_polynomial(polynomial, var) and max_degree(polynomial, var) == 1:
+        # 获取系数
+        a = coefficient(polynomial, var, 1)
+        b = coefficient(polynomial, var, 0)
+        # 求解 x = -b/a
+        return [Op("/", Op("-", b), a)]
+    
+    # 对于二阶多项式 ax^2 + bx + c = 0
+    elif is_polynomial(polynomial, var) and max_degree(polynomial, var) == 2:
+        # 获取系数
+        a = coefficient(polynomial, var, 2)
+        b = coefficient(polynomial, var, 1)
+        c = coefficient(polynomial, var, 0)
+        
+        # 计算判别式
+        delta = Op("-", Op("^", b, Const(2)), Op("*", Const(4), Op("*", a, c)))
+        
+        # 求解 x = (-b ± √Δ) / (2a)
+        x1 = Op("/", Op("+", Op("-", b), Fun("sqrt", delta)), Op("*", Const(2), a))
+        x2 = Op("/", Op("-", Op("-", b), Fun("sqrt", delta)), Op("*", Const(2), a))
+        
+        return [x1, x2]
+    
+    # 对于高阶多项式，返回空列表
+    return []
+
+def max_degree(polynomial: Expr, var: str) -> int:
+    """计算多项式关于var的最高次数"""
+    if is_const(polynomial):
+        return 0
+    elif is_var(polynomial) and polynomial.name == var:
+        return 1
+    elif polynomial.is_plus() or polynomial.is_minus():
+        return max(max_degree(arg, var) for arg in polynomial.args)
+    elif polynomial.is_times():
+        return sum(max_degree(arg, var) for arg in polynomial.args)
+    elif polynomial.is_power() and is_var(polynomial.args[0]) and polynomial.args[0].name == var:
+        if is_const(polynomial.args[1]):
+            return polynomial.args[1].val
+    return 0
+
+def coefficient(polynomial: Expr, var: str, degree: int) -> Expr:
+    """计算多项式中var^degree项的系数"""
+    # 这是一个简化版的系数提取函数，实际应用中可能需要更复杂的实现
+    if is_const(polynomial):
+        return polynomial if degree == 0 else Const(0)
+    elif is_var(polynomial) and polynomial.name == var:
+        return Const(1) if degree == 1 else Const(0)
+    elif polynomial.is_plus():
+        return Op("+", coefficient(polynomial.args[0], var, degree), 
+                     coefficient(polynomial.args[1], var, degree))
+    elif polynomial.is_minus():
+        return Op("-", coefficient(polynomial.args[0], var, degree), 
+                     coefficient(polynomial.args[1], var, degree))
+    elif polynomial.is_times():
+        # 检查是否有var^degree因子
+        var_factor = None
+        const_factors = []
+        
+        for arg in polynomial.args:
+            if is_var(arg) and arg.name == var and degree == 1:
+                var_factor = arg
+            elif arg.is_power() and is_var(arg.args[0]) and arg.args[0].name == var:
+                if is_const(arg.args[1]) and arg.args[1].val == degree:
+                    var_factor = arg
+            else:
+                const_factors.append(arg)
+        
+        if var_factor is not None:
+            # 返回其他因子的乘积作为系数
+            if not const_factors:
+                return Const(1)
+            elif len(const_factors) == 1:
+                return const_factors[0]
+            else:
+                result = const_factors[0]
+                for factor in const_factors[1:]:
+                    result = Op("*", result, factor)
+                return result
+    
+    return Const(0)

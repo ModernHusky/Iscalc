@@ -174,6 +174,16 @@ class CalculateState(State):
             self.calc.perform_rule(action.rule)
             return self
         
+        # Handle rewrite goal action
+        elif isinstance(action, RewriteGoalAction):
+            if isinstance(self.past, ProveState):
+                proof = self.past.goal.proof_by_rewrite_goal(begin=action.name)
+                return CalculateState(self, proof.begin)
+            else:
+                raise StateException(
+                    "Calculate",
+                    "RewriteGoalAction can only be performed when past state is ProveState")
+        
         # Done with current calculation or proof
         elif isinstance(action, DoneAction):
             if isinstance(self.past, InitialState):

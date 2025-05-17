@@ -634,6 +634,10 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             upper = rec(e.upper, ctx)
             body = rec(e.body, body_conds(e, ctx))
             return f(expr.Product(e.index_var, lower, upper, body), ctx)
+        elif expr.is_cintegral(e):
+            paths = tuple(p for p in e.paths)  # 将路径列表转换为元组
+            body = rec(e.body, ctx)
+            return f(expr.CIntegral(e.var, paths, body), ctx)
         elif expr.is_symbol(e):
             return e
         else:

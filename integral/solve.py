@@ -27,77 +27,77 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         u, v = f.args
         if not u.contains_var(x):
             # u + v = a  ==>  v = a - u
-            return solve_equation(v, a - u, x, ctx)
+            return normalize(solve_equation(v, a - u, x, ctx), ctx)
         if not v.contains_var(x):
             # u + v = a  ==>  u = a - v
-            return solve_equation(u, a - v, x, ctx)
+            return normalize(solve_equation(u, a - v, x, ctx), ctx)
     if expr.is_uminus(f):
         # -u = a  ==>  u = -a
         u, = f.args
-        return solve_equation(u, -a, x, ctx)
-    if expr.is_minus(f):
+        return normalize(solve_equation(u, -a, x, ctx), ctx)
+    if f.is_minus():
         u, v = f.args
         if not u.contains_var(x):
             # u - v = a  ==>  v = u - a
-            return solve_equation(v, u - a, x, ctx)
+            return normalize(solve_equation(v, u - a, x, ctx), ctx)
         if not v.contains_var(x):
             # u - v = a  ==>  u = v + a
-            return solve_equation(u, v + a, x, ctx)
-    if expr.is_times(f):
+            return normalize(solve_equation(u, v + a, x, ctx), ctx)
+    if f.is_times():
         u, v = f.args
         if not u.contains_var(x) and ctx.is_nonzero(u):
             # u * v = a  ==>  v = a / u
-            return solve_equation(v, a / u, x, ctx)
+            return normalize(solve_equation(v, a / u, x, ctx), ctx)
         if not v.contains_var(x) and ctx.is_nonzero(v):
             # u * v = a  ==>  u = a / v
-            return solve_equation(u, a / v, x, ctx)
-    if expr.is_divides(f):
+            return normalize(solve_equation(u, a / v, x, ctx), ctx)
+    if f.is_divides():
         u, v = f.args
         if not u.contains_var(x):
             # u / v = a  ==>  v = a / u
             rhs = u / a
             if u.is_constant() and a in (POS_INF, NEG_INF):
                 rhs = Const(0)
-            return solve_equation(v, rhs, x, ctx)
+            return normalize(solve_equation(v, rhs, x, ctx), ctx)
         if not v.contains_var(x):
             # u / v = a  ==>  u = v * a
-            return solve_equation(u, v * a, x, ctx)
-    if expr.is_power(f):
+            return normalize(solve_equation(u, v * a, x, ctx), ctx)
+    if f.is_power():
         u, v = f.args
         if not v.contains_var(x):
             # u ^ v = a  ==>  u = a ^ (1/v)
-            return solve_equation(u, a ^ (1/v), x, ctx)
+            return normalize(solve_equation(u, a ^ (1/v), x, ctx), ctx)
     if expr.is_fun(f):
         if f.func_name == "log":
-            return solve_equation(f.args[0], expr.exp(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.exp(a), x, ctx), ctx)
         elif f.func_name == "exp":
-            return solve_equation(f.args[0], expr.log(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.log(a), x, ctx), ctx)
         elif f.func_name == "sin":
-            return solve_equation(f.args[0], expr.arcsin(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arcsin(a), x, ctx), ctx)
         elif f.func_name == "cos":
-            return solve_equation(f.args[0], expr.arccos(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arccos(a), x, ctx), ctx)
         elif f.func_name == "tan":
-            return solve_equation(f.args[0], expr.arctan(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arctan(a), x, ctx), ctx)
         elif f.func_name == "cot":
-            return solve_equation(f.args[0], expr.arccot(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arccot(a), x, ctx), ctx)
         elif f.func_name == "sec":
-            return solve_equation(f.args[0], expr.arcsec(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arcsec(a), x, ctx), ctx)
         elif f.func_name == "csc":
-            return solve_equation(f.args[0], expr.arccsc(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.arccsc(a), x, ctx), ctx)
         elif f.func_name == "arcsin":
-            return solve_equation(f.args[0], expr.sin(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.sin(a), x, ctx), ctx)
         elif f.func_name == "arccos":
-            return solve_equation(f.args[0], expr.cos(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.cos(a), x, ctx), ctx)
         elif f.func_name == "arctan":
-            return solve_equation(f.args[0], expr.tan(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.tan(a), x, ctx), ctx)
         elif f.func_name == "arccot":
-            return solve_equation(f.args[0], expr.cot(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.cot(a), x, ctx), ctx)
         elif f.func_name == "arcsec":
-            return solve_equation(f.args[0], expr.sec(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.sec(a), x, ctx), ctx)
         elif f.func_name == "arccsc":
-            return solve_equation(f.args[0], expr.csc(a), x, ctx)
+            return normalize(solve_equation(f.args[0], expr.csc(a), x, ctx), ctx)
         elif f.func_name == "sqrt":
-            return solve_equation(f.args[0], a ^ 2, x, ctx)
+            return normalize(solve_equation(f.args[0], a ^ 2, x, ctx), ctx)
 
     # Try linearity
     extract_res = extract_linear(f, x)

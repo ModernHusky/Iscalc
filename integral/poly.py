@@ -115,9 +115,9 @@ def reduce_power(n: expr.Expr, e: "Polynomial") -> Tuple[Tuple[expr.Expr, "Polyn
     it is factored to simplify the representation.
 
     """
-    # 特殊处理 i 的幂
+    # special case for i's power
     if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
-        # 直接返回 i^e，让 simplify_power 处理
+        # return i^e, let simplify_power handle it
         return ((n, e),)
         
     if expr.is_const(n) and isinstance(n.val, int) and e.is_fraction():
@@ -154,9 +154,9 @@ def extract_frac(ps: Tuple[Tuple[expr.Expr, "Polynomial"]]) -> Tuple[Tuple[Tuple
     coeff = 1
 
     for n, e in ps:
-        # 特殊处理 i 的幂
+        # special case for i's power
         if expr.is_fun(n) and n.func_name == 'i' and e.is_fraction():
-            # 对于 i^(-1)，应该保留为 i^(-1)，而不是提取系数
+            # for i^(-1), keep it as i^(-1), don't extract coefficient
             res.append((n, e))
             continue
             
@@ -268,12 +268,12 @@ class Monomial:
         if isinstance(other, (int, Fraction)):
             return Monomial(self.coeff * other, self.factors)
         elif isinstance(other, Monomial):
-            # 检查是否有i相乘的情况
+            # check if there is i multiplication
             i_count = 0
             new_factors = []
             for n, e in self.factors + other.factors:
                 if expr.is_fun(n) and n.func_name == 'i':
-                    # 处理指数可能是Polynomial的情况
+                    # handle the case that the exponent is a Polynomial
                     if isinstance(e, Polynomial):
                         if e.is_constant():
                             i_count += e.get_constant()
@@ -286,12 +286,11 @@ class Monomial:
                 else:
                     new_factors.append((n, e))
 
-            # 处理i的幂，包括负数幂
+            # handle i's power, including negative power
             new_coeff = self.coeff * other.coeff
             if i_count != 0:
-                # 对于负数幂，我们需要特殊处理
                 if i_count < 0:
-                    # 对于负数幂，i^(-n) = (i^n)^(-1)
+                    # for negative power, i^(-n) = (i^n)^(-1)
                     remainder = (-i_count) % 4
                     if remainder == 0:
                         pass  # i^(-4k) = 1
@@ -333,29 +332,29 @@ class Monomial:
                 if isinstance(n, expr.Expr):
                     if e.is_fraction():
                         if e.get_fraction() % 2 == 0:
-                            # 偶数次幂的情况
+                            # even power case
                             sqrt_factors.append((expr.Fun('abs', n), e * exp))
                         else:
-                            # 奇数次幂的情况，将负数分解为 -1 * 正数
-                            # 提取 sqrt(-1) 作为复数单位
+                            # odd power case, decompose negative number to -1 * positive number
+                            # extract sqrt(-1) as the complex unit
                             sqrt_neg_one = expr.Fun('sqrt', expr.Const(-1))
                             if expr.is_const(n) and n.val < 0:
-                                # 如果是负常数，分解为 (-1 * |n|)^e
+                                # if it is a negative constant, decompose to (-1 * |n|)^e
                                 abs_n = expr.Const(-n.val)
                                 sqrt_factors.append((abs_n, e * exp))
                                 sqrt_factors.append((sqrt_neg_one, e * exp))
                             elif expr.is_uminus(n):
-                                # 如果是负号表达式，分解为 (-1 * 正部分)^e
+                                # if it is a negative expression, decompose to (-1 * positive part)^e
                                 sqrt_factors.append((n.args[0], e * exp))
                                 sqrt_factors.append((sqrt_neg_one, e * exp))
                             else:
-                                # 其他情况直接添加
+                                # other cases, just add
                                 sqrt_factors.append((n, e * exp))
                     else:
-                        # 非分数幂次，直接添加
+                        # non-fraction power, just add
                         sqrt_factors.append((n, e * exp))
                 else:
-                    # 非表达式类型，直接添加
+                    # non-expression type, just add
                     sqrt_factors.append((n, e * exp))
             if self.coeff == 1:
                 return Monomial(1, sqrt_factors)
@@ -400,13 +399,13 @@ class Polynomial:
         assert all(isinstance(mono, Monomial) for mono in self.monomials)
 
     def is_constant(self) -> bool:
-        """判断多项式是否为常数"""
+        """Check if the polynomial is a constant"""
         if len(self.monomials) == 0:
             return True
         return len(self.monomials) == 1 and self.monomials[0].is_constant()
 
     def get_constant(self) -> Union[int, Fraction]:
-        """获取多项式的常数值，如果不是常数则抛出异常"""
+        """Get the constant value of the polynomial, raise an exception if it is not a constant"""
         if not self.is_constant():
             raise AssertionError("Polynomial is not constant")
         if len(self.monomials) == 0:
@@ -550,10 +549,10 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
         return -to_poly(e.args[0], ctx)
 
     elif e.is_minus():
-        # 特殊处理 SKOLEM_CONST 相减的情况
+        # special case for SKOLEM_CONST minus SKOLEM_CONST
         if expr.is_skolem_func(e.args[0]) and expr.is_skolem_func(e.args[1]):
             if e.args[0].name == e.args[1].name and len(e.args[0].dependent_vars) == len(e.args[1].dependent_vars) == 0:
-                # 如果是相同的 SKOLEM_CONST，返回第一个的多项式表示
+                # if the two SKOLEM_CONST are the same, return the polynomial representation of the first one
                 return singleton(e.args[0])
         return to_poly(e.args[0], ctx) - to_poly(e.args[1], ctx)
 
@@ -783,6 +782,50 @@ def simplify_integral(e: expr.Expr, ctx: Context) -> expr.Expr:
         return expr.EvalAt(e.var, e.lower, e.upper, e.body.body)
     elif e.lower == e.upper:
         return expr.Const(0)
+    else:
+        return e
+    
+def simplify_cint(e: expr.Expr, ctx: Context) -> expr.Expr:
+    if not expr.is_cintegral(e):
+        return e
+    
+    if e.body.is_constant():
+        return e
+    elif e.ty == expr.CINTEGRAL:
+        if len(e.paths) == 1:
+            path = e.paths[0]
+            if path.ty == expr.LINEPATH:
+                return expr.Integral(e.var, path.start, path.end, e.body)
+            elif path.ty == expr.CIRCLEPATH:
+                # 保持圆形路径不变，但确保圆心的复数形式正确
+                if path.center.is_plus() and len(path.center.args) == 2 and \
+                   path.center.args[1].is_times() and path.center.args[1].args[1] == expr.i:
+                    return expr.CompoundContourIntegral(e.var, [path], e.body)
+                else:
+                    # 如果圆心不是复数形式，转换它
+                    new_center = expr.Op("+", path.center, expr.Op("*", expr.Const(0), expr.i))
+                    new_path = expr.CirclePath(new_center, path.end_r, path.begin_a, path.end_a, path.direction)
+                    return expr.CompoundContourIntegral(e.var, [new_path], e.body)
+        elif len(e.paths) > 1:
+            result = None
+            paths = []
+            term = None
+            for path in e.paths:
+                if path.ty == expr.LINEPATH:
+                    term = expr.Integral('x', path.start, path.end, e.body)
+                else:  # CirclePath or other types
+                    paths.append(path)
+                
+            if len(paths) != 0 and term is not None:
+                return expr.Op('+', expr.CompoundContourIntegral(e.var, paths, e.body), term)
+            elif len(paths) != 0 and term is None:
+                return expr.CompoundContourIntegral(e.var, paths, e.body)
+            elif len(paths) == 0 and term is not None:
+                return term
+            else:
+                return e
+        else:
+            return e
     else:
         return e
 
@@ -1096,6 +1139,9 @@ def simplify_exp(e:expr.Expr, ctx:Context):
     elif expr.is_fun(e):
         args = [simplify_exp(arg, ctx) for arg in e.args]
         if e.func_name == "exp":
+            if expr.contains_i(args[0]):
+                if args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi")):
+                    return expr.Const(-1)
             nf, df = expr.decompose_expr_factor2(args[0])
             log_pos = None
             for i in range(len(nf)):
@@ -1162,6 +1208,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_eq, ctx)
         e = apply_subterm(e, simplify_limit, ctx)
         e = apply_subterm(e, simplify_integral, ctx)
+        e = apply_subterm(e, simplify_cint, ctx)
         e = apply_subterm(e, simplify_power, ctx)
         e = apply_subterm(e, simplify_trig, ctx)
         e = apply_subterm(e, simplify_log, ctx)
