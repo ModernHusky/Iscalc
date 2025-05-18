@@ -2061,6 +2061,12 @@ class RectanglePath:
         self.Im3 = Im3
         self.Re4 = Re4
         self.Im4 = Im4
+        
+        # 构建四个顶点的复数表示
+        self.z1 = Op("+", Re1, Op("*", Im1, Fun("i")))
+        self.z2 = Op("+", Re2, Op("*", Im2, Fun("i")))
+        self.z3 = Op("+", Re3, Op("*", Im3, Fun("i")))
+        self.z4 = Op("+", Re4, Op("*", Im4, Fun("i")))
 
     def get_vars(self) -> Set[str]:
         """获取路径中的所有变量"""
@@ -2143,40 +2149,13 @@ class CompoundContourIntegral(Expr):
         return CompoundContourIntegral(new_name, self.paths,
                                      self.body.subst(self.var, Var(new_name)))
 
-class ComplexNumber:
-    """Complex number representation."""
-    def __init__(self, real, imag):
-        self.real = real
-        self.imag = imag
-
-    def __str__(self):
-        if self.imag == 0:
-            return str(self.real)
-        if self.real == 0:
-            return str(self.imag) + "*"+"i"
-        if self.imag < 0:
-            return f"{self.real}{self.imag}*i"
-        return f"{self.real}+{self.imag}*i"
-
-    def __add__(self, other):
-        return ComplexNumber(self.real + other.real, self.imag + other.imag)
-
-    def __mul__(self, other):
-        return ComplexNumber(
-            self.real * other.real - self.imag * other.imag,
-            self.real * other.imag + self.imag * other.real
-        )
-
-    def conjugate(self):
-        return ComplexNumber(self.real, -self.imag)
-
-def find_poles(var, expr, ctx=None):
+def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
     """
     查找复函数的极点。
 
     Args:
         var: 要查找极点的变量
-        expr: 要查找极点的表达式
+        e: 要查找极点的表达式
         ctx: 上下文环境(可选)
         
     Returns:
@@ -2189,58 +2168,52 @@ def find_poles(var, expr, ctx=None):
         ctx = Context()
 
     poles = []
-
-    # 处理分式表达式
-    if is_op(expr) and expr.op == '/':
-        # 获取分母的零点
-        denominator = expr.args[1]
-        if denominator.contains_var(var):
-            try:
-                # 尝试解方程找到极点
-                zeros = solve.solve_equation(denominator, Const(0), var, ctx)
-                if isinstance(zeros, list):
-                    poles.extend(zeros)
-                else:
-                    poles.append(zeros)
-            except:
-                pass
     
-    # 处理特殊情况: 1/(z^2+1)
-    if is_op(expr) and expr.op == '/' and len(expr.args) == 2:
-        num, denom = expr.args
-        if is_const(num) and num.val == 1:
+    # 处理特殊情况: const/(z^2+n)
+    if is_op(e) and e.op == '/' and len(e.args) == 2:
+        num, denom = e.args
+        if is_const(num):
             if denom.is_plus() and len(denom.args) == 2:
-                # 检查是否是 z^2 + 1 的形式
+                # 检查是否是 z^2 + n 的形式
                 if (denom.args[0].is_power() and 
                     is_var(denom.args[0].args[0]) and
                     is_const(denom.args[0].args[1]) and
                     denom.args[0].args[1].val == 2 and
-                    is_const(denom.args[1]) and
-                    denom.args[1].val == 1):
+                    is_const(denom.args[1])):
                     
-                    # 返回极点 i 和 -i
-                    poles.extend([Fun("i"), Op("*", Const(-1), Fun("i"))])
+                    # 返回极点 -sqrt(n)*i 和 sqrt(n)*i
+                    if denom.args[1] == Const(1):
+                        poles.extend([Fun("i"), Op("-",Fun("i"))])
+                    else:
+                        poles.extend([Op("*", Op('-',Fun('sqrt',denom.args[1])), Fun("i")), Op("*", Fun('sqrt',denom.args[1]), Fun("i"))])
+
+    # 处理分式表达式
+    if is_op(e) and e.op == '/':
+        # 获取分母的零点
+        denominator = e.args[1]
+        if denominator.contains_var(var):
+            try:
+                # 尝试解方程找到极点
+                zeros = solve.solve_equation(denominator, Const(0), var, ctx)
+                if zeros is not None:
+                    poles.append(zeros)
+            except:
+                pass
     
     # 处理三角函数
-    if is_fun(expr):
-        if expr.func_name == "tan":
+    if is_fun(e):
+        if e.func_name == "tan":
             # tan(z)在z = (n + 1/2)π处有极点
             poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
-        elif expr.func_name == "cot":
+        elif e.func_name == "cot":
             # cot(z)在z = nπ处有极点
             poles.append(Fun("pi"))
-        elif expr.func_name == "csc":
+        elif e.func_name == "csc":
             # csc(z)在z = nπ处有极点
             poles.append(Fun("pi"))
-        elif expr.func_name == "sec":
+        elif e.func_name == "sec":
             # sec(z)在z = (n + 1/2)π处有极点
             poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
-    
-    # 递归处理复合表达式
-    if is_op(expr):
-        if expr.op in ['+', '-', '*']:
-            for arg in expr.args:
-                poles.extend(find_poles(var, arg, ctx))
     
     # 去重
     unique_poles = []
@@ -2250,7 +2223,7 @@ def find_poles(var, expr, ctx=None):
     
     return unique_poles
 
-def compute_residue(expr, pole, order=1):
+def compute_residue(e:Expr, pole:Expr, order:int=1) -> Expr:
     """Compute residue at a pole.
     
     Args:
@@ -2266,12 +2239,12 @@ def compute_residue(expr, pole, order=1):
         # Res(f,a) = lim(z->a) (z-a)f(z)
         z = Var('z')
         # 确保表达式中的变量被正确替换为z
-        if isinstance(expr, Expr):
-            vars = expr.get_vars()
+        if isinstance(e, Expr):
+            vars = e.get_vars()
             if len(vars) == 1:
                 var = list(vars)[0]
-                expr = expr.subst(var, z)
-        residue = Limit('z', pole, (z - pole) * expr)
+                e = e.subst(var, z)
+        residue = Limit('z', pole, (z - pole) * e)
         return residue
     else:
         # 对于高阶极点，使用导数公式

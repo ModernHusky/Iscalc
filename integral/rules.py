@@ -3417,6 +3417,7 @@ def is_closed_contour(paths: List[Union[CirclePath, LinePath, PolePath, Rectangl
     """
     if not paths:
         return False
+    ctx = Context()
 
     # 单一路径情况
     if len(paths) == 1:
@@ -3425,27 +3426,18 @@ def is_closed_contour(paths: List[Union[CirclePath, LinePath, PolePath, Rectangl
             # 检查圆形路径是否完整（角度差是否为 2π）
             begin_a = path.begin_a
             end_a = path.end_a
-            if is_const(begin_a) and is_const(end_a):
+            if (is_const(begin_a) or (expr.is_fun(begin_a) and begin_a.func_name == "pi") or expr.is_op(begin_a))\
+                  and (is_const(end_a) or (expr.is_fun(end_a) and end_a.func_name == "pi") or expr.is_op(end_a)):
                 begin_val = expr.eval_expr(begin_a) if begin_a.is_evaluable() else 0
                 end_val = expr.eval_expr(end_a) if end_a.is_evaluable() else 2 * math.pi
-                diff = abs(end_val - begin_val)
+                diff = math.fabs(end_val - begin_val)
                 return math.isclose(diff, 2 * math.pi, rel_tol=1e-9) or math.isclose(diff, 0, rel_tol=1e-9)
             else:
-                # 符号表达式情况：简化角度差
-                diff = Op("-", end_a, begin_a)
-                simplified_diff = normalize(diff, Context())
-                if simplified_diff.is_const():
-                    val = expr.eval_expr(simplified_diff)
-                    return math.isclose(val, 2 * math.pi, rel_tol=1e-9) or math.isclose(val, 0, rel_tol=1e-9)
-                return False  # 对于无法解析的符号表达式，保守返回 False
+                return False
 
         elif isinstance(path, RectanglePath) or isinstance(path, PolePath):
             # 矩形路径和极点路径固有封闭
             return True
-
-        elif isinstance(path, LinePath):
-            # 单一线段仅当起点和终点相同时封闭
-            return path.start == path.end
 
     # 多条路径情况：检查是否形成闭合回路
     endpoints = []
@@ -3458,8 +3450,8 @@ def is_closed_contour(paths: List[Union[CirclePath, LinePath, PolePath, Rectangl
             center = path.center
             begin_angle = path.begin_a
             end_angle = path.end_a
-            begin_point = Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), begin_angle))))
-            end_point = Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), end_angle))))
+            begin_point = normalize(Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), begin_angle)))), ctx)
+            end_point = normalize(Op("+", center, Op("*", r, Fun("exp", Op("*", Fun("i"), end_angle)))), ctx)
             endpoints.append((begin_point, end_point))
         elif isinstance(path, RectanglePath):
             # 假设存在顶点列表；起点为第一个顶点，终点为最后一个顶点
@@ -3588,8 +3580,7 @@ def winding_number(point: Expr, paths: List[Union[CirclePath, LinePath, PolePath
             if path.is_inside(point, ctx):
                 winding += 1 if path.direction == "ccw" else -1
         elif isinstance(path, LinePath):
-            # 线段对绕数的贡献 - 需要更复杂的计算
-            # 这里简化处理，实际应用中需要更精确的计算
+            # 线段对绕数的贡献
             continue
     
     return winding
