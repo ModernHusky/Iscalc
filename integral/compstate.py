@@ -339,6 +339,15 @@ class Calculation(StateItem):
                  connection_symbol: str = '=', conds: Optional[Conditions] = None):
         self.parent = parent
         self.start = start
+
+        proof_obligs: list[ProofObligation] = check_wellformed(start, ctx)
+        if proof_obligs:
+            msg = f"start {self.start} is not wellformed."
+            for i, obligation in enumerate(proof_obligs, 1):
+                msg += f"\nObligation {i}\n"
+                msg += utils.indent(str(obligation))
+            raise CheckFinishedException(tuple(), msg)
+
         self.steps: list[CalculationStep] = []
         if conds is None:
             conds = Conditions()
