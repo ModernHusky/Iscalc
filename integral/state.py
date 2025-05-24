@@ -222,6 +222,9 @@ class CalculateState(State):
             for var, _ in substs:
                 if res.contains_var(var) and not self.calc.start.contains_var(var):
                     return False
+
+            self.calc.check_wellformed()
+
             return res.is_closed_form() and poly.normalize(res, self.calc.ctx) == res
         else:
             return self.past.is_finished()
