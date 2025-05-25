@@ -67,6 +67,10 @@ calculate INT x:[0, pi]. 1/(1+sin(x)^2)
 done
 
 calculate INT x:[0, 3]. arcsin(sqrt(x/(1+x)))
+subgoal 1: x / (1 + x) <= 1 for x > 0, x < 3
+rhs:
+    rewrite 1 to x / x
+done
     substitute (tan(t))^2 for x
     rewrite tan(t) to sin(t)/cos(t)
     rewrite tan(t) to sin(t)/cos(t)

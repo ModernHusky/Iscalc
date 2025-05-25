@@ -489,6 +489,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > 0"], "a / c <= b / c"),
         (["a >= b", "c < 0"], "a / c <= b / c"),
         (["a <= b", "c < 0"], "a / c >= b / c"),
+        (["c <= d", "c > 0", "a > 0"], "a / c >= a / d"),
+        (["c >= d", "d > 0", "a > 0"], "a / c <= a / d"),
         (["a > 0", "b != 0"], "a / b != 0"),
         (["a < 0", "b != 0"], "a / b != 0"),
         (["a != 0", "b != 0"], "a / b != 0"),
@@ -504,6 +506,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
         (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
         (["a >= 0"], "sqrt(a ^ 2) = a"),
+        (["a >= 0", "a <= 1"], "sqrt(a) <= 1"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
