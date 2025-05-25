@@ -225,10 +225,18 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
             if e.is_divides():
                 add_obligation(Op("!=", e.args[1], Const(0)), ctx)
             if e.is_power():
-                # x > y for x > 0 or y: int, y >= 0
-                add_obligation(Op("||",
-                                  Op(">", e.args[0], Const(0)),
-                                  Op("&&", Fun("isInt", e.args[1]), Op(">=", e.args[1], Const(0)))), ctx)
+                # x > 0 or y: int, y >= 0 or
+                # y is a fraction, y > 0, denominator of y is even, x >= 0 or
+                # y is a fraction, y > 0, denominator of y is odd
+                x, y = e.args[0], e.args[1]
+                obligation = Op("||",
+                   Op(">", e.args[0], Const(0)),
+                   Op("&&", Fun("isInt", e.args[1]), Op(">=", e.args[1], Const(0))))
+                if isinstance(y, Const) and isinstance(y.val, Fraction) and y.val > 0:
+                    yd, yn = y.val.denominator, y.val.numerator
+                    obligation = Op("||", obligation, Op("&&", Fun("isEven", Const(int(yd))), Op(">=", x, Const(0))))
+                    obligation = Op("||", obligation, Fun("isOdd", Const(int(yd))))
+                add_obligation(obligation, ctx)
         elif expr.is_fun(e):
             for arg in e.args:
                 rec(arg, ctx)

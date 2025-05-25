@@ -5,6 +5,10 @@ imports standard
 // page 166
 
 calculate INT x. 1 / sqrt(x-x^2) for x > 1 / 2, x < 1
+subgoal 1: x - x ^ 2 > 0
+lhs:
+    rewrite x - x ^ 2 to 1/4 - (x - 1/2)^2
+done
     rewrite x - x^2 to 1/4 - (x-1/2)^2
     substitute u for arcsin(x-1/2)
     substitute v for sin(u)
@@ -44,13 +48,13 @@ calculate INT x. arccos(1-2*x) for x > 0, x < 1
     simplify
 done
 
-calculate INT x. x * sqrt(x)
+calculate INT x. x * sqrt(x) for x >= 0
     rewrite x * sqrt(x) to x^(3/2)
     apply integral identity
     simplify
 done
 
-calculate INT x. 1 / sqrt(x)
+calculate INT x. 1 / sqrt(x) for x > 0
     rewrite 1 / sqrt(x) to x^(-1/2)
     apply integral identity
     simplify
@@ -62,7 +66,7 @@ calculate INT x. x^2 * x^(1/3)
     simplify
 done
 
-calculate INT x. 1/(x^2*sqrt(x))
+calculate INT x. 1/(x^2*sqrt(x)) for x > 0
     rewrite 1/(x^2*sqrt(x)) to x^(-5/2)
     apply integral identity
     simplify

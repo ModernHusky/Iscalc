@@ -96,6 +96,15 @@ def approx_even(a: Expr) -> bool:
         return False
     except:
         return False
+
+def approx_odd(a: Expr) -> bool:
+    try:
+        if approx_integer(a):
+            a_val = float(eval_expr(a))
+            return round(a_val) % 2 == 1
+        return False
+    except:
+        return False
     
 def approx_real(a: Expr) -> bool:
     try:
@@ -181,6 +190,9 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
                 return [inst]
         elif expr.is_fun(cond, "isEven"):
             if approx_even(x):
+                return [inst]
+        elif expr.is_fun(cond, "isOdd"):
+            if approx_odd(x):
                 return [inst]
         elif expr.is_fun(cond, "isReal"):
             if approx_real(x):
