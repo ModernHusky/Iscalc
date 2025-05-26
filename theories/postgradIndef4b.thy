@@ -5,7 +5,7 @@ imports standard
 
 # page 186 
 
-calculate INT x. arctan(sqrt(x))
+calculate INT x. arctan(sqrt(x)) for x >= 0
     substitute u for sqrt(x)
     integrate by parts with u=arctan(u), v=u^2
     partial fraction decomposition
@@ -400,7 +400,7 @@ calculate INT x. x*log(x)/(1+x^2)^2 for x>0
     simplify
 done
 
-calculate INT x. log(log(x))+1/log(x)
+calculate INT x. log(log(x))+1/log(x) for x > 1
     substitute u for log(x)
     expand polynomial
     simplify
