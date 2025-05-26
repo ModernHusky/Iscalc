@@ -29,7 +29,7 @@ calculate INT x. 1 / (2-3*x^2) for x > 0, x < sqrt(2/3)
     simplify
 done
 
-# `x < sqrt(2 / 3)` can not imply `x ^ 2 != 2 / 3` because of check_cond
+# `x < -sqrt(2 / 3), x < 0` can not imply `x ^ 2 != 2 / 3` because of check_cond
 calculate INT x. 1 / (2-3*x^2) for x < -sqrt(2 / 3), x < 0, x ^ 2 != 2 / 3
     substitute u for (sqrt(3/2)*x)
     substitute sin(v) for u
