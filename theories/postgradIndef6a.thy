@@ -14,6 +14,10 @@ calculate INT x. 1/(x*(x^2+1)) for x != 0
 done
 
 calculate INT x. 1/(x^4-1) for x != -1, x != 1
+subgoal 1: x^4 - 1 != 0
+lhs:
+    rewrite x^4 - 1 to (x^2+1) * (x + 1) * (x - 1)
+done
     partial fraction decomposition
     apply integral identity
     simplify
@@ -29,6 +33,10 @@ calculate INT x. (x^2+1)/((x+1)^2*(x-1)) for x != -1, x != 1
 done
 
 calculate INT x. 1/((x^2+1)*(x^2+x+1))
+subgoal 1: x^2 + x + 1 != 0
+lhs:
+    rewrite x^2 + x + 1 to (x + 1/2)^2 + 3/4
+done
     partial fraction decomposition
     simplify
     rewrite x^2+x+1 to (x+1)^2-(x+1)+1
@@ -50,11 +58,19 @@ calculate INT x. 1/((x^2+1)*(x^2+x+1))
 done
 
 calculate INT x. (2*x+3)/(x^2+3*x-10) for x > -5, x < 2
+subgoal 1: x^2 + 3*x - 10 != 0
+lhs:
+    rewrite x^2 + 3*x - 10 to (x + 3/2)^2 - 9/4 - 10
+done
     partial fraction decomposition
     apply integral identity
 done
 
 calculate INT x. (x+1)/(x^2-2*x+5)
+subgoal 1: x^2 - 2*x + 5 != 0
+lhs:
+    rewrite x^2 - 2*x + 5 to (x-1)^2 + 4
+done
     substitute u for x-1
     expand polynomial
     simplify
