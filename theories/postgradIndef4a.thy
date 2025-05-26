@@ -114,7 +114,7 @@ calculate INT x. x*log(x-1) for x > 1
     simplify
 done
 
-calculate INT x. cos(sqrt(x))^2
+calculate INT x. cos(sqrt(x))^2 for x >= 0
     substitute u for sqrt(x)
     integrate by parts with u=cos(u)^2, v=u^2
     rewrite 2 * u ^ 2 * cos(u) * sin(u) to 2 * u^2 * (cos(u)*sin(u))
