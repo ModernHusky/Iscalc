@@ -66,7 +66,7 @@ calculate INT x. sin(x)*cos(x)^3 / (1+sin(x)^2) for x > 0, x < pi / 2
     simplify
 done
 
-calculate INT x. 1/(1+4*cos(x)) for sqrt(3/5)*tan(x/2) != -1, sqrt(3/5)*tan(x/2) != 1
+calculate INT x. 1/(1+4*cos(x)) for sqrt(3/5)*tan(x/2) != -1, sqrt(3/5)*tan(x/2) != 1, cos(x) != -1/4
     substitute t for tan(x/2)
     rewrite (-(4 * t ^ 2) + 4) / (t ^ 2 + 1) + 1 to (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) 
     rewrite (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) to (5-3*t^2)/(t^2+1)
@@ -99,7 +99,7 @@ calculate INT x. 1/sqrt(tan(x)^2+2) for x > -pi/2, x < pi/2
     simplify
 done
 
-calculate INT x. 1/(sin(x)^4+cos(x)^4)
+calculate INT x. 1/(sin(x)^4+cos(x)^4) for x > 0, x < pi / 2
     rewrite 1/(sin(x)^4+cos(x)^4) to (1/cos(x))^4 / ((sin(x)/cos(x))^4+1)
     rewrite 1/cos(x) to sec(x)
     rewrite sin(x)/cos(x) to tan(x)
