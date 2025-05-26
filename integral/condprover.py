@@ -539,6 +539,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > 0", "x < 1", "y > 1"], "x ^ y < 1"),
         (["x > 0", "x <= 1", "isInt(n)", "n > 0"], "x - x^n >= 0"),
         (["x > 0", "x < 1", "y > 1"], "x ^ y > 0"),
+        (["isEven(n)"], "x ^ n >= 0"),
 
         # Log
         (["x >= 1"], "log(x) >= 0"),
