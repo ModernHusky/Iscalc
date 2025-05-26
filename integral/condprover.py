@@ -565,12 +565,16 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= -pi / 2", "x <= pi / 2"], "cos(x) >= 0"),
         (["x >= pi / 2", "x <= 3 * pi / 2"], "cos(x) <= 0"),
         (["x > 0", "x < 2 * pi"], "cos(x) < 1"),
+        ([], "cos(x) <= 1"),
+        ([], "cos(x) >= -1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) > -1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) < 1"),
         (["x > 0", "x < pi"], "sin(x) > 0"),
         (["x > -pi", "x < 0"], "sin(x) < 0"),
         (["x >= 0", "x <= pi"], "sin(x) >= 0"),
         (["x >= -pi", "x <= 0"], "sin(x) <= 0"),
+        ([], "sin(x) <= 1"),
+        ([], "sin(x) >= -1"),
         (["x > -pi / 2", "x < pi / 4"], "tan(x) < 1"),
         (["x > 0", "x < pi / 2"], "tan(x) > 0"),
         (["cos(x) != 0"], "sin(x) > -1"),
@@ -702,6 +706,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["isReal(x)"], "isReal(x ^ n)"),
         (["isReal(x)", "isReal(y)"], "isReal(x ^ y)"),
 
+        ([], "x != log(x)"),
+        (["x != 0"], "x != exp(x)")
     ]
 
     ineqs = []
