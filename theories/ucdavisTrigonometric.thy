@@ -112,7 +112,7 @@ calculate INT x. (csc(3 * x) + cot(3 * x)) ^ 2 for sin(3*x) != 0
     simplify
 done
 
-calculate INT x. sec(x) ^ 2 * sqrt(5 + tan(x)) for 5 + tan(x) >= 0
+calculate INT x. sec(x) ^ 2 * sqrt(5 + tan(x)) for 5 + tan(x) >= 0, cos(x) != 0
     substitute u for 5 + tan(x)
     apply integral identity
     replace substitution
@@ -162,7 +162,7 @@ calculate INT x. sin(3 * x) * sin(cos(3 * x))
     simplify
 done
 
-calculate INT x. cos(x) * log(sin(x)) / sin(x)
+calculate INT x. cos(x) * log(sin(x)) / sin(x) for x > 0, x < pi / 2
     rewrite cos(x) * log(sin(x)) / sin(x) to log(sin(x)) * (cos(x) / sin(x))
     substitute u for log(sin(x))
     apply integral identity
@@ -222,7 +222,7 @@ calculate INT x. cos(4 * x) * sin(3 * x)
     solve integral INT x. cos(4 * x) * sin(3 * x)
 done
 
-calculate INT x. sec(x) * sqrt(sec(x) + tan(x))
+calculate INT x. sec(x) * sqrt(sec(x) + tan(x)) for cos(x) != 0, sec(x) + tan(x) >= 0
     rewrite sec(x) * sqrt(sec(x) + tan(x)) to 2 * ((sec(x) * tan(x) + sec(x) ^ 2) / (2 * sqrt(sec(x) + tan(x))))
     substitute u for sqrt(sec(x) + tan(x))
     apply integral identity
@@ -238,7 +238,7 @@ calculate INT x. (sin(2 * x) - cos(2 * x)) / (sin(2 * x) + cos(2 * x)) for sin(2
     simplify
 done
 
-calculate INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x)) for 1 + exp(x) * sin(x) != 0
+calculate INT x. (sin(x) + cos(x)) / (exp(-x) + sin(x)) for 1 + exp(x) * sin(x) != 0, exp(-x) + sin(x) != 0
     rewrite (sin(x) + cos(x)) / (exp(-x) + sin(x)) to 1 / (1 + exp(x) * sin(x)) * (cos(x) * exp(x) + exp(x) * sin(x))
     substitute u for 1 + exp(x) * sin(x)
     apply integral identity

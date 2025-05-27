@@ -13,11 +13,19 @@ calculate INT x. x ^ 3 / (x + 3) for x != -3
 done
 
 calculate INT x. (2*x + 3) / (x^2 + 3*x - 10) for x > -5, x < 2
+subgoal 1: x^2 + 3*x - 10 < 0
+lhs:
+    rewrite x^2 + 3*x - 10 to (x + 5) * (x - 2)
+done
     partial fraction decomposition
     apply integral identity
 done
 
 calculate INT x. (x + 1) / (x^2 - 2*x + 5)
+subgoal 1: x^2 - 2*x + 5 > 0
+lhs:
+    rewrite x^2 - 2*x + 5 to (x - 1)^2 + 4
+done
     rewrite x^2 - 2*x + 5 to (x - 1)^2 + 4
     substitute u for (x - 1) / 2
     rewrite 4 * u ^ 2 + 4 to 4 * (u^2 + 1)
@@ -40,6 +48,10 @@ calculate INT x. 1 / (x * (x^2 + 1)) for x != 0
 done
 
 calculate INT x. 3 / (x^3 + 1) for x != -1
+subgoal 1: x^3 + 1 != 0
+lhs:
+    rewrite x^3 + 1 to (x + 1)*((x - 1/2)^2 + 3/4)
+done
     partial fraction decomposition
     apply integral identity
     rewrite x^2 - x + 1 to (x - 1/2)^2 + 3/4
@@ -72,12 +84,20 @@ calculate INT x. x / ((x + 1) * (x + 2) * (x + 3)) for x != -1, x != -2, x != -3
 done
 
 calculate INT x. (x^5 + x^4 - 8) / (x^3 - x) for x > 0, x < 1
+subgoal 1: x^3 - x < 0
+lhs:
+    rewrite x^3 - x to x * (x + 1) * (x - 1)
+done
     partial fraction decomposition
     apply integral identity
     simplify
 done
 
 calculate INT x. 1 / ((x^2 + 1) * (x^2 + x)) for x != 0, x != -1
+subgoal 1: x^2 + x != 0
+lhs:
+    rewrite x^2 + x to x * (x + 1)
+done
     partial fraction decomposition
     apply integral identity
     rewrite 2 * x^2 + 2 to 2 * (x^2 + 1)
@@ -91,6 +111,10 @@ calculate INT x. 1 / ((x^2 + 1) * (x^2 + x)) for x != 0, x != -1
 done
 
 calculate INT x. 1 / (x^4 - 1) for x != -1, x != 1
+subgoal 1: x^4 - 1 != 0
+lhs:
+    rewrite x^4 - 1 to (x^2 + 1) * (x + 1) * (x - 1)
+done
     partial fraction decomposition
     rewrite 2 * x^2 + 2 to 2 * (x^2 + 1)
     apply integral identity
@@ -98,6 +122,10 @@ calculate INT x. 1 / (x^4 - 1) for x != -1, x != 1
 done
 
 calculate INT x. 1 / ((x^2 + 1) * (x^2 + x + 1))
+subgoal 1: x^2 + x + 1 > 0
+lhs:
+    rewrite x^2 + x + 1 to (x+1/2)^2 + 3/4
+done
     partial fraction decomposition
     simplify
     rewrite x^2 + x + 1 to (x+1/2) ^ 2 + 3/4
@@ -162,7 +190,7 @@ calculate INT x. 1 / (2 + sin(x))
     simplify
 done
 
-calculate INT x. 1 / (1 + sin(x) + cos(x)) for tan(x/2) + 1 != 0
+calculate INT x. 1 / (1 + sin(x) + cos(x)) for tan(x/2) + 1 != 0, 1 + sin(x) + cos(x) != 0
     substitute u for tan(x/2)
     rewrite 2 / ((u ^ 2 + 1) * ((-(u ^ 2) + 1) / (u ^ 2 + 1) + 2 * u / (u ^ 2 + 1) + 1)) to 1 / (1 + u)
     simplify
@@ -192,7 +220,7 @@ done
 calculate INT x. (x^(2/3) - 1) / (sqrt(x) + 1) for x > 0
     sorry
 
-calculate INT x. (sqrt(x + 1) - 1) / (sqrt(x + 1) + 1)
+calculate INT x. (sqrt(x + 1) - 1) / (sqrt(x + 1) + 1) for x >= -1
     substitute t for sqrt(x + 1)
     partial fraction decomposition
     apply integral identity

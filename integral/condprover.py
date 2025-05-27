@@ -371,7 +371,7 @@ def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
     return res
 
 def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], *,
-             round_limit: int = 5, size_limit: int = 200):
+             round_limit: int = 5, size_limit: int = 400):
     """Saturate up to given number of rounds and size limits. New facts
     are added onto `all_conds`.
     
@@ -419,6 +419,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b"], "c + a <= c + b"),
         (["a != -b"], "a + b != 0"),
         (["a != b"], "a - b != 0"),
+        (["a + b != 0"], "b + a != 0"),
         (["a < 0", "isReal(b)"], "a + b * i != 0"),
         (["a < 0", "isReal(b)"], "a - b * i != 0"),
         (["a >= b", "c > d"], "a + c > b + d"),
@@ -455,6 +456,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < b"], "b - a > 0"),
         (["a > -b"], "a + b > 0"),
         (["a > -b"], "b + a > 0"),
+        (["a - b != 0"], "b - a != 0"),
 
         # Multiplication (simple)
         (["a != 0", "b != 0"], "a * b != 0"),
@@ -520,11 +522,12 @@ def get_standard_inequalities() -> list[Identity]:
         (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
         (["a >= 0"], "sqrt(a ^ 2) = a"),
         (["a >= 0", "a <= 1"], "sqrt(a) <= 1"),
+        (["a >= 0", "a < b"], "sqrt(a) < sqrt(b)"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
         ([], "a ^ 2 >= 0"),
-        (["x > 0"], "x ^ y > 0"),
+        (["x >= 0"], "x ^ y >= 0"),
         (["x != 0"], "x ^ n != 0"),
         (["x > y", "y >= 0", "z > 0"], "x ^ z > y ^ z"),
         (["x < a", "x > -a"], "x ^ 2 < a ^ 2"),

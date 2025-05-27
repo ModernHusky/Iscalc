@@ -169,6 +169,10 @@ calculate INT x. x / sqrt(x^4-16) for x > 2
 done
 
 calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
+subgoal 1: x^2 - 4*x > 0
+lhs:
+    rewrite x^2 - 4*x to x * (x - 4)
+done
     rewrite x^2-4*x to (x-2)^2 - 4
     substitute u for arcsec((x-2)/2)
     rewrite sqrt(4 * sec(u) ^ 2 - 4) to 2 * sqrt(sec(u) ^ 2 - 1)
@@ -180,6 +184,10 @@ calculate INT x. 1 / sqrt(x^2-4*x) for x > 4
 done
 
 calculate INT x. x/sqrt(x^2 + 4*x + 5)
+subgoal 1: x^2 + 4*x + 5 > 0
+lhs:
+    rewrite x^2 + 4*x + 5 to (x + 2)^2 + 1
+done
     rewrite x^2+4*x+5 to (x+2)^2 + 1
     substitute u for (x+2)
     substitute v for arctan(u)
@@ -191,7 +199,11 @@ calculate INT x. x/sqrt(x^2 + 4*x + 5)
     simplify
 done
 
-calculate INT x. x * sqrt(10*x - x^2) for x > 0, x < 10
+calculate INT x. x * sqrt(10*x - x^2) for x >= 0, x <= 10
+subgoal 1: 10*x - x^2 >= 0
+lhs:
+    rewrite 10 * x - x^2 to x * (10 - x)
+done
     rewrite 10*x - x^2 to 25 - (x-5)^2
     substitute u for (x-5) / 5
     substitute v for arcsin(u)

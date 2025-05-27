@@ -104,14 +104,14 @@ calculate INT x. (sin(x) + cos(x)) / (sin(x) - cos(x))^(1/3) for sin(x) - cos(x)
     simplify
 done
 
-calculate INT x. tan(x)^10 * sec(x)^2
+calculate INT x. tan(x)^10 * sec(x)^2 for cos(x) != 0
     substitute u for tan(x)
     apply integral identity
     simplify
     replace substitution
 done
 
-calculate INT x. 1 / (x * log(x) * log(log(x))) for log(log(x)) != 0
+calculate INT x. 1 / (x * log(x) * log(log(x))) for x > exp(1)
     substitute u for log(log(x))
     apply integral identity
     replace substitution
@@ -133,6 +133,10 @@ calculate INT x. 10^(2*arccos(x)) / sqrt(1 - x^2) for x > -1, x < 1
 done
 
 calculate INT x. tan(sqrt(1 + x^2)) * x / sqrt(1 + x^2) for cos(sqrt(x^2 + 1)) != 0
+subgoal 1: cos(sqrt(1+x^2)) != 0
+lhs:
+    rewrite 1+x^2 to x^2 + 1
+done
     simplify
     substitute u for sqrt(x^2 + 1)
     apply integral identity
@@ -146,7 +150,7 @@ calculate INT x. arctan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
     simplify
 done
 
-calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2 for x != 0, x * log(x) != 0
+calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2 for x > 0, x != 1
     rewrite 1 + log(x) to log(x) + 1
     substitute u for x * log(x)
     apply integral identity
@@ -155,6 +159,10 @@ calculate INT x. (1 + log(x)) / (x * log(x)) ^ 2 for x != 0, x * log(x) != 0
 done
 
 calculate INT x. 1 / (sin(x) * cos(x)) for sin(2*x) != 0
+subgoal 1: sin(x) * cos(x) != 0
+lhs:
+    rewrite sin(x) * cos(x) to 1/2*sin(2*x)
+done
     rewrite 1 / (sin(x) * cos(x)) to 2 / (2 * sin(x) * cos(x))
     rewrite 2 * sin(x) * cos(x) to sin(2*x)
     rewrite 2 / sin(2*x) to 2 * csc(2*x)
@@ -164,7 +172,7 @@ calculate INT x. 1 / (sin(x) * cos(x)) for sin(2*x) != 0
     simplify
 done
 
-calculate INT x. log(tan(x)) / (cos(x) * sin(x))
+calculate INT x. log(tan(x)) / (cos(x) * sin(x)) for x > 0, x < pi / 2
     substitute u for log(tan(x))
     apply integral identity
     replace substitution
@@ -245,7 +253,7 @@ calculate INT x. x^3 / (9 + x^2) for x != 0
     replace substitution
 done
 
-calculate INT x. 1 / (2*x^2 - 1) for x != sqrt(2)/2, x != -sqrt(2)/2
+calculate INT x. 1 / (2*x^2 - 1) for x != sqrt(2)/2, x != -sqrt(2)/2, x^2 != 1/2
     substitute u for sqrt(2) * x
     rewrite 2*u^2 - 2 to 2 * (u^2-1)
     simplify
@@ -261,6 +269,10 @@ calculate INT x. 1 / ((x + 1) * (x - 2)) for x != -1, x != 2
 done
 
 calculate INT x. x / (x^2 - x - 2) for x != -1, x != 2
+subgoal 1: x^2 - x - 2 != 0
+lhs:
+    rewrite x^2 - x - 2 to (x - 2) * (x + 1)
+done
     partial fraction decomposition
     apply integral identity
     simplify
@@ -332,7 +344,7 @@ calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x > -1, x < 1
     simplify
     sorry
 
-calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, cos(arcsin(x)) + sin(arcsin(x)) != 0
+calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, x + sqrt(1 - x^2) != 0, cos(arcsin(x)) + sin(arcsin(x)) != 0
     substitute sin(t) for x
     rewrite 1 - sin(t)^2 to cos(t)^2
     simplify
@@ -345,6 +357,10 @@ calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, cos(arcsin(x)) + sin
 done
 
 calculate INT x. (x - 1) / (x^2 + 2*x + 3)
+subgoal 1: x^2 + 2*x + 3 > 0
+lhs:
+    rewrite x^2 + 2*x + 3 to (x + 1)^2 + 2
+done
     rewrite x^2 + 2*x + 3 to (x + 1)^2 + 2
     substitute y for x + 1
     substitute z for y / sqrt(2)

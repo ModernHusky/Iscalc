@@ -202,7 +202,7 @@ calculate INT x. x * log(x)^2 for x > 0
     simplify
 done
 
-calculate INT x. exp(sqrt(3*x+9))
+calculate INT x. exp(sqrt(3*x+9)) for x >= -3
     substitute u for sqrt(3*x+9)
     simplify
     integrate by parts with u = u, v = exp(u)
