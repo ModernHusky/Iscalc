@@ -1,7 +1,6 @@
 """Unit test for integrals using internal language."""
 
 import unittest
-import time
 import sys
 import cProfile
 import pstats
@@ -9,67 +8,16 @@ import pstats
 from integral import compstate
 from integral import state
 from integral import parser
-from integral import expr
 from integral import context
 
 
 class ActionTest(unittest.TestCase):
-    def check_actions(self, content: str, *, print_lines=False, print_state=False,
-                      write_stats=False, filename=""):
-        actions = content.split('\n')
-        ctx = context.Context()
-        st = state.InitialState(ctx)
-        start_time = None
-        cur_goal = None
-        for i, act in enumerate(actions, 1):
-            if print_lines:
-                print(act)
-            if not act.strip():
-                # empty line
-                continue
-            if act.lstrip().startswith('#') or act.lstrip().startswith('//'):
-                # title or comment
-                continue
-            a = parser.parse_action(act)
-            if isinstance(a, state.ImportsAction):
-                for thy_name in a.theories:
-                    ctx.load_book(thy_name)
-            if isinstance(a, (state.ProveAction, state.CalculateAction)):
-                cur_goal = a
-                if write_stats:
-                    start_time = time.time()
-                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                        stats_file.write(f"{filename} {i} {cur_goal}\n")
-            try:
-                st = st.process_action(a)
-                if isinstance(st, state.InitialState):
-                    if isinstance(cur_goal, state.ProveAction):
-                        if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
-                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
-                        elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
-                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
-                        else:
-                            ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
-                    if cur_goal and write_stats:
-                        elapsed_time = time.time() - start_time
-                        with open("stats.txt", "a", encoding='utf-8') as stats_file:
-                            stats_file.write(f"{elapsed_time:.2f} seconds\n")
-                    cur_goal = None
-            except Exception as e:
-                print(cur_goal)
-                print(st)
-                raise e
-        if print_state:
-            print(st)
-        if not print_state and not isinstance(st, state.InitialState):
-            raise AssertionError("Does not end in initial state (add print_state=True to debug)")
-                
     def check_file(self, filename: str, *, print_lines=False, print_state=False,
                    write_stats=False):
         with open(f'theories/{filename}.thy', 'r', encoding='utf-8') as f:
             content = f.read()
-        self.check_actions(content, print_lines=print_lines, print_state=print_state,
-                           write_stats=write_stats, filename=filename)
+        state.check_actions(content, print_lines=print_lines, print_state=print_state,
+                            write_stats=write_stats, filename=filename)
 
     def testCalculationFinished(self):
         ctx = context.Context()
@@ -245,7 +193,7 @@ class ActionTest(unittest.TestCase):
             done
         """
         try:
-            self.check_actions(actions)
+            state.check_actions(actions)
         except compstate.CheckFinishedException as e:
             ()
 
@@ -317,7 +265,7 @@ class ActionTest(unittest.TestCase):
             done
             """
         # requires evaluation of probability integral
-        self.check_actions(actions)
+        state.check_actions(actions)
 
     # def testFlipside08(self):
     #     actions = """
@@ -369,7 +317,7 @@ class ActionTest(unittest.TestCase):
                 rewrite to b / (y^2 + b^2)
             done
         """
-        self.check_actions(actions)
+        state.check_actions(actions)
 
     def testPostgraduateIndefinitePart1SectionA(self):
         self.check_file("postgradIndef1a")
