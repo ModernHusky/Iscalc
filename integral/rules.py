@@ -263,7 +263,7 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 rec(arg, ctx)
             if e.is_divides():
                 # if the denominator has i, and var is real, then the expression is not 0
-                if expr.contains_i(e.args[1]):
+                if poly.contains_i(e.args[1], ctx):
                     # collect the variables in the expression
                     vars_in_expr = e.args[1].get_vars()
                     if vars_in_expr:
@@ -281,9 +281,15 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                             if is_real and not_zero:
                                 pass
                             else:
-                                add_obligation(Op("!=", e.args[1], Const(0)), ctx)
+                                if ctx.check_condition(Op("!=", e.args[1], Const(0))):
+                                    pass
+                                else:
+                                    add_obligation(Op("!=", e.args[1], Const(0)), ctx)
                     else:
-                        pass
+                        if ctx.check_condition(Op("!=", e.args[1], Const(0))):
+                            pass
+                        else:
+                            add_obligation(Op("!=", e.args[1], Const(0)), ctx)
                 else:
                     if ctx.check_condition(Op("!=", e.args[1], Const(0))):
                         pass
@@ -308,7 +314,10 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 else:
                     add_obligation(Op(">", e.args[0], Const(0)), ctx)
             if e.func_name == 'sqrt':
-                if ctx.check_condition(Op(">=", e.args[0], Const(0))):
+                # 如果是复数域的计算，允许负参数的平方根
+                if poly.contains_i(e, ctx) or any(poly.contains_i(cond, ctx) for cond in ctx.get_conds().data):
+                    pass
+                elif ctx.check_condition(Op(">=", e.args[0], Const(0))):
                     pass
                 else:
                     add_obligation(Op(">=", e.args[0], Const(0)), ctx)
@@ -784,6 +793,76 @@ class EvaluateIndefiniteIntegral(Rule):
         assert isinstance(e, IndefiniteIntegral)
 
         ctx2 = context.body_conds(e, ctx)
+        
+        # 检查是否含有复数单位i
+        has_complex = poly.contains_i(e.body, ctx)
+        
+        # 如果含有复数单位i，尝试应用复数积分规则
+        if has_complex:
+            # 处理特殊形式: 1/(a*x +/-c*i)
+            if expr.is_divides(e.body) and e.body.args[0] == Const(1):
+                denom = e.body.args[1]
+                
+                # 检查分母是否为a*x +/-c*i形式
+                if (expr.is_minus(denom) or expr.is_plus(denom)) and (
+                    (denom.args[1] == Fun("i")) or
+                    (expr.is_times(denom.args[1]) and Fun("i") in denom.args[1].args)
+                ):
+                    # 提取x的系数
+                    x_coeff = None
+                    if expr.is_times(denom.args[0]):
+                        for arg in denom.args[0].args:
+                            if expr.is_var(arg) and arg.name == e.var:
+                                other_factors = [f for f in denom.args[0].args if f != arg]
+                                if other_factors:
+                                    x_coeff = functools.reduce(operator.mul, other_factors)
+                                else:
+                                    x_coeff = Const(1)
+                                break
+                    else:
+                        # 如果第一项是x，系数为1
+                        if expr.is_var(denom.args[0]) and denom.args[0].name == e.var:
+                            x_coeff = Const(1)
+                    
+                    if x_coeff is not None:
+                        # 返回1/a * log(a*x +/- c*i) + C
+                        if x_coeff == Const(1):
+                            result = Fun("log", denom)
+                        else:
+                            result = (1 / x_coeff) * Fun("log", denom)
+                        return result
+            
+            # 处理特殊形式: (x+a*i)^n或(a*x+b*i)^n
+            elif expr.is_power(e.body):
+                base = e.body.args[0]
+                exponent = e.body.args[1]
+                
+                # 检查是否是(x+a*i)形式
+                if poly.contains_i(base, ctx) and not poly.contains_i(exponent, ctx) and exponent.is_constant():
+                    # 检查底数是否为线性
+                    if (expr.is_plus(base) or expr.is_minus(base)) and \
+                       (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
+                       (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
+
+                        n = exponent.val
+                        if isinstance(n, (int, float, Fraction)) and n != -1:
+                            # 使用∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
+                            n_plus_1 = Const(n + 1)
+                            
+                            # 提取x的系数
+                            x_coeff = Const(1)
+                            if expr.is_times(base.args[0]):
+                                for arg in base.args[0].args:
+                                    if expr.is_var(arg) and arg.name == e.var:
+                                        other_factors = [f for f in base.args[0].args if f != arg]
+                                        if other_factors:
+                                            x_coeff = functools.reduce(operator.mul, other_factors)
+                                        break
+                            
+                            coeff = normalize(x_coeff * n_plus_1, ctx)
+                            return normalize(1 / coeff * (base ^ n_plus_1), ctx) + SkolemFunc("C", e.skolem_args)
+
+        # 如果不是复数形式，应用原有的积分规则
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
             inst = expr.match(e, indef.lhs)
@@ -816,6 +895,72 @@ class EvaluateDefiniteIntegral(Rule):
         assert isinstance(e, Integral)
 
         ctx2 = context.body_conds(e, ctx)
+        
+        # 检查是否含有复数单位i
+        has_complex = poly.contains_i(e.body, ctx)
+        
+        # 如果含有复数单位i，尝试应用复数积分规则
+        if has_complex:
+            # 处理特殊形式: 1/(a*x +/-c*i)
+            if expr.is_divides(e.body) and e.body.args[0] == Const(1):
+                denom = e.body.args[1]
+                
+                # 检查分母是否为a*x +/-c*i形式
+                if (expr.is_minus(denom) or expr.is_plus(denom)) and (
+                    (denom.args[1] == Fun("i")) or
+                    (expr.is_times(denom.args[1]) and Fun("i") in denom.args[1].args)
+                ):
+                    # 提取x的系数
+                    x_coeff = None
+                    if expr.is_times(denom.args[0]):
+                        for arg in denom.args[0].args:
+                            if expr.is_var(arg) and arg.name == e.var:
+                                other_factors = [f for f in denom.args[0].args if f != arg]
+                                if other_factors:
+                                    x_coeff = functools.reduce(operator.mul, other_factors)
+                                else:
+                                    x_coeff = Const(1)
+                                break
+                    else:
+                        # 如果第一项是x，系数为1
+                        if expr.is_var(denom.args[0]) and denom.args[0].name == e.var:
+                            x_coeff = Const(1)
+                    
+                    if x_coeff is not None:
+                        if x_coeff == Const(1):
+                            return EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
+                        else:
+                            return (1 / x_coeff) * EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
+            
+            # 处理特殊形式: (x+a*i)^n或(a*x+b*i)^n
+            elif expr.is_power(e.body):
+                base = e.body.args[0]
+                exponent = e.body.args[1]
+                
+                # 检查是否是(x+a*i)形式
+                if poly.contains_i(base, ctx) and not poly.contains_i(exponent, ctx) and exponent.is_constant():
+                    # 检查底数是否为线性
+                    if (expr.is_plus(base) or expr.is_minus(base)) and \
+                       (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
+                       (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
+
+                        n = exponent.val
+                        if isinstance(n, (int, float, Fraction)) and n != -1:
+                            # 使用∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
+                            n_plus_1 = Const(n + 1)
+                            
+                            # 提取x的系数
+                            x_coeff = Const(1)
+                            if expr.is_times(base.args[0]):
+                                for arg in base.args[0].args:
+                                    if expr.is_var(arg) and arg.name == e.var:
+                                        other_factors = [f for f in base.args[0].args if f != arg]
+                                        if other_factors:
+                                            x_coeff = functools.reduce(operator.mul, other_factors)
+                                        break
+                            
+                            coeff = normalize(x_coeff * n_plus_1, ctx)
+                            return EvalAt(e.var, e.lower, e.upper, 1 / coeff * (base ^ n_plus_1))
 
         # First, look for definite integral identities
         for identity in ctx.get_definite_integrals():
@@ -858,104 +1003,6 @@ class EvaluateDefiniteIntegral(Rule):
 
         # No matching identity found
         return e
-
-class EvaluateIntegralFi(Rule):
-    """Process integral calculations on complex domains, especially cases containing complex units i"""
-    
-    def __init__(self):
-        self.name = "EvaluateIntegralFi"
-        
-    def __str__(self):
-        return "evaluate complex integral"
-        
-    def export(self):
-        return {
-            "name": self.name,
-            "str": str(self)
-        }
-        
-    def eval(self, e: Expr, ctx: Context) -> Expr:
-        assert isinstance(e, (IndefiniteIntegral, Integral))
-        
-        ctx2 = context.body_conds(e, ctx)
-        
-        # Handle special form: integral of 1 /(a*x +/-c*i)
-        if expr.is_divides(e.body) and e.body.args[0] == Const(1):
-            denom = e.body.args[1]
-            
-            # Check if the denominator is a*x +/-c*i form
-            if (expr.is_minus(denom) or expr.is_plus(denom)) and (
-                (denom.args[1] == Fun("i")) or
-                (expr.is_times(denom.args[1]) and Fun("i") in denom.args[1].args)
-            ):
-                # Extract the coefficient of x
-                x_coeff = None
-                if expr.is_times(denom.args[0]):
-                    for arg in denom.args[0].args:
-                        if expr.is_var(arg) and arg.name == e.var:
-                            other_factors = [f for f in denom.args[0].args if f != arg]
-                            if other_factors:
-                                x_coeff = functools.reduce(operator.mul, other_factors)
-                            else:
-                                x_coeff = Const(1)
-                            break
-                else:
-                    # If the first term is x, the coefficient is 1
-                    if expr.is_var(denom.args[0]) and denom.args[0].name == e.var:
-                        x_coeff = Const(1)
-                
-                if x_coeff is None:
-                    return e
-                    
-                if isinstance(e, IndefiniteIntegral):
-                    # return 1/a * log(a*x +/- c*i) + C
-                    if x_coeff == Const(1):
-                        result = Fun("log", denom)
-                    else:
-                        result = (1 / x_coeff) * Fun("log", denom)
-                    return result
-                elif isinstance(e, Integral):
-                    if x_coeff == Const(1):
-                        return EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
-                    else:
-                        return (1 / x_coeff) * EvalAt(e.var, e.lower, e.upper, Fun("log", denom))
-        
-        # Handle special form: integral of (x+a*i)^n or (a*x+b*i)^n
-        elif expr.is_power(e.body):
-            base = e.body.args[0]
-            exponent = e.body.args[1]
-            
-            # Check if it is in the form (x+a*i)
-            if expr.contains_i(base) and not expr.contains_i(exponent) and exponent.is_constant():
-                # Check if the base is linear
-                if (expr.is_plus(base) or expr.is_minus(base)) and \
-                   (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
-                   (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
-
-                    n = exponent.val
-                    if isinstance(n, (int, float, Fraction)) and n != -1:
-                        # use ∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
-                        n_plus_1 = Const(n + 1)
-                        
-                        # Extract the coefficient of x
-                        x_coeff = Const(1)
-                        if expr.is_times(base.args[0]):
-                            for arg in base.args[0].args:
-                                if expr.is_var(arg) and arg.name == e.var:
-                                    other_factors = [f for f in base.args[0].args if f != arg]
-                                    if other_factors:
-                                        x_coeff = functools.reduce(operator.mul, other_factors)
-                                    break
-                        
-                        coeff = normalize(x_coeff * n_plus_1, ctx)
-                        if isinstance(e, IndefiniteIntegral):
-                            return normalize(1 / coeff * (base ^ n_plus_1), ctx) + SkolemFunc("C", e.skolem_args)
-                        elif isinstance(e, Integral):
-                            return EvalAt(e.var, e.lower, e.upper, 1 / coeff * (base ^ n_plus_1))
-              
-        # TODO Handle special integral forms on other complex domains.
-        return e
-
 
 class IntegralIdentity(Rule):
     def __init__(self):
@@ -1101,17 +1148,10 @@ class IntegralIdentity(Rule):
         integrals = e.separate_integral()
         skolem_args = set()
         exist_indefinite_integral = False
-        has_complex = False
+        
         for sub_e, loc in integrals:
-            # Check whether the integrator contains complex units i
-            has_complex = expr.contains_i(sub_e.body)
-            
             if isinstance(sub_e, IndefiniteIntegral):
-                if has_complex:
-                    # If the complex unit i is contained, use the integral rule on the complex domain
-                    e = OnLocation(EvaluateIntegralFi(), loc).eval(e, ctx)
-                else:
-                    e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
+                e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
                 
                 new_e = e.get_subexpr(loc)
                 if new_e != sub_e:
@@ -1120,11 +1160,7 @@ class IntegralIdentity(Rule):
             elif isinstance(sub_e, Integral):
                 upper = sub_e.upper.__str__()
                 lower = sub_e.lower.__str__()
-                if has_complex:
-                    # If the complex unit i is contained, use the integral rule on the complex domain
-                    e = OnLocation(EvaluateIntegralFi(), loc).eval(e, ctx)
-                else:
-                    e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
+                e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
             else:
                 raise AssertionError
 
@@ -1137,7 +1173,7 @@ class IntegralIdentity(Rule):
                 # If no Skolem variable at right
                 e = e + expr.SkolemFunc("C", tuple(Var(arg) for arg in skolem_args))
 
-        # 辅助函数：计算表达式中EvalAt的数量
+        # 计算表达式中EvalAt的数量
         def count_evalats(expr):
             count = 0
             if expr.is_equals():
