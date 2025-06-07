@@ -1139,7 +1139,7 @@ def simplify_exp(e:expr.Expr, ctx:Context):
     elif expr.is_fun(e):
         args = [simplify_exp(arg, ctx) for arg in e.args]
         if e.func_name == "exp":
-            if expr.contains_i(args[0]):
+            if contains_i(args[0], ctx):
                 if args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi")):
                     return expr.Const(-1)
             nf, df = expr.decompose_expr_factor2(args[0])
@@ -1411,3 +1411,54 @@ def from_poly(p: Polynomial) -> expr.Expr:
             else:
                 res = res + mono
         return res
+    
+def contains_i(e, ctx:Context):
+    """
+    检查表达式中是否包含复数单位i或被标记为复数的变量
+    
+    Args:
+        e: 要检查的表达式
+        ctx: 上下文环境，包含变量的条件信息
+        
+    Returns:
+        bool: 如果表达式包含复数单位i或复数变量，返回True；否则返回False
+    """
+    
+    if expr.is_const(e) or expr.is_inf(e) or expr.is_symbol(e):
+        return False
+    # i的情况
+    if expr.is_fun(e) and e.func_name == 'i':
+        return True
+    # 变量情况：检查是否被标记为复数
+    if expr.is_var(e):
+        # 检查是否标记为复数
+        if ctx and ctx.check_condition(expr.Fun("isComplex", e)):
+            return True
+        return False
+    
+    # 各种操作符和函数的递归检查
+    if expr.is_op(e) or expr.is_fun(e):
+        # 特殊情况：sqrt(-1)
+        if expr.is_fun(e) and e.func_name == 'sqrt':
+            if expr.is_const(e.args[0]) and e.args[0].val == -1:
+                return True
+            # 对于sqrt，如果参数可以确定为非负，则不包含复数
+            if ctx and ctx.check_condition(expr.Op(">=", e.args[0], expr.Const(0))):
+                return False
+        # 递归检查所有参数
+        return any(contains_i(arg, ctx) for arg in e.args)
+    
+    # 其他复合表达式
+    if expr.is_integral(e) or expr.is_evalat(e):
+        return (contains_i(e.body, ctx) or 
+                contains_i(e.lower, ctx) or 
+                contains_i(e.upper, ctx))
+    if expr.is_deriv(e) or expr.is_indefinite_integral(e) or expr.is_cintegral(e):
+        return contains_i(e.body, ctx)
+    if expr.is_limit(e):
+        return contains_i(e.body, ctx) or contains_i(e.lim, ctx)
+    if expr.is_summation(e) or expr.is_product(e):
+        return (contains_i(e.body, ctx) or 
+                contains_i(e.lower, ctx) or 
+                contains_i(e.upper, ctx))
+    return False

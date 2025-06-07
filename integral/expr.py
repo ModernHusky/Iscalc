@@ -830,25 +830,6 @@ def exprify(value):
     # 对于其他类型的输入，抛出异常
     raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
-def contains_i(e: Expr) -> bool:
-    """Check if the expression contains the imaginary unit i."""
-    if is_const(e):
-        return False
-    elif is_var(e):
-        return False
-    elif is_fun(e) and e.func_name == "i":
-        return True
-    elif is_inf(e):
-        return False
-    elif is_symbol(e):
-        return False
-    elif is_op(e):
-        return any(contains_i(arg) for arg in e.args)
-    elif is_integral(e) or is_deriv(e) or is_limit(e) or is_summation(e) or is_product(e):
-        return contains_i(e.body)
-    else:
-        return False
-
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
 
@@ -2252,50 +2233,6 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
             unique_poles.append(pole)
     
     return unique_poles
-
-def compute_residue(e:Expr, pole:Expr, order:int=1) -> Expr:
-    """Compute residue at a pole.
-    
-    Args:
-        expr: The expression to compute residue for.
-        pole: The pole to compute residue at.
-        order: Order of the pole (default is 1 for simple poles).
-        
-    Returns:
-        The residue at the pole.
-    """
-    if order == 1:
-        # 对于一阶极点，使用极限公式
-        # Res(f,a) = lim(z->a) (z-a)f(z)
-        z = Var('z')
-        # 确保表达式中的变量被正确替换为z
-        if isinstance(e, Expr):
-            vars = e.get_vars()
-            if len(vars) == 1:
-                var = list(vars)[0]
-                e = e.subst(var, z)
-        residue = Limit('z', pole, (z - pole) * e)
-        return residue
-    else:
-        # 对于高阶极点，使用导数公式
-        # Res(f,a) = 1/(n-1)! * lim(z->a) d^(n-1)/dz^(n-1) [(z-a)^n * f(z)]
-        z = Var('z')
-        # 确保表达式中的变量被正确替换为z
-        if isinstance(expr, Expr):
-            vars = expr.get_vars()
-            if len(vars) == 1:
-                var = list(vars)[0]
-                expr = expr.subst(var, z)
-        n = order
-        expr_mult = ((z - pole) ** n) * expr
-        
-        # 计算n-1阶导数
-        for _ in range(n-1):
-            expr_mult = Deriv('z', expr_mult)
-            
-        # 计算极限
-        residue = Limit('z', pole, expr_mult) / factorial(n-1)
-        return residue
 
 def factorial(n):
     """计算阶乘。"""
