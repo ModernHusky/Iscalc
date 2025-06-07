@@ -1487,7 +1487,6 @@ class ActionTest(unittest.TestCase):
             lhs:
                 rewrite 1/(x*(x^2+1)) to 1/x - 1/(2*(x-i)) - 1/(2*(x+i))
                 apply integral identity
-                merge evalat
                 rewrite 1/2 * log(x - i) to log((x-i)^(1/2))
                 rewrite 1/2 * log(x + i) to log((x+i)^(1/2))
                 rewrite log(x) - log((x - i) ^ (1/2)) to log(x/(x - i) ^ (1/2))

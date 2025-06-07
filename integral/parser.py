@@ -149,7 +149,6 @@ grammar = r"""
         | "replace" "substitution" -> replace_substitution_rule
         | "l'Hopital's" "rule" -> lhopitals_rule
         | "simplify" -> full_simplify_rule
-        | "merge evalat" -> merge_evalat
 
     ?rule: atomic_rule
         | atomic_rule "(at" INT ")" -> on_count_rule
@@ -577,11 +576,6 @@ class ExprTransformer(Transformer):
     def full_simplify_rule(self):
         from integral import rules
         return rules.Simplify()
-    
-    def merge_evalat(self):
-        """合并具有相同变量和上下限的EvalAt表达式"""
-        from integral import rules
-        return rules.MergeEvalAt()
     
     def lhopitals_rule(self):
         from integral import rules
