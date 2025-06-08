@@ -22,7 +22,7 @@ class IscalcException(Exception):
 
 
 VAR, CONST, OP, FUN, DERIV, INTEGRAL,CINTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
-SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CIRCLEPATH, POLEPATH, RECTANGLEPATH, LINEPATH = range(21)
+SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CIRCLEPATH, POLEPATH, LINEPATH = range(20)
 
 op_priority = {
     "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
@@ -862,9 +862,6 @@ def is_cintegral(e: Expr) -> TypeGuard["CIntegral"]:
 
 def is_circlepath(e: Expr) -> TypeGuard["CirclePath"]:
     return e.ty == CIRCLEPATH
-
-def is_rectanglepath(e: Expr) -> TypeGuard["RectanglePath"]:
-    return e.ty == RECTANGLEPATH
 
 def is_polepath(e: Expr) -> TypeGuard["PolePath"]:
     return e.ty == POLEPATH
@@ -1841,119 +1838,145 @@ def neg_expr(e: Expr):
     else:
         raise NotImplementedError(f"neg_expr: {e}")
 
-class MultiPoleContourIntegral(Expr):
-    """Multi-pole contour integral of an expression.
-    
-    The contour consists of small circles around multiple poles.
-    """
-    def __init__(self, var: str, poles: List[Expr], radii: List[Expr], body: Expr):
-        assert isinstance(var, str) and isinstance(poles, list) and \
-               isinstance(radii, list) and isinstance(body, Expr)
-        assert len(poles) == len(radii)
-        self.ty = MULTIPOLECONTOUR
-        self.var = var
-        self.poles = poles  # List of pole points
-        self.radii = radii  # List of radii
-        self.body = body.subst(var, Var(var))
-
-    def __hash__(self):
-        return hash((MULTIPOLECONTOUR, self.var, tuple(self.poles), tuple(self.radii),
-                    self.body.subst(self.var, Var("_u"))))
-
-    def __eq__(self, other):
-        return isinstance(other, MultiPoleContourIntegral) and \
-               self.poles == other.poles and self.radii == other.radii and \
-               self.body == other.alpha_convert(self.var).body
-
-    def __str__(self):
-        pole_str = ",".join("%s,%s" % (str(p), str(r)) for p, r in zip(self.poles, self.radii))
-        return "CINT %s:poles(%s). %s" % (self.var, pole_str, str(self.body))
-
-    def __repr__(self):
-        return "MultiPoleContourIntegral(%s,%s,%s,%s)" % (
-            self.var, repr(self.poles), repr(self.radii), repr(self.body))
-
-    def alpha_convert(self, new_name):
-        """Change the variable of integration to new_name."""
-        assert isinstance(new_name, str), "alpha_convert"
-        return MultiPoleContourIntegral(new_name, self.poles, self.radii,
-                                      self.body.subst(self.var, Var(new_name)))
-
 class Direction:
-    """Direction of circle path."""
+    """Direction of contour path."""
+    CW = "CW"   # 顺时针
+    CCW = "CCW" # 逆时针
+    
     def __init__(self, direction: str):
-        assert direction in ["CW", "CCW"], "Direction must be either CW or CCW"
-        self.direction = direction
+        assert direction in [Direction.CW, Direction.CCW], "Direction must be either CW or CCW"
+        self._value = direction
 
     def __str__(self):
-        return self.direction
+        return self._value
     
     def __eq__(self, other):
-        return isinstance(other, Direction) and self.direction == other.direction
+        if isinstance(other, Direction):
+            return self._value == other._value
+        elif isinstance(other, str):
+            return self._value == other
+        return False
     
     def __hash__(self):
-        return hash(self.direction)
+        return hash(self._value)
+    
+    def is_clockwise(self):
+        """是否为顺时针方向"""
+        return self._value == Direction.CW
+    
+    def is_counterclockwise(self):
+        """是否为逆时针方向"""
+        return self._value == Direction.CCW
+
 
 class CirclePath:
     """Circle path for compound contour integral.
     
     Args:
-        Re: real part of center
-        Im: imaginary part of center
-        begin_a: starting angle
-        dir_and_end_a: direction and ending angle (positive for clockwise, negative for counterclockwise)
+        radius: radius of circle path
+        begin_angle: starting angle of circle path
+        dir_and_end_angle: direction and ending angle (positive for clockwise, negative for counterclockwise)
+        Re: real part of center, defaults to 0 if not specified
+        Im: imaginary part of center, defaults to 0 if not specified
+        
+    表示参数方程：
+        C(t) = (Re, Im) + radius * exp(i * (begin_angle + dir_and_end_angle * t))
+        t ∈ [0, 1]
+        
+    当radius为无穷大(oo)或负无穷大(-oo)时，使用变量r替代，并通过LIM {r->oo}表示极限过程。
     """
-    def __init__(self, Re: Expr, Im: Expr, begin_a: Expr, dir_and_end_a: Expr, radius: Expr):
-        assert isinstance(Re, Expr) and isinstance(Im, Expr)\
-               and isinstance(begin_a, Expr) and isinstance(dir_and_end_a, Expr)
+    def __init__(self, radius: Expr, begin_angle: Expr, dir_and_end_angle: Expr, 
+                 Re: Expr = None, Im: Expr = None):
+        assert isinstance(radius, Expr) and isinstance(begin_angle, Expr) \
+               and isinstance(dir_and_end_angle, Expr)
+        
+        # 设置默认圆心为原点(0,0)
+        if Re is None:
+            Re = Const(0)
+        if Im is None:
+            Im = Const(0)
+        
         self.ty = CIRCLEPATH
+        
+        # 检查半径是否为无穷大，如果是则标记
+        self.is_infinite_radius = is_inf(radius)
+        self.original_radius = radius  # 保存原始半径值
+        
+        # 如果是无穷大半径，替换为变量r
+        if self.is_infinite_radius:
+            self.radius = Var("r")
+            self.radius_limit = POS_INF if is_pos_inf(radius) else NEG_INF
+        else:
+            self.radius = radius
+            
+        self.begin_angle = begin_angle
+        self.dir_and_end_angle = dir_and_end_angle
         self.Re = Re
         self.Im = Im
-        self.begin_a = begin_a
-        self.dir_and_end_a = dir_and_end_a
-        self.radius = radius
-
-        # Determine direction based on dir_and_end_a
-        # If dir_and_end_a is negative, direction is CCW
-        # If dir_and_end_a is positive or zero, direction is CW
-        if is_const(dir_and_end_a):
-            self.direction = Direction("CCW") if dir_and_end_a.val < 0 else Direction("CW")
-        elif is_uminus(dir_and_end_a):
-            self.direction = Direction("CCW")
+        
+        # Determine direction based on dir_and_end_angle
+        # If dir_and_end_angle is negative, direction is CCW
+        # If dir_and_end_angle is positive or zero, direction is CW
+        if is_const(dir_and_end_angle):
+            self.direction = Direction(Direction.CCW if dir_and_end_angle.val < 0 else Direction.CW)
+        elif is_uminus(dir_and_end_angle):
+            self.direction = Direction(Direction.CCW)
         else:
-            self.direction = Direction("CW")
+            self.direction = Direction(Direction.CW)
             
         # Construct center as complex number
         self.center = Op("+", Re, Op("*", Im, Fun("i")))
 
     def __hash__(self):
-        return hash((self.Re, self.Im, self.begin_a, self.dir_and_end_a, self.direction, self.radius))
+        return hash((self.radius, self.begin_angle, self.dir_and_end_angle, self.Re, self.Im, self.direction))
 
     def get_vars(self) -> Set[str]:
         """Get all variables in the path"""
         vars = set()
+        vars.update(self.radius.get_vars())
+        vars.update(self.begin_angle.get_vars())
+        vars.update(self.dir_and_end_angle.get_vars())
         vars.update(self.Re.get_vars())
         vars.update(self.Im.get_vars())
-        vars.update(self.begin_a.get_vars())
-        vars.update(self.dir_and_end_a.get_vars())
         return vars
 
     def __eq__(self, other):
         return isinstance(other, CirclePath) and \
+               self.radius == other.radius and \
+               self.begin_angle == other.begin_angle and \
+               self.dir_and_end_angle == other.dir_and_end_angle and \
                self.Re == other.Re and self.Im == other.Im and \
-               self.begin_a == other.begin_a and \
-               self.dir_and_end_a == other.dir_and_end_a and \
-               self.direction == other.direction and \
-               self.radius == other.radius
+               self.direction == other.direction
 
     def __str__(self):
-        return f"circle(({self.Re},{self.Im}) + {self.radius} * expr(i * ({self.begin_a} + {self.dir_and_end_a} * t)))"
+        center_str = "" if (self.Re == Const(0) and self.Im == Const(0)) else f"({self.Re},{self.Im})+"
+        radius_str = str(self.original_radius) if self.is_infinite_radius else str(self.radius)
+        
+        # 确定是否使用加号或减号，取决于方向
+        # 当dir_and_end_angle为负值时，使用减号并取其绝对值，否则使用加号
+        if is_uminus(self.dir_and_end_angle) or (is_const(self.dir_and_end_angle) and self.dir_and_end_angle.val < 0):
+            # 如果是负值，则取其绝对值并使用减号
+            if is_uminus(self.dir_and_end_angle):
+                # 处理形如 -expr 的情况
+                abs_angle = self.dir_and_end_angle.args[0]
+                return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}-{abs_angle}*t)))[{self.direction}]"
+            else:
+                # 处理负常数的情况
+                abs_angle = Const(abs(self.dir_and_end_angle.val))
+                return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}-{abs_angle}*t)))[{self.direction}]"
+        else:
+            # 非负值，使用加号
+            return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}+{self.dir_and_end_angle}*t)))[{self.direction}]"
 
     def __repr__(self):
-        return f"CirclePath(({self.Re},{self.Im}) + {self.radius} * expr(i * ({self.begin_a} + {self.dir_and_end_a} * t)))"
+        radius_repr = repr(self.original_radius) if self.is_infinite_radius else repr(self.radius)
+        return f"CirclePath({radius_repr},{self.begin_angle},{self.dir_and_end_angle},{self.Re},{self.Im})[{self.direction}]"
     
+    def get_direction(self) -> Direction:
+        return self.direction
+        
     def size(self):
-        return 1 + self.Re.size() + self.Im.size() + self.begin_a.size() + self.dir_and_end_a.size() + self.radius.size()
+        return 1 + self.radius.size() + self.begin_angle.size() + self.dir_and_end_angle.size() + self.Re.size() + self.Im.size()
 
 class LinePath:
     """Line path for compound contour integral.
@@ -1964,19 +1987,82 @@ class LinePath:
         Re2: real part of the ending point
         Im2: imaginary part of the ending point
     
-    路径方向由起点到终点确定，无需额外指定方向参数。
+    如从点(r,0)到点(R,0)的线段。
+    当直线段用于构成闭合围道（如矩形或多边形）时，只需确保首尾相连。
+    
+    当起点或终点为无穷大(oo)或负无穷大(-oo)时，使用变量r替代，并通过LIM {r->oo}表示极限过程。
     """
     def __init__(self, Re1: Expr, Im1: Expr, Re2: Expr, Im2: Expr):
         assert isinstance(Re1, Expr) and isinstance(Im1, Expr) and \
                isinstance(Re2, Expr) and isinstance(Im2, Expr)
         self.ty = LINEPATH
+        
+        # 保存原始值
         self.Re1 = Re1
         self.Im1 = Im1
         self.Re2 = Re2
         self.Im2 = Im2
+        
+        # 检查是否包含无穷大值
+        self.has_infinite_points = False
+        self.infinite_params = {}
+        
+        # 检查并处理起点坐标中的无穷大
+        if is_inf(Re1):
+            self.has_infinite_points = True
+            # 保持正负符号不变：oo -> r, -oo -> -r
+            if is_pos_inf(Re1):
+                self.Re1 = Var("r")
+                self.infinite_params["Re1"] = POS_INF
+            else:  # 负无穷大
+                self.Re1 = Op("-", Var("r"))
+                self.infinite_params["Re1"] = NEG_INF
+        else:
+            self.Re1 = Re1
+            
+        if is_inf(Im1):
+            self.has_infinite_points = True
+            # 保持正负符号不变：oo -> r, -oo -> -r
+            if is_pos_inf(Im1):
+                self.Im1 = Var("r")
+                self.infinite_params["Im1"] = POS_INF
+            else:  # 负无穷大
+                self.Im1 = Op("-", Var("r"))
+                self.infinite_params["Im1"] = NEG_INF
+        else:
+            self.Im1 = Im1
+            
+        # 检查并处理终点坐标中的无穷大
+        if is_inf(Re2):
+            self.has_infinite_points = True
+            # 保持正负符号不变：oo -> r, -oo -> -r
+            if is_pos_inf(Re2):
+                self.Re2 = Var("r")
+                self.infinite_params["Re2"] = POS_INF
+            else:  # 负无穷大
+                self.Re2 = Op("-", Var("r"))
+                self.infinite_params["Re2"] = NEG_INF
+        else:
+            self.Re2 = Re2
+            
+        if is_inf(Im2):
+            self.has_infinite_points = True
+            # 保持正负符号不变：oo -> r, -oo -> -r
+            if is_pos_inf(Im2):
+                self.Im2 = Var("r")
+                self.infinite_params["Im2"] = POS_INF
+            else:  # 负无穷大
+                self.Im2 = Op("-", Var("r"))
+                self.infinite_params["Im2"] = NEG_INF
+        else:
+            self.Im2 = Im2
+        
         # 构造起点和终点的复数表示
-        self.start_point = Op("+", Re1, Op("*", Im1, Fun("i")))
-        self.end_point = Op("+", Re2, Op("*", Im2, Fun("i")))
+        self.start = Op("+", self.Re1, Op("*", self.Im1, Fun("i")))
+        self.end = Op("+", self.Re2, Op("*", self.Im2, Fun("i")))
+        
+        # 特别处理实轴上的线段
+        self.is_real_axis = (self.Im1 == Const(0) and self.Im2 == Const(0))
 
     def get_vars(self) -> Set[str]:
         """Get all variables in the path"""
@@ -1987,9 +2073,9 @@ class LinePath:
         vars.update(self.Im2.get_vars())
         return vars
     
-    def get_direction(self) -> Expr:
+    def get_direction_vector(self) -> Expr:
         """获取路径的方向向量（从起点指向终点）"""
-        return Op("-", self.end_point, self.start_point)
+        return Op("-", self.end, self.start)
     
     def __hash__(self):
         return hash((self.Re1, self.Im1, self.Re2, self.Im2))
@@ -2000,142 +2086,103 @@ class LinePath:
                self.Re2 == other.Re2 and self.Im2 == other.Im2
 
     def __str__(self):
-        return f"line((1-t)*({self.Re1},{self.Im1}) + t*({self.Re2},{self.Im2}))"
+        if self.is_real_axis:
+            re1_str = str(self.Re1) if is_inf(self.Re1) else str(self.Re1)
+            re2_str = str(self.Re2) if is_inf(self.Re2) else str(self.Re2)
+            return f"line({re1_str},{re2_str})"
+        
+        re1_str = str(self.Re1) if is_inf(self.Re1) else str(self.Re1)
+        im1_str = str(self.Im1) if is_inf(self.Im1) else str(self.Im1)
+        re2_str = str(self.Re2) if is_inf(self.Re2) else str(self.Re2)
+        im2_str = str(self.Im2) if is_inf(self.Im2) else str(self.Im2)
+        
+        return f"line(({re1_str},{im1_str}),({re2_str},{im2_str}))"
 
     def __repr__(self):
-        return f"LinePath({self.Re1},{self.Im1},{self.Re2},{self.Im2})"
+        re1_repr = repr(self.Re1) if is_inf(self.Re1) else repr(self.Re1)
+        im1_repr = repr(self.Im1) if is_inf(self.Im1) else repr(self.Im1)
+        re2_repr = repr(self.Re2) if is_inf(self.Re2) else repr(self.Re2)
+        im2_repr = repr(self.Im2) if is_inf(self.Im2) else repr(self.Im2)
+        
+        return f"LinePath({re1_repr},{im1_repr},{re2_repr},{im2_repr})"
     
     def size(self):
         return 1 + self.Re1.size() + self.Im1.size() + self.Re2.size() + self.Im2.size()
         
     def is_closed(self) -> bool:
         """检查路径是否闭合（起点和终点是否相同）"""
-        return self.start_point == self.end_point
+        return self.start == self.end
 
 class PolePath:
-    """Pole path for compound contour integral."""
+    """Pole path for compound contour integral.
+    
+    表示复平面上的极点，用于留数计算。
+    
+    Args:
+        Re: real part of the pole point
+        Im: imaginary part of the pole point
+    """
     def __init__(self, Re: Expr, Im: Expr):
         assert isinstance(Re, Expr) and isinstance(Im, Expr)
         self.ty = POLEPATH
         self.Re = Re
         self.Im = Im
-        self.point = Op("+", Re, Op("*", Im, Fun("i")))
-
+        # 构造极点的复数表示
+        self.pole_point = Op("+", Re, Op("*", Im, Fun("i")))
+        
     def get_vars(self) -> Set[str]:
-        """获取路径中的所有变量"""
+        """获取极点中包含的所有变量"""
         vars = set()
         vars.update(self.Re.get_vars())
         vars.update(self.Im.get_vars())
         return vars
-
-    def __eq__(self, other):
-        return isinstance(other, PolePath) and \
-               self.Re == other.Re and self.Im == other.Im
     
     def __hash__(self):
         return hash((self.Re, self.Im))
 
+    def __eq__(self, other):
+        return isinstance(other, PolePath) and \
+               self.Re == other.Re and self.Im == other.Im
+
     def __str__(self):
-        return "pole(%s,%s)" % (str(self.Re), str(self.Im))
+        return f"pole({self.Re},{self.Im})"
 
     def __repr__(self):
-        return "PolePath(%s,%s)" % (repr(self.Re), repr(self.Im))
+        return f"PolePath({self.Re},{self.Im})"
     
     def size(self):
         return 1 + self.Re.size() + self.Im.size()
-
-class RectanglePath:
-    """Rectangle path for compound contour integral.
     
-    The rectangle is represented by four parametric lines:
-    L1(t) = (1-t)a1 + ta2  where a1 = Re1 + i*Im1, a2 = Re2 + i*Im2
-    L2(t) = (1-t)a2 + ta3  where a3 = Re3 + i*Im3
-    L3(t) = (1-t)a3 + ta4  where a4 = Re4 + i*Im4
-    L4(t) = (1-t)a4 + ta1
-    
-    where t ∈ [0,1]
-    
-    Direction is determined by the order of vertices:
-    - If vertices are given in counterclockwise order: CCW
-    - If vertices are given in clockwise order: CW
-    """
-    def __init__(self, Re1: Expr, Im1: Expr, Re2: Expr, Im2: Expr, 
-                 Re3: Expr, Im3: Expr, Re4: Expr, Im4: Expr):
-        assert all(isinstance(x, Expr) for x in [Re1, Im1, Re2, Im2, Re3, Im3, Re4, Im4])
-        self.ty = RECTANGLEPATH
-        
-        # Store vertices as complex numbers: ak = Rek + i*Imk
-        self.a1 = Op("+", Re1, Op("*", Im1, Fun("i")))
-        self.a2 = Op("+", Re2, Op("*", Im2, Fun("i")))
-        self.a3 = Op("+", Re3, Op("*", Im3, Fun("i")))
-        self.a4 = Op("+", Re4, Op("*", Im4, Fun("i")))
-        
-        # Store parametric lines
-        t = Var("t")
-        one_minus_t = Op("-", Const(1), t)
-        
-        self.L1 = Op("+", Op("*", one_minus_t, self.a1), Op("*", t, self.a2))
-        self.L2 = Op("+", Op("*", one_minus_t, self.a2), Op("*", t, self.a3))
-        self.L3 = Op("+", Op("*", one_minus_t, self.a3), Op("*", t, self.a4))
-        self.L4 = Op("+", Op("*", one_minus_t, self.a4), Op("*", t, self.a1))
-        
-        # Store vertices coordinates separately for convenience
-        self.vertices = [
-            (Re1, Im1), (Re2, Im2),
-            (Re3, Im3), (Re4, Im4)
-        ]
-
-    def get_vars(self) -> Set[str]:
-        """Get all variables in the path"""
-        vars = set()
-        for Re, Im in self.vertices:
-            vars.update(Re.get_vars())
-            vars.update(Im.get_vars())
-        return vars
-
-    def __hash__(self):
-        return hash((self.a1, self.a2, self.a3, self.a4))
-
-    def __eq__(self, other):
-        return isinstance(other, RectanglePath) and \
-               self.a1 == other.a1 and self.a2 == other.a2 and \
-               self.a3 == other.a3 and self.a4 == other.a4
-
-    def __str__(self):
-        return f"rectangle([L1(t)=(1-t)*{self.a1}+t*{self.a2}," + \
-               f"L2(t)=(1-t)*{self.a2}+t*{self.a3}," + \
-               f"L3(t)=(1-t)*{self.a3}+t*{self.a4}," + \
-               f"L4(t)=(1-t)*{self.a4}+t*{self.a1}])"
-
-    def __repr__(self):
-        return f"RectanglePath(a1={self.a1},a2={self.a2},a3={self.a3},a4={self.a4})"
-    
-    def size(self):
-        return 1 + sum(Re.size() + Im.size() for Re, Im in self.vertices)
-
-    def is_closed(self) -> bool:
-        """Check if the rectangle is closed (L4(1) = L1(0))"""
-        return self.L4.subst("t", Const(1)) == self.L1.subst("t", Const(0))
-    
+    def compute_residue(self, f: Expr, order: int = 1) -> Expr:
+        return compute_residue(f, self.pole_point, order)
 
 class CompoundContourIntegral(Expr):
     """Compound contour integral of an expression.
     
-    围道可以由以下类型的路径组成：
-    - CirclePath: 圆形路径
-    - LinePath: 直线路径
-    - RectanglePath: 矩形路径
-    - PolePath: 极点
+    A contour can be composed of the following types of paths:
+    - CirclePath: circular path
+    - LinePath: straight line path
+    - PolePath: pole
     
-    每个路径都有其自己的方向属性，用于判断积分方向。
+    Each path has its own direction attribute used to determine the integration direction.
+    
+    无穷大路径：
+    - 当圆路径半径为无穷大时，使用变量r替代，并用LIM {r->oo}表示极限过程
+    - 当线段路径端点为无穷大时，使用变量r替代，并用LIM {r->oo}表示极限过程
     """
-    def __init__(self, var: str, paths: List[Union[CirclePath, LinePath, RectanglePath, PolePath]], body: Expr):
+    def __init__(self, var: str, paths: List[Union[CirclePath, LinePath, PolePath]], body: Expr):
         assert isinstance(var, str) and isinstance(body, Expr)
         self.ty = COMPOUNDCONTOUR
         self.var = var
         # 确保paths是列表
         self.paths = [paths] if not isinstance(paths, list) else paths
         self.body = body.subst(var, Var(var))
+        
+        # 检查路径是否包含无穷大
+        self.has_infinite_paths = any((
+            isinstance(p, CirclePath) and p.is_infinite_radius or
+            isinstance(p, LinePath) and p.has_infinite_points
+        ) for p in self.paths)
 
     def __hash__(self):
         path_hashes = tuple(hash(p) for p in self.paths)
@@ -2159,6 +2206,65 @@ class CompoundContourIntegral(Expr):
         """更改积分变量名"""
         assert isinstance(new_name, str), "alpha_convert: new_name must be a string"
         return CompoundContourIntegral(new_name, self.paths, self.body.subst(self.var, Var(new_name)))
+        
+    def to_limit_form(self) -> Expr:
+        """将包含无穷大路径的积分转换为极限表达式
+        
+        如果路径中有无穷大元素(如半径为oo或线段端点为oo)，
+        将其替换为变量r并包装在LIM {r->oo}中。
+        """
+        if not self.has_infinite_paths:
+            return self
+            
+        # 创建替换路径列表
+        new_paths = []
+        limit_type = None
+        
+        for path in self.paths:
+            if isinstance(path, CirclePath) and path.is_infinite_radius:
+                # 圆的半径为无穷大，替换为r
+                new_path = CirclePath(
+                    Var("r"), 
+                    path.begin_angle, 
+                    path.dir_and_end_angle, 
+                    path.Re, 
+                    path.Im
+                )
+                new_paths.append(new_path)
+                limit_type = path.radius_limit
+            elif isinstance(path, LinePath) and path.has_infinite_points:
+                # 线段端点有无穷大，替换为±r
+                new_re1 = path.Re1
+                new_im1 = path.Im1
+                new_re2 = path.Re2
+                new_im2 = path.Im2
+                
+                # 替换无穷大坐标
+                if is_inf(path.Re1):
+                    new_re1 = Var("r") if is_pos_inf(path.Re1) else Op("-", Var("r"))
+                if is_inf(path.Im1):
+                    new_im1 = Var("r") if is_pos_inf(path.Im1) else Op("-", Var("r"))
+                if is_inf(path.Re2):
+                    new_re2 = Var("r") if is_pos_inf(path.Re2) else Op("-", Var("r"))
+                if is_inf(path.Im2):
+                    new_im2 = Var("r") if is_pos_inf(path.Im2) else Op("-", Var("r"))
+                
+                new_path = LinePath(new_re1, new_im1, new_re2, new_im2)
+                new_paths.append(new_path)
+                
+                # 设置极限方向
+                for param, value in path.infinite_params.items():
+                    limit_type = value
+                    break
+            else:
+                # 非无穷大路径直接添加
+                new_paths.append(path)
+        
+        # 创建新的围道积分
+        new_integral = CompoundContourIntegral(self.var, new_paths, self.body)
+        
+        # 包装在极限表达式中 - 统一使用正无穷大极限
+        return Limit('r', POS_INF, new_integral, None)
 
 def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
     """
@@ -2340,7 +2446,7 @@ def get_singular_points(e: Expr) -> List[Tuple[Expr, str]]:
 
 class CIntegral(Expr):
     """Contour integral of an expression."""
-    def __init__(self, var: str, paths: List[Union[CirclePath, PolePath, RectanglePath]], body: Expr):
+    def __init__(self, var: str, paths: List[Union[CirclePath, LinePath, PolePath]], body: Expr):
         assert isinstance(var, str) and isinstance(body, Expr)
         self.ty = CINTEGRAL
         self.var = var

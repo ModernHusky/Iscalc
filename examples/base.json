@@ -23,6 +23,16 @@
             "type": "axiom"
         },
         {
+            "attributes": [
+                "bidirectional"
+            ],
+            "conds": [
+                "isReal(x)"
+            ],
+            "expr": "exp(-(i*x)) = cos(x) - i * sin(x)",
+            "type": "axiom"
+        },
+        {
             "level": 2,
             "name": "Hyperbolic functions",
             "type": "header"

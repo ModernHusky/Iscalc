@@ -35,15 +35,13 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
-        | "CINT" CNAME ":" "poles" "(" expr "," expr ("," expr "," expr)* ")" "." expr -> multi_pole_contour_expr
         | "CINT" CNAME ":" "com" "(" contour_path ("," contour_path)* ")" "." expr -> com_contour_expr
 
     ?contour_path: 
-        | "circle" "(" "(" expr "," expr ")" "," expr "," expr "," expr "," expr ")" -> circle_path_with_dir
-        | "circle" "(" "(" expr "," expr ")" "," expr "," expr "," expr ")" -> circle_path
+        | "circle" "(" expr "," expr "," expr ("," "(" expr "," expr ")")? ")" -> circle_path
+        | "line" "(" "(" expr "," expr ")" "," "(" expr "," expr ")" ")" -> line_path_complex
+        | "line" "(" expr "," expr ")" -> line_path_real
         | "pole" "(" expr "," expr ")" -> pole_path
-        | "rectangle" "(" "(" expr "," expr ")" "," "(" expr "," expr ")" "," "(" expr "," expr ")" "," "(" expr "," expr ")" ")" -> rectangle_path
-        | "line" "(" expr "," expr ")" -> line_path
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -593,72 +591,60 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.RuleAction(rule)
 
-    def multi_pole_contour_expr(self, var, *args):
-        """Transform multi-pole contour integral."""
-        body = args[-1]
-        poles = []
-        radii = []
-        for i in range(0, len(args)-1, 2):
-            poles.append(args[i])
-            radii.append(args[i+1])
-        return expr.MultiPoleContourIntegral(str(var), poles, radii, body)
-
     def com_contour_expr(self, var, *args):
         """Transform compound contour integral."""
         body = args[-1]
         paths = list(args[:-1])
         return expr.CompoundContourIntegral(str(var), paths, body)
 
-    def circle_path_with_dir(self, center_x, center_y, radius, begin_a, end_a, direction):
-        """Transform circle path with explicit direction.
+    def circle_path(self, radius, begin_angle, dir_and_end_angle, *args):
+        """Transform circle path.
         
         Args:
-            center_x: x-coordinate of circle center
-            center_y: y-coordinate of circle center
-            radius: circle radius
-            begin_a: starting angle
-            end_a: ending angle
-            direction: direction of integration ("ccw" or "cw")
-        """
-        # 创建复数形式的圆心
-        if expr.is_inf(center_y):
-            # 如果虚部是无穷大，保持原样
-            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
-        else:
-            # 正常情况下创建复数形式的圆心
-            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
-        return expr.CirclePath(center, radius, begin_a, end_a, str(direction))
+            Cr(t) = (Re, Im) + radius * expr(i * (begin_angle + dir_and_end_angle * t))
+            t ∈ [0, 1]
 
-    def circle_path(self, center_x, center_y, radius, begin_a, end_a):
-        """Transform circle path with default direction (ccw).
+            radius: radius of circle path
+            begin_angle: starting angle of circle path
+            dir_and_end_angle: direction and ending angle of circle path
+            args: optional (Re, Im) center coordinates, defaults to (0,0) if not provided
+        """ 
+        # 处理可选的圆心参数
+        if args:
+            # 验证参数数量
+            if len(args) != 2:
+                raise ParseException("circle_path", f"Center coordinates must be two parameters (Re,Im), but received {len(args)} parameters")
+            # 如果提供了圆心，应该是一个包含两个元素的元组(Re, Im)
+            Re, Im = args
+            # 验证参数类型
+            if not (isinstance(Re, expr.Expr) and isinstance(Im, expr.Expr)):
+                raise ParseException("circle_path", "Center coordinates must be valid expressions")
+        else:
+            # 默认圆心为原点(0,0)
+            Re, Im = expr.Const(0), expr.Const(0)
+            
+        return expr.CirclePath(radius, begin_angle, dir_and_end_angle, Re, Im)
+
+    def line_path_complex(self, Re1, Im1, Re2, Im2):
+        """Transform complex line path.
         
         Args:
-            center_x: x-coordinate of circle center
-            center_y: y-coordinate of circle center
-            radius: circle radius
-            begin_a: starting angle
-            end_a: ending angle
+            Re1: real part of starting point
+            Im1: imaginary part of starting point
+            Re2: real part of ending point
+            Im2: imaginary part of ending point
         """
-        # 创建复数形式的圆心
-        if expr.is_inf(center_y):
-            # 如果虚部是无穷大，保持原样
-            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
-        else:
-            # 正常情况下创建复数形式的圆心
-            center = expr.Op("+", center_x, expr.Op("*", center_y, expr.i))
-        return expr.CirclePath(center, radius, begin_a, end_a, "ccw")
-
-    def pole_path(self, point, radius):
-        """Transform pole path."""
-        return expr.PolePath(point, radius)
-
-    def rectangle_path(self, Re1, Im1, Re2, Im2, Re3, Im3, Re4, Im4):
-        """Transform rectangle path."""
-        return expr.RectanglePath(Re1, Im1, Re2, Im2, Re3, Im3, Re4, Im4)
-
-    def line_path(self, start, end):
-        """Transform line path."""
-        return expr.LinePath(start, end)
+        return expr.LinePath(Re1, Im1, Re2, Im2)
+        
+    def line_path_real(self, start, end):
+        """Transform real line path.
+        
+        Args:
+            start: starting point on real axis
+            end: ending point on real axis
+        """
+        # 在实轴上创建线段，虚部为0
+        return expr.LinePath(start, expr.Const(0), end, expr.Const(0))
 
     def residue_theorem_rule(self):
         """Transform residue theorem rule."""
@@ -669,6 +655,15 @@ class ExprTransformer(Transformer):
         """Transform complex extension rule."""
         from integral import rules
         return rules.ComplexExtension()
+
+    def pole_path(self, Re, Im):
+        """Transform pole path.
+        
+        Args:
+            Re: real part of pole
+            Im: imaginary part of pole
+        """
+        return expr.PolePath(Re, Im)
 
 transformer = ExprTransformer()
 expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)

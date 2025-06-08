@@ -764,13 +764,15 @@ def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
     from integral import limits
     if not expr.is_limit(e):
         return e
+    
+    # TODO LIM cintegral的body是cintegral，而r在围道中不在body中
     if e.var not in e.body.get_vars():
         return e.body
 
     if e.lim == expr.POS_INF:
         return limits.reduce_inf_limit(e.body, e.var, ctx)
     elif e.lim == expr.NEG_INF:
-        raise limits.reduce_neg_inf_limit(e.body, e.var, ctx)
+        return limits.reduce_neg_inf_limit(e.body, e.var, ctx)
     else:
         return limits.reduce_finite_limit(e, ctx)
 
@@ -800,12 +802,19 @@ def simplify_cint(e: expr.Expr, ctx: Context) -> expr.Expr:
                 # 保持圆形路径不变，但确保圆心的复数形式正确
                 if path.center.is_plus() and len(path.center.args) == 2 and \
                    path.center.args[1].is_times() and path.center.args[1].args[1] == expr.i:
-                    return expr.CompoundContourIntegral(e.var, [path], e.body)
+                    # 检查是否有无穷大路径
+                    result = expr.CompoundContourIntegral(e.var, [path], e.body)
+                    if result.has_infinite_paths:
+                        return result.to_limit_form()
+                    return result
                 else:
                     # 如果圆心不是复数形式，转换它
                     new_center = expr.Op("+", path.center, expr.Op("*", expr.Const(0), expr.i))
-                    new_path = expr.CirclePath(new_center, path.end_r, path.begin_a, path.end_a, path.direction)
-                    return expr.CompoundContourIntegral(e.var, [new_path], e.body)
+                    new_path = expr.CirclePath(path.radius, path.begin_angle, path.dir_and_end_angle, path.Re, path.Im)
+                    result = expr.CompoundContourIntegral(e.var, [new_path], e.body)
+                    if result.has_infinite_paths:
+                        return result.to_limit_form()
+                    return result
         elif len(e.paths) > 1:
             result = None
             paths = []
@@ -817,9 +826,15 @@ def simplify_cint(e: expr.Expr, ctx: Context) -> expr.Expr:
                     paths.append(path)
                 
             if len(paths) != 0 and term is not None:
-                return expr.Op('+', expr.CompoundContourIntegral(e.var, paths, e.body), term)
+                contour_term = expr.CompoundContourIntegral(e.var, paths, e.body)
+                if contour_term.has_infinite_paths:
+                    contour_term = contour_term.to_limit_form()
+                return expr.Op('+', contour_term, term)
             elif len(paths) != 0 and term is None:
-                return expr.CompoundContourIntegral(e.var, paths, e.body)
+                result = expr.CompoundContourIntegral(e.var, paths, e.body)
+                if result.has_infinite_paths:
+                    return result.to_limit_form()
+                return result
             elif len(paths) == 0 and term is not None:
                 return term
             else:
@@ -827,6 +842,9 @@ def simplify_cint(e: expr.Expr, ctx: Context) -> expr.Expr:
         else:
             return e
     else:
+        # 处理包含无穷大路径的情况
+        if isinstance(e, expr.CompoundContourIntegral) and e.has_infinite_paths:
+            return e.to_limit_form()
         return e
 
 def simplify_power(e: expr.Expr, ctx: Context) -> expr.Expr:
@@ -1141,6 +1159,9 @@ def simplify_exp(e:expr.Expr, ctx:Context):
         if e.func_name == "exp":
             if contains_i(args[0], ctx):
                 if args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi")):
+                    return expr.Const(-1)
+                elif (expr.is_uminus(args[0]) and 
+                      args[0].args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi"))):
                     return expr.Const(-1)
             nf, df = expr.decompose_expr_factor2(args[0])
             log_pos = None
