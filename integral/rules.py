@@ -2378,6 +2378,17 @@ class IntSumExchange(Rule):
     #         if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
     #             return True
     #     return False
+    def check_converge(self, sum_expr: Summation, ctx: Context):
+        for _, identity in ctx.get_all_subgoals().items():
+            if Fun("converges", sum_expr) == identity.expr:
+                satisfied = True
+                for cond in identity.conds.data:
+                    if ctx.check_condition(cond):
+                        satisfied = False
+                if satisfied:
+                    return True
+            return False
+
 
     def eval(self, e: Expr, ctx: Context):
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_summation(e)):
@@ -2389,20 +2400,26 @@ class IntSumExchange(Rule):
             return e
 
         if expr.is_integral(e) and expr.is_summation(e.body):
-            ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
-            return Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            res = Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            if self.check_converge(res, ctx):
+                return res
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
         if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
-            ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
-            return Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
+            res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
+            if self.check_converge(res, ctx):
+                return res
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
         elif expr.is_summation(e) and expr.is_integral(e.body):
-            ctx2 = body_conds(e, body_conds(e.body, ctx))
             i = e.body
-            # if self.test_converge(e.index_var, e.lower, e.upper, i.var, i.lower, i.upper, e.body.body, ctx2):
-            return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
+            tmp = Summation(e.index_var, e.lower, e.upper, Integral(i.var, i.lower, i.upper, e.body))
+            if self.check_converge(tmp, ctx):
+                return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven.")
         return e
 
     def export(self):
