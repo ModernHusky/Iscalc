@@ -1,6 +1,7 @@
 """State machine for processing the actions."""
 
 from typing import Optional
+import time
 
 from integral import expr
 from integral.rules import IntegrateByEquation, RuleException
@@ -385,3 +386,56 @@ def process_file(filename: str) -> list[ProblemInfo]:
                 steps.append(line)
         result.append(ProblemInfo(filename, i, ctx, problem, steps))
     return result
+
+
+def check_actions(content: str, *, print_lines=False, print_state=False,
+                  write_stats=False, filename=""):
+    from integral import parser
+
+    actions = content.split('\n')
+    ctx = Context()
+    st = InitialState(ctx)
+    start_time = None
+    cur_goal = None
+    for i, act in enumerate(actions, 1):
+        if print_lines:
+            print(act)
+        if not act.strip():
+            # empty line
+            continue
+        if act.lstrip().startswith('#') or act.lstrip().startswith('//'):
+            # title or comment
+            continue
+        a = parser.parse_action(act)
+        if isinstance(a, ImportsAction):
+            for thy_name in a.theories:
+                ctx.load_book(thy_name)
+        if isinstance(a, (ProveAction, CalculateAction)):
+            cur_goal = a
+            if write_stats:
+                start_time = time.time()
+                with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                    stats_file.write(f"{filename} {i} {cur_goal}\n")
+        try:
+            st = st.process_action(a)
+            if isinstance(st, InitialState):
+                if isinstance(cur_goal, ProveAction):
+                    if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                        ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                    elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                        ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                    else:
+                        ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                if cur_goal and write_stats:
+                    elapsed_time = time.time() - start_time
+                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                        stats_file.write(f"{elapsed_time:.2f} seconds\n")
+                cur_goal = None
+        except Exception as e:
+            print(cur_goal)
+            print(st)
+            raise e
+    if print_state:
+        print(st)
+    if not print_state and not isinstance(st, InitialState):
+        raise AssertionError("Does not end in initial state (add print_state=True to debug)")
