@@ -497,7 +497,13 @@ class CalculationProof(StateItem):
 
     @property
     def lhs_calc(self) -> Calculation:
-        assert self.goal.is_compare()
+        if not self.goal.is_compare():
+            if expr.is_fun(self.goal) and self.goal.func_name == "converges":
+                raise StateException(
+                    "Calculate",
+                    f"Action type lhs: cannot be performed in calculate state when proving the convergence goal({str(self.goal)}).")
+            else:
+                raise StateException("CalculationProof", "currently only support equation goals.")
         return self.calcs[0]
 
     @property
@@ -545,9 +551,10 @@ class CalculationProof(StateItem):
             if self.predicate == '!=' and not self.ctx.is_not_equal(lhs, rhs):
                 raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
         elif self.predicate == 'converges':
-            e = normalize(self.arg_calc.last_expr, self.ctx)
-            if not rules.check_converge(e, self.ctx):
-                raise CheckFinishedException(stack, f"calculation: {e} does not converge")
+            e1 = normalize(self.arg_calc.last_expr, self.ctx)
+            e2 = normalize(-e1, self.ctx)
+            if not rules.check_converge(e1, self.ctx) and not rules.check_converge(e2, self.ctx):
+                raise CheckFinishedException(stack, f"calculation: {e1} does not converge")
         else:
             raise NotImplementedError(f"predicate: {self.predicate}")
 
