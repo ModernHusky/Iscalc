@@ -50,8 +50,9 @@ lhs:
     rewrite log(x) / (x ^ 2 + 1) to log(x) * x ^ (-2) * (1 + 1 / x ^ 2) ^ (-1)
     apply series expansion on (1 + 1 / x ^ 2) ^ (-1) index n
     rewrite log(x) * x ^ (-2) * SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n) to SUM(n, 0, oo, (-1) ^ n * (1 / x ^ 2) ^ n * log(x) * x ^ (-2))
-    exchange integral and sum
     rewrite (1 / x ^ 2) ^ n to x ^ (-(2 * n))
+    rewrite (-1) ^ n * x ^ (-(2 * n)) * log(x) * x ^ (-2) to (-1) ^ n * x^(-(2*n)-2) * log(x)
+    exchange integral and sum
     simplify
     rewrite x ^ (-(2 * n) - 2) * log(x) to log(x) / x ^ (2 * n + 2)
     apply integral identity
@@ -129,12 +130,17 @@ done
 // (5.2.2)
 
 prove (INT x:[0, 1]. log(1 - x) / x) = -(pi ^ 2 / 6)
-subgoal 1:(INT x:[0,1]. -(x ^ n / (n + 1))) = -(1/(n+1)^2) for n>=0
+subgoal 1:(INT x:[0,1]. (x ^ n / (n + 1))) = (1/(n+1)^2) for n>=0
 lhs:
     apply integral identity
     simplify
 done
-subgoal 2:SUM(n, 0, oo, 1 / (n + 1) ^ 2) = pi ^ 2 / 6
+subgoal 2:SUM(n, 0, oo, INT x:[0, 1]. x^n / (n+1)) = pi ^ 2 / 6
+lhs:
+    apply 1 on INT x:[0, 1]. x^n / (n+1)
+    apply series evaluation
+done
+subgoal 3: SUM(n, 0, oo, 1 / (n+1)^2) = pi ^ 2 / 6
 lhs:
     apply series evaluation
 done
@@ -146,11 +152,9 @@ lhs:
     rewrite (-1) ^ n * ((-1) ^ (n + 1) * x ^ (n + 1)) / (n + 1) * (1 / x) to (-1) ^ n * ((-1) ^ (n + 1) * x ^ n) / (n + 1)
     rewrite SUM(n, 0, oo, (-1) ^ n * ((-1) ^ (n + 1) * x ^ n) / (n + 1)) to SUM(n, 0, oo, (-1) ^ (2*n+1) * (x ^ n) / (n + 1))
     simplify
-    rewrite -(INT x:[0,1]. SUM(n, 0, oo, x ^ n / (n + 1))) to INT x:[0,1]. SUM(n, 0, oo, -(x ^ n / (n + 1)))
     exchange integral and sum
-    apply 1 on (INT x:[0,1]. -(x ^ n / (n + 1)))
-    simplify
-    apply 2 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
+    apply 1 on (INT x:[0,1]. x ^ n / (n + 1))
+    apply 3 on SUM(n, 0, oo, 1 / (n + 1) ^ 2)
 done
 
 // (5.2.4)
@@ -169,6 +173,13 @@ from 1:
     solve equation for x / (1-x^2)
     rewrite (-1) ^ k * (-x) ^ k to x ^ k
     rewrite (SUM(k, 0, oo, x ^ k) - SUM(k, 0, oo, x ^ k * (-1) ^ k)) / 2 to 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k)
+done
+subgoal 7: converges(SUM(k, 0, oo, INT y:[0,1]. log(y) * y ^ k))
+arg:
+    integrate by parts with u=log(y),v=y^(k+1)/(k+1)
+    simplify
+    apply integral identity
+    simplify
 done
 subgoal 3:(INT y:[0,1]. (SUM(k, 0, oo, log(y) * y ^ k * (-1) ^ k))) = -SUM(k, 0, oo, (-1) ^ k / (k + 1) ^ 2)
 lhs:

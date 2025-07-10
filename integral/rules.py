@@ -2379,15 +2379,48 @@ class IntSumExchange(Rule):
     #             return True
     #     return False
     def check_converge(self, sum_expr: Summation, ctx: Context):
+        if not expr.is_summation(sum_expr):
+            assert False
+
+        rule = Simplify()
+        def check(sum_expr, norm_identity):
+            nonlocal rule
+            # check converges(-sum_expr) and converges(sum_expr)
+            tmp1 = rule.eval(Fun("converges", sum_expr), ctx)
+            tmp2 = rule.eval(Fun("converges", -sum_expr), ctx)
+            return tmp1 == norm_identity or tmp2 == norm_identity
+
         for _, identity in ctx.get_all_subgoals().items():
-            if Fun("converges", sum_expr) == identity.expr:
+            # 1. converge subgoal: converges(SUM(...))
+            norm_identity = rule.eval(normalize(identity.expr, ctx), ctx)
+            flag =  check(sum_expr, norm_identity)
+            # SUM(n, 0, oo, abs(sum_body))
+            new_sum = Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Fun("abs", sum_expr.body))
+            flag = check(new_sum, norm_identity)
+            if not flag and expr.is_integral(sum_expr.body):
+                int_expr = sum_expr.body
+                # SUM(n, o, oo, INT x. abs(int_expr))
+                new_sum = Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Integral(int_expr.var, int_expr.lower, int_expr.upper, Fun("abs", int_expr.body)))
+                flag = check(new_sum, norm_identity)
+            # 2. constant subgoal: SUM(...) = constant
+            if not flag and expr.is_equals(identity.expr) and identity.rhs.is_constant():
+                norm_sum_expr1 = normalize(identity.lhs, ctx)
+                if norm_sum_expr1 == normalize(sum_expr, ctx):
+                    flag = True
+                elif norm_sum_expr1 == normalize(Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Fun("abs", sum_expr.body))):
+                    flag = True
+                elif expr.is_integral(sum_expr.body):
+                    int_expr = sum_expr.body
+                    if norm_sum_expr1 == normalize(Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Integral(int_expr.var, int_expr.lower, int_expr.upper, Fun('abs', int_expr.body)))):
+                        flag = True
+            if flag:
                 satisfied = True
                 for cond in identity.conds.data:
                     if ctx.check_condition(cond):
                         satisfied = False
                 if satisfied:
                     return True
-            return False
+        return False
 
 
     def eval(self, e: Expr, ctx: Context):
@@ -2409,14 +2442,14 @@ class IntSumExchange(Rule):
         if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
             s = e.body
             res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
-            if self.check_converge(res, ctx):
+            if self.check_converge(res, ctx) or self.check_converge(-res, ctx):
                 return res
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
         elif expr.is_summation(e) and expr.is_integral(e.body):
             i = e.body
             tmp = Summation(e.index_var, e.lower, e.upper, Integral(i.var, i.lower, i.upper, e.body))
-            if self.check_converge(tmp, ctx):
+            if self.check_converge(tmp, ctx) or self.check_converge(-tmp, ctx):
                 return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven.")
