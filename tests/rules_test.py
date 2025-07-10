@@ -33,6 +33,29 @@ class RulesTest(unittest.TestCase):
             for cond, expected_cond in zip(conds, expected_conds):
                 self.assertEqual(cond.expr, expected_cond)
 
+    def testSimplify(self):
+        data = [
+            ("abs((-1)^k)", ["k>=0", "isInt(k)"], "1"),
+            ("abs(x)", ["x > 0", "isReal(x)"], "x"),
+            ("abs(x)", ["x < 0", "isInt(x)"], "-x"),
+            ("x^(2*n+1) / x", ["x!=0", "isReal(x)"], "x^(2*n)"),
+            ("SUM(k, 0, oo, INT y:[0, 1]. abs(log(y) * y^k * (-1)^k))", [], "-SUM(k, 0, oo, INT y:[0, 1]. log(y) * y^k)"),
+            ("INT y:[0, 1]. -(y^k * log(y))", [], "-INT y:[0, 1]. y^k * log(y)"),
+            ("SUM(k, 0, oo, INT y:[0, 1]. -(y^k * log(y)))", [], "SUM(k, 0, oo, -INT y:[0, 1]. y^k * log(y))")
+        ]
+
+
+        for e, conds, res_e in data:
+            e = parse_expr(e)
+            res_e = parse_expr(res_e)
+            ctx = context.Context()
+            ctx.load_book("base")
+            for item in conds:
+                ctx.add_condition(parse_expr(item))
+            rule = rules.Simplify()
+            print(str(rule.eval(e, ctx)), str(res_e))
+            self.assertEqual(rule.eval(e, ctx), rule.eval(res_e, ctx))
+
     def testSubstitutionIndefinite(self):
         ctx = context.Context()
 
