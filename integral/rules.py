@@ -1836,8 +1836,11 @@ class IntegrationByParts(Rule):
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
         ctx2 = body_conds(e, ctx)
-        du = deriv(e.var, self.u, ctx)
-        dv = deriv(e.var, self.v, ctx)
+        try:
+            du = deriv(e.var, self.u, ctx)
+            dv = deriv(e.var, self.v, ctx)
+        except Exception as e:
+            raise RuleException("IntegrationByParts", str(e))
         udv = normalize(self.u * dv, ctx2)
 
         equal = False

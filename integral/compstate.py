@@ -513,7 +513,8 @@ class CalculationProof(StateItem):
 
     @property
     def arg_calc(self) -> Calculation:
-        assert expr.is_fun(self.goal)
+        if not expr.is_fun(self.goal):
+            raise StateException("CalculationProof", "Cannot perform the arg: operation in the lhs: context.")
         return self.calcs[0]
 
     def is_finished(self):
