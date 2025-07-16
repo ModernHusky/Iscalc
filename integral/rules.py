@@ -2381,7 +2381,7 @@ class IntSumExchange(Rule):
     #         if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
     #             return True
     #     return False
-    def check_converge(self, sum_expr: Summation, ctx: Context):
+    def check_converge2(self, sum_expr: Summation, ctx: Context):
         if not expr.is_summation(sum_expr):
             assert False
 
@@ -2438,21 +2438,21 @@ class IntSumExchange(Rule):
         if expr.is_integral(e) and expr.is_summation(e.body):
             s = e.body
             res = Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
-            if self.check_converge(res, ctx):
+            if check_converge(res, ctx) or self.check_converge2(res, ctx):
                 return res
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
         if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
             s = e.body
             res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
-            if self.check_converge(res, ctx) or self.check_converge(-res, ctx):
+            if check_converge(res, ctx) or self.check_converge2(res, ctx) or self.check_converge2(-res, ctx):
                 return res
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
         elif expr.is_summation(e) and expr.is_integral(e.body):
             i = e.body
             tmp = Summation(e.index_var, e.lower, e.upper, Integral(i.var, i.lower, i.upper, e.body))
-            if self.check_converge(tmp, ctx) or self.check_converge(-tmp, ctx):
+            if check_converge(tmp, ctx) or self.check_converge2(tmp, ctx) or self.check_converge2(-tmp, ctx):
                 return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven.")
