@@ -2441,21 +2441,21 @@ class IntSumExchange(Rule):
             if check_converge(res, ctx) or self.check_converge2(res, ctx):
                 return res
             else:
-                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven. You should add a convergence subgoal for it.")
         if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
             s = e.body
             res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
             if check_converge(res, ctx) or self.check_converge2(res, ctx) or self.check_converge2(-res, ctx):
                 return res
             else:
-                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven.")
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven. You should add a convergence subgoal for it.")
         elif expr.is_summation(e) and expr.is_integral(e.body):
             i = e.body
             tmp = Summation(e.index_var, e.lower, e.upper, Integral(i.var, i.lower, i.upper, e.body))
             if check_converge(tmp, ctx) or self.check_converge2(tmp, ctx) or self.check_converge2(-tmp, ctx):
                 return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
             else:
-                raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven.")
+                raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven. You should add a convergence subgoal for it.")
         return e
 
     def export(self):
