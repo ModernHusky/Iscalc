@@ -21,7 +21,7 @@ class ActionTest(unittest.TestCase):
 
     def testCalculationFinished(self):
         ctx = context.Context()
-        ctx.load_book("base")
+        ctx.load_book("interesting5")
         st = state.InitialState(ctx)
 
         actions = """
@@ -32,8 +32,8 @@ class ActionTest(unittest.TestCase):
         """
         actions = [s for s in actions.split('\n') if s.strip()]
         for act in actions:
-            a = parser.parse_action(act)
-            st = st.process_action(a)
+                a = parser.parse_action(act)
+                st = st.process_action(a)
         self.assertFalse(st.is_finished())
 
     def testCalculationFinished2(self):

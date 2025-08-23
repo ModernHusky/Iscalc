@@ -11,6 +11,7 @@ calculate INT x. 1/(x*(x^2+1)) for x != 0
     substitute u for x^2
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1/(x^4-1) for x != -1, x != 1
@@ -64,6 +65,7 @@ lhs:
 done
     partial fraction decomposition
     apply integral identity
+    simplify
 done
 
 calculate INT x. (x+1)/(x^2-2*x+5)

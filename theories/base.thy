@@ -58,9 +58,9 @@ axiom SUM(n, 0, oo, x^n/factorial(n)) = exp(x)
 
 ## Absolute value
 
-axiom [simp] abs(x) = x for x: real, x >= 0
+axiom [simp] abs(x) = x for x >= 0
 
-axiom [simp] abs(x) = -x for x: real, x <= 0
+axiom [simp] abs(x) = -x for x <= 0
 
 axiom [simp] abs(x * y) = abs(x) * abs(y)
 

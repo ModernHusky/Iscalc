@@ -14,6 +14,7 @@ calculate INT x. 1 / (1 + sqrt(x)) for x >= 0
     substitute v for u + 1
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x)) for x >= 0, sqrt(x) - 3 != 0

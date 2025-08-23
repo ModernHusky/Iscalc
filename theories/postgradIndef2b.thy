@@ -67,6 +67,7 @@ done
     substitute u for arcsin(sqrt(x))
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (sqrt(1+x)+(1+x)^(3/2)) for x > -1

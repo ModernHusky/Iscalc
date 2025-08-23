@@ -60,6 +60,7 @@ calculate INT x. 1/(x*(1+x^4)) for x != 0, 4*x^4 + 4 != 0
     substitute u for x^4
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1/(x^4*(1+x^2)) for x != 0

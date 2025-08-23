@@ -115,6 +115,7 @@ calculate INT x. 1 / (x * log(x) * log(log(x))) for x > exp(1)
     substitute u for log(log(x))
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (arcsin(x)^2 * sqrt(1 - x^2)) for x > -1, x < 1, arcsin(x) != 0

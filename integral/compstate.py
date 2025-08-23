@@ -423,7 +423,7 @@ class Calculation(StateItem):
             cur_e = step.res
         new_e = rule.eval(e, ctx)
         if str(new_e) == str(e):  # check equality ignoring alpha equivalence
-            raise rules.RuleException(rules.get_rule_name(rule), "Applying the rule has no effect")
+            raise rules.RuleException(rules.get_rule_name(rule), f"Applying the rule has no effect: {str(rule)}")
         step = CalculationStep(self, rule, new_e, id + 1)
         self.add_step(step)
 
@@ -463,7 +463,21 @@ class CalculationProof(StateItem):
             assert isinstance(parent, Goal)
             self.calcs.append(Calculation(self, self.ctx, goal.args[0], conds=parent.conds))
         else:
-            raise StateException("CalculationProof", "unknown form of goal.")
+            # INT u:[0,oo]. 1 / (u ^ 2 + 1) ^ 2 = pi / 4
+            if expr.is_integral(goal) and expr.is_equals(goal.body):
+                new_expr = expr.Op("=", \
+                                   expr.Integral(goal.var, goal.lower, goal.upper, goal.body.lhs), \
+                                    goal.body.rhs)
+                raise StateException("CalculationProof", f"The equality operator (=) has higher precedence than the integral operator (INT), so the integral must be enclosed in parentheses. The goal {goal} should be modified to ({new_expr.lhs})={new_expr.rhs}.")
+            # D x. f(x) = g(x) ===> (D x. f(x)) = g(x)
+            elif expr.is_deriv(goal) and expr.is_equals(goal.body):
+                new_expr = expr.Op("=", \
+                                   expr.Deriv(goal.var, goal.body.lhs), \
+                                   goal.body.rhs)
+                raise StateException("CalculationProof",
+                                     f"The equality operator (=) has higher precedence than the derivative operator (D), so the integral must be enclosed in parentheses. The goal {goal} should be modified to ({new_expr.lhs})={new_expr.rhs}.")
+            else:
+                raise StateException("CalculationProof", "unknown form of goal.")
 
     def __eq__(self, other):
         return isinstance(other, CalculationProof) and \

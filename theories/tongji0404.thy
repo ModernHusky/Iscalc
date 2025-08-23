@@ -19,6 +19,7 @@ lhs:
 done
     partial fraction decomposition
     apply integral identity
+    simplify
 done
 
 calculate INT x. (x + 1) / (x^2 - 2*x + 5)

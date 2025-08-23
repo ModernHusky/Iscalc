@@ -1518,7 +1518,7 @@ class SubstitutionInverse(Rule):
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e)):
             sep_ints = e.separate_integral()
             if len(sep_ints) == 0:
-                raise RuleException("SubstitutionInverse", "no integral found in expression")
+                raise RuleException("SubstitutionInverse", "No integral is found in the expression. If there are functions in the expression used for abstract integration, you can first try to expand the function definitions and then perform SubstitutionInverse.")
             else:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 

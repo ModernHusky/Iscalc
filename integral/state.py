@@ -94,6 +94,10 @@ class ProveState(State):
             return CalculateState(self, self.goal.proof.rhs_calc)
         
         elif isinstance(action, ArgAction):
+            if self.goal.goal.is_equals():
+                raise StateException(
+                    "Prove",
+                    f"Action type {type(action).__name__} cannot be performed in prove state because {str(self.goal.goal)} is a equation. If you wish to use calculation proof, use lhs: or rhs: to enter the calculate state.")
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
@@ -178,11 +182,11 @@ class CalculateState(State):
         
         # Done with current calculation or proof
         elif isinstance(action, DoneAction):
+            if not self.is_finished():
+                msg = "Use done when calculation is not finished\n"
+                msg += f"Final expression {self.calc.steps[-1].res} is not closed"
+                raise StateException("Done", msg)
             if isinstance(self.past, InitialState):
-                if not self.is_finished():
-                    msg = "Use done when calculation is not finished\n"
-                    msg += f"Final expression {self.calc.steps[-1].res} is not closed"
-                    raise StateException("Done", msg)
                 return self.past
             else:
                 return self.past.process_action(action)

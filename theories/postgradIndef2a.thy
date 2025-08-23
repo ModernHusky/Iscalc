@@ -132,6 +132,7 @@ done
     substitute u for (x+1)^2
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 3*x^2/(1-x^4) for x > -1, x < 1
