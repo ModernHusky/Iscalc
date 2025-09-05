@@ -2904,3 +2904,18 @@ def get_rule_name(rule: Rule) -> str:
         return get_rule_name(rule.rule)
     else:
         return type(rule).__name__
+
+def get_definitions(e:Expr, ctx:Context) -> List[str]:
+    subexprs = e.find_subexpr_pred(lambda t: expr.is_fun(t))
+    res = set()
+    for sube, loc in subexprs:
+        if expr.is_fun(sube):
+            for name, definition in ctx.get_definitions().items():
+                if definition.symbol == sube.func_name and definition.define_eq is not None:
+                    s = definition.symbol
+                    if definition.args != []:
+                        s = s + f"({", ".join(definition.args)})"
+                    if definition.conds.data != []:
+                        s = s + " for " + str(definition.conds)
+                    res.add(s)
+    return list(res)

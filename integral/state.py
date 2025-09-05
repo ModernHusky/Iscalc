@@ -83,7 +83,7 @@ class ProveState(State):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("Prove", "lhs: not in calculation proof")
+                raise StateException("Prove", "lhs: can not appear in a calculation proof")
             return CalculateState(self, self.goal.proof.lhs_calc)
         
         elif isinstance(action, RHSAction):

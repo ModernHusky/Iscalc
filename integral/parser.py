@@ -293,13 +293,21 @@ class ExprTransformer(Transformer):
     def abs_expr(self, arg: Expr):
         return expr.Fun("abs", arg)
 
-    def deriv_expr(self, var, body):
+    def deriv_expr(self, var:Token, body:expr.Expr):
+        if body.is_equals():
+            raise Exception(
+                f"The expression inside a derivative cannot be an equation. Perhaps you meant to say: ({str(expr.Deriv(str(var), body.lhs))}) = {body.rhs}")
         return expr.Deriv(str(var), body)
 
-    def integral_expr(self, var, lower, upper, body):
+    def integral_expr(self, var:Token, lower:expr.Expr, upper:expr.Expr, body:expr.Expr):
+        if body.is_equals():
+            raise Exception(f"The expression inside an integral cannot be an equation. Perhaps you meant to say: ({str(expr.Integral(str(var), lower, upper, body.lhs))}) = {body.rhs}")
         return expr.Integral(str(var), lower, upper, body)
 
-    def indefinite_integral_expr(self, var, body):
+    def indefinite_integral_expr(self, var:Token, body: expr.Expr):
+        if body.is_equals():
+            raise Exception(
+                f"The expression inside an integral cannot be an equation. Perhaps you meant to say: ({str(expr.IndefiniteIntegral(str(var), body.lhs, tuple()))}) = {body.rhs}")
         return expr.IndefiniteIntegral(str(var), body, tuple())
 
     def indefinite_integral_skolem_expr(self, *args):
@@ -586,7 +594,7 @@ def parse_expr(s: str) -> Expr:
     try:
         res = expr_parser.parse(s)
         return res
-    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken, Exception) as e:
         raise ParseException(s, str(e))
 
 def parse_condition(s: str) -> Expr:
