@@ -29,20 +29,6 @@ lhs:
     simplify
 done
 
-prove [no_subgoal1] (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a: real, a > 0
-lhs:
-    substitute a * tan(u) for x
-    simplify
-    rewrite a^2 * tan(u)^2 + a^2 to a^2 * (tan(u)^2 + 1)
-    rewrite tan(u)^2 + 1 to sec(u)^2
-    rewrite (a^2 * sec(u)^2)^2 to a^4 * sec(u)^4
-    simplify
-    rewrite 1 / sec(u) ^ 2 to cos(u) ^ 2
-    rewrite cos(u) ^ 2 to (1 + cos(2 * u)) / 2
-    apply integral identity
-    simplify
-done
-
 prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a: real, a > 0
 subgoal 1: (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a)
 lhs:
@@ -53,33 +39,6 @@ from 1:
     differentiate both sides at a
     simplify
     solve equation for INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) ^ 2
-done
-
-prove [subgoal1] (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3) for a: real, a > 0
-let I(a) = INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) for a > 0
-subgoal 1: I(a) = pi / (2 * a) for a > 0
-lhs:
-	expand definition for I (all)
-	substitute a * tan(u) for x
-	simplify
-	rewrite a ^ 2 * tan(u) ^ 2 + a ^ 2 to a ^ 2 * (tan(u) ^ 2 + 1)
-	rewrite tan(u) ^ 2 + 1 to sec(u) ^ 2
-	simplify
-	apply integral identity
-	simplify
-done
-subgoal 2: (D a. I(a)) = -2 * a * (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) for a > 0
-lhs:
-	expand definition for I (all)
-	rewrite D a. INT x:[0,oo]. 1 / (a ^ 2 + x ^ 2) to INT x:[0,oo]. D a. 1 / (a ^ 2 + x ^ 2)
-	rewrite D a. 1 / (a ^ 2 + x ^ 2) to -2 * a / (a ^ 2 + x ^ 2) ^ 2
-	simplify
-done
-lhs:
-	rewrite INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2 to -1 / (2 * a) * (D a. INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2))
-	fold definition for I (all)
-	apply 1 on I(a)
-	simplify
 done
 
 prove (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 3) = 3 * pi / (16 * a ^ 5) for a: real, a > 0
