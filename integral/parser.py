@@ -125,6 +125,8 @@ grammar = r"""
         | "apply" "integral" "identity" attributes -> integral_identity_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
+        | "split" "sum" "region" "at" expr -> split_sum_region_rule
+        | "change" "sum" "lower" "to" expr -> change_sum_lower_rule
         | "rewrite" expr "to" expr -> equation_rule
         | "rewrite" "to" expr -> equation_none_rule
         | "expand" "polynomial" -> expand_polynomial_rule
@@ -474,7 +476,13 @@ class ExprTransformer(Transformer):
 
     def split_region_rule(self, expr: Expr):
         return rules.SplitRegion(expr)
-    
+
+    def split_sum_region_rule(self, e: Expr):
+        return rules.SplitSummationRegion(e)
+
+    def change_sum_lower_rule(self, e:Expr):
+        return rules.ChangeSummationIndex(e)
+
     def equation_rule(self, old_expr: Expr, new_expr: Expr):
         return rules.Rewriting(old_expr, new_expr)
 

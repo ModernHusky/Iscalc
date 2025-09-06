@@ -8,11 +8,24 @@ imports base
 ### 2.7.2.5
 
 // 1
-prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) * log(x) - (INT x. (a + b * x) ^ (m + 1)/x)) + SKOLEM_CONST(C)
-sorry
+prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) * log(x) - (INT x. (a + b * x) ^ (m + 1)/x)) for b != 0, m > 0, x > 0, x:real, b:real, m:int, a:real
+lhs:
+    integrate by parts with u=log(x), v=(a+b*x)^(m+1) / (b*(m+1))
+    simplify
+    expand polynomial
+rhs:
+    expand polynomial
+done
 
 // 2
-prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) - a ^ (m + 1)) * log(x) - SUM(k, 0, m, binom(m, k) * a ^ (m - k) * b ^ k * x ^ (k + 1)/(k + 1) ^ 2) + SKOLEM_CONST(C)
+prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) - a ^ (m + 1)) * log(x) - SUM(k, 0, m, binom(m, k) * a ^ (m - k) * b ^ k * x ^ (k + 1)/(k + 1) ^ 2) + SKOLEM_CONST(C) for b != 0, m > 0, x > 0, x:real, b:real, m:int, a:real
+lhs:
+    integrate by parts with u=log(x), v=(a+b*x)^(m+1) / (b*(m+1))
+    apply series expansion on (b*x+a)^(m+1) index n (at 2)
+    split sum region at 0
+    simplify
+    change sum lower to 0
+    simplify
 sorry
 
 ### 2.7.2.6

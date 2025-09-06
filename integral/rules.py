@@ -1016,6 +1016,8 @@ class OnCount(Rule):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
             elif isinstance(rule, ExpandDefinition):
                 pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
+            elif isinstance(rule, SeriesExpansionIdentity):
+                pred = lambda t: t == rule.old_expr
             else:
                 raise RuleException("OnCount", "(at n) should not be applied to rule %s" % rule.name)
         self.pred = pred
@@ -1900,6 +1902,41 @@ class SplitRegion(Rule):
             return Limit(x.name, POS_INF, Integral(e.var, e.lower, normalize(self.c - 1 / x, ctx), e.body) +
                          Integral(e.var, normalize(self.c + 1 / x, ctx), e.upper, e.body))
 
+class SplitSummationRegion(Rule):
+    """Split summation into two parts at a point."""
+
+    def __init__(self, c: Expr):
+        self.name = "SplitSummationRegion"
+        self.c = c
+
+    def __str__(self):
+        return "split summation region at %s" % self.c
+
+    def export(self):
+        return {
+            "name": self.name,
+            "c": str(self.c),
+            "str": str(self)
+        }
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        if not expr.is_summation(e):
+            sum_list = e.get_all_summations()
+            if sum_list != []:
+                find_res = e.find_subexpr(sum_list[0])
+                return OnLocation(self, find_res[0]).eval(e, ctx)
+            raise RuleException("SplitSummationRegion", f"{e} is not a summation")
+        cond1 = Op(">=", self.c, e.lower)
+        cond2 = Op(">=", e.upper, self.c )
+        if ctx.check_condition(cond1) and ctx.check_condition(cond2):
+            if ctx.check_condition(Op(">", e.upper, self.c)):
+                return Summation(e.index_var, e.lower, self.c, e.body) + Summation(e.index_var, self.c+Const(1), e.upper, e.body)
+            elif ctx.check_condition(Op("<",e.lower, self.c)):
+                return Summation(e.index_var, e.lower, self.c - Const(1), e.body) + Summation(e.index_var, self.c, e.upper, e.body)
+            else:
+                return e
+        else:
+            raise RuleException("SplitSummationRegion", f"The split point {self.c} exceeds the upper/lower bounds.")
 
 class IntegrateByEquation(Rule):
     """Evaluate integral by solving an equation.
@@ -2297,7 +2334,11 @@ class ChangeSummationIndex(Rule):
 
     def eval(self, e: Expr, ctx: Context):
         if not expr.is_summation(e):
-            return e
+            sum_list = e.get_all_summations()
+            if sum_list != []:
+                find_res = e.find_subexpr(sum_list[0])
+                return OnLocation(self, find_res[0]).eval(e, ctx)
+            raise RuleException("ChangeSummationIndex", f"{e} is not a summation")
         tmp = normalize(Var(e.index_var) + e.lower - self.new_lower, ctx)
         new_upper = normalize(e.upper + self.new_lower - e.lower, ctx) \
             if e.upper != POS_INF else POS_INF

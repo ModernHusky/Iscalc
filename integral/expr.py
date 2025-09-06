@@ -739,6 +739,23 @@ class Expr:
 
         return d(self)
 
+    def get_all_summations(self):
+        if is_summation(self):
+            return [self]
+        elif is_op(self) or is_fun(self):
+            res = []
+            for arg in self.args:
+                res = res + arg.get_all_summations()
+            return res
+        elif is_integral(self):
+            return self.lower.get_all_summations() + \
+                self.upper.get_all_summations() + \
+                self.body.get_all_summations()
+        elif is_indefinite_integral(self):
+            return self.body.get_all_summations()
+        else:
+            return []
+
     def is_spec_function(self, fun_name):
         """Return true iff e is formed by rational options of fun_name."""
         v = Symbol("v", [VAR, OP, FUN])
