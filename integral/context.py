@@ -457,7 +457,7 @@ class Context:
                     self.add_definite_integral(a.expr, a.conditions, a.attrs)
                 elif a.expr.is_equals() and not expr.is_summation(a.expr.lhs) and expr.is_summation(a.expr.rhs):
                     self.add_series_expansion(a.expr, a.conditions)
-                elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not expr.is_summation(a.expr.rhs):
+                elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not a.expr.rhs.contains_summation():
                     self.add_series_evaluation(a.expr, a.conditions)
                 elif 'simp' in a.attrs:
                     self.add_simp_identity(a.expr, a.conditions)

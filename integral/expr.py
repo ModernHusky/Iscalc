@@ -532,6 +532,27 @@ class Expr:
         else:
             return False
 
+    def contains_summation(self) -> bool:
+        """check if the expression contains summation"""
+        if is_summation(self):
+            return True
+        elif is_fun(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_op(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_fun(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_integral(self):
+            return self.upper.contains_summation() or \
+            self.lower.contains_summation() or \
+            self.body.contains_summation()
+        elif is_indefinite_integral(self):
+            return self.body.contains_summation()
+        elif is_deriv(self):
+            return self.body.contains_summation()
+        else:
+            return False
+
     def is_constant(self):
         """Determine whether expr is a number.
 
