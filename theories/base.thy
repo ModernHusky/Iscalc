@@ -519,22 +519,4 @@ axiom (INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * 
 
 // Inside interesting Integrals, Section 3.1.7
 
-axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b) for a > 0, b > 0 
-
-### Splitting rules for summation and product
-
-axiom [split] SUM(n, l, u, f(n)) = f(l) + SUM(n, l+1, u, f(n)) for l < u
-
-axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, u-1, f(n)) + f(u) for l < u
-
-axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a-1, f(n)) + SUM(n, a, u, f(n)) for a > l, a <= u
-
-axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a, f(n)) + SUM(n, a+1, u, f(n)) for a >= l, a < u
-
-axiom [split] SUM(n, l, u, f(n)) = SUM(n, l, a-1, f(n)) + f(a) + SUM(n, a+1, u, f(n)) for a > l, a < u
-
-axiom [split] SUM(n, 0, oo, f(n)) = SUM(n, 0, oo, f(2*n+1)) + SUM(n, 0, oo, f(2*n))
-
-axiom [split] MUL(n, l, u, f(n)) = MUL(n, l, u-1, f(n)) * f(u) for l < u
-
-axiom [split] MUL(n, l, u, f(n)) = f(l) * MUL(n, l+1, u, f(n)) for l < u
+axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b) for a > 0, b > 0
