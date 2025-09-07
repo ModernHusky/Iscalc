@@ -21,12 +21,29 @@ done
 prove (INT x. (a + b * x) ^ m * log(x)) = 1/((m + 1) * b) * ((a + b * x) ^ (m + 1) - a ^ (m + 1)) * log(x) - SUM(k, 0, m, binom(m, k) * a ^ (m - k) * b ^ k * x ^ (k + 1)/(k + 1) ^ 2) + SKOLEM_CONST(C) for b != 0, m > 0, x > 0, x:real, b:real, m:int, a:real
 lhs:
     integrate by parts with u=log(x), v=(a+b*x)^(m+1) / (b*(m+1))
-    apply series expansion on (b*x+a)^(m+1) index n (at 2)
+    apply series expansion on (b*x+a)^(m+1) index k (at 2)
     split sum region at 0
     simplify
     change sum lower to 0
     simplify
-sorry
+    expand polynomial
+    rewrite 1 / x * SUM(k, 0, m, a ^ (-k+m) * (b * x) ^ (k + 1) * binom(m + 1,k + 1)) to SUM(k, 0, m, 1 / x * a ^ (m - k) * (b * x) ^ (k + 1) * binom(m + 1,k + 1))
+    rewrite 1 / x * a^(m-k) * (b*x)^(k+1) to a^(m-k) * (b*x)^(k+1) / x
+    apply integral identity
+    rewrite (b*x)^(k+1) to b^(k+1)*x^(k+1)
+    rewrite a ^ (m - k) * (b ^ (k + 1) * x ^ (k + 1)) / x to a ^ (m - k) * (b ^ (k + 1) * x ^k)
+    exchange integral and sum
+    apply integral identity
+    rewrite binom(m+1, k+1) to (m+1)/(k+1) * binom(m, k)
+    rewrite a ^ (m - k) * b ^ (k + 1) * ((m + 1) / (k + 1) * binom(m,k)) * (x ^ (k + 1) / (k + 1)) to b * (m+1) * a ^ (m - k) * b^k * binom(m,k) * x ^ (k + 1) / (k + 1)^2
+    simplify
+    rewrite -(1 / (b * m + b) * (b * (m + 1) * SUM(k, 0, m, a ^ (-k+m) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k)) + a ^ (m + 1) * log(x))) to -b*(m+1) / (b*(m+1)) *  SUM(k, 0, m, a ^ (-k+m) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k)) - a ^ (m + 1) * log(x) / (b*(m+1))
+    simplify
+    expand polynomial
+rhs:
+    expand polynomial
+done
+
 
 ### 2.7.2.6
 // 1

@@ -708,6 +708,8 @@ def function_eval(e: expr.Expr, ctx: Context) -> expr.Expr:
     if expr.is_fun(e) and e.func_name == "binom":
         if expr.is_const(e.args[0]) and expr.is_const(e.args[1]):
             return expr.Const(math.comb(e.args[0].val, e.args[1].val))
+        elif expr.is_const(e.args[1]) and e.args[1].val == 0:
+            return expr.Const(1)
 
     if expr.is_fun(e) and e.func_name == 'factorial':
         if expr.is_const(e.args[0]) and abs(round(e.args[0].val) - e.args[0].val) < 1e-15 and round(e.args[0].val) >= 0:

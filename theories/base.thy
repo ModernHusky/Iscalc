@@ -493,6 +493,8 @@ define binom(n, m) = factorial(n) / (factorial(m) * factorial(n - m)) for m n: i
 
 axiom binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))
 
+axiom binom(m+1, n+1) = (m+1)/(n+1)*binom(m, n)
+
 axiom (x + y) ^ n = SUM(k, 0, n, binom(n, k) * x^k * y^(n-k))
 
 ## Discrete functions

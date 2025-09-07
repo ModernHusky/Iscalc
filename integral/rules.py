@@ -2486,7 +2486,9 @@ class IntSumExchange(Rule):
         if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
             s = e.body
             res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
-            if check_converge(res, ctx) or self.check_converge2(res, ctx) or self.check_converge2(-res, ctx):
+            if not expr.is_inf(e.body.upper) and not expr.is_neg_inf(e.body.lower):
+                return res
+            elif check_converge(res, ctx) or self.check_converge2(res, ctx) or self.check_converge2(-res, ctx):
                 return res
             else:
                 raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven. You should add a convergence subgoal for it.")
@@ -2960,3 +2962,4 @@ def get_definitions(e:Expr, ctx:Context) -> List[str]:
                         s = s + " for " + str(definition.conds)
                     res.add(s)
     return list(res)
+
