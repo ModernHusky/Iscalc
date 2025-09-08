@@ -94,20 +94,69 @@ done
 ### 2.7.2.7
 
 // 1
-prove (INT x. log(x)/(a + b * x) ^ m) = 1/(b * (m - 1)) * (-log(x)/(a + b * x) ^ (m - 1) + prove (INT x. 1/x * (a + b * x) ^ (m - 1))) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
-sorry
+prove (INT x. log(x)/(a + b * x) ^ m) = 1/(b * (m - 1)) * (-log(x)/(a + b * x) ^ (m - 1) + (INT x. 1/(x * (a + b * x) ^ (m - 1)))) for x > 0, m > 1, b!=0, m:int, x:real, a:real, b:real, a+b*x != 0
+lhs:
+    integrate by parts with u=log(x), v=(a+b*x)^(1-m)/(b*(1-m))
+    expand polynomial
+    rewrite -(b * m * x) + b * x to (-b*m + b) * x
+    rewrite (b * x + a) ^ (-m + 1) / ((-b*m + b) * x) to 1 / (-b*m + b) * (b * x + a) ^ (-m + 1) / x
+    simplify
+rhs:
+    expand polynomial
+    rewrite log(x) * (b * x + a) ^ (-m + 1) / (b * m - b) to -log(x) * (b * x + a) ^ (-m + 1) / (-b * m + b)
+    rewrite 1 / (b * m - b) to -1 / (-b * m + b)
+    simplify
+done
 
 // 2
-prove (INT x. log(x)/(a + b * x)) = 1/b * log(x) * log(a + b * x) - 1/b * (INT x. log(a + b * x)/x) + SKOLEM_CONST(C) for a + b*x > 0, x > 0, b != 0
-sorry
+prove (INT x. log(x)/(a + b * x)) = 1/b * log(x) * log(a + b * x) - 1/b * (INT x. log(a + b * x)/x) for x > 0, b!=0, x:real, a:real, b:real, a+b*x > 0
+lhs:
+    integrate by parts with u=log(x), v=log(a+b*x)/b
+    rewrite log(b * x + a) / (b * x) to 1/b * log(b*x+a)/x
+    simplify
+rhs:
+    simplify
+done
 
 // 3
-prove (INT x. log(x)/(a + b * x) ^ 2) = -log(x)/(b * (a + b * x)) + 1/(a * b) * log(x/(a + b * x)) + SKOLEM_CONST(C) for a + b*x > 0, x > 0, b != 0
-sorry
+prove (INT x. log(x)/(a + b * x) ^ 2) = -log(x)/(b * (a + b * x)) + 1/(a * b) * log(x/(a + b * x)) + SKOLEM_CONST(C) for a + b*x > 0, x > 0, a != 0, b != 0, a:real, b:real, x:real
+lhs:
+    integrate by parts with u=log(x), v=(a+b*x)^(-1) / (-b)
+    rewrite 1 / (b * x * (b * x + a)) to 1/a * (1/(b*x) - 1/(b*x+a))
+    expand polynomial
+    apply integral identity
+    simplify
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    simplify
+rhs:
+    rewrite log(x / (a+b*x)) to log(x) - log(a + b*x)
+    expand polynomial
+done
 
 // 4
-prove (INT x. log(x)/(a + b * x) ^ 3) = -log(x)/(2 * b * (a + b * x) ^ 2) + 1/(2 * a * b * (a + b * x)) + 1/(2 * a ^ 2 * b) * log(x/(a + b * x)) + SKOLEM_CONST(C) for a + b*x > 0, x > 0, b != 0, a != 0
-sorry
+prove (INT x. log(x)/(a + b * x) ^ 3) = -log(x)/(2 * b * (a + b * x) ^ 2) + 1/(2 * a * b * (a + b * x)) + 1/(2 * a ^ 2 * b) * log(x/(a + b * x)) + SKOLEM_CONST(C) for  a + b*x > 0, x > 0, a != 0, b != 0, a:real, b:real, x:real
+lhs:
+    integrate by parts with u=log(x), v=(a+b*x)^(-2)/(-2*b)
+    simplify
+    rewrite 1 / (x * (b * x + a) ^ 2) to 1/a^2*1/x - b/a^2*1/(a+b*x) - b/a * 1/(a+b*x)^2
+    apply integral identity
+    simplify
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite 1 / (2 * b) * (-(log(b * x + a) / a ^ 2) + 1 / (a * (b * x + a)) + log(x) / a ^ 2)  to -log(b * x + a) / (2 * a ^ 2 * b) + 1 / (2 * a * (b * x + a) * b) + log(x) / (2 * a ^ 2 * b)
+    simplify
+rhs:
+    rewrite log(x/(a+b*x)) to log(x) - log(a+b*x)
+    rewrite 1 / (2 * a ^ 2 * b) * (log(x) - log(a + b * x)) to -log(b * x + a) / (2 * a ^ 2 * b) + log(x) / (2 * a ^ 2 * b)
+    simplify
+done
 
 // 5a
 prove (INT x. log(x)/sqrt(a + b * x)) = 2/b * ((log(x) - 2) * sqrt(a + b * x) - 2 * sqrt(a) * log((sqrt(a + b * x) - sqrt(a))/sqrt(x))) + SKOLEM_CONST(C) for a > 0, x > 0, a + b * x > 0, b > 0
