@@ -224,7 +224,7 @@ class CalculateState(State):
                 ctx = step.rule.update_context(cur_e, ctx)
                 cur_e = step.res
             substs = ctx.get_substs()
-            for var, _ in substs:
+            for var, _, _ in substs:
                 if res.contains_var(var) and not self.calc.start.contains_var(var):
                     return False
 

@@ -417,8 +417,8 @@ class Context:
         for cond in conds.data:
             self.add_condition(cond)
 
-    def add_subst(self, var: str, expr: Expr):
-        self.substs.append((var, expr))
+    def add_subst(self, var: str, expr: Expr, old_var:str):
+        self.substs.append((var, expr, old_var))
 
     def add_subgoal(self, name: str, identity: Identity):
         self.subgoals[name] = identity

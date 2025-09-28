@@ -429,6 +429,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < b", "c <= d"], "a + c < b + d"),
         (["a >= b", "c >= d"], "a + c >= b + d"),
         (["a <= b", "c <= d"], "a + c <= b + d"),
+        (["x - a > 0"], "-a + x > 0"),
 
         # Unary minus
         (["x > a"], "-x < -a"),
@@ -669,6 +670,12 @@ def get_standard_inequalities() -> list[Identity]:
         (["a = b", "a > c"], "b > c"),
         (["a > b", "b > c"], "a > c"),
 
+        # power
+        (["x != a", "a >= 0"], "sqrt(x) != sqrt(a)"),
+        (["x != a", "a >= 0"], "sqrt(x) != -sqrt(a)"),
+        (["x != a", "a >= 0"], "x^(1/4) != a^(1/4)"),
+        (["x != a", "a >= 0"], "x^(1/4) != -(a^(1/4))"),
+
         # Complex number rules
         (["isReal(a)"], "isReal(cos(a))"),
         (["isReal(a)"], "isReal(sin(a))"),
@@ -756,7 +763,7 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     # Substitute for equations in the context
     if ctx.get_substs():
         new_e = e
-        for var, subst_e in reversed(ctx.get_substs()):
+        for var, subst_e, _ in reversed(ctx.get_substs()):
             new_e = new_e.subst(var, subst_e)
         if new_e != e:
             if check_condition(new_e, ctx):

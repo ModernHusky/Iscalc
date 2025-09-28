@@ -838,7 +838,7 @@ class ReplaceSubstitution(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         success = False
-        for var, expr in reversed(ctx.get_substs()):
+        for var, expr, _ in reversed(ctx.get_substs()):
             if e.contains_var(var):
                 success = True
             e = e.subst(var, expr)
@@ -1305,7 +1305,7 @@ class Substitution(Rule):
 
         if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
-            ctx2.add_subst(self.var_name, self.var_subst)
+            ctx2.add_subst(self.var_name, self.var_subst, e.var)
             return ctx2
         else:
             return ctx
@@ -1511,7 +1511,7 @@ class SubstitutionInverse(Rule):
         if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             inv_f = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
-            ctx2.add_subst(new_var, inv_f)
+            ctx2.add_subst(new_var, inv_f, e.var)
             return ctx2
         else:
             return ctx

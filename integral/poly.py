@@ -10,12 +10,18 @@ import math
 from integral import expr, context
 from integral.context import Context, apply_subterm
 
-
 def contains_indefinite_integral_factor(v):
     for e, _ in v:
         if expr.is_indefinite_integral(e):
             return True
     return False
+
+def contains_skolem_func(v):
+    for e, _ in v:
+        if expr.is_skolem_func(e):
+            return True
+    return False
+
 
 def collect_pairs(ps, ctx:Context):
     """
@@ -37,20 +43,23 @@ def collect_pairs(ps, ctx:Context):
         """
         Check if there is an indefinite integral factor in v. If so, special treatment is required.
         """
-        if contains_indefinite_integral_factor(v):
-            is_equal_key_found = False
-            for k in res:
-                if v == k:
-                    res[k] += c
-                    is_equal_key_found = True
-                    break
-            if not is_equal_key_found: res[v] = c
+        if v in res:
+            res[v] += c
         else:
-            if v in res:
-                res[v] += c
-            else:
-                res[v] = c
-    
+            res[v] = c
+        if contains_skolem_func(v) and res[v] == 0:
+            res[v] = 1
+        if contains_indefinite_integral_factor(v) and res[v] == 0:
+            for e, _ in v:
+                if expr.is_indefinite_integral(e):
+                    var = e.var
+                    all_var = e.body.get_vars()
+                    all_var.remove(var)
+                    all_var = [expr.Var(all_var) for item in all_var]
+                    tmp = ((expr.SkolemFunc("C", all_var), 1), )
+                    res[tmp] = 1
+                    break
+
     def zero_for(v):
         if isinstance(v, expr.Expr):
             return expr.Const(0)
@@ -65,9 +74,7 @@ def collect_pairs(ps, ctx:Context):
     for k, v in res.items():
         if v != zero_for(v):
             res_list.append((k, v))
-        elif contains_indefinite_integral_factor(k):
-            tmp = expr.IndefiniteIntegral('x', expr.Const(0), tuple())
-            res_list.append((((tmp, 1),), 1))
+
     try:
         res = tuple(sorted(res_list))
     except:

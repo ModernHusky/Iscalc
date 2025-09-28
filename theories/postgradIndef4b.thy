@@ -204,8 +204,6 @@ calculate INT x. exp(x) * ((1-x)/(1+x^2))^2
     simplify
     rewrite exp(x) / (2 * x ^ 2 + 2) to exp(x)/(x^2+1) * (1/2)
     simplify
-    apply integral identity
-    simplify
 done
 
 calculate INT x. exp(-x) * (1+sin(x)) / (1-cos(x)) for x > 0, x < pi/2
@@ -220,8 +218,6 @@ calculate INT x. exp(-x) * (1+sin(x)) / (1-cos(x)) for x > 0, x < pi/2
     rewrite 1/sin(x/2) to csc(x/2)
     integrate by parts with u=exp(-x), v=-cot(x/2)*2 (at 2)
     simplify
-    apply integral identity
-    simplify
 done
 
 // page 189
@@ -232,8 +228,6 @@ calculate INT x. exp(sin(x))*(x*cos(x)^3-sin(x))/(cos(x)^2) for x > -pi/2, x < p
     integrate by parts with u=x, v=exp(sin(x)) (at 2)
     simplify
     integrate by parts with u=exp(sin(x)), v=1/cos(x)
-    simplify
-    apply integral identity
     simplify
 done
 
@@ -407,8 +401,6 @@ calculate INT x. log(log(x))+1/log(x) for x > 1
     integrate by parts with u=log(u), v=exp(u)
     simplify
     replace substitution
-    simplify
-    apply integral identity
     simplify
 done
 
