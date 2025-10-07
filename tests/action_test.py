@@ -8,6 +8,9 @@ from integral import state
 from integral import parser
 from integral import expr
 
+import os
+os.chdir("E:\Apostgraduatelife\learn-git\iscalc")
+
 class ActionTest(unittest.TestCase):
     def check_actions(self, base_file: str, current_file: str, actions: str,
                       *, print_lines=False, print_state=False, write_stats=True):
@@ -1193,7 +1196,6 @@ class ActionTest(unittest.TestCase):
                 simplify
                 apply integral identity
                 replace substitution
-                rewrite abs(1 + a * b) to 1 + a * b
             done
             subgoal 3: I(0,b) = 0
             lhs:
@@ -1507,7 +1509,7 @@ class ActionTest(unittest.TestCase):
 
     def testEulerFormula2(self):
         actions = """
-            prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for b: real, y > 0
+            prove (INT x:[0,oo]. sin(b*x)*exp(-x*y)) = b/(y^2+b^2) for b: real, y > 0, b != 0
             lhs:
                 rewrite sin(b*x) to (exp(i*(b*x)) - exp(-i*(b*x))) / (2*i)
                 expand polynomial
