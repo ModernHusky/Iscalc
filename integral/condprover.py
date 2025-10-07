@@ -185,8 +185,9 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
         elif expr.is_fun(cond, "isReal"):
             if approx_real(x):
                 return [inst]
-        elif expr.is_fun(cond, "isComplex"):
-            return [inst]
+        elif expr.is_fun(cond, "notReal"):
+            if approx_not_real(x):
+                return [inst]
 
     # If the goal is of form x ?= c, where c is a constant, try to
     # apply transitivity with facts in all_conds.
@@ -645,15 +646,8 @@ def get_standard_inequalities() -> list[Identity]:
         (["isReal(a)"], "isReal(abs(a))"),
         (["isReal(a)"], "isReal(sqrt(a))"),
 
-        (["isComplex(a)", "isComplex(i)"], "isComplex(a + i)"),
-        (["isComplex(a)", "isComplex(i)"], "isComplex(a - i)"),
-        (["isComplex(a)", "isComplex(i)"], "isComplex(a * i)"),
-        (["isComplex(a)", "isComplex(i)"], "isComplex(a / i)"),
-        (["isComplex(a)"], "isComplex(-a)"),
-
         (["isEven(a)"], "isInt(a)"),
         (["isInt(a)"], "isReal(a)"),
-        (["isReal(a)"], "isComplex(a)"),
 
         (["isReal(a)", "isReal(b)"], "isReal(a + b)"),
         (["isReal(a)", "isReal(b)"], "isReal(a - b)"),
@@ -665,6 +659,51 @@ def get_standard_inequalities() -> list[Identity]:
         # Real number power rules
         (["isReal(x)"], "isReal(x ^ n)"),
         (["isReal(x)", "isReal(y)"], "isReal(x ^ y)"),
+
+        # notReal rules to replace contains_i method
+        ([], "notReal(i)"),
+        (["notReal(i)", "notEven(n)"], "notReal(i ^ n)"),
+        (["isReal(x)", "notReal(y)"], "notReal(x + y)"),
+        (["isReal(x)", "notReal(y)"], "notReal(x - y)"),
+        (["isReal(x)", "notReal(y)"], "notReal(y + x)"),
+        (["isReal(x)", "notReal(y)"], "notReal(y - x)"),
+        (["notReal(x)"], "notReal(1 / x)"),
+        (["isReal(x)", "notReal(y)", "x != 0"], "notReal(x / y)"),
+
+        (["notReal(x)", "isReal(y)", "y != 0"], "notReal(x * y)"),
+        (["notReal(x)", "isReal(y)", "y != 0"], "notReal(y * x)"),
+        (["isReal(x)", "notReal(y)", "x != 0"], "notReal(x * y)"),
+        (["isReal(x)", "notReal(y)", "x != 0"], "notReal(y * x)"),
+
+        (["isReal(x)", "notReal(y)", "x = 0"], "isReal(x / y)"),
+        (["notReal(x)", "isReal(y)", "y = 0"], "isReal(x * y)"),
+        (["notReal(x)", "isReal(y)", "y = 0"], "isReal(y * x)"),
+        (["isReal(x)", "notReal(y)", "x = 0"], "isReal(x * y)"),
+        (["isReal(x)", "notReal(y)", "x = 0"], "isReal(y * x)"),
+
+        (["notReal(x)"], "notReal(-x)"),
+        
+        # Rules for products involving i (need non-zero conditions)
+        (["isReal(a)", "a != 0"], "notReal(i * a)"),
+        (["isReal(a)", "a != 0"], "notReal(a * i)"),
+        (["isReal(a)", "a = 0"], "isReal(i * a)"),
+        (["isReal(a)", "a = 0"], "isReal(a * i)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(a * i * b)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(a * b * i)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(i * a * b)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(b * i * a)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(b * a * i)"),
+        (["isReal(a)", "isReal(b)", "a != 0", "b != 0"], "notReal(i * b * a)"),
+
+        (["isReal(b)", "a = 0", "b != 0"], "isReal(i * b * a)"),
+        (["isReal(b)", "a = 0", "b != 0"], "isReal(b * i * a)"),
+        (["isReal(b)", "a = 0", "b != 0"], "isReal(b * a * i)"),
+        (["isReal(a)", "a != 0", "b = 0"], "isReal(i * a * b)"),
+        (["isReal(a)", "a != 0", "b = 0"], "isReal(a * i * b)"),
+        (["isReal(a)", "a != 0", "b = 0"], "isReal(a * b * i)"),
+        
+        # notReal implies non-zero (key rule for log domain checking)
+        (["notReal(x)"], "x != 0"),
 
     ]
 
@@ -714,24 +753,30 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     if (expr.is_less(e) or expr.is_less_eq(e)) and expr.is_pos_inf(e.args[1]):
         return True
 
-    # INT Real Condition
-    def contains_i(e: Expr):
-        if expr.is_fun(e) and e.func_name == 'i':
-            return True
-        if e.ty in (expr.VAR, expr.CONST, expr.SYMBOL, expr.INF):
-            return False
-        if e.ty in (expr.OP, expr.FUN):
-            return any(contains_i(arg) for arg in e.args)
-        if expr.is_integral(e):
-            return contains_i(e.body) or contains_i(e.lower) or contains_i(e.upper)
-        return False
-
+    # INT Real Condition - using new notReal logic
     def add_integral_real_cond(e: Expr, all_conds: dict[Expr, list[Expr]]):
         if expr.is_integral(e):
-            if not contains_i(e.body) and not contains_i(e.lower) and not contains_i(e.upper):
+            # 为定积分变量添加 isReal 条件
+            var_expr = expr.Var(e.var)
+            if var_expr not in all_conds:
+                all_conds[var_expr] = []
+            all_conds[var_expr].append(Fun('isReal', var_expr))
+            
+            # Check if the integral components are real using the new notReal system
+            body_is_real = not check_condition(Fun("notReal", e.body), ctx)
+            lower_is_real = not check_condition(Fun("notReal", e.lower), ctx)  
+            upper_is_real = not check_condition(Fun("notReal", e.upper), ctx)
+            
+            if body_is_real and lower_is_real and upper_is_real:
                 if e not in all_conds:
                     all_conds[e] = []
                 all_conds[e].append(Fun('isReal', e))
+        elif expr.is_indefinite_integral(e):
+            # 为不定积分变量添加 isReal 条件
+            var_expr = expr.Var(e.var)
+            if var_expr not in all_conds:
+                all_conds[var_expr] = []
+            all_conds[var_expr].append(Fun('isReal', var_expr))
                 
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
