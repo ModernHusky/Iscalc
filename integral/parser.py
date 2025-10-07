@@ -20,7 +20,7 @@ grammar = r"""
         | "G" -> g_expr
         | "int" -> int_type
         | "real" -> real_type
-        | "complex" -> complex_type
+        | "notreal" -> notreal_type
         | "inf" -> pos_inf_expr
         | "oo" -> pos_inf_expr
         | "-inf" -> neg_inf_expr
@@ -35,13 +35,9 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
-        | "CINT" CNAME ":" "com" "(" contour_path ("," contour_path)* ")" "." expr -> com_contour_expr
-
-    ?contour_path: 
-        | "circle" "(" expr "," expr "," expr ("," "(" expr "," expr ")")? ")" -> circle_path
-        | "line" "(" "(" expr "," expr ")" "," "(" expr "," expr ")" ")" -> line_path_complex
-        | "line" "(" expr "," expr ")" -> line_path_real
-        | "pole" "(" expr "," expr ")" -> pole_path
+        | "CINT" CNAME ":" "com" "(" expr ("," expr)* ")" "." expr -> com_contour_expr
+        | "CINT" CNAME ":" expr "." expr -> single_contour_expr
+        | "(" expr ")" "_" "(" CNAME ":" "[" expr "," expr "]" ")" -> contour_path_expr
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -118,6 +114,7 @@ grammar = r"""
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "substitute" expr "for" CNAME -> inverse_substitute_rule
         | "apply" "integral" "identity" -> integral_identity_rule
+        | "apply" "cintegral" "identity" -> cintegral_identity_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
         | "rewrite" expr "to" expr -> equation_rule
@@ -140,7 +137,6 @@ grammar = r"""
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "exchange" "integral" "and" "integral" -> exchange_integral_rule
         | "apply" "residue" "theorem" -> residue_theorem_rule
-        | "apply" "complex" "extension" -> complex_extension_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "linearity" -> apply_linearity_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
@@ -182,14 +178,27 @@ grammar = r"""
 
 @v_args(inline=True)
 class ExprTransformer(Transformer):
+    # 类级别的缓存，避免重复创建
+    _symbol_cache = {}
+    _var_cache = {}
+    
     def __init__(self):
+        # 添加__slots__以减少内存占用
         pass
 
     def var_expr(self, s):
-        return expr.Var(str(s))
+        # 缓存Var对象，避免重复创建
+        s_str = str(s)
+        if s_str not in self._var_cache:
+            self._var_cache[s_str] = expr.Var(s_str)
+        return self._var_cache[s_str]
 
     def symbol_expr(self, s):
-        return expr.Symbol(str(s), [expr.VAR, expr.CONST, expr.OP, expr.FUN])
+        # 缓存Symbol对象
+        s_str = str(s)
+        if s_str not in self._symbol_cache:
+            self._symbol_cache[s_str] = expr.Symbol(s_str, [expr.VAR, expr.CONST, expr.OP, expr.FUN])
+        return self._symbol_cache[s_str]
 
     def int_expr(self, n):
         return expr.Const(int(n))
@@ -263,8 +272,8 @@ class ExprTransformer(Transformer):
     def real_type(self):
         return expr.real_type
     
-    def complex_type(self):
-        return expr.complex_type
+    def notreal_type(self):
+        return expr.notreal_type
 
     def pos_inf_expr(self):
         return expr.Inf(Decimal("inf"))
@@ -329,8 +338,8 @@ class ExprTransformer(Transformer):
                 res.append(expr.Fun("isInt", mem_expr))
             elif set_expr == expr.real_type:
                 res.append(expr.Fun("isReal", mem_expr))
-            elif set_expr == expr.complex_type:
-                res.append(expr.Fun("isComplex", mem_expr))
+            elif set_expr == expr.notreal_type:
+                res.append(expr.Fun("notReal", mem_expr))
             else:
                 raise NotImplementedError(f"set_expr = {set_expr}")
         return tuple(res)
@@ -465,6 +474,10 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.IntegralIdentity()
     
+    def cintegral_identity_rule(self):
+        from integral import rules
+        return rules.CIntegralIdentity()
+    
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
         from integral import rules
         return rules.IntegrationByParts(u_expr, v_expr)
@@ -591,83 +604,56 @@ class ExprTransformer(Transformer):
         from integral import action
         return action.RuleAction(rule)
 
-    def com_contour_expr(self, var, *args):
+    def com_contour_expr(self, var, *path_exprs_and_body):
         """Transform compound contour integral."""
-        body = args[-1]
-        paths = list(args[:-1])
-        return expr.CompoundContourIntegral(str(var), paths, body)
-
-    def circle_path(self, radius, begin_angle, dir_and_end_angle, *args):
-        """Transform circle path.
+        body = path_exprs_and_body[-1]
+        # 路径表达式列表（除了最后一个是body）
+        path_exprs = path_exprs_and_body[:-1]
         
-        Args:
-            Cr(t) = (Re, Im) + radius * expr(i * (begin_angle + dir_and_end_angle * t))
-            t ∈ [0, 1]
-
-            radius: radius of circle path
-            begin_angle: starting angle of circle path
-            dir_and_end_angle: direction and ending angle of circle path
-            args: optional (Re, Im) center coordinates, defaults to (0,0) if not provided
-        """ 
-        # 处理可选的圆心参数
-        if args:
-            # 验证参数数量
-            if len(args) != 2:
-                raise ParseException("circle_path", f"Center coordinates must be two parameters (Re,Im), but received {len(args)} parameters")
-            # 如果提供了圆心，应该是一个包含两个元素的元组(Re, Im)
-            Re, Im = args
-            # 验证参数类型
-            if not (isinstance(Re, expr.Expr) and isinstance(Im, expr.Expr)):
-                raise ParseException("circle_path", "Center coordinates must be valid expressions")
+        # 将路径表达式转换为路径对象
+        paths = []
+        for path_expr in path_exprs:
+            if isinstance(path_expr, expr.CINTPath):
+                # 如果已经是CINTPath对象，直接使用
+                paths.append(path_expr)
+            elif hasattr(path_expr, 'func_name'):
+                # 如果是函数调用形式，转换为字符串表示
+                paths.append(str(path_expr))
+            else:
+                # 其他情况，转换为字符串
+                paths.append(str(path_expr))
+        
+        return expr.CIntegral(str(var), paths, body)
+    
+    def single_contour_expr(self, var, path_expr, body):
+        """Transform single contour integral like CINT z:C(t). 1/(z^2+1)."""
+        # 处理单个路径表达式
+        if isinstance(path_expr, expr.CINTPath):
+            paths = [path_expr]
+        elif hasattr(path_expr, 'func_name'):
+            # 如果是函数调用形式，转换为字符串表示
+            paths = [str(path_expr)]
         else:
-            # 默认圆心为原点(0,0)
-            Re, Im = expr.Const(0), expr.Const(0)
-            
-        return expr.CirclePath(radius, begin_angle, dir_and_end_angle, Re, Im)
-
-    def line_path_complex(self, Re1, Im1, Re2, Im2):
-        """Transform complex line path.
+            # 其他情况，转换为字符串
+            paths = [str(path_expr)]
         
-        Args:
-            Re1: real part of starting point
-            Im1: imaginary part of starting point
-            Re2: real part of ending point
-            Im2: imaginary part of ending point
-        """
-        return expr.LinePath(Re1, Im1, Re2, Im2)
-        
-    def line_path_real(self, start, end):
-        """Transform real line path.
-        
-        Args:
-            start: starting point on real axis
-            end: ending point on real axis
-        """
-        # 在实轴上创建线段，虚部为0
-        return expr.LinePath(start, expr.Const(0), end, expr.Const(0))
+        return expr.CIntegral(str(var), paths, body)
+    
+    def contour_path_expr(self, path_expr: Expr, var: Token, start_expr: Expr, end_expr: Expr):
+        """Transform contour path expression like (r*exp(i*pi*t))_(t:[0,1])."""
+        return expr.CINTPath(str(var), path_expr, start_expr, end_expr)
 
     def residue_theorem_rule(self):
         """Transform residue theorem rule."""
         from integral import rules
         return rules.ResidueTheorem()
-    
-    def complex_extension_rule(self):
-        """Transform complex extension rule."""
-        from integral import rules
-        return rules.ComplexExtension()
 
-    def pole_path(self, Re, Im):
-        """Transform pole path.
-        
-        Args:
-            Re: real part of pole
-            Im: imaginary part of pole
-        """
-        return expr.PolePath(Re, Im)
-
+# 创建单例transformer和解析器，避免重复创建，提高性能
 transformer = ExprTransformer()
-expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)
-action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
+
+# 使用cache=True启用Lark的解析缓存
+expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer, cache=True)
+action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer, cache=True)
 
 
 class ParseException(expr.IscalcException):
