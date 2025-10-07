@@ -760,13 +760,49 @@ def simplify_eq(e: expr.Expr, ctx: Context) -> expr.Expr:
             return eq.rhs
     return e
 
+def simplify_idiv(e: expr.Expr, ctx: Context) -> expr.Expr:
+    """化简包含虚数单位i的除法
+    
+    规则：
+    - 1/i = -i
+    - a/i = -a*i (for any a)
+    - i/i = 1
+    """
+    if not expr.is_op(e) or e.op != '/':
+        return e
+    
+    numerator, denominator = e.args
+    
+    # 1/i = -i
+    if numerator == expr.Const(1) and isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
+        return expr.Op('*', expr.Const(-1), expr.Fun('i'))
+    
+    # a/i = -a*i
+    if isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
+        return expr.Op('*', expr.Const(-1), expr.Op('*', numerator, expr.Fun('i')))
+    
+    # i/i = 1
+    if isinstance(numerator, expr.Fun) and numerator.func_name == 'i' and \
+       isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
+        return expr.Const(1)
+    
+    return e
+
 def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
     from integral import limits
     if not expr.is_limit(e):
         return e
+    # 检查表达式是否包含围道积分
+    def contains_contour_integral(expr_obj):
+        if expr.is_cintegral(expr_obj):
+            return True
+        elif expr_obj.ty in (expr.OP, expr.FUN):
+            return any(contains_contour_integral(arg) for arg in expr_obj.args)
+        return False
     
-    # TODO LIM cintegral的body是cintegral，而r在围道中不在body中
-    if e.var not in e.body.get_vars():
+    # 包含围道积分的表达式，不能简单检查变量是否在body中
+    # 围道积分中的极限变量可能在路径定义中而不在表达式本身中
+    if e.var not in e.body.get_vars() and not contains_contour_integral(e.body):
         return e.body
 
     if e.lim == expr.POS_INF:
@@ -787,66 +823,6 @@ def simplify_integral(e: expr.Expr, ctx: Context) -> expr.Expr:
     else:
         return e
     
-def simplify_cint(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if not expr.is_cintegral(e):
-        return e
-    
-    if e.body.is_constant():
-        return e
-    elif e.ty == expr.CINTEGRAL:
-        if len(e.paths) == 1:
-            path = e.paths[0]
-            if path.ty == expr.LINEPATH:
-                return expr.Integral(e.var, path.start, path.end, e.body)
-            elif path.ty == expr.CIRCLEPATH:
-                # 保持圆形路径不变，但确保圆心的复数形式正确
-                if path.center.is_plus() and len(path.center.args) == 2 and \
-                   path.center.args[1].is_times() and path.center.args[1].args[1] == expr.i:
-                    # 检查是否有无穷大路径
-                    result = expr.CompoundContourIntegral(e.var, [path], e.body)
-                    if result.has_infinite_paths:
-                        return result.to_limit_form()
-                    return result
-                else:
-                    # 如果圆心不是复数形式，转换它
-                    new_center = expr.Op("+", path.center, expr.Op("*", expr.Const(0), expr.i))
-                    new_path = expr.CirclePath(path.radius, path.begin_angle, path.dir_and_end_angle, path.Re, path.Im)
-                    result = expr.CompoundContourIntegral(e.var, [new_path], e.body)
-                    if result.has_infinite_paths:
-                        return result.to_limit_form()
-                    return result
-        elif len(e.paths) > 1:
-            result = None
-            paths = []
-            term = None
-            for path in e.paths:
-                if path.ty == expr.LINEPATH:
-                    term = expr.Integral('x', path.start, path.end, e.body)
-                else:  # CirclePath or other types
-                    paths.append(path)
-                
-            if len(paths) != 0 and term is not None:
-                contour_term = expr.CompoundContourIntegral(e.var, paths, e.body)
-                if contour_term.has_infinite_paths:
-                    contour_term = contour_term.to_limit_form()
-                return expr.Op('+', contour_term, term)
-            elif len(paths) != 0 and term is None:
-                result = expr.CompoundContourIntegral(e.var, paths, e.body)
-                if result.has_infinite_paths:
-                    return result.to_limit_form()
-                return result
-            elif len(paths) == 0 and term is not None:
-                return term
-            else:
-                return e
-        else:
-            return e
-    else:
-        # 处理包含无穷大路径的情况
-        if isinstance(e, expr.CompoundContourIntegral) and e.has_infinite_paths:
-            return e.to_limit_form()
-        return e
-
 def simplify_power(e: expr.Expr, ctx: Context) -> expr.Expr:
     # 处理 sqrt(-1) 转换为 i
     if expr.is_fun(e) and e.func_name == 'sqrt' and \
@@ -1064,6 +1040,11 @@ def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
     if not (expr.is_fun(e) and e.func_name == 'sqrt'):
         return e
 
+    arg = e.args[0]
+    if isinstance(arg, expr.Const) and arg.val < 0:
+        # sqrt(-a) = i * sqrt(a) (仅当 a 是正数常量时)
+        return expr.Op('*', expr.Fun('i'), expr.Fun('sqrt', expr.Const(-arg.val)))
+
     if e.args[0] == expr.Const(0):
         return expr.Const(0)
     if e.args[0] == expr.Const(1):
@@ -1157,7 +1138,7 @@ def simplify_exp(e:expr.Expr, ctx:Context):
     elif expr.is_fun(e):
         args = [simplify_exp(arg, ctx) for arg in e.args]
         if e.func_name == "exp":
-            if contains_i(args[0], ctx):
+            if ctx.check_condition(expr.Fun("notReal", args[0])):
                 if args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi")):
                     return expr.Const(-1)
                 elif (expr.is_uminus(args[0]) and 
@@ -1214,35 +1195,55 @@ def normal_const(e:expr.Expr, ctx:Context):
                              normal_const(e.body,ctx))
     raise NotImplementedError(str(e))
 
-def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if e.is_equals():
-        return expr.Eq(normalize(e.lhs, ctx), normalize(e.rhs, ctx))
+# 全局normalize缓存，提高性能
+_normalize_cache = {} 
 
+def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
+    
+    # 快速路径：常量直接返回
     if expr.is_const(e):
         return e
-    for i in range(5):
-        old_e = e
-        e = from_poly(to_poly(e, ctx))
-        e = apply_subterm(e, function_table, ctx)
-        e = apply_subterm(e, function_eval, ctx)
-        e = apply_subterm(e, simplify_identity, ctx)
-        e = apply_subterm(e, simplify_eq, ctx)
-        e = apply_subterm(e, simplify_limit, ctx)
-        e = apply_subterm(e, simplify_integral, ctx)
-        e = apply_subterm(e, simplify_cint, ctx)
-        e = apply_subterm(e, simplify_power, ctx)
-        e = apply_subterm(e, simplify_trig, ctx)
-        e = apply_subterm(e, simplify_log, ctx)
-        e = apply_subterm(e, simplify_sqrt, ctx)
-        e = apply_subterm(e, simplify_inf, ctx)
-        e = apply_subterm(e, simplify_sum, ctx)
-        e = apply_subterm(e, simplify_skolem, ctx)
-        e = apply_subterm(e, simplify_exp, ctx)
-        e = apply_subterm(e, simplify_abs, ctx)
-        if e == old_e:
-            break
-
-    return e
+    
+    # 创建缓存键（使用hash避免存储整个表达式）
+    cache_key = (hash(e), id(ctx))
+    
+    # 检查缓存
+    if cache_key in _normalize_cache:
+        return _normalize_cache[cache_key]
+    
+    
+    # 执行规范化
+    if e.is_equals():
+        result = expr.Eq(normalize(e.lhs, ctx), normalize(e.rhs, ctx))
+    else:
+        for i in range(5):
+            old_e = e
+            e = from_poly(to_poly(e, ctx))
+            e = apply_subterm(e, function_table, ctx)
+            e = apply_subterm(e, function_eval, ctx)
+            e = apply_subterm(e, simplify_identity, ctx)
+            e = apply_subterm(e, simplify_eq, ctx)
+            e = apply_subterm(e, simplify_idiv, ctx)
+            e = apply_subterm(e, simplify_limit, ctx)
+            e = apply_subterm(e, simplify_integral, ctx)
+            e = apply_subterm(e, simplify_power, ctx)
+            e = apply_subterm(e, simplify_trig, ctx)
+            e = apply_subterm(e, simplify_log, ctx)
+            e = apply_subterm(e, simplify_sqrt, ctx)
+            e = apply_subterm(e, simplify_inf, ctx)
+            e = apply_subterm(e, simplify_sum, ctx)
+            e = apply_subterm(e, simplify_skolem, ctx)
+            e = apply_subterm(e, simplify_exp, ctx)
+            e = apply_subterm(e, simplify_abs, ctx)
+            if e == old_e:
+                break
+        result = e
+    
+    # 缓存结果（限制缓存大小）
+    if len(_normalize_cache) < 10000:
+        _normalize_cache[cache_key] = result
+    
+    return result
 
 
 def evaluate_const_expr(e: expr.Expr) -> expr.Expr:
@@ -1432,54 +1433,3 @@ def from_poly(p: Polynomial) -> expr.Expr:
             else:
                 res = res + mono
         return res
-    
-def contains_i(e, ctx:Context):
-    """
-    检查表达式中是否包含复数单位i或被标记为复数的变量
-    
-    Args:
-        e: 要检查的表达式
-        ctx: 上下文环境，包含变量的条件信息
-        
-    Returns:
-        bool: 如果表达式包含复数单位i或复数变量，返回True；否则返回False
-    """
-    
-    if expr.is_const(e) or expr.is_inf(e) or expr.is_symbol(e):
-        return False
-    # i的情况
-    if expr.is_fun(e) and e.func_name == 'i':
-        return True
-    # 变量情况：检查是否被标记为复数
-    if expr.is_var(e):
-        # 检查是否标记为复数
-        if ctx and ctx.check_condition(expr.Fun("isComplex", e)):
-            return True
-        return False
-    
-    # 各种操作符和函数的递归检查
-    if expr.is_op(e) or expr.is_fun(e):
-        # 特殊情况：sqrt(-1)
-        if expr.is_fun(e) and e.func_name == 'sqrt':
-            if expr.is_const(e.args[0]) and e.args[0].val == -1:
-                return True
-            # 对于sqrt，如果参数可以确定为非负，则不包含复数
-            if ctx and ctx.check_condition(expr.Op(">=", e.args[0], expr.Const(0))):
-                return False
-        # 递归检查所有参数
-        return any(contains_i(arg, ctx) for arg in e.args)
-    
-    # 其他复合表达式
-    if expr.is_integral(e) or expr.is_evalat(e):
-        return (contains_i(e.body, ctx) or 
-                contains_i(e.lower, ctx) or 
-                contains_i(e.upper, ctx))
-    if expr.is_deriv(e) or expr.is_indefinite_integral(e) or expr.is_cintegral(e):
-        return contains_i(e.body, ctx)
-    if expr.is_limit(e):
-        return contains_i(e.body, ctx) or contains_i(e.lim, ctx)
-    if expr.is_summation(e) or expr.is_product(e):
-        return (contains_i(e.body, ctx) or 
-                contains_i(e.lower, ctx) or 
-                contains_i(e.upper, ctx))
-    return False
