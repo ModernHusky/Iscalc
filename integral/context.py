@@ -5,7 +5,7 @@ import os
 import json
 
 from integral import expr
-from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
+from integral.expr import Expr, Eq, Op, Const, expr_to_pattern, Fun, Var, CINTPath
 from integral import parser
 from integral.conditions import Conditions
 from integral import action
@@ -593,6 +593,12 @@ def body_conds(e: Expr, ctx: Context) -> Context:
             ctx2.add_condition(Op(">", expr.Var(e.var), e.lower))
         if e.upper != expr.POS_INF:
             ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
+    elif expr.is_cintegral(e):
+        ctx2.add_condition(expr.Fun("notReal", expr.Var(e.var)))
+        for path in e.paths:
+            ctx2.add_condition(expr.Fun("isReal", expr.Var(path.var)))
+            ctx2.add_condition(Op(">", expr.Var(path.var), path.start_expr))
+            ctx2.add_condition(Op("<", expr.Var(path.var), path.end_expr))
     else:
         raise TypeError
     return ctx2

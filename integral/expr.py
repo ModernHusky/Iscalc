@@ -22,7 +22,7 @@ class IscalcException(Exception):
 
 
 VAR, CONST, OP, FUN, DERIV, INTEGRAL,CINTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, INDEFINITEINTEGRAL, \
-SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CIRCLEPATH, POLEPATH, LINEPATH = range(20)
+SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CINTPATH = range(18)
 
 op_priority = {
     "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
@@ -280,6 +280,11 @@ class Expr:
             return (self.name, self.dependent_vars) <= (other.name, other.dependent_vars)
         elif is_limit(self):
             return (self.var, self.lim, self.body, self.drt) <= (other.var, other.lim, other.body, other.drt)
+        elif is_cintegral(self):
+            # For CIntegral, compare based on var, paths (converted to strings), and body
+            self_paths_str = tuple(str(p) for p in self.paths)
+            other_paths_str = tuple(str(p) for p in other.paths)
+            return (self.var, self_paths_str, self.body) <= (other.var, other_paths_str, other.body)
         else:
             print(type(self))
             raise NotImplementedError
@@ -458,6 +463,9 @@ class Expr:
                 find(e.body, loc.append(0))
             elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e):
                 find(e.body, loc.append(0))
+            elif is_cintegral(e):
+                # 对围道积分的递归搜索
+                find(e.body, loc.append(0))
             elif is_summation(e):
                 find(e.body, loc.append(0))
                 find(e.lower, loc.append(1))
@@ -526,7 +534,37 @@ class Expr:
         elif is_indefinite_integral(self):
             return IndefiniteIntegral(self.var, self.body.subst(var, e), self.skolem_args)
         elif is_cintegral(self):
-            return CIntegral(self.var, self.paths, self.body.subst(var,e))
+            # Substitute in paths and body
+            new_paths = []
+            for path in self.paths:
+                if isinstance(path, CINTPath):
+                    new_paths.append(path.subst(var, e))
+                elif isinstance(path, str):
+                    # String path reference like "C(r)" - substitute variables in it
+                    # This is a simple text replacement for function arguments
+                    import re
+                    def replace_var(match):
+                        # Match variables in function calls
+                        full = match.group(0)
+                        func_name = match.group(1)
+                        args = match.group(2)
+                        # Replace var in args
+                        if isinstance(e, Var):
+                            # Simple variable to variable substitution
+                            new_args = re.sub(r'\b' + var + r'\b', e.name, args)
+                        elif isinstance(e, Symbol):
+                            # Variable to symbol substitution  
+                            new_args = re.sub(r'\b' + var + r'\b', '?' + e.name, args)
+                        else:
+                            # For complex expressions, keep the original
+                            new_args = args
+                        return f"{func_name}({new_args})"
+                    
+                    new_path = re.sub(r'([A-Za-z_]\w*)\((.*?)\)', replace_var, path)
+                    new_paths.append(new_path)
+                else:
+                    new_paths.append(path)
+            return CIntegral(self.var, new_paths, self.body.subst(var, e))
         elif is_evalat(self):
             return EvalAt(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
         elif is_summation(self):
@@ -615,8 +653,30 @@ class Expr:
                 for var in t.dependent_vars:
                     rec(var, bd_vars)
             elif is_cintegral(t):
-                t:CompoundContourIntegral   #TODO: add other types of contour integrals
+                t:CIntegral
+                # Scan paths for variables
+                for path in t.paths:
+                    if isinstance(path, CINTPath):
+                        rec(path, bd_vars)
+                    elif isinstance(path, str):
+                        # String path reference like "C(r)" - parse it to extract vars
+                        # Format: "FuncName(args)" where args may contain variables
+                        import re
+                        # Match function calls like C(r), L(r,s), etc.
+                        match = re.match(r'([A-Za-z_]\w*)\((.*)\)', path)
+                        if match:
+                            args_str = match.group(2)
+                            # Parse each argument as a simple variable or expression
+                            for arg in args_str.split(','):
+                                arg = arg.strip()
+                                if arg and arg not in bd_vars:
+                                    # Simple variable name check
+                                    if re.match(r'^[A-Za-z_]\w*$', arg):
+                                        res.add(arg)
                 rec(t.body, bd_vars + [t.var])
+            elif is_cintpath(t):
+                t:CINTPath
+                rec(t.path_expr, bd_vars + [t.var])
             else:
                 print(t, type(t))
                 raise NotImplementedError
@@ -791,6 +851,20 @@ class Expr:
                              self.body.inst_pat(mapping))
         elif is_limit(self):
             return Limit(self.var, self.lim.inst_pat(mapping), self.body.inst_pat(mapping), self.drt)
+        elif is_cintegral(self):
+            # For CIntegral, instantiate paths and body
+            inst_paths = []
+            for path in self.paths:
+                if isinstance(path, CINTPath):
+                    # Instantiate CINTPath components
+                    inst_path_expr = path.path_expr.inst_pat(mapping)
+                    inst_start = path.start_expr.inst_pat(mapping)
+                    inst_end = path.end_expr.inst_pat(mapping)
+                    inst_paths.append(CINTPath(path.var, inst_path_expr, inst_start, inst_end))
+                else:
+                    # Path is a string reference, keep as is
+                    inst_paths.append(path)
+            return CIntegral(self.var, inst_paths, self.body.inst_pat(mapping))
         else:
             print(type(self))
             raise NotImplementedError
@@ -815,20 +889,6 @@ class Expr:
                                              self.upper.has_var(var) or self.lower.has_var(var))
         else:
             raise NotImplementedError
-
-def exprify(value):
-    # judge whether the value is Expr
-
-    if isinstance(value, Expr):
-        return value
-
-    if isinstance(value, (int, float)):
-        return Const(value)
-
-    if isinstance(value, str):
-        return Var(value)
-    # 对于其他类型的输入，抛出异常
-    raise TypeError(f"无法将类型 {type(value).__name__} 的值 {value} 转换为 Expr")
 
 def is_var(e: Expr) -> TypeGuard["Var"]:
     return e.ty == VAR
@@ -860,11 +920,8 @@ def is_integral(e: Expr) -> TypeGuard["Integral"]:
 def is_cintegral(e: Expr) -> TypeGuard["CIntegral"]:
     return e.ty == COMPOUNDCONTOUR or e.ty == MULTIPOLECONTOUR or e.ty == CINTEGRAL
 
-def is_circlepath(e: Expr) -> TypeGuard["CirclePath"]:
-    return e.ty == CIRCLEPATH
-
-def is_polepath(e: Expr) -> TypeGuard["PolePath"]:
-    return e.ty == POLEPATH
+def is_cintpath(e: Expr) -> TypeGuard["CINTPath"]:
+    return e.ty == CINTPATH
 
 def is_indefinite_integral(e: Expr) -> TypeGuard["IndefiniteIntegral"]:
     return e.ty == INDEFINITEINTEGRAL
@@ -1022,6 +1079,17 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
             res1 = pattern.var == exp.var
             res2 = rec(exp.body, pattern.body, bd_vars)
             return res1 and res2
+        elif is_cintegral(exp):
+            # Match contour integrals
+            bd_vars[pattern.var] = exp.var
+            # Check if paths match (simplified: only check length and types)
+            if len(exp.paths) != len(pattern.paths):
+                del bd_vars[pattern.var]
+                return False
+            # Match body
+            res = rec(exp.body, pattern.body, bd_vars)
+            del bd_vars[pattern.var]
+            return res
         else:
             # Currently not implemented
             print("Match Failed for type:", type(exp))
@@ -1057,6 +1125,20 @@ def expr_to_pattern(e: Expr) -> Expr:
             return Limit(_e.var, rec(_e.lim), rec(_e.body), _e.drt)
         elif _e.ty == DERIV:
             return Deriv(_e.var, rec(_e.body))
+        elif _e.ty == CINTEGRAL:
+            # Process complex integral
+            _e: CIntegral
+            processed_paths = []
+            for path in _e.paths:
+                if isinstance(path, CINTPath):
+                    processed_paths.append(rec(path))
+                else:
+                    processed_paths.append(path)
+            return CIntegral(_e.var, processed_paths, rec(_e.body))
+        elif _e.ty == CINTPATH:
+            # Process complex integration path
+            _e: CINTPath
+            return CINTPath(_e.var, rec(_e.path_expr), rec(_e.start_expr), rec(_e.end_expr))
         else:
             raise NotImplementedError(str(_e))
     e = rec(e)
@@ -1229,13 +1311,18 @@ def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
 
 class Var(Expr):
     """Variable."""
+    __slots__ = ('ty', 'name', '_hash')  # 使用__slots__减少内存占用
+    
     def __init__(self, name: str):
         assert isinstance(name, str)
         self.ty = VAR
         self.name = name
+        self._hash = None  # 缓存hash值
 
     def __hash__(self):
-        return hash((VAR, self.name))
+        if self._hash is None:
+            self._hash = hash((VAR, self.name))
+        return self._hash
 
     def __eq__(self, other):
         return isinstance(other, Var) and self.name == other.name
@@ -1248,6 +1335,7 @@ class Var(Expr):
 
 class Const(Expr):
     """Constants."""
+    __slots__ = ('ty', 'val', '_hash')  # 使用__slots__减少内存占用
 
     def __init__(self, val: Union[bool, int, Fraction, Decimal]):
         assert isinstance(val, (bool, int, Fraction, Decimal))
@@ -1258,9 +1346,12 @@ class Const(Expr):
             self.val = val.numerator
         else:
             self.val = val
+        self._hash = None  # 缓存hash值
 
     def __hash__(self):
-        return hash((CONST, self.val))
+        if self._hash is None:
+            self._hash = hash((CONST, self.val))
+        return self._hash
 
     def __eq__(self, other):
         return isinstance(other, Const) and self.val == other.val
@@ -1274,6 +1365,8 @@ class Const(Expr):
 
 class Op(Expr):
     """Operators."""
+    __slots__ = ('ty', 'op', 'args', '_hash')  # 使用__slots__减少内存占用
+    
     def __init__(self, op: str, *args):
         assert isinstance(op, str)
         assert all(isinstance(arg, Expr) for arg in args), op +":"+ str(args)
@@ -1286,9 +1379,12 @@ class Op(Expr):
         self.ty = OP
         self.op = op
         self.args: tuple[Expr, ...] = tuple(args)
+        self._hash = None  # 缓存hash值
 
     def __hash__(self):
-        return hash((OP, self.op, tuple(self.args)))
+        if self._hash is None:
+            self._hash = hash((OP, self.op, self.args))
+        return self._hash
 
     def __eq__(self, other):
         return isinstance(other, Op) and self.op == other.op and self.args == other.args
@@ -1326,6 +1422,7 @@ class Op(Expr):
 
 class Fun(Expr):
     """Functions."""
+    __slots__ = ('ty', 'func_name', 'args', '_hash')  # 使用__slots__减少内存占用
 
     def __init__(self, func_name: str, *args: Expr):
         if not isinstance(func_name, str):
@@ -1336,9 +1433,12 @@ class Fun(Expr):
         self.ty = FUN
         self.args: tuple[Expr, ...] = tuple(args)
         self.func_name = func_name
+        self._hash = None  # 缓存hash值
 
     def __hash__(self):
-        return hash((FUN, self.func_name, self.args))
+        if self._hash is None:
+            self._hash = hash((FUN, self.func_name, self.args))
+        return self._hash
 
     def __eq__(self, other):
         return isinstance(other, Fun) and self.func_name == other.func_name and self.args == other.args
@@ -1530,7 +1630,7 @@ G = Fun("G")
 i = Fun("i")
 int_type = Fun("int")
 real_type = Fun("real")
-complex_type = Fun("complex")
+notreal_type = Fun("notreal")
 
 def Eq(s: Expr, t: Expr) -> Expr:
     return Op("=", s, t)
@@ -1773,7 +1873,13 @@ def eval_expr(e: Expr):
         if e.func_name == 'sqrt':
             return math.sqrt(eval_expr(e.args[0]))
         elif e.func_name == 'exp':
-            return math.exp(eval_expr(e.args[0]))
+            arg_val = eval_expr(e.args[0])
+            # 支持复数参数
+            if isinstance(arg_val, complex):
+                import cmath
+                return cmath.exp(arg_val)
+            else:
+                return math.exp(arg_val)
         elif e.func_name == 'i':
             return 1j  # return imaginary unit in Python
         elif e.func_name == 'abs':
@@ -1838,437 +1944,136 @@ def neg_expr(e: Expr):
     else:
         raise NotImplementedError(f"neg_expr: {e}")
 
-class Direction:
-    """Direction of contour path."""
-    CW = "CW"   # 顺时针
-    CCW = "CCW" # 逆时针
+class CINTPath(Expr):
+    """CINT path for contour integrals.
     
-    def __init__(self, direction: str):
-        assert direction in [Direction.CW, Direction.CCW], "Direction must be either CW or CCW"
-        self._value = direction
-
-    def __str__(self):
-        return self._value
-    
-    def __eq__(self, other):
-        if isinstance(other, Direction):
-            return self._value == other._value
-        elif isinstance(other, str):
-            return self._value == other
-        return False
-    
-    def __hash__(self):
-        return hash(self._value)
-    
-    def is_clockwise(self):
-        """是否为顺时针方向"""
-        return self._value == Direction.CW
-    
-    def is_counterclockwise(self):
-        """是否为逆时针方向"""
-        return self._value == Direction.CCW
-
-
-class CirclePath:
-    """Circle path for compound contour integral.
+    表示围道路径，对应形式 (path_expr)_(var:[start,end])
+    例如：(r*exp(i*pi*t))_(t:[0,1]) 表示参数化路径
     
     Args:
-        radius: radius of circle path
-        begin_angle: starting angle of circle path
-        dir_and_end_angle: direction and ending angle (positive for clockwise, negative for counterclockwise)
-        Re: real part of center, defaults to 0 if not specified
-        Im: imaginary part of center, defaults to 0 if not specified
-        
-    表示参数方程：
-        C(t) = (Re, Im) + radius * exp(i * (begin_angle + dir_and_end_angle * t))
-        t ∈ [0, 1]
-        
-    当radius为无穷大(oo)或负无穷大(-oo)时，使用变量r替代，并通过LIM {r->oo}表示极限过程。
+        var: 路径参数变量
+        path_expr: 路径表达式
+        start_expr: 参数起始值
+        end_expr: 参数结束值
     """
-    def __init__(self, radius: Expr, begin_angle: Expr, dir_and_end_angle: Expr, 
-                 Re: Expr = None, Im: Expr = None):
-        assert isinstance(radius, Expr) and isinstance(begin_angle, Expr) \
-               and isinstance(dir_and_end_angle, Expr)
-        
-        # 设置默认圆心为原点(0,0)
-        if Re is None:
-            Re = Const(0)
-        if Im is None:
-            Im = Const(0)
-        
-        self.ty = CIRCLEPATH
-        
-        # 检查半径是否为无穷大，如果是则标记
-        self.is_infinite_radius = is_inf(radius)
-        self.original_radius = radius  # 保存原始半径值
-        
-        # 如果是无穷大半径，替换为变量r
-        if self.is_infinite_radius:
-            self.radius = Var("r")
-            self.radius_limit = POS_INF if is_pos_inf(radius) else NEG_INF
-        else:
-            self.radius = radius
-            
-        self.begin_angle = begin_angle
-        self.dir_and_end_angle = dir_and_end_angle
-        self.Re = Re
-        self.Im = Im
-        
-        # Determine direction based on dir_and_end_angle
-        # If dir_and_end_angle is negative, direction is CCW
-        # If dir_and_end_angle is positive or zero, direction is CW
-        if is_const(dir_and_end_angle):
-            self.direction = Direction(Direction.CCW if dir_and_end_angle.val < 0 else Direction.CW)
-        elif is_uminus(dir_and_end_angle):
-            self.direction = Direction(Direction.CCW)
-        else:
-            self.direction = Direction(Direction.CW)
-            
-        # Construct center as complex number
-        self.center = Op("+", Re, Op("*", Im, Fun("i")))
-
-    def __hash__(self):
-        return hash((self.radius, self.begin_angle, self.dir_and_end_angle, self.Re, self.Im, self.direction))
-
-    def get_vars(self) -> Set[str]:
-        """Get all variables in the path"""
-        vars = set()
-        vars.update(self.radius.get_vars())
-        vars.update(self.begin_angle.get_vars())
-        vars.update(self.dir_and_end_angle.get_vars())
-        vars.update(self.Re.get_vars())
-        vars.update(self.Im.get_vars())
-        return vars
-
-    def __eq__(self, other):
-        return isinstance(other, CirclePath) and \
-               self.radius == other.radius and \
-               self.begin_angle == other.begin_angle and \
-               self.dir_and_end_angle == other.dir_and_end_angle and \
-               self.Re == other.Re and self.Im == other.Im and \
-               self.direction == other.direction
-
-    def __str__(self):
-        center_str = "" if (self.Re == Const(0) and self.Im == Const(0)) else f"({self.Re},{self.Im})+"
-        radius_str = str(self.original_radius) if self.is_infinite_radius else str(self.radius)
-        
-        # 确定是否使用加号或减号，取决于方向
-        # 当dir_and_end_angle为负值时，使用减号并取其绝对值，否则使用加号
-        if is_uminus(self.dir_and_end_angle) or (is_const(self.dir_and_end_angle) and self.dir_and_end_angle.val < 0):
-            # 如果是负值，则取其绝对值并使用减号
-            if is_uminus(self.dir_and_end_angle):
-                # 处理形如 -expr 的情况
-                abs_angle = self.dir_and_end_angle.args[0]
-                return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}-{abs_angle}*t)))[{self.direction}]"
-            else:
-                # 处理负常数的情况
-                abs_angle = Const(abs(self.dir_and_end_angle.val))
-                return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}-{abs_angle}*t)))[{self.direction}]"
-        else:
-            # 非负值，使用加号
-            return f"circle({center_str}{radius_str}*exp(i*({self.begin_angle}+{self.dir_and_end_angle}*t)))[{self.direction}]"
-
-    def __repr__(self):
-        radius_repr = repr(self.original_radius) if self.is_infinite_radius else repr(self.radius)
-        return f"CirclePath({radius_repr},{self.begin_angle},{self.dir_and_end_angle},{self.Re},{self.Im})[{self.direction}]"
-    
-    def get_direction(self) -> Direction:
-        return self.direction
-        
-    def size(self):
-        return 1 + self.radius.size() + self.begin_angle.size() + self.dir_and_end_angle.size() + self.Re.size() + self.Im.size()
-
-class LinePath:
-    """Line path for compound contour integral.
-    
-    Args:
-        Re1: real part of the starting point
-        Im1: imaginary part of the starting point
-        Re2: real part of the ending point
-        Im2: imaginary part of the ending point
-    
-    如从点(r,0)到点(R,0)的线段。
-    当直线段用于构成闭合围道（如矩形或多边形）时，只需确保首尾相连。
-    
-    当起点或终点为无穷大(oo)或负无穷大(-oo)时，使用变量r替代，并通过LIM {r->oo}表示极限过程。
-    """
-    def __init__(self, Re1: Expr, Im1: Expr, Re2: Expr, Im2: Expr):
-        assert isinstance(Re1, Expr) and isinstance(Im1, Expr) and \
-               isinstance(Re2, Expr) and isinstance(Im2, Expr)
-        self.ty = LINEPATH
-        
-        # 保存原始值
-        self.Re1 = Re1
-        self.Im1 = Im1
-        self.Re2 = Re2
-        self.Im2 = Im2
-        
-        # 检查是否包含无穷大值
-        self.has_infinite_points = False
-        self.infinite_params = {}
-        
-        # 检查并处理起点坐标中的无穷大
-        if is_inf(Re1):
-            self.has_infinite_points = True
-            # 保持正负符号不变：oo -> r, -oo -> -r
-            if is_pos_inf(Re1):
-                self.Re1 = Var("r")
-                self.infinite_params["Re1"] = POS_INF
-            else:  # 负无穷大
-                self.Re1 = Op("-", Var("r"))
-                self.infinite_params["Re1"] = NEG_INF
-        else:
-            self.Re1 = Re1
-            
-        if is_inf(Im1):
-            self.has_infinite_points = True
-            # 保持正负符号不变：oo -> r, -oo -> -r
-            if is_pos_inf(Im1):
-                self.Im1 = Var("r")
-                self.infinite_params["Im1"] = POS_INF
-            else:  # 负无穷大
-                self.Im1 = Op("-", Var("r"))
-                self.infinite_params["Im1"] = NEG_INF
-        else:
-            self.Im1 = Im1
-            
-        # 检查并处理终点坐标中的无穷大
-        if is_inf(Re2):
-            self.has_infinite_points = True
-            # 保持正负符号不变：oo -> r, -oo -> -r
-            if is_pos_inf(Re2):
-                self.Re2 = Var("r")
-                self.infinite_params["Re2"] = POS_INF
-            else:  # 负无穷大
-                self.Re2 = Op("-", Var("r"))
-                self.infinite_params["Re2"] = NEG_INF
-        else:
-            self.Re2 = Re2
-            
-        if is_inf(Im2):
-            self.has_infinite_points = True
-            # 保持正负符号不变：oo -> r, -oo -> -r
-            if is_pos_inf(Im2):
-                self.Im2 = Var("r")
-                self.infinite_params["Im2"] = POS_INF
-            else:  # 负无穷大
-                self.Im2 = Op("-", Var("r"))
-                self.infinite_params["Im2"] = NEG_INF
-        else:
-            self.Im2 = Im2
-        
-        # 构造起点和终点的复数表示
-        self.start = Op("+", self.Re1, Op("*", self.Im1, Fun("i")))
-        self.end = Op("+", self.Re2, Op("*", self.Im2, Fun("i")))
-        
-        # 特别处理实轴上的线段
-        self.is_real_axis = (self.Im1 == Const(0) and self.Im2 == Const(0))
-
-    def get_vars(self) -> Set[str]:
-        """Get all variables in the path"""
-        vars = set()
-        vars.update(self.Re1.get_vars())
-        vars.update(self.Im1.get_vars())
-        vars.update(self.Re2.get_vars())
-        vars.update(self.Im2.get_vars())
-        return vars
-    
-    def get_direction_vector(self) -> Expr:
-        """获取路径的方向向量（从起点指向终点）"""
-        return Op("-", self.end, self.start)
-    
-    def __hash__(self):
-        return hash((self.Re1, self.Im1, self.Re2, self.Im2))
-
-    def __eq__(self, other):
-        return isinstance(other, LinePath) and \
-               self.Re1 == other.Re1 and self.Im1 == other.Im1 and \
-               self.Re2 == other.Re2 and self.Im2 == other.Im2
-
-    def __str__(self):
-        if self.is_real_axis:
-            re1_str = str(self.Re1) if is_inf(self.Re1) else str(self.Re1)
-            re2_str = str(self.Re2) if is_inf(self.Re2) else str(self.Re2)
-            return f"line({re1_str},{re2_str})"
-        
-        re1_str = str(self.Re1) if is_inf(self.Re1) else str(self.Re1)
-        im1_str = str(self.Im1) if is_inf(self.Im1) else str(self.Im1)
-        re2_str = str(self.Re2) if is_inf(self.Re2) else str(self.Re2)
-        im2_str = str(self.Im2) if is_inf(self.Im2) else str(self.Im2)
-        
-        return f"line(({re1_str},{im1_str}),({re2_str},{im2_str}))"
-
-    def __repr__(self):
-        re1_repr = repr(self.Re1) if is_inf(self.Re1) else repr(self.Re1)
-        im1_repr = repr(self.Im1) if is_inf(self.Im1) else repr(self.Im1)
-        re2_repr = repr(self.Re2) if is_inf(self.Re2) else repr(self.Re2)
-        im2_repr = repr(self.Im2) if is_inf(self.Im2) else repr(self.Im2)
-        
-        return f"LinePath({re1_repr},{im1_repr},{re2_repr},{im2_repr})"
-    
-    def size(self):
-        return 1 + self.Re1.size() + self.Im1.size() + self.Re2.size() + self.Im2.size()
-        
-    def is_closed(self) -> bool:
-        """检查路径是否闭合（起点和终点是否相同）"""
-        return self.start == self.end
-
-class PolePath:
-    """Pole path for compound contour integral.
-    
-    表示复平面上的极点，用于留数计算。
-    
-    Args:
-        Re: real part of the pole point
-        Im: imaginary part of the pole point
-    """
-    def __init__(self, Re: Expr, Im: Expr):
-        assert isinstance(Re, Expr) and isinstance(Im, Expr)
-        self.ty = POLEPATH
-        self.Re = Re
-        self.Im = Im
-        # 构造极点的复数表示
-        self.pole_point = Op("+", Re, Op("*", Im, Fun("i")))
-        
-    def get_vars(self) -> Set[str]:
-        """获取极点中包含的所有变量"""
-        vars = set()
-        vars.update(self.Re.get_vars())
-        vars.update(self.Im.get_vars())
-        return vars
-    
-    def __hash__(self):
-        return hash((self.Re, self.Im))
-
-    def __eq__(self, other):
-        return isinstance(other, PolePath) and \
-               self.Re == other.Re and self.Im == other.Im
-
-    def __str__(self):
-        return f"pole({self.Re},{self.Im})"
-
-    def __repr__(self):
-        return f"PolePath({self.Re},{self.Im})"
-    
-    def size(self):
-        return 1 + self.Re.size() + self.Im.size()
-    
-    def compute_residue(self, f: Expr, order: int = 1) -> Expr:
-        return compute_residue(f, self.pole_point, order)
-
-class CompoundContourIntegral(Expr):
-    """Compound contour integral of an expression.
-    
-    A contour can be composed of the following types of paths:
-    - CirclePath: circular path
-    - LinePath: straight line path
-    - PolePath: pole
-    
-    Each path has its own direction attribute used to determine the integration direction.
-    
-    无穷大路径：
-    - 当圆路径半径为无穷大时，使用变量r替代，并用LIM {r->oo}表示极限过程
-    - 当线段路径端点为无穷大时，使用变量r替代，并用LIM {r->oo}表示极限过程
-    """
-    def __init__(self, var: str, paths: List[Union[CirclePath, LinePath, PolePath]], body: Expr):
-        assert isinstance(var, str) and isinstance(body, Expr)
-        self.ty = COMPOUNDCONTOUR
+    def __init__(self, var: str, path_expr: Expr, start_expr: Expr, end_expr: Expr):
+        self.ty = CINTPATH
         self.var = var
-        # 确保paths是列表
-        self.paths = [paths] if not isinstance(paths, list) else paths
-        self.body = body.subst(var, Var(var))
-        
-        # 检查路径是否包含无穷大
-        self.has_infinite_paths = any((
-            isinstance(p, CirclePath) and p.is_infinite_radius or
-            isinstance(p, LinePath) and p.has_infinite_points
-        ) for p in self.paths)
-
-    def __hash__(self):
-        path_hashes = tuple(hash(p) for p in self.paths)
-        return hash((COMPOUNDCONTOUR, self.var, path_hashes, self.body))
-
-    def __eq__(self, other):
-        return isinstance(other, CompoundContourIntegral) and \
+        self.path_expr = path_expr
+        self.start_expr = start_expr
+        self.end_expr = end_expr
+    
+    def __hash__(self) -> int:
+        return hash((self.ty, self.var, self.path_expr, self.start_expr, self.end_expr))
+    
+    def __eq__(self, other) -> bool:
+        return isinstance(other, CINTPath) and \
                self.var == other.var and \
-               self.paths == other.paths and \
-               self.body == other.body
+               self.path_expr == other.path_expr and \
+               self.start_expr == other.start_expr and \
+               self.end_expr == other.end_expr
+    
+    def __str__(self) -> str:
+        return f"({self.path_expr})_({self.var}:[{self.start_expr},{self.end_expr}])"
+    
+    def __repr__(self) -> str:
+        return f"CINTPath({self.var}, {self.path_expr}, {self.start_expr}, {self.end_expr})"
 
-    def __str__(self):
-        paths_str = ",".join(str(p) for p in self.paths)
-        return "CINT %s:com(%s). %s" % (self.var, paths_str, str(self.body))
-
-    def __repr__(self):
-        return "CompoundContourIntegral(%s,%s,%s)" % (
-            self.var, repr(self.paths), repr(self.body))
-
-    def alpha_convert(self, new_name):
-        """更改积分变量名"""
-        assert isinstance(new_name, str), "alpha_convert: new_name must be a string"
-        return CompoundContourIntegral(new_name, self.paths, self.body.subst(self.var, Var(new_name)))
+    def is_closed(self) -> bool:
+        """判断路径是否为闭合路径（路径表达式在起点和终点的值相等）"""
+        # 首先检查参数是否相等（快速判断）
+        if self.start_expr == self.end_expr:
+            return True
         
-    def to_limit_form(self) -> Expr:
-        """将包含无穷大路径的积分转换为极限表达式
-        
-        如果路径中有无穷大元素(如半径为oo或线段端点为oo)，
-        将其替换为变量r并包装在LIM {r->oo}中。
-        """
-        if not self.has_infinite_paths:
-            return self
+        # 计算路径表达式在起点和终点的值
+        try:
+            start_point = self.path_expr.subst(self.var, self.start_expr)
+            end_point = self.path_expr.subst(self.var, self.end_expr)
             
-        # 创建替换路径列表
-        new_paths = []
-        limit_type = None
-        
-        for path in self.paths:
-            if isinstance(path, CirclePath) and path.is_infinite_radius:
-                # 圆的半径为无穷大，替换为r
-                new_path = CirclePath(
-                    Var("r"), 
-                    path.begin_angle, 
-                    path.dir_and_end_angle, 
-                    path.Re, 
-                    path.Im
-                )
-                new_paths.append(new_path)
-                limit_type = path.radius_limit
-            elif isinstance(path, LinePath) and path.has_infinite_points:
-                # 线段端点有无穷大，替换为±r
-                new_re1 = path.Re1
-                new_im1 = path.Im1
-                new_re2 = path.Re2
-                new_im2 = path.Im2
+            # 尝试简化并比较
+            if start_point == end_point:
+                return True
+            
+            # 特殊情况：对于圆形路径 exp(i*t)，检查参数范围是否为 2π 的整数倍
+            if isinstance(self.path_expr, Fun) and self.path_expr.func_name == 'exp':
+                arg = self.path_expr.args[0]
+                # 检查是否形如 i * var 或 var * i
+                if isinstance(arg, Op) and arg.op == '*':
+                    has_i = any(isinstance(a, Fun) and a.func_name == 'i' for a in arg.args)
+                    has_var = any(isinstance(a, Var) and a.name == self.var for a in arg.args)
+                    
+                    if has_i and has_var:
+                        # exp(i*t) 形式，检查参数范围
+                        try:
+                            import math
+                            # 尝试多种方式评估表达式
+                            try:
+                                start_val = eval_expr(self.start_expr)
+                                end_val = eval_expr(self.end_expr)
+                            except:
+                                # 如果 eval_expr 失败，尝试使用 sympy
+                                import sympy
+                                start_val = float(sympy.N(str(self.start_expr)))
+                                end_val = float(sympy.N(str(self.end_expr)))
+                            
+                            angle_diff = abs(end_val - start_val)
+                            
+                            # 如果角度差是 2π 的整数倍（允许小误差），则闭合
+                            cycles = angle_diff / (2 * math.pi)
+                            if abs(cycles - round(cycles)) < 1e-6:
+                                return True
+                        except Exception as e:
+                            # 静默失败，继续其他检查
+                            pass
+            
+            # 尝试使用 sympy 进行符号计算
+            try:
+                import sympy
+                # 将表达式转换为 sympy
+                start_sympy = sympy.simplify(str(start_point))
+                end_sympy = sympy.simplify(str(end_point))
                 
-                # 替换无穷大坐标
-                if is_inf(path.Re1):
-                    new_re1 = Var("r") if is_pos_inf(path.Re1) else Op("-", Var("r"))
-                if is_inf(path.Im1):
-                    new_im1 = Var("r") if is_pos_inf(path.Im1) else Op("-", Var("r"))
-                if is_inf(path.Re2):
-                    new_re2 = Var("r") if is_pos_inf(path.Re2) else Op("-", Var("r"))
-                if is_inf(path.Im2):
-                    new_im2 = Var("r") if is_pos_inf(path.Im2) else Op("-", Var("r"))
-                
-                new_path = LinePath(new_re1, new_im1, new_re2, new_im2)
-                new_paths.append(new_path)
-                
-                # 设置极限方向
-                for param, value in path.infinite_params.items():
-                    limit_type = value
-                    break
-            else:
-                # 非无穷大路径直接添加
-                new_paths.append(path)
-        
-        # 创建新的围道积分
-        new_integral = CompoundContourIntegral(self.var, new_paths, self.body)
-        
-        # 包装在极限表达式中 - 统一使用正无穷大极限
-        return Limit('r', POS_INF, new_integral, None)
+                if start_sympy == end_sympy:
+                    return True
+            except:
+                pass
+            
+            return False
+        except:
+            # 如果无法计算，使用参数相等判断
+            return self.start_expr == self.end_expr
 
-def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
+    def size(self) -> int:
+        return 1 + self.path_expr.size() + self.start_expr.size() + self.end_expr.size()
+    
+    def subst(self, var: str, e: "Expr") -> "Expr":
+        """用表达式替换变量。"""
+        if var == self.var:
+            # 如果替换路径参数变量，需要小心处理
+            # 目前返回 self 不变以避免变量冲突
+            return self
+        else:
+            # 在所有子表达式中进行替换
+            new_path_expr = self.path_expr.subst(var, e)
+            new_start_expr = self.start_expr.subst(var, e)
+            new_end_expr = self.end_expr.subst(var, e)
+            
+            return CINTPath(self.var, new_path_expr, new_start_expr, new_end_expr)
+    
+    def inst_pat(self, mapping: Dict) -> "CINTPath":
+        """通过用映射中的值替换符号来实例化模式。"""
+        inst_path = self.path_expr.inst_pat(mapping)
+        inst_start = self.start_expr.inst_pat(mapping)
+        inst_end = self.end_expr.inst_pat(mapping)
+        return CINTPath(self.var, inst_path, inst_start, inst_end)
+
+
+def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
     """
-    查找复函数的极点。
+    查找复函数的极点及其阶数。
+    
+    对于有理函数 p(z)/q(z)，极点是 q(z)=0 的根。
+    极点的阶数通过检查 q 及其导数在极点处的值来确定。
 
     Args:
         var: 要查找极点的变量
@@ -2276,9 +2081,11 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
         ctx: 上下文环境(可选)
         
     Returns:
-        极点列表
+        List[Tuple[Expr, int]]: 极点列表，每个元素为 (极点, 阶数)
     """
     from integral import solve
+    from integral.poly import normalize
+    from integral import rules
     
     if ctx is None:
         from integral.context import Context
@@ -2286,59 +2093,84 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Expr]:
 
     poles = []
     
-    # 处理特殊情况: const/(z^2+n)
-    if is_op(e) and e.op == '/' and len(e.args) == 2:
-        num, denom = e.args
-        if is_const(num):
-            if denom.is_plus() and len(denom.args) == 2:
-                # 检查是否是 z^2 + n 的形式
-                if (denom.args[0].is_power() and 
-                    is_var(denom.args[0].args[0]) and
-                    is_const(denom.args[0].args[1]) and
-                    denom.args[0].args[1].val == 2 and
-                    is_const(denom.args[1])):
-                    
-                    # 返回极点 -sqrt(n)*i 和 sqrt(n)*i
-                    if denom.args[1] == Const(1):
-                        poles.extend([Fun("i"), Op("-",Fun("i"))])
-                    else:
-                        poles.extend([Op("*", Op('-',Fun('sqrt',denom.args[1])), Fun("i")), Op("*", Fun('sqrt',denom.args[1]), Fun("i"))])
+    # 只处理有理函数（分式）的极点
+    if not (is_op(e) and e.op == '/' and len(e.args) == 2):
+        return poles
+    
+    denom = e.args[1]  # 获取分母（除法的第二个参数）
+    
+    # 分母必须包含变量才有极点
+    if not denom.contains_var(var):
+        return poles
 
-    # 处理分式表达式
-    if is_op(e) and e.op == '/':
-        # 获取分母的零点
-        denominator = e.args[1]
-        if denominator.contains_var(var):
-            try:
-                # 尝试解方程找到极点
-                zeros = solve.solve_equation(denominator, Const(0), var, ctx)
-                if zeros is not None:
-                    poles.append(zeros)
-            except:
-                pass
+    try:
+        # 求解分母为零的点
+        zeros = solve.solve_equation(denom, Const(0), var, ctx)
+        
+        for zero in zeros:
+            zero = normalize(zero, ctx)
+            
+            # 去重检查
+            already_exists = False
+            for existing_pole, _ in poles:
+                if are_equal(zero, existing_pole):
+                    already_exists = True
+                    break
+            
+            if already_exists:
+                continue
+            
+            # 确定极点的阶数
+            order = _determine_pole_order(var, denom, zero, ctx)
+            poles.append((zero, order))
+            
+    except Exception:
+        pass
     
-    # 处理三角函数
-    if is_fun(e):
-        if e.func_name == "tan":
-            # tan(z)在z = (n + 1/2)π处有极点
-            poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
-        elif e.func_name == "cot":
-            # cot(z)在z = nπ处有极点
-            poles.append(Fun("pi"))
-        elif e.func_name == "csc":
-            # csc(z)在z = nπ处有极点
-            poles.append(Fun("pi"))
-        elif e.func_name == "sec":
-            # sec(z)在z = (n + 1/2)π处有极点
-            poles.append(Op("*", Fun("pi"), Const(1)/Const(2)))
+    return poles
+
+def _determine_pole_order(var: str, denom: Expr, pole: Expr, ctx, max_order: int = 10) -> int:
+    """
+    确定极点的阶数
     
-    # 去重
-    unique_poles = []
-    for pole in poles:
-        if pole not in unique_poles:
-            unique_poles.append(pole)
+    通过计算分母及其导数在极点处的值来判断：
+    - 如果 q(pole) = 0 且 q'(pole) ≠ 0，则为1阶极点
+    - 如果 q(pole) = 0, q'(pole) = 0, q''(pole) ≠ 0，则为2阶极点
+    - 依此类推
     
-    return unique_poles
+    Args:
+        var: 变量名
+        denom: 分母表达式
+        pole: 极点
+        ctx: 上下文
+        max_order: 最大检测阶数
+        
+    Returns:
+        int: 极点阶数
+    """
+    from integral.poly import normalize
+    from integral import rules
+    
+    # 计算各阶导数在极点处的值
+    current_expr = denom
+    
+    for order in range(1, max_order + 1):
+        # 计算导数
+        current_expr = rules.deriv(var, current_expr, ctx)
+        
+        try:
+            # 代入极点值
+            value_at_pole = current_expr.subst(var, pole)
+            value_at_pole = normalize(value_at_pole, ctx)
+            
+            # 如果导数在极点处非零，说明找到了阶数
+            if value_at_pole != Const(0) and not (is_const(value_at_pole) and value_at_pole.val == 0):
+                return order
+        except:
+            # 如果计算失败，默认返回当前阶数
+            return order
+    # 如果达到最大阶数还没找到非零导数，返回最大阶数
+    return max_order
 
 def factorial(n):
     """计算阶乘。"""
@@ -2374,241 +2206,211 @@ def is_complex_analytic(e: Expr) -> bool:
         
     return False
 
-def get_branch_points(e: Expr) -> List[Expr]:
-    """获取复变函数的分支点。"""
-    from integral import solve
-    points = []
-    
-    if e.is_divides():
-        # 分母的零点是极点
-        zeros = solve.solve_equation(e.args[1], Const(0))
-        points.extend(zeros)
-        
-    elif e.is_power():
-        base, exp = e.args
-        if not (is_const(exp) and isinstance(exp.val, int) and exp.val >= 0):
-            # 非整数幂的底数零点是分支点
-            zeros = solve.solve_equation(base, Const(0))
-            points.extend(zeros)
-            
-    elif is_fun(e):
-        if e.func_name == "log":
-            # 对数函数在0处有分支点
-            points.append(Const(0))
-            
-        elif e.func_name == "sqrt":
-            # 平方根在0处有分支点
-            points.append(Const(0))
-            
-        elif e.func_name in ["arcsin", "arccos"]:
-            # 反三角函数在±1处有分支点
-            points.extend([Const(1), Const(-1)])
-            
-    return points
-
-def get_singular_points(e: Expr) -> List[Tuple[Expr, str]]:
-    """获取复变函数的奇点。
-    
-    返回值是一个列表，每个元素是(point, type)的元组，
-    其中type可以是:
-    - "pole": 极点
-    - "essential": 本性奇点
-    - "branch": 分支点
-    """
-    from integral import solve
-    points = []
-    
-    if e.is_divides():
-        # 分母的零点是极点
-        zeros = solve.solve_equation(e.args[1], Const(0))
-        for zero in zeros:
-            points.append((zero, "pole"))
-            
-    elif is_fun(e):
-        if e.func_name == "tan":
-            # 正切函数在kπ处有极点
-            points.append((Fun("pi"), "pole"))
-            
-        elif e.func_name == "log":
-            # 对数在0处有分支点
-            points.append((Const(0), "branch"))
-            
-        elif e.func_name == "exp":
-            # 指数函数在无穷远处有本性奇点
-            points.append((POS_INF, "essential"))
-            
-    # 递归处理子表达式
-    if e.is_plus() or e.is_minus() or e.is_times() or e.is_divides():
-        for arg in e.args:
-            points.extend(get_singular_points(arg))
-            
-    return points
-
 class CIntegral(Expr):
-    """Contour integral of an expression."""
-    def __init__(self, var: str, paths: List[Union[CirclePath, LinePath, PolePath]], body: Expr):
+    """Contour integral of an expression.
+    
+    支持形如 CINT z:com(path1,path2,...). f(z) 的围道积分
+    其中path可以是CINTPath对象或路径名称
+    """
+    def __init__(self, var: str, paths: List[Union[CINTPath, str]], body: Expr):
         assert isinstance(var, str) and isinstance(body, Expr)
         self.ty = CINTEGRAL
         self.var = var
-        self.paths = paths
+        self.paths = self._process_paths(paths)
         self.body = body.subst(var, Var(var))
+    
+    def _process_paths(self, paths: List[Union[CINTPath, str]]) -> List[Union[CINTPath, str]]:
+        """处理路径列表，确保路径格式正确"""
+        processed_paths = []
+        for path in paths:
+            if isinstance(path, CINTPath):
+                processed_paths.append(path)
+            elif isinstance(path, str):
+                processed_paths.append(path)
+            else:
+                raise ValueError(f"不支持的路径类型: {type(path)}")
+        return processed_paths
     
     def __hash__(self):
         # 确保paths是一个元组，并且每个path都是可哈希的
-        path_tuple = tuple(hash(p) for p in self.paths)
+        path_tuple = tuple(hash(p) if hasattr(p, '__hash__') else hash(str(p)) for p in self.paths)
         return hash((CINTEGRAL, self.var, path_tuple, self.body))
     
     def __eq__(self, other):
-        return isinstance(other, CIntegral) and self.var == other.var and self.paths == other.paths and self.body == other.body
+        return isinstance(other, CIntegral) and \
+               self.var == other.var and \
+               self.paths == other.paths and \
+               self.body == other.body
 
     def __str__(self):
-        return "CINT %s:com(%s). %s" % (self.var, ",".join(str(p) for p in self.paths), str(self.body))
+        # 格式化路径显示
+        path_strs = []
+        for path in self.paths:
+            if isinstance(path, CINTPath):
+                path_strs.append(str(path))
+            else:
+                path_strs.append(str(path))
+        
+        # 根据路径数量决定格式
+        if len(path_strs) == 1:
+            # 单个路径：CINT z:path. body
+            return "CINT %s:%s. %s" % (self.var, path_strs[0], str(self.body))
+        else:
+            # 多个路径：CINT z:com(path1,path2,...). body
+            return "CINT %s:com(%s). %s" % (self.var, ",".join(path_strs), str(self.body))
     
-    def alpha_convert(self, new_name):
-        """Change the variable of integration to new_name."""
-        assert isinstance(new_name, str), "alpha_convert: new_name must be a string"
-        return CIntegral(new_name, self.paths, self.body.subst(self.var, Var(new_name)))
+    def size(self) -> int:
+        """计算表达式的大小"""
+        path_size = sum(path.size() if hasattr(path, 'size') else 1 for path in self.paths)
+        return 1 + path_size + self.body.size()
+    
+    @classmethod
+    def from_contour_names(cls, var: str, contour_names: List[str], body: Expr):
+        """从围道名称列表创建围道积分"""
+        return cls(var, contour_names, body)
+     
+    @classmethod
+    def from_paths(cls, var: str, paths: List[CINTPath], body: Expr):
+        """从CINTPath对象列表创建围道积分"""
+        return cls(var, paths, body)
 
-def compute_residue(f: Expr, pole: Expr, order: int = 1) -> Expr:
+def are_equal(expr1: Expr, expr2: Expr) -> bool:
+    """检查两个表达式是否相等"""
+    # 表达式完全相等
+    if expr1 == expr2:
+        return True
+    
+    # 常量表达式比较
+    if is_const(expr1) and is_const(expr2):
+        return expr1.val == expr2.val
+    
+    # 其他情况返回False
+    return False
+
+def compute_residue(f: Expr, pole: Expr, order: int = 1, var: str = "z") -> Expr:
     """计算函数f在极点pole处的留数
     
-    对于简单极点（order=1），留数计算公式为：
-    Res(f, pole) = lim_{z->pole} (z-pole) * f(z)
-    
-    对于高阶极点，留数计算公式为：
-    Res(f, pole) = (1/(order-1)!) * lim_{z->pole} (d^(order-1)/dz^(order-1)) [(z-pole)^order * f(z)]
+    使用系统统一的基础设施进行计算：
+    1. 对于简单极点（order=1）:
+       - 有理函数 p(z)/q(z): 使用 Res(f, pole) = p(pole)/q'(pole)
+       - 其他情况: 使用极限定义并尝试化简
+    2. 对于高阶极点: 使用导数公式
     
     Args:
         f: 复变函数表达式
         pole: 极点
-        order: 极点的阶数，默认为1（简单极点）
+        order: 极点的阶数，默认为1
+        var: 积分变量名，默认为"z"
     
     Returns:
         Expr: 留数表达式
     """
-    var = "z"  # 假设变量是z
+    from integral.poly import normalize
+    from integral.context import Context
+    from integral import rules
+    
     z = Var(var)
+    temp_ctx = Context()
     
     if order == 1:  # 简单极点
-        # 留数 = lim_{z->pole} (z-pole) * f(z)
-        expr_to_limit = Op("*", Op("-", z, pole), f)
-        return Limit(var, pole, expr_to_limit)
-    else:  # 高阶极点
-        # 对于高阶极点，需要进行复杂的计算
-        # (z-pole)^order * f(z)
-        expr_to_diff = Op("*", Op("^", Op("-", z, pole), Const(order)), f)
+        # 对于有理函数形式，使用公式 Res(f, pole) = p(pole)/q'(pole)
+        if f.is_divides() and len(f.args) == 2:
+            numerator, denominator = f.args
+            
+            try:
+                # 计算分母的导数
+                denom_deriv = rules.deriv(var, denominator, temp_ctx)
+                
+                # 代入极点值
+                num_at_pole = normalize(numerator.subst(var, pole), temp_ctx)
+                denom_deriv_at_pole = normalize(denom_deriv.subst(var, pole), temp_ctx)
+                
+                # 检查分母导数是否为零（如果为零，说明极点阶数大于1）
+                if denom_deriv_at_pole == Const(0):
+                    # 退回到通用方法
+                    pass
+                else:
+                    # 留数 = p(pole) / q'(pole)
+                    result = normalize(Op("/", num_at_pole, denom_deriv_at_pole), temp_ctx)
+                    return result
+            except:
+                pass  # 如果计算失败，使用通用方法
         
-        # 对上面的表达式求(order-1)阶导数
-        expr_derivative = expr_to_diff
-        for _ in range(order - 1):
-            expr_derivative = Deriv(var, expr_derivative)
+        # 通用方法：lim_{z->pole} (z-pole) * f(z)
+        # 构造表达式 (z - pole) * f
+        pole_diff = normalize(Op("-", z, pole), temp_ctx)
+        expr_to_limit = normalize(Op("*", pole_diff, f), temp_ctx)
         
-        # 计算常数系数 1/(order-1)!
-        factorial = 1
-        for i in range(1, order):
-            factorial *= i
-        coef = Op("/", Const(1), Const(factorial))
-        
-        # 计算留数表达式
-        return Op("*", coef, Limit(var, pole, expr_derivative))
-
-def is_polynomial(expr: Expr, var: str) -> bool:
-    """判断表达式是否为关于var的多项式"""
-    if is_const(expr):
-        return True
-    elif is_var(expr) and expr.name == var:
-        return True
-    elif expr.is_plus() or expr.is_minus():
-        return all(is_polynomial(arg, var) for arg in expr.args)
-    elif expr.is_times():
-        return all(is_polynomial(arg, var) for arg in expr.args)
-    elif expr.is_power():
-        base, exp = expr.args
-        return is_var(base) and base.name == var and is_const(exp) and isinstance(exp.val, int) and exp.val >= 0
-    return False
-
-def solve_polynomial_zeros(polynomial: Expr, var: str) -> List[Expr]:
-    """求解多项式的零点"""
-    # 这是一个简化版的求解函数，实际应用中可能需要更复杂的实现
-    # 对于一阶多项式 ax + b = 0
-    if is_polynomial(polynomial, var) and max_degree(polynomial, var) == 1:
-        # 获取系数
-        a = coefficient(polynomial, var, 1)
-        b = coefficient(polynomial, var, 0)
-        # 求解 x = -b/a
-        return [Op("/", Op("-", b), a)]
-    
-    # 对于二阶多项式 ax^2 + bx + c = 0
-    elif is_polynomial(polynomial, var) and max_degree(polynomial, var) == 2:
-        # 获取系数
-        a = coefficient(polynomial, var, 2)
-        b = coefficient(polynomial, var, 1)
-        c = coefficient(polynomial, var, 0)
-        
-        # 计算判别式
-        delta = Op("-", Op("^", b, Const(2)), Op("*", Const(4), Op("*", a, c)))
-        
-        # 求解 x = (-b ± √Δ) / (2a)
-        x1 = Op("/", Op("+", Op("-", b), Fun("sqrt", delta)), Op("*", Const(2), a))
-        x2 = Op("/", Op("-", Op("-", b), Fun("sqrt", delta)), Op("*", Const(2), a))
-        
-        return [x1, x2]
-    
-    # 对于高阶多项式，返回空列表
-    return []
-
-def max_degree(polynomial: Expr, var: str) -> int:
-    """计算多项式关于var的最高次数"""
-    if is_const(polynomial):
-        return 0
-    elif is_var(polynomial) and polynomial.name == var:
-        return 1
-    elif polynomial.is_plus() or polynomial.is_minus():
-        return max(max_degree(arg, var) for arg in polynomial.args)
-    elif polynomial.is_times():
-        return sum(max_degree(arg, var) for arg in polynomial.args)
-    elif polynomial.is_power() and is_var(polynomial.args[0]) and polynomial.args[0].name == var:
-        if is_const(polynomial.args[1]):
-            return polynomial.args[1].val
-    return 0
-
-def coefficient(polynomial: Expr, var: str, degree: int) -> Expr:
-    """计算多项式中var^degree项的系数"""
-    # 这是一个简化版的系数提取函数，实际应用中可能需要更复杂的实现
-    if is_const(polynomial):
-        return polynomial if degree == 0 else Const(0)
-    elif is_var(polynomial) and polynomial.name == var:
-        return Const(1) if degree == 1 else Const(0)
-    elif polynomial.is_plus():
-        return Op("+", coefficient(polynomial.args[0], var, degree), 
-                     coefficient(polynomial.args[1], var, degree))
-    elif polynomial.is_minus():
-        return Op("-", coefficient(polynomial.args[0], var, degree), 
-                     coefficient(polynomial.args[1], var, degree))
-    elif polynomial.is_times():
-        # 检查是否有var^degree因子
-        var_factor = None
-        const_factors = []
-        
-        for arg in polynomial.args:
-            if is_var(arg) and arg.name == var and degree == 1:
-                var_factor = arg
-            elif arg.is_power() and is_var(arg.args[0]) and arg.args[0].name == var:
-                if is_const(arg.args[1]) and arg.args[1].val == degree:
-                    var_factor = arg
-            else:
-                const_factors.append(arg)
-        
-        if var_factor is not None:
-            # 返回其他因子的乘积作为系数
-            if not const_factors:
-                return Const(1)
-            elif len(const_factors) == 1:
-                return const_factors[0]
-            else:
-                result = const_factors[0]
-                for factor in const_factors[1:]:
-                    result = Op("*", result, factor)
+        try:
+            # 尝试通过泰勒展开或代数化简计算极限
+            # 首先尝试直接代入
+            result = expr_to_limit.subst(var, pole)
+            result = normalize(result, temp_ctx)
+            
+            # 检查结果是否有效（不含无穷或未定义形式）
+            if not (is_inf(result) or _contains_zero_division(result)):
                 return result
+            
+            # 无法直接计算，返回极限表达式
+            return Limit(var, pole, expr_to_limit)
+            
+        except Exception:
+            # 计算失败，返回极限表达式
+            return Limit(var, pole, expr_to_limit)
     
-    return Const(0)
+    else:  # 高阶极点
+        # 使用公式: Res(f, pole) = 1/(n-1)! * lim_{z->pole} d^(n-1)/dz^(n-1) [(z-pole)^n * f(z)]
+        
+        try:
+            # 构造 (z-pole)^order * f(z)
+            pole_diff = Op("-", z, pole)
+            pole_power = Op("^", pole_diff, Const(order))
+            expr_to_diff = normalize(Op("*", pole_power, f), temp_ctx)
+            
+            # 对表达式求 (order-1) 阶导数
+            result = expr_to_diff
+            for _ in range(order - 1):
+                result = rules.deriv(var, result, temp_ctx)
+                result = normalize(result, temp_ctx)
+            
+            # 代入极点值
+            result = result.subst(var, pole)
+            result = normalize(result, temp_ctx)
+            
+            # 除以 (order-1)!
+            factorial_val = 1
+            for i in range(1, order):
+                factorial_val *= i
+            
+            result = normalize(Op("/", result, Const(factorial_val)), temp_ctx)
+            
+            return result
+            
+        except Exception:
+            # 如果计算失败，返回使用极限和导数的表达式
+            pole_diff = Op("-", z, pole)
+            pole_power = Op("^", pole_diff, Const(order))
+            expr_to_diff = Op("*", pole_power, f)
+            
+            # 创建导数表达式
+            deriv_expr = expr_to_diff
+            for _ in range(order - 1):
+                deriv_expr = Deriv(var, deriv_expr)
+            
+            # 计算阶乘
+            factorial_val = 1
+            for i in range(1, order):
+                factorial_val *= i
+            
+            return Op("/", Limit(var, pole, deriv_expr), Const(factorial_val))
+
+
+def _contains_zero_division(e: Expr) -> bool:
+    """检查表达式是否包含除零"""
+    if is_op(e) and e.op == '/' and len(e.args) == 2:
+        if e.args[1] == Const(0):
+            return True
+        return _contains_zero_division(e.args[0]) or _contains_zero_division(e.args[1])
+    elif is_op(e) or is_fun(e):
+        return any(_contains_zero_division(arg) for arg in e.args)
+    return False

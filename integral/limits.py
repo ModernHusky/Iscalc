@@ -7,7 +7,7 @@ from integral import expr
 from integral.expr import NEG_INF, POS_INF, Const, Expr
 from integral.poly import normalize
 from integral.context import Context
-from integral import poly
+from integral import condprover
 
 
 """Return value of comparison."""
@@ -719,7 +719,12 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
     the expression LIM {x->oo}. e.
 
     """
-    l = limit_of_expr(e, var_name, ctx)
+    # Create proper limit context with isReal(var) and var > 0
+    limit_ctx = Context(ctx)
+    limit_ctx.add_condition(expr.isReal(expr.Var(var_name)))
+    limit_ctx.add_condition(expr.Op(">", expr.Var(var_name), expr.Const(0)))
+    
+    l = limit_of_expr(e, var_name, limit_ctx)
     if l.e is not None:
         return l.e
     elif expr.is_fun(e) and e.func_name == 'exp':
@@ -734,7 +739,7 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
                     return Const(0)  
         elif expr.is_plus(arg) or expr.is_minus(arg):
             for term in arg.args:
-                if not poly.contains_i(term, ctx) and term.contains_var(var_name):
+                if not limit_ctx.check_condition(expr.Fun("notReal", term)) and term.contains_var(var_name):
                     real_part = term
                     break
             if real_part is not None:
