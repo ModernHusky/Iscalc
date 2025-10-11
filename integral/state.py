@@ -15,6 +15,27 @@ from integral.action import Action, CalculateAction, ProveAction, LHSAction, \
     BaseCaseAction, InductCaseAction, CaseAction, ImportsAction, LetAction
 
 
+def extract_solving_skolem_funcs(goal_expr: expr.Expr) -> list[str]:
+    """Extract Skolem functions that are being solved for in the goal.
+
+    For example, if the goal is: SKOLEM_FUNC(C(a)) = pi/2
+    This returns ["C(a)"] to mark it as being solved.
+    """
+    solving_funcs = []
+
+    # Check if it's an equation with Skolem func on LHS
+    if goal_expr.is_equals():
+        lhs = goal_expr.lhs
+        if expr.is_skolem_func(lhs):
+            if len(lhs.dependent_vars) == 0:
+                solving_funcs.append(lhs.name)
+            else:
+                args_str = ",".join(str(arg) for arg in lhs.dependent_vars)
+                solving_funcs.append(f"{lhs.name}({args_str})")
+
+    return solving_funcs
+
+
 class State:
     """Base class for states."""
 
@@ -47,6 +68,9 @@ class InitialState(State):
             if expr.is_equals(action.expr) and expr.is_indefinite_integral(action.expr.lhs):
                 action.conditions.add_condition(expr.isReal(expr.Var(action.expr.lhs.var)))
             goal = Goal(None, self.ctx, action.expr, conds=action.conditions)
+            # Auto-mark Skolem functions that are being solved for
+            for skolem_str in extract_solving_skolem_funcs(action.expr):
+                goal.ctx.mark_skolem_solving(skolem_str)
             return ProveState(self, goal)
         
         # Add a definition
@@ -126,6 +150,9 @@ class ProveState(State):
                 "Prove",
                 f"Sub-goals cannot be nested.")
             subgoal = self.goal.add_subgoal(action.name, action.expr, action.conditions)
+            # Auto-mark Skolem functions that are being solved for
+            for skolem_str in extract_solving_skolem_funcs(action.expr):
+                subgoal.ctx.mark_skolem_solving(skolem_str)
             return ProveState(self, subgoal)
         
         # Done with current subgoal
@@ -137,7 +164,7 @@ class ProveState(State):
         elif isinstance(action, LetAction):
             self.goal.add_definition(action.expr, action.conditions)
             return self
-        
+
         # Abandon the current calculation or proof
         elif isinstance(action, SorryAction):
             if isinstance(self.past, InitialState):

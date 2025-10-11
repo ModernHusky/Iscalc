@@ -1059,8 +1059,34 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
         return e
     elif expr.is_op(e):
         op = e.op
-        if op == '*':
-            a, b = e.args
+        # First recursively simplify the operands
+        simplified_args = [simplify_skolem(arg, ctx) for arg in e.args]
+
+        if op == '+' and len(simplified_args) == 2:
+            # constant + SKOLEM_CONST => SKOLEM_CONST
+            # But ONLY if:
+            # 1. SKOLEM_CONST has no dependencies (is a pure constant), AND
+            # 2. It's not currently being solved for in a proof
+            a, b = simplified_args
+            if (a.is_constant() and expr.is_skolem_func(b) and
+                len(b.dependent_vars) == 0 and not ctx.is_skolem_solving(b)):
+                return b
+            elif (expr.is_skolem_func(a) and b.is_constant() and
+                  len(a.dependent_vars) == 0 and not ctx.is_skolem_solving(a)):
+                return a
+        elif op == '-' and len(simplified_args) == 2:
+            # constant - SKOLEM_CONST => SKOLEM_CONST
+            # SKOLEM_CONST - constant => SKOLEM_CONST
+            # But ONLY if it's not being solved for
+            a, b = simplified_args
+            if (a.is_constant() and expr.is_skolem_func(b) and
+                len(b.dependent_vars) == 0 and not ctx.is_skolem_solving(b)):
+                return b
+            elif (expr.is_skolem_func(a) and b.is_constant() and
+                  len(a.dependent_vars) == 0 and not ctx.is_skolem_solving(a)):
+                return a
+        elif op == '*' and len(simplified_args) == 2:
+            a, b = simplified_args
             if expr.is_const(a) and expr.is_skolem_func(b):
                 if a.val != 0:
                     return b
@@ -1071,14 +1097,14 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
                     return a
                 else:
                     return expr.Const(0)
-        elif op == '/':
-            a, b = e.args
+        elif op == '/' and len(simplified_args) == 2:
+            a, b = simplified_args
             if expr.is_const(b) and expr.is_skolem_func(a):
                 if b.val != 0:
                     return a
                 else:
                     raise ValueError("The denominator cannot be 0")
-        return expr.Op(op, *[simplify_skolem(arg, ctx) for arg in e.args])
+        return expr.Op(op, *simplified_args)
     elif expr.is_fun(e):
         return expr.Fun(e.func_name, *[simplify_skolem(arg, ctx) for arg in e.args])
     elif expr.is_summation(e):

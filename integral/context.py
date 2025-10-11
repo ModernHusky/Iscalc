@@ -170,6 +170,10 @@ class Context:
         # List of identities of summation/product split
         self.split_identities: list[Identity] = list()
 
+        # Set of Skolem functions currently being solved for (should not be merged)
+        # Each entry is a string like "C(a)" representing the Skolem function
+        self.solving_skolem_funcs: set[str] = set()
+
     def __str__(self):
         res = ""
         res += "Definitions\n"
@@ -422,6 +426,33 @@ class Context:
 
     def add_subgoal(self, name: str, identity: Identity):
         self.subgoals[name] = identity
+
+    def mark_skolem_solving(self, skolem_str: str):
+        """Mark a Skolem function as being solved for (should not be auto-merged)."""
+        self.solving_skolem_funcs.add(skolem_str)
+
+    def unmark_skolem_solving(self, skolem_str: str):
+        """Unmark a Skolem function after solving is complete."""
+        self.solving_skolem_funcs.discard(skolem_str)
+
+    def is_skolem_solving(self, skolem_func: Expr) -> bool:
+        """Check if a Skolem function is currently being solved for."""
+        if not expr.is_skolem_func(skolem_func):
+            return False
+        # Convert to string representation like "C(a, b)"
+        if len(skolem_func.dependent_vars) == 0:
+            skolem_str = skolem_func.name
+        else:
+            args_str = ",".join(str(arg) for arg in skolem_func.dependent_vars)
+            skolem_str = f"{skolem_func.name}({args_str})"
+
+        # Check in current context
+        if skolem_str in self.solving_skolem_funcs:
+            return True
+        # Check in parent context
+        if self.parent is not None:
+            return self.parent.is_skolem_solving(skolem_func)
+        return False
 
     def load_book(self, book_name: str):
         """Load the book with the given name.
