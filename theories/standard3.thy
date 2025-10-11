@@ -173,11 +173,29 @@ prove (INT x. x ^ m * log(a + b * x)) = 1 / (m + 1) * (x ^ (m + 1) - (-a) ^ (m +
 sorry
 
 // 2
-prove (INT x. x * log(a + b * x)) = 1/2 * (x^2 - a^2 / b^2) * log(a + b * x) - 1/2 * (x^2/2 - a*x/b) + SKOLEM_CONST(C) for a + b*x > 0
-sorry
+prove (INT x. x * log(a + b * x)) = 1/2 * (x^2 - a^2 / b^2) * log(a + b * x) - 1/2 * (x^2/2 - a*x/b) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
+lhs:
+    integrate by parts with u = log(a + b * x), v = x^2/2
+    simplify
+    rewrite x^2 / (2*b*x + 2*a) to x / (2*b) - a / (2*b^2) + a^2 / (2*b^2*(b*x + a))
+    apply integral identity
+    simplify
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    simplify
+    expand polynomial
+    simplify
+    rewrite -(a ^ 2 * log(b * x + a) / (2 * b ^ 2)) + x ^ 2 * log(b * x + a) / 2 to (x^2 - a^2/b^2) / 2 * log(a + b*x)
+rhs:
+    expand polynomial
+    simplify
+    rewrite -(a ^ 2 * log(b * x + a) / (2 * b ^ 2)) + x ^ 2 * log(b * x + a) / 2 to (x^2 - a^2/b^2) / 2 * log(a + b*x)
+done
 
 // 3
-prove (INT x. x^2 * log(a + b * x)) = 1/3 * (x^3 + a^3 / b^3) * log(a + b*x) - 1/3 * (x^3 / 3 - a * x^2 / 2 * b + a^2 * x / b^2) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
+
+prove (INT x. x^2 * log(a + b * x)) = 1/3 * (x^3 + a^3 / b^3) * log(a + b*x) - 1/3 * (x^3 / 3 - a * x^2 / (2 * b) + a^2 * x / b^2) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
 sorry
 
 // 4
@@ -247,7 +265,26 @@ done
 
 // 4
 prove (INT x. x ^ 3 * log(x ^ 2 + a ^ 2)) = 1/4 * ((x ^ 4 - a ^ 4) * log(x ^ 2 + a ^ 2) - x ^ 4/2 + a ^ 2 * x ^ 2) + SKOLEM_CONST(C) for x^2 + a^2 > 0
-sorry
+lhs:
+    integrate by parts with u = log(x^2 + a^2), v = x^4/4
+    simplify
+    rewrite x^5 / (2*a^2 + 2*x^2) to (x^3/2 - a^2*x/2 + a^4*x/(2*(x^2 + a^2)))
+    simplify
+    apply integral identity
+    simplify
+    substitute u for x^2 + a^2
+    simplify
+    rewrite sqrt(-(a^2) + u)/(u * sqrt(-(a^2) + u)) to 1/u
+    simplify
+    apply integral identity
+    simplify
+    replace substitution
+    simplify
+    rewrite -(a ^ 4 * log(a ^ 2 + x ^ 2) / 4) + x ^ 4 * log(a ^ 2 + x ^ 2) / 4 to (x ^ 4 - a ^ 4) * log(a ^ 2 + x ^ 2) / 4
+rhs:
+    expand polynomial
+    rewrite -(a ^ 4 * log(a ^ 2 + x ^ 2) / 4) + x ^ 4 * log(a ^ 2 + x ^ 2) / 4 to (x ^ 4 - a ^ 4) * log(a ^ 2 + x ^ 2) / 4
+done
 
 // 5
 prove (INT x. x ^ 4 * log(x ^ 2 + a ^ 2)) = 1/5 * (x ^ 5 * log(x ^ 2 + a ^ 2) - 2/5 * x ^ 5 + 2/3 * a ^ 2 * x ^ 3 - 2 * a ^ 4 * x + 2 * a ^ 5 * arctan(x/a)) + SKOLEM_CONST(C) for a != 0, x^2 + a^2 > 0

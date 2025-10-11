@@ -14,7 +14,7 @@ from integral import context
 class ActionTest(unittest.TestCase):
     def check_file(self, filename: str, *, print_lines=False, print_state=False,
                    write_stats=False):
-        with open(f'../theories/{filename}.thy', 'r', encoding='utf-8') as f:
+        with open(f'theories/{filename}.thy', 'r', encoding='utf-8') as f:
             content = f.read()
         state.check_actions(content, print_lines=print_lines, print_state=print_state,
                             write_stats=write_stats, filename=filename)

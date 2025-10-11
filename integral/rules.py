@@ -2957,7 +2957,7 @@ def get_definitions(e:Expr, ctx:Context) -> List[str]:
                 if definition.symbol == sube.func_name and definition.define_eq is not None:
                     s = definition.symbol
                     if definition.args != []:
-                        s = s + f"({", ".join(definition.args)})"
+                        s = s + f"({', '.join(definition.args)})"
                     if definition.conds.data != []:
                         s = s + " for " + str(definition.conds)
                     res.add(s)
