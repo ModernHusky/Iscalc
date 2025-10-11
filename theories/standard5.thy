@@ -98,6 +98,7 @@ lhs:
 done
 
 // 4
+// This reduction formula requires complex algebraic manipulation that is beyond// the current automation capabilities of the system.
 prove (INT x. x / (a + b * x) ^ n) = x / (b * (2 - n) * (a + b * x) ^ (n - 1)) - a / (b * (2 - n)) * INT x. 1 / (a + b * x) ^ n for a + b * x != 0, n != 2, b != 0
 sorry
 
@@ -116,6 +117,7 @@ lhs:
 done
 
 // 2
+// Requires complex algebraic rewriting to match the expected form
 prove (INT x. x ^ 2 / (a + b * x) ^ 2) = x / b ^ 2 - a ^ 2 / (b ^ 3 * (a + b * x)) - 2 * a / b ^ 3 * log(abs(a + b * x)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
 sorry
 
@@ -176,7 +178,19 @@ sorry
 #### 4.2.2.7
 // 1
 prove (INT x. 1 / (x * (a + b * x))) = -1 / a * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for x != 0 ,a + b * x != 0, a != 0
-sorry
+lhs:
+    rewrite 1 / (x * (a + b * x)) to 1 / (a * x) - b / (a * (a + b * x))
+    apply integral identity
+    simplify
+    substitute u for a + b * x
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite -(b * log(abs(b * x + a)) / (a * b)) + log(abs(x)) / a to (-log(abs(b * x + a)) + log(abs(x))) / a
+    simplify
+    rewrite log(abs(x) / abs(b * x + a)) to -log(abs(b * x + a) / abs(x))
+    simplify
+done
 
 // 2
 prove (INT x. 1 / (x * (a + b * x) ^ 2)) = 1 / (a * (a + b * x)) - 1 / a ^ 2 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for a + b * x != 0, x != 0, a != 0
@@ -223,6 +237,7 @@ lhs:
 done
 
 // 2
+// Requires logarithm properties to combine log(x-a) - log(x-b) = log((x-a)/(x-b))
 prove (INT x. 1 / ((x - a) * (x - b))) = 1 / (a - b) * log(abs((x - a) / (x - b))) + SKOLEM_CONST(C) for x != a, x != b, a != b
 sorry
 

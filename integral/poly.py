@@ -967,7 +967,7 @@ def simplify_trig(e: expr.Expr, ctx: Context) -> expr.Expr:
 def simplify_log(e: expr.Expr, ctx: Context) -> expr.Expr:
     if not (expr.is_fun(e) and e.func_name == 'log'):
         return e
-    
+
     a = e.args[0]
     if not a.is_constant():
         return e
@@ -989,8 +989,67 @@ def simplify_log(e: expr.Expr, ctx: Context) -> expr.Expr:
         return expr.log(a.args[0]) - expr.log(a.args[1])
     elif expr.is_fun(a) and a.func_name == 'sqrt':
         return expr.log(a.args[0]) / 2
+    # Handle log(abs(a/b)) -> log(abs(a)) - log(abs(b))
+    elif expr.is_fun(a) and a.func_name == 'abs' and a.args[0].is_divides():
+        inner = a.args[0]
+        return expr.log(expr.Fun('abs', inner.args[0])) - expr.log(expr.Fun('abs', inner.args[1]))
+    # Handle log(abs(a*b)) -> log(abs(a)) + log(abs(b))
+    elif expr.is_fun(a) and a.func_name == 'abs' and a.args[0].is_times():
+        inner = a.args[0]
+        return expr.log(expr.Fun('abs', inner.args[0])) + expr.log(expr.Fun('abs', inner.args[1]))
     else:
         return e
+
+def simplify_log_combination(e: expr.Expr, ctx: Context) -> expr.Expr:
+    """Combine log expressions using logarithm properties.
+
+    Handles patterns:
+    - log(abs(a)) - log(abs(b)) -> log(abs(a/b))
+    - log(abs(a)) + log(abs(b)) -> log(abs(a*b))
+    - -log(abs(a)) + log(abs(b)) -> log(abs(b/a))
+    - log(abs(a)) + (-log(abs(b))) -> log(abs(a/b))
+
+    NOTE: Standalone -log(abs(x)) is NOT converted to log(abs(1/x)),
+    to preserve the expected form in existing proofs (e.g., INT tan(x) = -log(abs(cos(x)))).
+    We only combine when there are TWO log terms involved.
+    """
+    # Helper function to check if expression is log(abs(...))
+    def is_log_abs(e):
+        return (expr.is_fun(e) and e.func_name == 'log' and
+                len(e.args) > 0 and
+                expr.is_fun(e.args[0]) and e.args[0].func_name == 'abs')
+
+    # Handle: log(abs(a)) - log(abs(b)) -> log(abs(a/b))
+    if e.is_minus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        if is_log_abs(lhs) and is_log_abs(rhs):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', a / b))
+
+    # Handle: log(abs(a)) + log(abs(b)) -> potentially combine
+    elif e.is_plus() and len(e.args) == 2:
+        lhs, rhs = e.args
+
+        # Pattern 1: log(abs(a)) + log(abs(b)) -> log(abs(a*b))
+        if is_log_abs(lhs) and is_log_abs(rhs):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', a * b))
+
+        # Pattern 2: -log(abs(a)) + log(abs(b)) -> log(abs(b/a))
+        elif expr.is_uminus(lhs) and is_log_abs(lhs.args[0]) and is_log_abs(rhs):
+            a = lhs.args[0].args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', b / a))
+
+        # Pattern 3: log(abs(a)) + (-log(abs(b))) -> log(abs(a/b))
+        elif is_log_abs(lhs) and expr.is_uminus(rhs) and is_log_abs(rhs.args[0]):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0].args[0]
+            return expr.log(expr.Fun('abs', a / b))
+
+    return e
 
 def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
     if not (expr.is_fun(e) and e.func_name == 'sqrt'):
@@ -1185,6 +1244,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_power, ctx)
         e = apply_subterm(e, simplify_trig, ctx)
         e = apply_subterm(e, simplify_log, ctx)
+        e = apply_subterm(e, simplify_log_combination, ctx)
         e = apply_subterm(e, simplify_sqrt, ctx)
         e = apply_subterm(e, simplify_inf, ctx)
         e = apply_subterm(e, simplify_sum, ctx)

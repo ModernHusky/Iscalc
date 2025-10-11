@@ -176,6 +176,12 @@ axiom [bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
 
 axiom [bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
 
+axiom [bidirectional] log(abs(a / b)) = log(abs(a)) - log(abs(b)) for a != 0, b != 0
+
+axiom [bidirectional] log(a / b) = -log(b / a) for a > 0, b > 0
+
+axiom [bidirectional] log(abs(a / b)) = -log(abs(b / a)) for a != 0, b != 0
+
 axiom [simp] log(1 / x) = -log(x) for x > 0
 
 axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
