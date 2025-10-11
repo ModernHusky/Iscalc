@@ -1,3 +1,5 @@
+imports base
+
 # Handbook of mathematical formulas and integrals
 ## Chapter 4 Indefinite Integrals of Algebraic Functions
 
@@ -11,8 +13,14 @@ prove (INT x. (a + b * x) ^ n) = (a + b * x) ^ (n + 1) / (b * (n + 1)) + SKOLEM_
 sorry
 
 // 2
-prove (INT x. 1 / (a + b * x)) = 1 / b * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0
-sorry
+prove (INT x. 1 / (a + b * x)) = 1 / b * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
+lhs:
+    substitute u for a + b * x
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 3
 prove (INT x. 1 / (a + b * x) ^ 2) = -1 / (b * (a + b * x)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
