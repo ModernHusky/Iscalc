@@ -70,6 +70,9 @@ class ActionTest(unittest.TestCase):
     def testStandard4(self):
         self.check_file("standard4")
 
+    def testStandard5(self):
+        self.check_file("standard5")
+
     def testMIT2019(self):
         self.check_file("mit2019")
 
