@@ -47,7 +47,15 @@ sorry
 #### 4.2.2.2
 // 1
 prove (INT x. x / (a + b * x)) = x / b - a / b ^ 2 * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
-sorry
+lhs:
+    rewrite x / (a + b * x) to 1 / b - a / (b * (a + b * x))
+    simplify
+    apply integral identity
+    substitute u for a + b * x
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 2
 prove (INT x. x / (a + b * x) ^ 2) = -x / (b * (a + b * x)) + 1 / (b ^ 2) * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
