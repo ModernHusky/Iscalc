@@ -193,6 +193,7 @@ lhs:
 done
 
 // 2
+// Partial fraction decomposition doesn't support multiple variables
 prove (INT x. 1 / (x * (a + b * x) ^ 2)) = 1 / (a * (a + b * x)) - 1 / a ^ 2 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for a + b * x != 0, x != 0, a != 0
 sorry
 
@@ -207,7 +208,11 @@ sorry
 #### 4.2.2.8
 // 1
 prove (INT x. 1 / (x ^ 2 * (a + b * x))) = -1 / (a * x) + b / a ^ 2 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for x != 0, a + b * x != 0, a != 0
-sorry
+lhs:
+    rewrite 1 / (x ^ 2 * (a + b * x)) to 1 / (a * x ^ 2) - b / (a * x * (a + b * x))
+    apply integral identity
+    simplify
+done
 
 // 2
 prove (INT x. 1 / (x ^ 2 * (a + b * x) ^ 2)) = -(1 / (a * x) + 2 * b / a ^ 2) / (a + b * x) + 2 * b / a ^ 3 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for x != 0, a + b * x != 0, a != 0
@@ -237,13 +242,36 @@ lhs:
 done
 
 // 2
-// Requires logarithm properties to combine log(x-a) - log(x-b) = log((x-a)/(x-b))
 prove (INT x. 1 / ((x - a) * (x - b))) = 1 / (a - b) * log(abs((x - a) / (x - b))) + SKOLEM_CONST(C) for x != a, x != b, a != b
-sorry
+lhs:
+    rewrite 1 / ((x - a) * (x - b)) to 1 / ((a - b) * (x - a)) - 1 / ((a - b) * (x - b))
+    apply integral identity
+    simplify
+    substitute u for x - a
+    apply integral identity
+    replace substitution
+    substitute v for x - b
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite log(abs(-a + x)) / (a - b) - log(abs(-b + x)) / (a - b) to (log(abs(x - a)) - log(abs(x - b))) / (a - b)
+    simplify
+done
 
 // 3
 prove (INT x. x / ((x - a) * (x - b))) = a / (a - b) * log(abs(x - a)) - b / (a - b) * log(abs(x - b)) + SKOLEM_CONST(C) for x != a, x != b, a != b
-sorry
+lhs:
+    rewrite x / ((x - a) * (x - b)) to a / ((a - b) * (x - a)) - b / ((a - b) * (x - b))
+    apply integral identity
+    simplify
+    substitute u for x - a
+    apply integral identity
+    replace substitution
+    substitute v for x - b
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 4
 prove (INT x. 1 / ((x - a) ^ 2 * (x - b))) = -1 / ((x - a) * (a - b)) - 1 / (a - b) ^ 2 * log(abs((x - a) / (x - b))) + SKOLEM_CONST(C) for x != a, a != b, x != b
