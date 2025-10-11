@@ -7,7 +7,7 @@
 #### 4.2.2.1
 
 // 1
-prove (INT x. (a + bx) ^ n) = (a + b * x) ^ (n + 1) / (b * (n + 1)) + SKOLEM_CONST(C) for n != -1, b != 0
+prove (INT x. (a + b * x) ^ n) = (a + b * x) ^ (n + 1) / (b * (n + 1)) + SKOLEM_CONST(C) for n != -1, b != 0
 sorry
 
 // 2
@@ -33,7 +33,7 @@ lhs:
 done
 
 // 5
-prove (INT x. 1 / (a + b * x) ^ n) = -1 / (b * (n - 1) * (a + b * x) ^ n) + SKOLEM_CONST(C) for a + b * x != 0, b != 0, n != 1
+prove (INT x. 1 / (a + b * x) ^ n) = -1 / (b * (n - 1) * (a + b * x) ^ (n - 1)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0, n != 1
 sorry
 
 #### 4.2.2.2
