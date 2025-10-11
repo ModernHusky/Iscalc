@@ -9,8 +9,14 @@ imports base
 #### 4.2.2.1
 
 // 1
-prove (INT x. (a + b * x) ^ n) = (a + b * x) ^ (n + 1) / (b * (n + 1)) + SKOLEM_CONST(C) for n != -1, b != 0
-sorry
+prove (INT x. (a + b * x) ^ n) = (a + b * x) ^ (n + 1) / (b * (n + 1)) + SKOLEM_CONST(C) for n: int, n != -1, n >= 0, b != 0
+lhs:
+    substitute u for a + b * x
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 2
 prove (INT x. 1 / (a + b * x)) = 1 / b * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
@@ -41,8 +47,15 @@ lhs:
 done
 
 // 5
-prove (INT x. 1 / (a + b * x) ^ n) = -1 / (b * (n - 1) * (a + b * x) ^ (n - 1)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0, n != 1
-sorry
+prove (INT x. 1 / (a + b * x) ^ n) = -1 / (b * (n - 1) * (a + b * x) ^ (n - 1)) + SKOLEM_CONST(C) for n: int, a + b * x != 0, b != 0, n != 1, n >= 2
+lhs:
+    substitute u for a + b * x
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite (b * x + a) ^ (-n + 1) / (b * (-n + 1)) to -1 / (b * (n - 1) * (a + b * x) ^ (n - 1))
+done
 
 #### 4.2.2.2
 // 1
@@ -59,7 +72,15 @@ done
 
 // 2
 prove (INT x. x / (a + b * x) ^ 2) = -x / (b * (a + b * x)) + 1 / (b ^ 2) * log(a + b * x) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
-sorry
+lhs:
+    integrate by parts with u = x, v = -1 / (b * (a + b * x))
+    simplify
+    substitute w for a + b * x
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 3
 prove (INT x. x / (a + b * x) ^ 3) = -(x / b + a / (2 * b ^ 2)) / (a + b * x) ^ 2 + SKOLEM_CONST(C) for a + b * x != 0, b != 0
