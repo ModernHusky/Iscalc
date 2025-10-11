@@ -9,8 +9,20 @@ imports base
 
 // find an error in the book, the original answer is `arcsin(x/a) + sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C)`
 // 1
-prove (INT x. arcsin(x / a)) = x * arcsin(x / a) + sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. arcsin(x / a)) = x * arcsin(x / a) + sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arcsin(x / a), v = x
+    simplify
+    rewrite x / sqrt(-(x ^ 2 / a ^ 2) + 1) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to (a * x) / sqrt(a ^ 2 - x ^ 2)
+    rewrite -(1 / a * (INT x. (a * x) / sqrt(a ^ 2 - x ^ 2))) to -(INT x. x / sqrt(a ^ 2 - x ^ 2))
+    substitute u for a ^ 2 - x ^ 2
+    simplify
+    rewrite 1 / sqrt(u) to u ^ (-1/2)
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 2
 prove (INT x. arcsin(x / a) ^ 2) = x * arcsin(x / a) ^ 2 + 2 * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
@@ -59,8 +71,20 @@ sorry
 ### 10.1.3.1
 
 // 1
-prove (INT x. arccos(x / a)) = x * arccos(x / a) - sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. arccos(x / a)) = x * arccos(x / a) - sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arccos(x / a), v = x
+    simplify
+    rewrite x / sqrt(-(x ^ 2 / a ^ 2) + 1) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to (a * x) / sqrt(a ^ 2 - x ^ 2)
+    rewrite 1 / a * (INT x. (a * x) / sqrt(a ^ 2 - x ^ 2)) to (INT x. x / sqrt(a ^ 2 - x ^ 2))
+    substitute u for a ^ 2 - x ^ 2
+    simplify
+    rewrite 1 / sqrt(u) to u ^ (-1/2)
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 2
 prove (INT x. arccos(x / a) ^ 2) = x * arccos(x / a) ^ 2 - 2 * sqrt(a ^ 2 - x ^ 2) * arccos(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
