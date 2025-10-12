@@ -186,7 +186,22 @@ done
 
 // 4
 prove (INT x. x ^ 3 * arctan(x / a)) = 1 / 4 * (x ^ 4 - a ^ 4) * arctan(x / a) - 1 / 12 * a * x ^ 3 + 1 / 4 * a ^ 3 * x + SKOLEM_CONST(C) for a != 0, x != 0
-sorry
+lhs:
+    integrate by parts with u = arctan(x / a), v = x^4 / 4
+    simplify
+    rewrite x ^ 4 / (x ^ 2 / a ^ 2 + 1) to (a ^ 2 * x ^ 4) / (x ^ 2 + a ^ 2)
+    simplify
+    rewrite x ^ 4 / (a ^ 2 + x ^ 2) to x ^ 2 - a ^ 2 + a ^ 4 / (a ^ 2 + x ^ 2)
+    simplify
+    apply integral identity
+    rewrite 1 / (a^2 + x^2) to (1/a^2) / (1 + (x/a)^2)
+    substitute u for x/a
+    simplify
+    apply integral identity
+    replace substitution
+    rewrite x ^ 4 / 4 * arctan(x / a) - a / 4 * (a ^ 3 * arctan(x / a) - a ^ 2 * x + x ^ 3 / 3) to (x^4 / 4 - a^4 / 4) * arctan(x / a) + a^3 * x / 4 - a * x^3 / 12
+    simplify
+done
 
 // 5
 prove (INT x. x ^ n * arctan(x / a)) = x ^ (n + 1) / (n + 1) * arctan(x / a) - a / (n + 1) * (INT x. x ^ (n + 1) / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for a != 0, x != 0
@@ -235,7 +250,21 @@ done
 
 // 3
 prove (INT x. 1 / x ^ 3 * arctan(x / a)) = -1 / 2 * (1 / x ^ 2 + 1 / a ^ 2) * arctan(x / a) - 1 / (2 * a * x) + SKOLEM_CONST(C) for a != 0, x != 0
-sorry
+lhs:
+    integrate by parts with u = arctan(x / a), v = -1 / (2 * x ^ 2)
+    simplify
+    rewrite x^2 / a^2 + 1 to (x^2 + a^2) / a^2
+    rewrite 1 / (x ^ 2 * ((x^2 + a^2) / a^2)) to a^2 / (x ^ 2 * (x^2 + a^2))
+    partial fraction decomposition
+    apply integral identity
+    simplify
+    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
+    substitute u for x/a
+    simplify
+    apply integral identity
+    replace substitution
+    rewrite 1 / (2 * a) * (-(1 / a * arctan(x / a)) - 1 / x) - 1 / (2 * x ^ 2) * arctan(x / a) to -1/2 * (1 / x ^ 2 + 1 / a ^ 2) * arctan(x / a) - 1 / (2 * a * x)
+done
 
 // 4
 prove (INT x. 1 / x ^ n * arctan(x / a)) = -1 / ((n - 1) * x ^ (n - 1)) * arctan(x / a) + a / (n -1) * (INT x. 1 / (x ^ (n - 1) * (x ^ 2 + a ^ 2))) + SKOLEM_CONST(C) for n != 1, a != 0

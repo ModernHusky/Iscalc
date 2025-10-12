@@ -1246,9 +1246,6 @@ def simplify_arithmetic_form(e: expr.Expr, ctx: Context) -> expr.Expr:
         # Pattern: x + (-a) -> x - a (where -a is a negated expression)
         elif expr.is_uminus(rhs) and not expr.is_uminus(lhs):
             return lhs - rhs.args[0]
-
-    # Handle minus with consistent variable ordering: prefer (x - a) over (a - x)
-    # But ONLY if x is a variable and a is not (to avoid breaking x - y)
     elif e.is_minus() and len(e.args) == 2:
         lhs, rhs = e.args
         # Normalize: (-a - b) -> -(a + b)
