@@ -193,11 +193,41 @@ done
 // 3
 
 prove (INT x. x^2 * log(a + b * x)) = 1/3 * (x^3 + a^3 / b^3) * log(a + b*x) - 1/3 * (x^3 / 3 - a * x^2 / (2 * b) + a^2 * x / b^2) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
-sorry
+lhs:
+    integrate by parts with u = log(a + b * x), v = x^3/3
+    simplify
+    rewrite x^3 / (3*b*x + 3*a) to x^2 / (3*b) - a*x / (3*b^2) + a^2 / (3*b^3) - a^3 / (3*b^3*(b*x+a))
+    apply integral identity
+    simplify
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    simplify
+    expand polynomial
+    simplify
+rhs:
+    expand polynomial
+    simplify
+done
 
 // 4
-prove (INT x. x^3 * log(a + b*x)) = 1/4 * (x^4 + a^4 / b^4) * log(a + b*x) - 1/4 * (x^4 / 4 - a * x^4 / 4 * b + a^2 * x^2 / 2 * b^2 - a^3 * x / b^3) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
-sorry
+prove (INT x. x^3 * log(a + b*x)) = 1/4 * (x^4 - a^4 / b^4) * log(a + b*x) - 1/4 * (x^4 / 4 - a * x^3 / (3 * b) + a^2 * x^2 / (2 * b^2) - a^3 * x / b^3) + SKOLEM_CONST(C) for a + b*x > 0, b != 0
+lhs:
+    integrate by parts with u = log(a + b * x), v = x^4/4
+    simplify
+    rewrite x^4 / (4*b*x + 4*a) to x^3 / (4*b) - a*x^2 / (4*b^2) + a^2*x / (4*b^3) - a^3 / (4*b^4) + a^4 / (4*b^4*(b*x+a))
+    apply integral identity
+    simplify
+    substitute u for b*x+a
+    apply integral identity
+    replace substitution
+    simplify
+    expand polynomial
+    simplify
+rhs:
+    expand polynomial
+    simplify
+done
 
 
 #### 2.7.3.3
