@@ -193,9 +193,28 @@ lhs:
 done
 
 // 2
-// Partial fraction decomposition doesn't support multiple variables
 prove (INT x. 1 / (x * (a + b * x) ^ 2)) = 1 / (a * (a + b * x)) - 1 / a ^ 2 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for a + b * x != 0, x != 0, a != 0
-sorry
+lhs:
+    partial fraction decomposition
+    apply integral identity
+    simplify
+    substitute u for a + b * x
+    apply integral identity
+    replace substitution
+    simplify
+    substitute v for a + b * x
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite -(b * log(abs(b * x + a)) / (a ^ 2 * b)) to -(log(abs(a + b * x)) / a ^ 2)
+    rewrite b / (a * b * (b * x + a)) to 1 / (a * (a + b * x))
+    simplify
+    rewrite -(log(abs(b * x + a)) / a ^ 2) + 1 / (a * (b * x + a)) + log(abs(x)) / a ^ 2 to 1 / (a * (a + b * x)) + (log(abs(x)) - log(abs(a + b * x))) / a ^ 2
+    simplify
+    rewrite log(abs(x) / abs(b * x + a)) to -log(abs((a + b * x) / x))
+    rewrite 1 / (a * (b * x + a)) to 1 / (a * (a + b * x))
+    simplify
+done
 
 // 3
 prove (INT x. 1 / (x * (a + b * x) ^ 3)) = (3 / (2 * a) + b * x / a ^ 2) - 1 / a ^ 3 * log(abs((a + b * x) / x)) + SKOLEM_CONST(C) for a + b * x != 0, x != 0, a != 0
