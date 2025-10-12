@@ -18,7 +18,7 @@ done
 calculate INT x. arcsin(x) for x > -1, x < 1
     integrate by parts with u=arcsin(x), v=x
     substitute sin(u) for x
-    rewrite -(sin(u)^2)+1 to cos(u)^2
+    rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     apply integral identity
     replace substitution
@@ -56,7 +56,6 @@ done
 
 calculate INT x. x^2*arctan(x)
     integrate by parts with u=arctan(x), v=x^3/3
-    simplify
     rewrite 3*x^2+3 to 3*(x^2+1)
     substitute tan(u) for x
     rewrite tan(u)^2 + 1 to sec(u)^2

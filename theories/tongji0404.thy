@@ -172,7 +172,7 @@ done
 
 calculate INT x. 1 / (3 + cos(x))
     substitute u for tan(x/2)
-    rewrite 2 / ((u ^ 2 + 1) * ((-(u ^ 2) + 1) / (u ^ 2 + 1) + 3)) to 1 / (2 + u^2)
+    rewrite 2 / ((u ^ 2 + 1) * ((1 - u ^ 2) / (u ^ 2 + 1) + 3)) to 1 / (2 + u^2)
     substitute v for u/sqrt(2)
     rewrite 2*v^2 + 2 to 2*(v^2 + 1)
     apply integral identity
@@ -193,7 +193,7 @@ done
 
 calculate INT x. 1 / (1 + sin(x) + cos(x)) for tan(x/2) + 1 != 0, 1 + sin(x) + cos(x) != 0
     substitute u for tan(x/2)
-    rewrite 2 / ((u ^ 2 + 1) * ((-(u ^ 2) + 1) / (u ^ 2 + 1) + 2 * u / (u ^ 2 + 1) + 1)) to 1 / (1 + u)
+    rewrite 2 / ((u ^ 2 + 1) * ((1 - u ^ 2) / (u ^ 2 + 1) + 2 * u / (u ^ 2 + 1) + 1)) to 1 / (1 + u)
     simplify
     apply integral identity
     replace substitution
@@ -201,7 +201,7 @@ done
 
 calculate INT x. 1 / (2*sin(x) - cos(x) + 5)
     substitute u for tan(x/2)
-    rewrite 2 / ((u ^ 2 + 1) * (-((-(u ^ 2) + 1) / (u ^ 2 + 1)) + 4 * u / (u ^ 2 + 1) + 5)) to 1 / (3*u^2 + 2*u + 2)
+    rewrite 2 / ((u ^ 2 + 1) * (4 * u / (u ^ 2 + 1) - (1 - u ^ 2) / (u ^ 2 + 1) + 5)) to 1 / (3*u^2 + 2*u + 2)
     rewrite 3 * u^2 + 2*u + 2 to 3 * ((u+1/3)^2 + 5/9)
     substitute v for 3 * (u + 1/3) / sqrt(5)
     rewrite 5 * v^2 + 5 to 5 * (v^2 + 1)

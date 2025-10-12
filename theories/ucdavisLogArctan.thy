@@ -49,6 +49,11 @@ calculate INT x:[-1, 1]. (x^4 + x^3)/(x^2 + 1)
     substitute u for x ^ 2 + 1 (at 2)
     apply integral identity
     simplify
+    split region at 0 (at 1)
+    substitute u for -x (at 1)
+    rewrite u / (u ^ 2 + 1) to -((-u) / (u ^ 2 + 1))
+    substitute x for u
+    simplify
 done
 
 calculate INT x:[1, exp(1)]. 1 / (x * (3 + log(x)))

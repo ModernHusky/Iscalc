@@ -113,7 +113,7 @@ calculate INT x:[-pi/2, pi/2]. sqrt(cos(x)-cos(x)^3)
     split region at 0
     substitute u for -x
     simplify
-    rewrite -cos(u)^3+cos(u) to cos(u)*(1-cos(u)^2)
+    rewrite cos(u)-cos(u)^3 to cos(u)*(1-cos(u)^2)
     rewrite 1-cos(u)^2 to sin(u)^2
     simplify
     substitute v for cos(u)

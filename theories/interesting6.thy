@@ -86,7 +86,9 @@ lhs:
     simplify
     substitute y * sqrt(u ^ (-2) * (2 * u ^ 2 + 1)) for x
     simplify
-    rewrite 1 / (y ^ 2 * (2 * u ^ 2 + 1) / u ^ 2 + (2 * u ^ 2 + 1) / u ^ 2) to 1 / (y ^ 2 + 1) * (u ^ 2 / (2 * u ^ 2 + 1))
+    rewrite 1 / (y ^ 2 * (2 * u ^ 2 + 1) / u ^ 2 + 1) to u ^ 2 / (y ^ 2 * (2 * u ^ 2 + 1) + u ^ 2)
+    rewrite y ^ 2 * (2 * u ^ 2 + 1) + u ^ 2 to (2 * u ^ 2 + 1) * (y ^ 2 + u ^ 2 / (2 * u ^ 2 + 1))
+    simplify
     apply integral identity
     simplify
 done
@@ -103,7 +105,7 @@ lhs:
     apply 2 on D u. I(u)
     expand polynomial
     simplify
-    substitute 1 / x for u
+    substitute 1 / x for u (at 2)
     simplify
     rewrite x ^ 3 * (1 / x ^ 2 + 1) * sqrt(2 / x ^ 2 + 1) to sqrt((1 + x ^ 2) ^ 2 * (2 + x ^ 2))
     rewrite x * sqrt(2 / x ^ 2 + 1) to sqrt(x ^ 2 + 2)

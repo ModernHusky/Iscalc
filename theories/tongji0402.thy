@@ -18,7 +18,6 @@ calculate INT x. (3 - 2*x)^3
 done
 
 calculate INT x. 1 / (1 - 2*x) for x != 1/2
-    simplify
     apply integral identity
     simplify
 done
@@ -101,7 +100,6 @@ calculate INT x. (sin(x) + cos(x)) / (sin(x) - cos(x))^(1/3) for sin(x) - cos(x)
     apply integral identity
     simplify
     replace substitution
-    simplify
 done
 
 calculate INT x. tan(x)^10 * sec(x)^2 for cos(x) != 0
@@ -142,6 +140,7 @@ done
     substitute u for sqrt(x^2 + 1)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. arctan(sqrt(x)) / (sqrt(x) * (1 + x)) for x > 0
@@ -235,9 +234,8 @@ done
 calculate INT x. (1 - x) / sqrt(9 - 4 * x^2) for x > -3/2, x < 3/2
     substitute u for 2*x/3
     simplify
-    rewrite sqrt(-(9 * u^2) + 9) to 3 * sqrt(-u^2 + 1)
+    rewrite sqrt(9 - 9 * u^2) to 3 * sqrt(1 - u^2)
     substitute sin(t) for u
-    rewrite -(sin(t)^2) + 1 to 1 - sin(t)^2
     rewrite 1 - sin(t)^2 to cos(t)^2
     simplify
     apply integral identity

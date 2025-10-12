@@ -47,7 +47,6 @@ class ActionTest(unittest.TestCase):
                 apply integral identity
                 simplify
                 replace substitution
-                simplify
         """
         actions = [s for s in actions.split('\n') if s.strip()]
         for act in actions:

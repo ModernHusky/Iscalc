@@ -87,7 +87,9 @@ subgoal 1: I(a,b) = (INT x:[0,pi]. (pi - x) * sin(x) / (a + b * cos(x) ^ 2))
 lhs:
     expand definition for I
     substitute x for pi - x
-    rewrite sin(x) * (-x + pi) / (b * cos(x) ^ 2 + a) to (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
+    rewrite sin(pi - x) to sin(x)
+    rewrite cos(pi - x) to -cos(x)
+    rewrite (pi - x) * sin(x) / (b * (-cos(x)) ^ 2 + a) to (pi - x) * sin(x) / (a + b * cos(x) ^ 2)
 done
 lhs:
     fold definition for I (all)
@@ -165,11 +167,11 @@ lhs:
     apply series expansion on log(1-x) index k
     apply series expansion on log(1+x) index k
 done
-subgoal 2:x / (-(x ^ 2) + 1) = 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k) for x != 0, abs(x) < 1
+subgoal 2:x / (1 - x ^ 2) = 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k) for x != 0, abs(x) < 1
 from 1:
     differentiate both sides at x
     simplify
-    rewrite 1 / (-x + 1) - 1 / (x + 1) to 2 * (x / (1-x^2))
+    rewrite 1 / (1 - x) - 1 / (x + 1) to 2 * (x / (1-x^2))
     solve equation for x / (1-x^2)
     rewrite (-1) ^ k * (-x) ^ k to x ^ k
     rewrite (SUM(k, 0, oo, x ^ k) - SUM(k, 0, oo, x ^ k * (-1) ^ k)) / 2 to 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k)
@@ -210,8 +212,8 @@ lhs:
     substitute t for cos(x)
     simplify
     substitute y for t
-    rewrite y * log(y) / (-(y ^ 2) + 1) to log(y) * (y / (-(y ^ 2) + 1))
-    apply 2 on y / (-(y ^ 2) + 1)
+    rewrite y * log(y) / (1 - y ^ 2) to log(y) * (y / (1 - y ^ 2))
+    apply 2 on y / (1 - y ^ 2)
     rewrite log(y) * (1/2 * SUM(k, 0, oo, y ^ k) - 1/2 * SUM(k, 0, oo, y ^ k * (-1) ^ k)) to 1/2 * log(y) * SUM(k, 0, oo, y ^ k) - 1/2 * log(y) * SUM(k, 0, oo, y ^ k * (-1) ^ k)
     expand polynomial 
     simplify

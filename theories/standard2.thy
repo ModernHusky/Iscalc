@@ -38,11 +38,9 @@ prove (INT x. sin(x) ^ 3)  = 1/3 * cos(x) ^ 3 - cos(x) + SKOLEM_CONST(C)
 lhs:
     rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
     rewrite sin(x) ^ 2 to (1 - cos(x) ^ 2)
-    simplify
     substitute u for cos(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 // 4a
@@ -115,7 +113,7 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite -(x ^ 2 * cos(x)) + 2 * x * sin(x) + 2 * cos(x) + SKOLEM_CONST(C) to 2 * x * sin(x) - (x ^ 2 - 2) * cos(x) + SKOLEM_CONST(C)
+    rewrite 2 * x * sin(x) - x ^ 2 * cos(x) + 2 * cos(x) + SKOLEM_CONST(C) to 2 * x * sin(x) - (x ^ 2 - 2) * cos(x) + SKOLEM_CONST(C)
 done
 
 // 10
@@ -253,9 +251,9 @@ lhs:
     partial fraction decomposition
     apply integral identity
     simplify
-    rewrite log(-(2 * u) + 2) / 2 - log(2 * u + 2) / 2 to -1/2 * (log(2*u+2) - log(-(2*u)+2))
-    rewrite log(2*u+2) - log(-(2*u)+2) to log((2*u+2) / (-(2*u)+2))
-    rewrite (2*u+2) / (-(2*u)+2) to (1+u)/(1-u)
+    rewrite log(2 - 2 * u) / 2 - log(2 * u + 2) / 2 to -1/2 * (log(2*u+2) - log(2 - 2*u))
+    rewrite log(2*u+2) - log(2 - 2*u) to log((2*u+2) / (2 - 2*u))
+    rewrite (2*u+2) / (2 - 2*u) to (1+u)/(1-u)
     replace substitution
 done
 
@@ -276,7 +274,7 @@ lhs:
     rewrite csc(x) to 1/sin(x) (at 2)
     apply integral identity [weierstrass]
     solve integral INT x. csc(x) ^ 3
-    rewrite -(cot(x) * csc(x) / 2) to -cos(x)/(2 * sin(x) ^ 2)
+    rewrite cot(x) * csc(x) to cos(x)/(sin(x) ^ 2)
 done
 
 // 4
@@ -426,7 +424,7 @@ lhs:
     integrate by parts with u = x, v = -cos(x)
     simplify
     apply integral identity
-    rewrite -(12 * x ^ 2 * sin(x)) + 4 * x ^ 3 * cos(x) + x ^ 4 * sin(x) - 24 * x * cos(x) + 24 * sin(x) + SKOLEM_CONST(C) to (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
+    rewrite 4 * x ^ 3 * cos(x) - 12 * x ^ 2 * sin(x) + x ^ 4 * sin(x) - 24 * x * cos(x) + 24 * sin(x) + SKOLEM_CONST(C) to (4 * x ^ 3 - 24 * x) * cos(x) + (x ^ 4 - 12 * x ^ 2 + 24) * sin(x) + SKOLEM_CONST(C)
 done
 
 // 12

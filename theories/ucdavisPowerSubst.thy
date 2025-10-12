@@ -132,7 +132,6 @@ calculate INT x. sqrt(x) / (x - 1) for x >= 0, x != 1
     simplify
     substitute v for 2 * u + 2
     substitute w for 2 * u - 2 (at 2)
-    simplify
     apply integral identity
     replace substitution
     simplify

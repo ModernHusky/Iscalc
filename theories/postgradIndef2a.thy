@@ -38,12 +38,14 @@ calculate INT x. sin(sin(x))*cos(x)
     substitute u for sin(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. sin(log(x))/x for x > 0
     substitute u for log(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 // page 172
@@ -59,6 +61,7 @@ calculate INT x. sin(exp(x))*exp(x)
     substitute u for exp(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. sin(sqrt(1+x^2))*x/sqrt(1+x^2) for x != 0
@@ -157,6 +160,7 @@ calculate INT x. tan(x) for cos(x) != 0
     substitute u for cos(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. cot(x) for sin(x) != 0

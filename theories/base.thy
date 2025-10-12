@@ -425,6 +425,12 @@ axiom cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
 
 axiom [simp] arcsin(sin(x)) = x for x >= -pi/2, x <= pi/2
 
+axiom [simp] arccos(sin(x)) = pi/2 - x for x >= -pi/2, x <= pi/2
+
+axiom [simp] arcsin(cos(x)) = pi/2 - x for x >= 0, x <= pi
+
+axiom arcsin(x) + arccos(x) = pi/2 for x >= -1, x <= 1
+
 axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)

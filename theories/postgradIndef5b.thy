@@ -68,7 +68,7 @@ done
 
 calculate INT x. 1/(1+4*cos(x)) for sqrt(3/5)*tan(x/2) != -1, sqrt(3/5)*tan(x/2) != 1, cos(x) != -1/4
     substitute t for tan(x/2)
-    rewrite (-(4 * t ^ 2) + 4) / (t ^ 2 + 1) + 1 to (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) 
+    rewrite (4 - 4 * t ^ 2) / (t ^ 2 + 1) + 1 to (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1)
     rewrite (-4*t^2+4)/(t^2+1)+(t^2+1)/(t^2+1) to (5-3*t^2)/(t^2+1)
     simplify
     substitute u for sqrt(3/5)*t

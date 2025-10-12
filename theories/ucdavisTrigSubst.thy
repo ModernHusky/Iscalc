@@ -9,7 +9,6 @@ imports standard
 
 calculate INT x. sqrt(1 - x^2) for x > -1, x < 1
     substitute u for arcsin(x)
-    rewrite -(sin(u) ^ 2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     rewrite cos(u)^2 to 1/2*(1+cos(2*u))
@@ -36,7 +35,6 @@ done
 
 calculate INT x. 1 / (1 - x^2) ^ (3/2) for x > -1, x < 1
     substitute u for arcsin(x)
-    rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     rewrite 1 / cos(u)^2 to (1/cos(u))^2
@@ -65,7 +63,7 @@ done
 calculate INT x. x^3 * sqrt(4 - 9*x^2) for x > -2/3, x < 2/3
     substitute u for arcsin(3*x/2)
     simplify
-    rewrite -(4 * sin(u)^2) + 4 to 4 * (1 - sin(u)^2)
+    rewrite 4 - 4 * sin(u)^2 to 4 * (1 - sin(u)^2)
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     rewrite cos(u)^2 * sin(u)^3 to sin(u) * sin(u)^2 * cos(u)^2
@@ -82,7 +80,6 @@ done
 
 calculate INT x. sqrt(1 - x^2) / x for x > 0, x < 1
     substitute u for arcsin(x)
-    rewrite -(sin(u)^2) + 1 to 1 - sin(u)^2
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     rewrite cos(u) ^ 2 to 1 - sin(u)^2
@@ -207,7 +204,7 @@ done
     rewrite 10*x - x^2 to 25 - (x-5)^2
     substitute u for (x-5) / 5
     substitute v for arcsin(u)
-    rewrite sqrt(-(25*sin(v)^2)+25) to 5*sqrt(1-sin(v)^2)
+    rewrite sqrt(25 - 25 * sin(v)^2) to 5*sqrt(1-sin(v)^2)
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
     expand polynomial
@@ -243,10 +240,9 @@ calculate INT x. sqrt(1-x)*sqrt(x+3) for x < 1, x > -3
     rewrite sqrt(1-x)*sqrt(x+3) to sqrt((1-x)*(x+3))
     rewrite (1-x)*(x+3) to 4 - (x+1)^2
     substitute u for(x+1)/2
-    rewrite sqrt(-(4 * u ^ 2) + 4) to 2 * sqrt(1 - u ^ 2)
+    rewrite sqrt(4 - 4 * u^2) to 2 * sqrt(1 - u ^ 2)
     substitute v for arcsin(u)
-    rewrite -(sin(v) ^ 2) + 1 to 1-sin(v)^2
-    rewrite 1-sin(v) ^ 2 to cos(v)^2
+    rewrite 1-sin(v)^2 to cos(v)^2
     simplify
     integrate by parts with u=cos(v),v=sin(v)
     simplify

@@ -1227,6 +1227,36 @@ def normal_const(e:expr.Expr, ctx:Context):
                              normal_const(e.body,ctx))
     raise NotImplementedError(str(e))
 
+def simplify_arithmetic_form(e: expr.Expr, ctx: Context) -> expr.Expr:
+    """Normalize arithmetic expressions to canonical form.
+
+    Handles patterns:
+    - (-a + x) -> (x - a)
+    - (-b + x) / (-a + x) -> (x - b) / (x - a)
+    - (x + -a) -> (x - a)
+
+    This ensures consistent representation of expressions.
+    """
+    # Handle plus with uminus: (-a + x) -> (x - a)
+    if e.is_plus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        # Pattern: -a + x -> x - a
+        if expr.is_uminus(lhs) and not expr.is_uminus(rhs):
+            return rhs - lhs.args[0]
+        # Pattern: x + (-a) -> x - a (where -a is a negated expression)
+        elif expr.is_uminus(rhs) and not expr.is_uminus(lhs):
+            return lhs - rhs.args[0]
+
+    # Handle minus with consistent variable ordering: prefer (x - a) over (a - x)
+    # But ONLY if x is a variable and a is not (to avoid breaking x - y)
+    elif e.is_minus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        # Normalize: (-a - b) -> -(a + b)
+        if expr.is_uminus(lhs) and expr.is_uminus(rhs):
+            return -(lhs.args[0] + rhs.args[0])
+
+    return e
+
 def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
     if e.is_equals():
         return expr.Eq(normalize(e.lhs, ctx), normalize(e.rhs, ctx))
@@ -1250,6 +1280,7 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
         e = apply_subterm(e, simplify_sum, ctx)
         e = apply_subterm(e, simplify_skolem, ctx)
         e = apply_subterm(e, simplify_exp, ctx)
+        e = apply_subterm(e, simplify_arithmetic_form, ctx)
         if e == old_e:
             break
 

@@ -27,7 +27,6 @@ calculate INT x. arcsin(2*x-1) for x > 0, x < 1
     simplify
     integrate by parts with u=arcsin(u), v=u
     substitute v for arcsin(u)
-    rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
     apply integral identity
@@ -40,7 +39,6 @@ calculate INT x. arccos(1-2*x) for x > 0, x < 1
     simplify
     integrate by parts with u=arccos(u), v=u
     substitute v for arcsin(u)
-    rewrite -sin(v)^2 + 1 to 1-sin(v)^2
     rewrite 1-sin(v)^2 to cos(v)^2
     simplify
     apply integral identity
@@ -152,6 +150,7 @@ done
 calculate INT x. sec(x) * (sec(x) - tan(x)) for cos(x) != 0
     expand polynomial
     apply integral identity
+    simplify
 done
 
 calculate INT x. tan(x)^2 for cos(x) != 0
@@ -179,5 +178,4 @@ calculate INT x. cos(2*x)/(cos(x)^2*sin(x)^2) for x > 0, x < pi/2
     expand polynomial
     simplify
     apply integral identity
-    simplify
 done

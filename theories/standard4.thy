@@ -13,9 +13,9 @@ prove (INT x. arcsin(x / a)) = x * arcsin(x / a) + sqrt(a ^ 2 - x ^ 2) + SKOLEM_
 lhs:
     integrate by parts with u = arcsin(x / a), v = x
     simplify
-    rewrite x / sqrt(-(x ^ 2 / a ^ 2) + 1) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite x / sqrt(1 - x ^ 2 / a ^ 2) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
     rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to (a * x) / sqrt(a ^ 2 - x ^ 2)
-    rewrite -(1 / a * (INT x. (a * x) / sqrt(a ^ 2 - x ^ 2))) to -(INT x. x / sqrt(a ^ 2 - x ^ 2))
+    rewrite 1 / a * (INT x. (a * x) / sqrt(a ^ 2 - x ^ 2)) to (INT x. x / sqrt(a ^ 2 - x ^ 2))
     substitute u for a ^ 2 - x ^ 2
     simplify
     rewrite 1 / sqrt(u) to u ^ (-1/2)
@@ -75,7 +75,7 @@ prove (INT x. arccos(x / a)) = x * arccos(x / a) - sqrt(a ^ 2 - x ^ 2) + SKOLEM_
 lhs:
     integrate by parts with u = arccos(x / a), v = x
     simplify
-    rewrite x / sqrt(-(x ^ 2 / a ^ 2) + 1) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite x / sqrt(1 - x ^ 2 / a ^ 2) to x / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
     rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to (a * x) / sqrt(a ^ 2 - x ^ 2)
     rewrite 1 / a * (INT x. (a * x) / sqrt(a ^ 2 - x ^ 2)) to (INT x. x / sqrt(a ^ 2 - x ^ 2))
     substitute u for a ^ 2 - x ^ 2
@@ -161,7 +161,7 @@ lhs:
     simplify
     apply integral identity
     replace substitution
-    rewrite -(a / 2 * (-(a * arctan(x / a)) + x)) + x ^ 2 / 2 * arctan(x / a) to (a^2 / 2 + x^2 / 2) * arctan(x / a) - a * x / 2
+    rewrite x ^ 2 / 2 * arctan(x / a) - a / 2 * (x - a * arctan(x / a)) to (a^2 / 2 + x^2 / 2) * arctan(x / a) - a * x / 2
     simplify
 done
 
@@ -180,7 +180,7 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite -(a / 3 * (-(a ^ 2 * log(a ^ 2 + x ^ 2) / 2) + x ^ 2 / 2)) to a ^ 3 * log(a ^ 2 + x ^ 2) / 6 - a * x ^ 2 / 6
+    rewrite x ^ 3 / 3 * arctan(x / a) - a / 3 * (x ^ 2 / 2 - a ^ 2 * log(a ^ 2 + x ^ 2) / 2) to x ^ 3 / 3 * arctan(x / a) + a ^ 3 * log(a ^ 2 + x ^ 2) / 6 - a * x ^ 2 / 6
     simplify
 done
 
@@ -222,8 +222,8 @@ lhs:
     simplify
     apply integral identity
     replace substitution
-    rewrite -(1/2 * log(abs(x^2 + a^2))) + log(abs(x)) to log(abs(x)) - 1/2 * log(abs(x^2 + a^2))
-    rewrite log(abs(x)) - 1/2 * log(abs(x^2 + a^2)) to log(abs(x)) - log(abs(x^2 + a^2)^(1/2))
+    simplify
+    rewrite log(abs(x)) - log(a ^ 2 + x ^ 2) / 2 to log(abs(x)) - log(abs(x^2 + a^2)^(1/2))
     rewrite log(abs(x)) - log(abs(x^2 + a^2)^(1/2)) to log(abs(x)/abs(x^2 + a^2)^(1/2))
     rewrite abs(x^2 + a^2)^(1/2) to sqrt(x^2 + a^2)
     rewrite abs(x)/sqrt(x^2 + a^2) to sqrt(x^2)/sqrt(x^2 + a^2)

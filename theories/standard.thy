@@ -86,7 +86,7 @@ lhs:
     rewrite exp(a * x - b) to exp(-b) * exp(a * x)
     substitute u for a * x
     simplify
-    rewrite exp(-b + u) to exp(-b) * exp(u)
+    rewrite exp(u - b) to exp(-b) * exp(u)
     apply integral identity
     replace substitution
 done
@@ -499,7 +499,7 @@ done
 prove (INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > -sqrt(a), x < sqrt(a), a-x^2>0
 lhs:
     substitute y for x / sqrt(a)
-    rewrite sqrt(a) / sqrt(-(a*y^2)+a) to 1/sqrt(1-y^2)
+    rewrite sqrt(a) / sqrt(a - a * y ^ 2) to 1/sqrt(1-y^2)
     apply integral identity
     replace substitution
 done

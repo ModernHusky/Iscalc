@@ -32,13 +32,16 @@ lhs:
     rewrite 1 / cos(x) to cos(x) / cos(x) ^ 2
     rewrite cos(x) ^ 2 to 1 - sin(x) ^ 2
     substitute u for sin(x)
-    rewrite 1 / (-(u ^ 2) + 1) to 1/2 * (1 / (1 - u) + 1 / (1 + u))
+    rewrite 1 / (1 - u ^ 2) to 1/2 * (1 / (1 - u) + 1 / (1 + u))
     simplify
     apply integral identity
     simplify
-    rewrite -(1/2 * log(-(sqrt(3) / 2) + 1)) + 1/2 * log(sqrt(3) / 2 + 1) to 1/2 * (log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1))
-    rewrite log(sqrt(3) / 2 + 1) - log(-(sqrt(3) / 2) + 1) to log((sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1))
-    rewrite (sqrt(3) / 2 + 1) / (-(sqrt(3) / 2) + 1) to (2 + sqrt(3)) ^ 2
+    rewrite 1 / (1 - u) to -1 / (u - 1)
+    apply integral identity
+    simplify
+    rewrite 1/2 * log(sqrt(3) / 2 + 1) - 1/2 * log(1 - sqrt(3) / 2) to 1/2 * (log(sqrt(3) / 2 + 1) - log(1 - sqrt(3) / 2))
+    rewrite log(sqrt(3) / 2 + 1) - log(1 - sqrt(3) / 2) to log((sqrt(3) / 2 + 1) / (1 - sqrt(3) / 2))
+    rewrite (sqrt(3) / 2 + 1) / (1 - sqrt(3) / 2) to (2 + sqrt(3)) ^ 2
     simplify
     rewrite sqrt(3) + 2 to 2 + sqrt(3)
 done

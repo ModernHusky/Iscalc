@@ -168,7 +168,7 @@ calculate INT x:[pi/6, pi/3]. cos(x) / (sin(x) ^ 3 + sin(x))
     substitute u for sin(x)
     partial fraction decomposition
     simplify
-    substitute v for u ^ 2 + 1
+    substitute v for u ^ 2 + 1 (at 2)
     apply integral identity
     simplify
 done

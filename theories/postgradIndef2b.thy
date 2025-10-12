@@ -29,6 +29,7 @@ calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2 for cos(1/x) != 0, x != 0
     substitute u for tan(1/x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x)) for cos(x) != 0
@@ -159,7 +160,7 @@ calculate INT x. exp(x/2) / (16-exp(x)) for 16-exp(x) != 0, exp(x/2)/4 != 1, exp
     rewrite exp(x) to exp(x/2)^2
     substitute u for exp(x/2)
     substitute v for u/4
-    rewrite 4 / (-(8 * v ^ 2) + 8) to 1/2 * (1 / (1-v^2))
+    rewrite 4 / (8 - 8 * v ^ 2) to 1/2 * (1 / (1-v^2))
     apply integral identity
     partial fraction decomposition
     apply integral identity
@@ -173,7 +174,7 @@ calculate INT x. cos(x) / sqrt(2+cos(2*x)) for sqrt(2)*sin(x)/sqrt(3) > -1, sqrt
     simplify
     substitute u for sin(x)
     substitute v for sqrt(2)*u/sqrt(3)
-    rewrite sqrt(-(3 * v ^ 2) + 3) to sqrt(3) * sqrt(1-v^2)
+    rewrite sqrt(3 - 3 * v ^ 2) to sqrt(3) * sqrt(1-v^2)
     apply integral identity
     replace substitution
     simplify
@@ -208,7 +209,9 @@ done
 
 calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1, x * exp(x) != 1
     substitute u for x*exp(x)
+    rewrite 1 / (1 - u) to -1 / (u - 1)
     apply integral identity
+    simplify
     replace substitution
 done
 
@@ -235,7 +238,7 @@ done
 
 calculate INT x. (1-log(x))/(x-log(x))^2 for x > 0, x < 1
     substitute u for log(x)
-    rewrite exp(u) * (-u + 1) / (exp(u) - u) ^ 2 to -exp(u) * (u-1)/u^2 / (exp(u)/u - 1) ^ 2
+    rewrite exp(u) * (1 - u) / (exp(u) - u) ^ 2 to -exp(u) * (u-1)/u^2 / (exp(u)/u - 1) ^ 2
     substitute v for exp(u) / u
     substitute w for v-1
     apply integral identity

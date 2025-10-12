@@ -21,7 +21,7 @@ done
 calculate INT x. 1 / (2-3*x^2) for x > 0, x < sqrt(2/3)
     substitute u for (sqrt(3/2)*x)
     substitute sin(v) for u
-    rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
+    rewrite 6 - 6 * sin(v) ^ 2 to 6*cos(v)^2
     simplify
     rewrite 1 / cos(v) to sec(v)
     apply integral identity
@@ -33,7 +33,7 @@ done
 calculate INT x. 1 / (2-3*x^2) for x > -sqrt(2 / 3), x < 0, x ^ 2 != 2 / 3
     substitute u for (sqrt(3/2)*x)
     substitute sin(v) for u
-    rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
+    rewrite 6 - 6 * sin(v) ^ 2 to 6*cos(v)^2
     simplify
     rewrite 1 / cos(v) to sec(v)
     apply integral identity
@@ -94,7 +94,7 @@ calculate INT x. sqrt((1-x)/(1+x)) for x > -1, x < 1
     rewrite (1-x)/(1+x) to (1-x)^2/(1-x^2)
     simplify
     substitute sin(u) for x
-    rewrite -(sin(u) ^ 2) + 1 to cos(u)^2
+    rewrite 1 - sin(u) ^ 2 to cos(u)^2
     simplify
     apply integral identity
     replace substitution

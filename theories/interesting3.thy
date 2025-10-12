@@ -271,7 +271,7 @@ rhs:
     substitute x for -a*t (at 2)
     apply integral identity
     simplify
-    rewrite 1 / t * (-(exp(-(p * t ^ 2)) / t) + exp(-(q * t ^ 2)) / t) to -exp(-p * t ^ 2) / t^2 + exp(-q * t ^ 2) / t^2
+    rewrite 1 / t * (exp(-(q * t ^ 2)) / t - exp(-(p * t ^ 2)) / t) to exp(-q * t ^ 2) / t^2 - exp(-p * t ^ 2) / t^2
     rewrite to (INT t:[0,oo]. exp(-p * t ^ 2) / t ^ 2 - exp(-q * t ^ 2) / t ^ 2)
     rewrite exp(-p * t ^ 2) / t ^ 2 - exp(-q * t ^ 2) / t ^ 2 to (exp(-p*t^2)-exp(-q*t^2))/t^2
 done
@@ -353,7 +353,7 @@ lhs:
     substitute u for s^2 + t^2
     apply integral identity
     simplify
-    rewrite -(log(a ^ 2 + t ^ 2) / 2) + log(b ^ 2 + t ^ 2) / 2 to -1/2*log(a ^ 2 + t ^ 2) + 1/2*log(b ^ 2 + t ^ 2)
+    rewrite log(b ^ 2 + t ^ 2) / 2 - log(a ^ 2 + t ^ 2) / 2 to 1/2*log(b ^ 2 + t ^ 2) - 1/2*log(a ^ 2 + t ^ 2)
     rewrite to 1/2*(log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2))
     rewrite log(b ^ 2 + t ^ 2) - log(a ^ 2 + t ^ 2) to log((b ^ 2 + t ^ 2)/(a ^ 2 + t ^ 2))
     apply 2 on log((b ^ 2 + t ^ 2) / (a ^ 2 + t ^ 2))
@@ -471,7 +471,7 @@ let I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a b: real, a > 0
 subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a b: real, a > 0
 lhs:
     expand definition for I
-    rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
+    rewrite b * x - a * x ^ 2 to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
     rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2)
     simplify
     substitute y for x - b / (2 * a)
@@ -507,7 +507,7 @@ let I(a,b) = (INT x:[-oo,oo]. exp(-a * x ^ 2 + b * x)) for a > 0
 subgoal 1: I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a) for a > 0
 lhs:
     expand definition for I
-    rewrite -(a * x ^ 2) + b * x to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
+    rewrite b * x - a * x ^ 2 to b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2
     rewrite exp(b ^ 2 / (4 * a) - a * (x - b / (2 * a)) ^ 2) to exp(b ^ 2 / (4 * a)) * exp(-a * (x - b / (2 * a)) ^ 2)
     simplify
     substitute y for x - b / (2 * a)
@@ -525,6 +525,7 @@ subgoal 3: (INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)) = b ^ 2 / (4 * a 
 from 2:
     expand definition for I (all)
     simplify
+    rewrite INT x:[-oo,oo]. x ^ 2 * exp(b * x - a * x ^ 2) to INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)
     solve equation for INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)
 done
 lhs:
@@ -547,7 +548,7 @@ from 1:
     exchange derivative and integral (all)
     simplify
     solve equation for INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)
-    rewrite -((2 * a ^ 2 * m * pi * exp(-(a * m)) - 4 * a * pi * (-exp(-(a * m)) + 1)) / (8 * a ^ 5)) to pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m))
+    rewrite -((2 * a ^ 2 * m * pi * exp(-(a * m)) - 4 * a * pi * (1 - exp(-(a * m)))) / (8 * a ^ 5)) to pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m))
 done
 
 // C3.9
@@ -556,15 +557,15 @@ prove (INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3) = 1 / (2 * a ^ 2 * b) for a b
 subgoal 1: (INT x:[0,1]. 1 / (a * x + b * (1 - x)) ^ 2) = 1 / (a * b)
 lhs:
     substitute u for (a - b) * x + b
-    rewrite 1 / ((a - b) * (b * (-((-b + u) / (a - b)) + 1) + a * (-b + u) / (a - b)) ^ 2) to 1 / (u ^ 2 * (a - b))
+    rewrite 1 / ((a - b) * (b * (1 - (u - b) / (a - b)) + a * (u - b) / (a - b)) ^ 2) to 1 / (u ^ 2 * (a - b))
     apply integral identity
     simplify
-    rewrite 1 / (a - b) * (-(1 / a) + 1 / b) to 1 / (a * b)
+    rewrite 1 / (a - b) * (1 / b - 1 / a) to 1 / (a * b)
 done
 from 1:
     differentiate both sides at a
     exchange derivative and integral (all)
     simplify
-    rewrite (b * (-x + 1) + a * x) ^ 3 to (a * x + b * (1 - x)) ^ 3
+    rewrite (b * (1 - x) + a * x) ^ 3 to (a * x + b * (1 - x)) ^ 3
     solve equation for INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3
 done

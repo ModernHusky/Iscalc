@@ -54,7 +54,7 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite (b * x + a) ^ (-n + 1) / (b * (-n + 1)) to -1 / (b * (n - 1) * (a + b * x) ^ (n - 1))
+    rewrite (b * x + a) ^ (1 - n) / (b * (1 - n)) to -1 / (b * (n - 1) * (a + b * x) ^ (n - 1))
 done
 
 #### 4.2.2.2
@@ -94,7 +94,7 @@ lhs:
     simplify
     rewrite 1 / b ^ 2 * (a / (2 * (b * x + a) ^ 2) - 1 / (b * x + a)) to (a / (2 * b ^ 2) - (b * x + a) / b ^ 2) / (b * x + a) ^ 2
     simplify
-    rewrite 1 / (b * x + a) ^ 2 * (-((b * x + a) / b ^ 2) + a / (2 * b ^ 2)) to -(x / b + a / (2 * b ^ 2)) / (b * x + a) ^ 2
+    rewrite 1 / (b * x + a) ^ 2 * (a / (2 * b ^ 2) - (b * x + a) / b ^ 2) to -(x / b + a / (2 * b ^ 2)) / (b * x + a) ^ 2
 done
 
 // 4
@@ -186,7 +186,7 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite -(b * log(abs(b * x + a)) / (a * b)) + log(abs(x)) / a to (-log(abs(b * x + a)) + log(abs(x))) / a
+    rewrite log(abs(x)) / a - b * log(abs(b * x + a)) / (a * b) to (-log(abs(b * x + a)) + log(abs(x))) / a
     simplify
     rewrite log(abs(x) / abs(b * x + a)) to -log(abs(b * x + a) / abs(x))
     simplify
@@ -206,10 +206,10 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite -(b * log(abs(b * x + a)) / (a ^ 2 * b)) to -(log(abs(a + b * x)) / a ^ 2)
+    rewrite b / (a * b * (b * x + a)) - b * log(abs(b * x + a)) / (a ^ 2 * b) + log(abs(x)) / a ^ 2 to b / (a * b * (b * x + a)) - log(abs(a + b * x)) / a ^ 2 + log(abs(x)) / a ^ 2
     rewrite b / (a * b * (b * x + a)) to 1 / (a * (a + b * x))
     simplify
-    rewrite -(log(abs(b * x + a)) / a ^ 2) + 1 / (a * (b * x + a)) + log(abs(x)) / a ^ 2 to 1 / (a * (a + b * x)) + (log(abs(x)) - log(abs(a + b * x))) / a ^ 2
+    rewrite 1 / (a * (b * x + a)) - log(abs(b * x + a)) / a ^ 2 + log(abs(x)) / a ^ 2 to 1 / (a * (a + b * x)) + (log(abs(x)) - log(abs(a + b * x))) / a ^ 2
     simplify
     rewrite log(abs(x) / abs(b * x + a)) to -log(abs((a + b * x) / x))
     rewrite 1 / (a * (b * x + a)) to 1 / (a * (a + b * x))
@@ -265,7 +265,6 @@ prove (INT x. 1 / ((x - a) * (x - b))) = 1 / (a - b) * log(abs((x - a) / (x - b)
 lhs:
     rewrite 1 / ((x - a) * (x - b)) to 1 / ((a - b) * (x - a)) - 1 / ((a - b) * (x - b))
     apply integral identity
-    simplify
     substitute u for x - a
     apply integral identity
     replace substitution
@@ -273,7 +272,7 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite log(abs(-a + x)) / (a - b) - log(abs(-b + x)) / (a - b) to (log(abs(x - a)) - log(abs(x - b))) / (a - b)
+    rewrite log(abs(x - a)) / (a - b) - log(abs(x - b)) / (a - b) to (log(abs(x - a)) - log(abs(x - b))) / (a - b)
     simplify
 done
 
@@ -282,7 +281,6 @@ prove (INT x. x / ((x - a) * (x - b))) = a / (a - b) * log(abs(x - a)) - b / (a 
 lhs:
     rewrite x / ((x - a) * (x - b)) to a / ((a - b) * (x - a)) - b / ((a - b) * (x - b))
     apply integral identity
-    simplify
     substitute u for x - a
     apply integral identity
     replace substitution
@@ -294,7 +292,24 @@ done
 
 // 4
 prove (INT x. 1 / ((x - a) ^ 2 * (x - b))) = -1 / ((x - a) * (a - b)) - 1 / (a - b) ^ 2 * log(abs((x - a) / (x - b))) + SKOLEM_CONST(C) for x != a, a != b, x != b
-sorry
+lhs:
+    rewrite 1 / ((x - a) ^ 2 * (x - b)) to 1 / ((a - b) ^ 2 * (x - b)) - 1 / ((a - b) ^ 2 * (x - a)) + 1 / ((a - b) * (x - a) ^ 2)
+    apply integral identity
+    substitute u for x - b
+    apply integral identity
+    replace substitution
+    substitute v for x - a
+    apply integral identity
+    replace substitution
+    substitute w for x - a
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite log(abs(x - b)) / (a - b) ^ 2 - log(abs(x - a)) / (a - b) ^ 2 to (log(abs(x - b)) - log(abs(x - a))) / (a - b) ^ 2
+    rewrite (log(abs(x - b)) - log(abs(x - a))) / (a - b) ^ 2 to log(abs((x - b) / (x - a))) / (a - b) ^ 2
+    rewrite log(abs((x - b) / (x - a))) to -log(abs((x - a) / (x - b)))
+    simplify
+done
 
 // 5
 prove (INT x. 1 / ((x - a) ^ 2 * (x - b) ^ 2)) = (a + b - 2 * x) / ((x - a) * (x - b) * (a - b) ^ 2) - 2 / (a - b) ^ 3 * log(abs((x - a) / (x - b))) + SKOLEM_CONST(C) for x != a, a != b, x != b

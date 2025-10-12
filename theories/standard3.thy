@@ -27,7 +27,7 @@ lhs:
     change sum lower to 0
     simplify
     expand polynomial
-    rewrite 1 / x * SUM(k, 0, m, a ^ (-k+m) * (b * x) ^ (k + 1) * binom(m + 1,k + 1)) to SUM(k, 0, m, 1 / x * a ^ (m - k) * (b * x) ^ (k + 1) * binom(m + 1,k + 1))
+    rewrite 1 / x * SUM(k, 0, m, a ^ (m - k) * (b * x) ^ (k + 1) * binom(m + 1,k + 1)) to SUM(k, 0, m, 1 / x * a ^ (m - k) * (b * x) ^ (k + 1) * binom(m + 1,k + 1))
     rewrite 1 / x * a^(m-k) * (b*x)^(k+1) to a^(m-k) * (b*x)^(k+1) / x
     apply integral identity
     rewrite (b*x)^(k+1) to b^(k+1)*x^(k+1)
@@ -37,9 +37,10 @@ lhs:
     rewrite binom(m+1, k+1) to (m+1)/(k+1) * binom(m, k)
     rewrite a ^ (m - k) * b ^ (k + 1) * ((m + 1) / (k + 1) * binom(m,k)) * (x ^ (k + 1) / (k + 1)) to b * (m+1) * a ^ (m - k) * b^k * binom(m,k) * x ^ (k + 1) / (k + 1)^2
     simplify
-    rewrite -(1 / (b * m + b) * (b * (m + 1) * SUM(k, 0, m, a ^ (-k+m) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k)) + a ^ (m + 1) * log(x))) to -b*(m+1) / (b*(m+1)) *  SUM(k, 0, m, a ^ (-k+m) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k)) - a ^ (m + 1) * log(x) / (b*(m+1))
-    simplify
     expand polynomial
+    simplify
+    rewrite -(b * m / (b * m + b) * SUM(k, 0, m, a ^ (m - k) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k))) - b / (b * m + b) * SUM(k, 0, m, a ^ (m - k) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k)) to -((b * m + b) / (b * m + b)) * SUM(k, 0, m, a ^ (m - k) * b ^ k * x ^ (k + 1) / (k + 1) ^ 2 * binom(m,k))
+    rewrite ((b * m + b) / (b * m + b)) to 1
 rhs:
     expand polynomial
 done
@@ -50,15 +51,12 @@ done
 prove (INT x. (a + b * x) * log(x)) = ((a + b * x) ^ 2/(2 * b) - a ^ 2/(2 * b)) * log(x) - (a * x + 1/4 * b * x ^ 2) + SKOLEM_CONST(C) for x > 0, b: real, b != 0
 lhs:
     integrate by parts with u = log(x), v = a*x + (b*x^2)/2
-    simplify
     rewrite (1/x)*(b*x^2/2 + a*x) to (b*x)/2 + a
     apply integral identity
-    simplify
     rewrite log(x) * (b * x ^ 2 / 2 + a * x) to (b * x ^ 2 / 2 + a * x) * log(x)
     rewrite b * x ^ 2 / 2 + a * x to (b * x ^ 2 + 2 * a * x)/2
     rewrite (b * x ^ 2 + 2 * a * x)/2 to (x * (b * x + 2 * a))/2
     rewrite (x * (b * x + 2 * a)) / 2 to (a + b * x) ^ 2 / (2 * b) - a ^ 2 / (2 * b)
-    simplify
 done
 
 // 2
@@ -70,8 +68,8 @@ lhs:
     rewrite (b^3 * x^3 + 3 * a * b^2 * x^2 + 3 * a^2 * b * x + a^3) / x to b^3 * x^2 + 3 * a * b^2 * x + 3 * a^2 * b + a^3 / x
     apply integral identity
     simplify
-     rewrite (b * x + a)^3 to (a + b * x)^3
-    rewrite -(1 / (3 * b) * (3 * a * b ^ 2 * x ^ 2 / 2 + b ^ 3 * x ^ 3 / 3 + 3 * a ^ 2 * b * x + a ^ 3 * log(x))) to - (a^2 * x + a * b * x^2 / 2 + b^2 * x^3 / 9 + a^3 * log(x) / (3 * b))
+    rewrite (b * x + a)^3 to (a + b * x)^3
+    rewrite log(x) * (a + b * x) ^ 3 / (3 * b) - 1 / (3 * b) * (3 * a * b ^ 2 * x ^ 2 / 2 + b ^ 3 * x ^ 3 / 3 + 3 * a ^ 2 * b * x + a ^ 3 * log(x)) to log(x) * (a + b * x) ^ 3 / (3 * b) - (a^2 * x + a * b * x^2 / 2 + b^2 * x^3 / 9 + a^3 * log(x) / (3 * b))
     rewrite log(x) * (a + b * x) ^ 3 / (3 * b) to 1/(3 * b) * ((a + b * x) ^ 3 - a ^ 3) * log(x) + a^3 * log(x) / (3 * b)
     simplify
 done
@@ -84,8 +82,7 @@ lhs:
     expand polynomial
     apply integral identity
     simplify
-    rewrite -(1 / (4 * b) * (4 * a * b ^ 3 * x ^ 3 / 3 + 3 * a ^ 2 * b ^ 2 * x ^ 2 + b ^ 4 * x ^ 4 / 4 + 4 * a ^ 3 * b * x + a ^ 4 * log(x))) to -(1 / (4 * b)) * (a ^ 4 * log(x) + 4 * a ^ 3 * b * x + 3 * a ^ 2 * b ^ 2 * x ^ 2 + (4/3) * a * b ^ 3 * x ^ 3 + (1/4) * b ^ 4 * x ^ 4)
-    rewrite -(1 / (4 * b)) * (a ^ 4 * log(x) + 4 * a ^ 3 * b * x + 3 * a ^ 2 * b ^ 2 * x ^ 2 + (4/3) * a * b ^ 3 * x ^ 3 + (1/4) * b ^ 4 * x ^ 4) to -a^3*x - (3/4)*a^2*b*x^2 - (1/3)*a*b^2*x^3 - (1/16)*b^3*x^4 - (a^4*log(x))/(4*b)
+    rewrite 3 * a ^ 2 * b * x ^ 2 * log(x) / 2 - 1 / (4 * b) * (4 * a * b ^ 3 * x ^ 3 / 3 + 3 * a ^ 2 * b ^ 2 * x ^ 2 + b ^ 4 * x ^ 4 / 4 + 4 * a ^ 3 * b * x + a ^ 4 * log(x)) + a * b ^ 2 * x ^ 3 * log(x) + b ^ 3 * x ^ 4 * log(x) / 4 + a ^ 4 * log(x) / (4 * b) + a ^ 3 * x * log(x) to -a^3*x - (3/4)*a^2*b*x^2 - (1/3)*a*b^2*x^3 - (1/16)*b^3*x^4 - (a^4*log(x))/(4*b) + 3*a^2*b*x^2*log(x)/2 + a*b^2*x^3*log(x) + b^3*x^4*log(x)/4 + a^4*log(x)/(4*b) + a^3*x*log(x)
     rewrite -(a^3)*x - 3/4*a^2*b*x^2 - 1/3*a*b^2*x^3 - 1/16*b^3*x^4 - a^4*log(x)/(4*b) + 3*a^2*b*x^2*log(x)/2 + a*b^2*x^3*log(x) + b^3*x^4*log(x)/4 + a^4*log(x)/(4*b) + a^3*x*log(x) + SKOLEM_CONST(C) to (a^3*x + (3/2)*a^2*b*x^2 + a*b^2*x^3 + (1/4)*b^3*x^4)*log(x) - (a^3*x + (3/4)*a^2*b*x^2 + (1/3)*a*b^2*x^3 + (1/16)*b^3*x^4) + SKOLEM_CONST(C)
     rewrite (a^3*x + (3/2)*a^2*b*x^2 + a*b^2*x^3 + (1/4)*b^3*x^4)*log(x) to (1/(4*b))*(4*a^3*b*x + 6*a^2*b^2*x^2 + 4*a*b^3*x^3 + b^4*x^4)*log(x)
     rewrite (4*a^3*b*x + 6*a^2*b^2*x^2 + 4*a*b^3*x^3 + b^4*x^4) to (a + b*x)^4 - a^4
@@ -150,7 +147,7 @@ lhs:
     apply integral identity
     replace substitution
     simplify
-    rewrite 1 / (2 * b) * (-(log(b * x + a) / a ^ 2) + 1 / (a * (b * x + a)) + log(x) / a ^ 2)  to -log(b * x + a) / (2 * a ^ 2 * b) + 1 / (2 * a * (b * x + a) * b) + log(x) / (2 * a ^ 2 * b)
+    rewrite 1 / (2 * b) * (1 / (a * (b * x + a)) - log(b * x + a) / a ^ 2 + log(x) / a ^ 2)  to -log(b * x + a) / (2 * a ^ 2 * b) + 1 / (2 * a * (b * x + a) * b) + log(x) / (2 * a ^ 2 * b)
     simplify
 rhs:
     rewrite log(x/(a+b*x)) to log(x) - log(a+b*x)
@@ -186,11 +183,11 @@ lhs:
     simplify
     expand polynomial
     simplify
-    rewrite -(a ^ 2 * log(b * x + a) / (2 * b ^ 2)) + x ^ 2 * log(b * x + a) / 2 to (x^2 - a^2/b^2) / 2 * log(a + b*x)
+    rewrite x ^ 2 * log(b * x + a) / 2 - a ^ 2 * log(b * x + a) / (2 * b ^ 2) to (x^2 - a^2/b^2) / 2 * log(a + b*x)
 rhs:
     expand polynomial
     simplify
-    rewrite -(a ^ 2 * log(b * x + a) / (2 * b ^ 2)) + x ^ 2 * log(b * x + a) / 2 to (x^2 - a^2/b^2) / 2 * log(a + b*x)
+    rewrite x ^ 2 * log(b * x + a) / 2 - a ^ 2 * log(b * x + a) / (2 * b ^ 2) to (x^2 - a^2/b^2) / 2 * log(a + b*x)
 done
 
 // 3
@@ -211,7 +208,7 @@ lhs:
     rewrite log(x ^ 2 + a ^ 2) to 1 * log(x ^ 2 + a ^ 2)
     integrate by parts with u = log(x^2 + a^2), v = x
     simplify
-    rewrite -(2 * (INT x. x ^ 2 / (a ^ 2 + x ^ 2))) to -(2 * (INT x. (x ^ 2 + a ^ 2 - a ^ 2) / (a ^ 2 + x ^ 2)))
+    rewrite x * log(a ^ 2 + x ^ 2) - 2 * (INT x. x ^ 2 / (a ^ 2 + x ^ 2)) to x * log(a ^ 2 + x ^ 2) - 2 * (INT x. (x ^ 2 + a ^ 2 - a ^ 2) / (a ^ 2 + x ^ 2))
     rewrite (x ^ 2 + a ^ 2 - a ^ 2) / (a ^ 2 + x ^ 2) to 1 - a ^ 2 / (a ^ 2 + x ^ 2)
     simplify
     apply integral identity
@@ -235,14 +232,12 @@ lhs:
     simplify
     substitute u for x^2 + a^2
     simplify
-    rewrite sqrt(-(a^2) + u)/(u * sqrt(-(a^2) + u)) to 1/u
-    simplify
+    rewrite sqrt(u - a ^ 2) / (u * sqrt(u - a ^ 2)) to 1/u
     apply integral identity
     simplify
     replace substitution
     simplify
-    rewrite log(a^2 + x^2) * (a^2/2 + x^2/2) to (x^2 + a^2)/2 * log(x^2 + a^2)
-    rewrite (x^2 + a^2)/2 * log(x^2 + a^2) - x^2/2 to 1/2 * ((x^2 + a^2) * log(x^2 + a^2) - x^2)
+    rewrite log(a ^ 2 + x ^ 2) * (a ^ 2 / 2 + x ^ 2 / 2) - x ^ 2 / 2 to 1/2 * ((x^2 + a^2) * log(x^2 + a^2) - x^2)
 done
 
 // 3
@@ -267,20 +262,18 @@ done
 prove (INT x. x ^ 3 * log(x ^ 2 + a ^ 2)) = 1/4 * ((x ^ 4 - a ^ 4) * log(x ^ 2 + a ^ 2) - x ^ 4/2 + a ^ 2 * x ^ 2) + SKOLEM_CONST(C) for x^2 + a^2 > 0
 lhs:
     integrate by parts with u = log(x^2 + a^2), v = x^4/4
-    simplify
     rewrite x^5 / (2*a^2 + 2*x^2) to (x^3/2 - a^2*x/2 + a^4*x/(2*(x^2 + a^2)))
     simplify
     apply integral identity
     simplify
     substitute u for x^2 + a^2
     simplify
-    rewrite sqrt(-(a^2) + u)/(u * sqrt(-(a^2) + u)) to 1/u
-    simplify
+    rewrite sqrt(u - a ^ 2) / (u * sqrt(u - a ^ 2)) to 1/u
     apply integral identity
     simplify
     replace substitution
     simplify
-    rewrite -(a ^ 4 * log(a ^ 2 + x ^ 2) / 4) + x ^ 4 * log(a ^ 2 + x ^ 2) / 4 to (x ^ 4 - a ^ 4) * log(a ^ 2 + x ^ 2) / 4
+    rewrite x ^ 4 * log(a ^ 2 + x ^ 2) / 4 - a ^ 4 * log(a ^ 2 + x ^ 2) / 4 to (x ^ 4 - a ^ 4) * log(a ^ 2 + x ^ 2) / 4
 rhs:
     expand polynomial
     rewrite -(a ^ 4 * log(a ^ 2 + x ^ 2) / 4) + x ^ 4 * log(a ^ 2 + x ^ 2) / 4 to (x ^ 4 - a ^ 4) * log(a ^ 2 + x ^ 2) / 4
