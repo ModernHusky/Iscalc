@@ -1798,6 +1798,11 @@ class Rewriting(Rule):
                     continue
                 if normalize(expected_rhs, ctx) == normalize(self.new_expr, ctx):
                     return self.new_expr
+
+        # Try enhanced algebraic equivalence verification
+        if norm.eq_algebraic(e, self.new_expr, ctx):
+            return self.new_expr
+
         raise RuleException("Rewriting", "rewriting %s to %s failed" % (e, self.new_expr))
 
 

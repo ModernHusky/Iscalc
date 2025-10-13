@@ -117,7 +117,7 @@ lhs:
 done
 
 // 2
-// Requires complex algebraic rewriting to match the expected form
+// The computed result differs from handbook by constant a/b^3. System limitation: cannot absorb parameter-constants into integration constant
 prove (INT x. x ^ 2 / (a + b * x) ^ 2) = x / b ^ 2 - a ^ 2 / (b ^ 3 * (a + b * x)) - 2 * a / b ^ 3 * log(abs(a + b * x)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
 sorry
 

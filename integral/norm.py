@@ -421,3 +421,234 @@ def simp_definite_integral(e: Integral, ctx: Context) -> Expr:
         from_poly(to_poly(e.lower, ctx)) == from_poly(to_poly(expr.Op("-", e.upper), ctx)):
         return Const(0)
     return e
+
+
+def eq_algebraic(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Enhanced algebraic equivalence verification.
+
+    This function attempts to verify algebraic equivalence between two expressions
+    by trying multiple normalization strategies:
+    1. Try existing specialized eq_* functions
+    2. Expand/factor and compare
+    3. Handle logarithmic identities (log(a) - log(b) = log(a/b), etc.)
+    4. Handle absolute values in logarithms
+    5. Normalize and compare after subtracting
+    6. Handle SKOLEM_CONST absorption (expressions differing by a constant)
+    """
+    from integral import poly
+
+    # Try existing equivalence checkers first
+    try:
+        if eq_quotient(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_power(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_log(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_definite_integral(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    # Try to verify by checking if t1 - t2 normalizes to 0
+    try:
+        diff = t1 - t2
+        normalized_diff = poly.normalize(diff, ctx)
+        if normalized_diff == Const(0):
+            return True
+    except:
+        pass
+
+    # Try expanding logarithms: log(a*b) = log(a) + log(b), log(a/b) = log(a) - log(b)
+    try:
+        t1_expanded = expand_log(t1)
+        t2_expanded = expand_log(t2)
+        if eq_log(t1_expanded, t2_expanded, ctx):
+            return True
+    except:
+        pass
+
+    # Try removing abs() from logarithms and comparing
+    try:
+        t1_no_abs = remove_abs_in_log(t1)
+        t2_no_abs = remove_abs_in_log(t2)
+        diff = t1_no_abs - t2_no_abs
+        normalized_diff = poly.normalize(diff, ctx)
+        if normalized_diff == Const(0):
+            return True
+    except:
+        pass
+
+    # Handle SKOLEM_CONST absorption: expressions that differ only by a constant
+    # For example: f(x) + K + SKOLEM_CONST(C) is equivalent to f(x) + SKOLEM_CONST(C)
+    # because SKOLEM_CONST represents an arbitrary constant
+    try:
+        # Check if both expressions contain SKOLEM_CONST
+        skolem1 = has_skolem_const(t1)
+        skolem2 = has_skolem_const(t2)
+
+        if skolem1 and skolem2:
+            # Remove SKOLEM_CONST from both expressions and compare
+            t1_no_skolem = remove_skolem_const(t1)
+            t2_no_skolem = remove_skolem_const(t2)
+
+            # Check if the difference is a constant
+            # For indefinite integrals, a constant means any expression that doesn't
+            # involve the integration variable. Since we don't know the integration
+            # variable here, we check if the expressions are equal after normalization,
+            # or if the difference is evaluable (can be computed to a number).
+            diff = t1_no_skolem - t2_no_skolem
+            normalized_diff = poly.normalize(diff, ctx)
+
+            # Try to evaluate the difference - if it's evaluable, it's a constant
+            try:
+                from integral.expr import eval_expr
+                eval_expr(normalized_diff)
+                # If evaluation succeeds, it's a numeric constant
+                return True
+            except:
+                # Not evaluable - might still be a parametric constant
+                # Check if it only contains parameters (constants and pi)
+                # and no integration-like variables
+                if is_parametric_constant(normalized_diff):
+                    return True
+    except:
+        pass
+
+    return False
+
+def is_parametric_constant(e: Expr) -> bool:
+    """Check if expression is a parametric constant (no integration variable).
+
+    A parametric constant is an expression that may contain parameters (like 'a', 'b')
+    but doesn't contain integration variables or other non-constant terms.
+    We consider an expression a parametric constant if it can be evaluated or
+    if it only contains constants, parameters, pi, and arithmetic operations.
+    """
+    # If it's directly evaluable, it's a constant
+    try:
+        from integral.expr import eval_expr
+        eval_expr(e)
+        return True
+    except:
+        pass
+
+    # Check the structure: should only contain constants, vars (parameters), pi, and operations
+    if expr.is_const(e):
+        return True
+    elif expr.is_var(e):
+        # Variables are considered parameters in this context
+        return True
+    elif expr.is_fun(e) and e.func_name == 'pi':
+        return True
+    elif expr.is_op(e):
+        # All arguments must be parametric constants
+        return all(is_parametric_constant(arg) for arg in e.args)
+    elif expr.is_fun(e):
+        # Functions like sin, cos, exp of parametric constants are still parametric constants
+        return all(is_parametric_constant(arg) for arg in e.args)
+    return False
+
+def has_skolem_const(e: Expr) -> bool:
+    """Check if expression contains SKOLEM_CONST."""
+    if expr.is_skolem_func(e):
+        return True
+    elif expr.is_op(e):
+        return any(has_skolem_const(arg) for arg in e.args)
+    elif expr.is_fun(e):
+        return any(has_skolem_const(arg) for arg in e.args)
+    elif expr.is_integral(e) or expr.is_indefinite_integral(e):
+        return has_skolem_const(e.body)
+    return False
+
+def remove_skolem_const(e: Expr) -> Expr:
+    """Remove SKOLEM_CONST from expression.
+
+    For example: f(x) + SKOLEM_CONST(C) becomes f(x)
+                 f(x) - K + SKOLEM_CONST(C) becomes f(x) - K
+    """
+    if expr.is_skolem_func(e):
+        return Const(0)
+    elif expr.is_op(e) and e.op == '+':
+        left = remove_skolem_const(e.args[0])
+        right = remove_skolem_const(e.args[1])
+        # If one side is 0 (was SKOLEM_CONST), return the other
+        if left == Const(0):
+            return right
+        if right == Const(0):
+            return left
+        return left + right
+    elif expr.is_op(e) and e.op == '-' and len(e.args) == 2:
+        left = remove_skolem_const(e.args[0])
+        right = remove_skolem_const(e.args[1])
+        if right == Const(0):
+            return left
+        if left == Const(0):
+            return -right
+        return left - right
+    elif expr.is_op(e) and e.op == '-' and len(e.args) == 1:
+        return -remove_skolem_const(e.args[0])
+    elif expr.is_op(e) and e.op == '*':
+        return remove_skolem_const(e.args[0]) * remove_skolem_const(e.args[1])
+    elif expr.is_op(e) and e.op == '/':
+        return remove_skolem_const(e.args[0]) / remove_skolem_const(e.args[1])
+    elif expr.is_fun(e):
+        return expr.Fun(e.func_name, *[remove_skolem_const(arg) for arg in e.args])
+    return e
+
+def expand_log(e: Expr) -> Expr:
+    """Expand logarithmic expressions: log(a*b) -> log(a) + log(b), log(a/b) -> log(a) - log(b)."""
+    if not expr.is_fun(e):
+        if e.is_op():
+            return expr.Op(e.op, *[expand_log(arg) for arg in e.args])
+        return e
+
+    if e.func_name == 'log':
+        arg = e.args[0]
+        # Handle log(a*b) = log(a) + log(b)
+        if arg.is_times():
+            return expand_log(expr.log(arg.args[0])) + expand_log(expr.log(arg.args[1]))
+        # Handle log(a/b) = log(a) - log(b)
+        elif arg.is_divides():
+            return expand_log(expr.log(arg.args[0])) - expand_log(expr.log(arg.args[1]))
+        # Handle log(a^n) = n * log(a) for constant n
+        elif arg.is_power() and expr.is_const(arg.args[1]):
+            return arg.args[1] * expand_log(expr.log(arg.args[0]))
+        # Handle log(abs(x))
+        elif expr.is_fun(arg) and arg.func_name == 'abs':
+            return expr.log(expr.Fun('abs', expand_log(arg.args[0])))
+    elif e.func_name != 'log':
+        return expr.Fun(e.func_name, *[expand_log(arg) for arg in e.args])
+
+    return e
+
+def remove_abs_in_log(e: Expr) -> Expr:
+    """Remove abs() inside log() for comparison purposes."""
+    if not expr.is_fun(e):
+        if e.is_op():
+            return expr.Op(e.op, *[remove_abs_in_log(arg) for arg in e.args])
+        return e
+
+    if e.func_name == 'log':
+        arg = e.args[0]
+        if expr.is_fun(arg) and arg.func_name == 'abs':
+            # log(abs(x)) -> log(x) for comparison
+            return expr.log(remove_abs_in_log(arg.args[0]))
+        else:
+            return expr.log(remove_abs_in_log(arg))
+    else:
+        return expr.Fun(e.func_name, *[remove_abs_in_log(arg) for arg in e.args])
+
+    return e

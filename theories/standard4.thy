@@ -288,7 +288,32 @@ done
 
 // 2
 prove (INT x. x * arccot(x / a)) = 1 / 2 * (x ^ 2 + a ^ 2) * arccot(x / a) + 1 / 2 * a * x + SKOLEM_CONST(C) for a != 0
-sorry
+lhs:
+    integrate by parts with u = arccot(x / a), v = x ^ 2 / 2
+    simplify
+    rewrite x ^ 2 / a ^ 2 + 1 to (x ^ 2 + a ^ 2) / a ^ 2
+    rewrite x ^ 2 / ((x ^ 2 + a ^ 2) / a ^ 2) to a ^ 2 * x ^ 2 / (x ^ 2 + a ^ 2)
+    rewrite a ^ 2 * x ^ 2 / (x ^ 2 + a ^ 2) to a ^ 2 * (1 - a ^ 2 / (x ^ 2 + a ^ 2))
+    simplify
+    apply integral identity
+    simplify
+    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
+    substitute u for x/a
+    simplify
+    apply integral identity
+    replace substitution
+    rewrite arctan(x / a) to pi / 2 - arccot(x / a)
+    rewrite a / 2 * (x - a * (pi / 2 - arccot(x / a))) to a / 2 * x - a ^ 2 / 2 * (pi / 2 - arccot(x / a))
+    rewrite a ^ 2 / 2 * (pi / 2 - arccot(x / a)) to a ^ 2 * pi / 4 - a ^ 2 / 2 * arccot(x / a)
+    simplify
+    rewrite a ^ 2 / 2 * arccot(x / a) + x ^ 2 / 2 * arccot(x / a) to (a ^ 2 / 2 + x ^ 2 / 2) * arccot(x / a)
+    simplify
+    rewrite (a ^ 2 / 2 + x ^ 2 / 2) to 1 / 2 * (a ^ 2 + x ^ 2)
+    rewrite a * x / 2 to 1 / 2 * a * x
+    rewrite arccot(x / a) * (1 / 2 * (a ^ 2 + x ^ 2)) to 1 / 2 * (a ^ 2 + x ^ 2) * arccot(x / a)
+    rewrite 1 / 2 * (a ^ 2 + x ^ 2) * arccot(x / a) to 1 / 2 * (x ^ 2 + a ^ 2) * arccot(x / a)
+    rewrite to 1 / 2 * (x ^ 2 + a ^ 2) * arccot(x / a) + 1 / 2 * a * x + SKOLEM_CONST(C)
+done
 
 // 3
 prove (INT x. x ^ 2 * arccot(x / a)) = 1 / 3 * x ^ 3 * arccot(x / a) + 1 / 6 * a * x ^ 2 - 1 / 6 * a ^ 3 * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a != 0
