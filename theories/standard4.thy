@@ -319,7 +319,29 @@ sorry
 
 // 2
 prove (INT x. 1 / x ^ 2 * arccot(x / a)) = -1 / x * arccot(x / a) - 1 / (2 * a) * log(x ^2 / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for x != 0, a != 0
-sorry
+lhs:
+    integrate by parts with u = arccot(x / a), v = -1 / x
+    simplify
+    rewrite x^2 / a^2 + 1 to (x^2 + a^2) / a^2
+    rewrite 1 / (x * ((x^2 + a^2) / a^2)) to a^2 / (x * (x^2 + a^2))
+    rewrite a^2 / (x * (x^2 + a^2)) to a^2 * (1/x - x/(x^2 + a^2)) / a^2
+    simplify
+    apply integral identity
+    rewrite x/(a^2 + x^2) to x/(x^2 + a^2)
+    substitute u for x^2 + a^2
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite log(abs(x)) - log(a ^ 2 + x ^ 2) / 2 to log(abs(x)) - log(abs(x^2 + a^2)^(1/2))
+    rewrite log(abs(x)) - log(abs(x^2 + a^2)^(1/2)) to log(abs(x)/abs(x^2 + a^2)^(1/2))
+    rewrite abs(x^2 + a^2)^(1/2) to sqrt(x^2 + a^2)
+    rewrite abs(x)/sqrt(x^2 + a^2) to sqrt(x^2)/sqrt(x^2 + a^2)
+    rewrite sqrt(x^2)/sqrt(x^2 + a^2) to sqrt(x^2/(x^2 + a^2))
+    rewrite sqrt(x^2/(x^2 + a^2)) to (x^2/(x^2 + a^2))^(1/2)
+    rewrite log((x^2/(x^2 + a^2))^(1/2)) to (1/2)*log(x^2/(x^2 + a^2))
+    simplify
+done
 
 // 3
 prove (INT x. 1 / x ^ 3 * arccot(x / a)) = -1 / 2 * (1 / x ^ 2 + 1 / a ^ 2) * arccot(x / a) + 1 / (2 * a * x) + SKOLEM_CONST(C) for x != 0, a != 0
@@ -334,7 +356,15 @@ sorry
 
 // 1
 prove (INT x. 1 / (x ^ 2 + a ^ 2) * arccot(x / a)) = -1 / (2 * a) * arccot(x / a) ^ 2 + SKOLEM_CONST(C) for a != 0, x != 0
-sorry
+lhs:
+    rewrite x ^ 2 + a ^ 2 to a ^ 2 * (x ^ 2 / a ^ 2 + 1)
+    rewrite 1 / (a ^ 2 * (x ^ 2 / a ^ 2 + 1)) * arccot(x / a) to (1/a) * arccot(x / a) * (1/(a * (x ^ 2 / a ^ 2 + 1)))
+    rewrite (1/a) * arccot(x / a) * (1/(a * (x ^ 2 / a ^ 2 + 1))) to (-1/a) * arccot(x / a) * (-(1/(a * (x ^ 2 / a ^ 2 + 1))))
+    substitute u for arccot(x / a)
+    apply integral identity
+    replace substitution
+    simplify
+done
 
 // 2
 prove (INT x. x ^ 2 / (x ^ 2 + a ^ 2) * arccot(x / a)) = x * arccot(x / a) +1 / 2 * a * log(x ^ 2 + a ^ 2) + 1 / 2 * a * arccot(x / a) ^ 2 + SKOLEM_CONST(C) for a != 0, x != 0

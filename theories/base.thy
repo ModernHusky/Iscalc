@@ -433,6 +433,10 @@ axiom arcsin(x) + arccos(x) = pi/2 for x >= -1, x <= 1
 
 axiom arctan(x) + arccot(x) = pi/2
 
+axiom [bidirectional] arctan(x) = pi/2 - arccot(x)
+
+axiom [bidirectional] arccot(x) = pi/2 - arctan(x)
+
 axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
