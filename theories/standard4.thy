@@ -370,7 +370,22 @@ done
 
 // 3
 prove (INT x. 1 / x ^ 3 * arccot(x / a)) = -1 / 2 * (1 / x ^ 2 + 1 / a ^ 2) * arccot(x / a) + 1 / (2 * a * x) + SKOLEM_CONST(C) for x != 0, a != 0
-sorry
+lhs:
+    integrate by parts with u = arccot(x / a), v = -1 / (2 * x ^ 2)
+    simplify
+    rewrite x^2 / a^2 + 1 to (x^2 + a^2) / a^2
+    rewrite 1 / (x ^ 2 * ((x^2 + a^2) / a^2)) to a^2 / (x ^ 2 * (x^2 + a^2))
+    partial fraction decomposition
+    apply integral identity
+    simplify
+    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
+    substitute u for x/a
+    simplify
+    apply integral identity
+    replace substitution
+    rewrite arctan(x / a) to pi / 2 - arccot(x / a)
+    rewrite to -1/2 * (1 / x ^ 2 + 1 / a ^ 2) * arccot(x / a) + 1 / (2 * a * x) + SKOLEM_CONST(C)
+done
 
 // 4
 prove (INT x. 1 / x ^ n * arccot(x / a)) = -1 / ((n - 1) * x ^ (n - 1)) * arccot(x / a) - a / (n -1) * (INT x. 1 / (x ^ (n - 1) * (x ^ 2 + a ^ 2))) + SKOLEM_CONST(C) for n != 1, a != 0, x != 0
