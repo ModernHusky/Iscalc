@@ -148,7 +148,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return normal(-(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2)))))
             elif e.func_name == "arccot":
                 x, = e.args
-                return normal(-rec(x)) / (Const(1) + x ^ Const(2))
+                return normal(-rec(x) / (Const(1) + (x ^ Const(2))))
             elif e.func_name == "arcsec":
                 x, = e.args
                 return normal(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1))))

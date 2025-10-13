@@ -275,7 +275,16 @@ sorry
 
 // 1
 prove (INT x. arccot(x / a)) = x * arccot(x / a) + 1 / 2 * a * log(x ^ 2 + a ^ 2) + SKOLEM_CONST(C) for a != 0
-sorry
+lhs:
+    integrate by parts with u = arccot(x / a), v = x
+    simplify
+    rewrite x / (x^2 / a^2 + 1) to (x * a^2) / (x^2 + a^2)
+    rewrite (x * a^2) / (x^2 + a^2) to (a / 2) * (2 * x * a) / (x^2 + a^2)
+    substitute u for x^2 + a^2
+    apply integral identity
+    replace substitution
+    rewrite log(abs(x^2 + a^2)) to log(x^2 + a^2)
+done
 
 // 2
 prove (INT x. x * arccot(x / a)) = 1 / 2 * (x ^ 2 + a ^ 2) * arccot(x / a) + 1 / 2 * a * x + SKOLEM_CONST(C) for a != 0

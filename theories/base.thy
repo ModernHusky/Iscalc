@@ -431,6 +431,8 @@ axiom [simp] arcsin(cos(x)) = pi/2 - x for x >= 0, x <= pi
 
 axiom arcsin(x) + arccos(x) = pi/2 for x >= -1, x <= 1
 
+axiom arctan(x) + arccot(x) = pi/2
+
 axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
