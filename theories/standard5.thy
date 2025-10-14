@@ -112,7 +112,19 @@ done
 // 2
 // The computed result differs from handbook by constant a/b^3. System limitation: cannot absorb parameter-constants into integration constant
 prove (INT x. x ^ 2 / (a + b * x) ^ 2) = x / b ^ 2 - a ^ 2 / (b ^ 3 * (a + b * x)) - 2 * a / b ^ 3 * log(abs(a + b * x)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
-sorry
+lhs:
+    substitute u for a + b * x
+    simplify
+    expand polynomial
+    apply integral identity
+    simplify
+    replace substitution
+    simplify
+    rewrite 1 / b ^ 3 * (-(2 * a * log(abs(b * x + a))) - a ^ 2 / (b * x + a) + b * x + a) to (b * x + a) / b ^ 3 - a ^ 2 / (b ^ 3 * (b * x + a)) - 2 * a * log(abs(b * x + a)) / b ^ 3
+    rewrite (b * x + a) / b ^ 3 to x / b ^ 2 + a / b ^ 3
+    rewrite x / b ^ 2 + a / b ^ 3 - a ^ 2 / (b ^ 3 * (b * x + a)) - 2 * a * log(abs(b * x + a)) / b ^ 3 + SKOLEM_CONST(C) to x / b ^ 2 - a ^ 2 / (b ^ 3 * (a + b * x)) - 2 * a / b ^ 3 * log(abs(a + b * x)) + (a / b ^ 3 + SKOLEM_CONST(C))
+    rewrite (a / b ^ 3 + SKOLEM_CONST(C)) to SKOLEM_CONST(C)
+done
 
 // 3
 prove (INT x. x ^ 2 / (a + b * x) ^ 3) = (2 * a * x / b ^ 2 + 3 * a ^ 2 / (2 * b ^ 3)) / (a + b * x) + log(abs(a + b * x)) / b ^ 3 + SKOLEM_CONST(C) for a + b * x != 0, b != 0
@@ -134,7 +146,18 @@ done
 
 // 2
 prove (INT x. x ^ 3 / (a + b * x) ^ 2) = x ^ 2 / (2 * b ^ 2) - 2 * a * x / b ^ 3 + a ^ 3 / (b ^ 4 * (a + b * x)) + 3 * a ^ 2 / b ^ 4 * log(abs(a + b * x)) + SKOLEM_CONST(C) for a + b * x > 0, b != 0
-sorry
+lhs:
+    substitute u for a + b * x
+    simplify
+    expand polynomial
+    apply integral identity
+    simplify
+    replace substitution
+    simplify
+    expand polynomial
+    rewrite 3 * a ^ 2 * log(b * x + a) / b ^ 4 + a ^ 3 / (b ^ 4 * (b * x + a)) - 5 * a ^ 2 / (2 * b ^ 4) - 2 * a * x / b ^ 3 + x ^ 2 / (2 * b ^ 2) + SKOLEM_CONST(C) to x ^ 2 / (2 * b ^ 2) - 2 * a * x / b ^ 3 + a ^ 3 / (b ^ 4 * (a + b * x)) + 3 * a ^ 2 / b ^ 4 * log(a + b * x) + (-5 * a ^ 2 / (2 * b ^ 4) + SKOLEM_CONST(C))
+    rewrite (-5 * a ^ 2 / (2 * b ^ 4) + SKOLEM_CONST(C)) to SKOLEM_CONST(C)
+done
 
 // 3
 prove (INT x. x ^ 3 / (a + b * x) ^ 3) = (x ^ 3 / b + 2 * a * x ^ 2 / b ^ 2 - 2 * a ^ 2 * x / b ^ 3 - 5 * a ^ 3 / (2 * b ^ 4)) / (a + b * x) ^ 2 - 3 * a / b ^ 4 * log(abs(a + b * x)) + SKOLEM_CONST(C) for a + b * x != 0, b != 0
