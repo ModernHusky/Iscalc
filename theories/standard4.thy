@@ -1,4 +1,4 @@
-imports base
+imports standard3
 
 # Indefinite Integrals of Inverse Trigonometric Functions
 # Handbook of mathematical formulas and integrals
@@ -37,8 +37,17 @@ prove (INT x. arcsin(x / a) ^ n) = x * arcsin(x / a) ^ n + n * sqrt(a ^ 2 - x ^ 
 sorry
 
 // 5
-prove (INT x. x * arcsin(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arcsin(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. x * arcsin(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arcsin(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arcsin(x / a), v = x ^ 2 / 2
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x ^ 2 / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to x ^ 2 * a / sqrt(a ^ 2 - x ^ 2)
+    simplify
+    apply integral identity
+    simplify
+    rewrite x * sqrt(a ^ 2 - x ^ 2) / 4 - a ^ 2 / 4 * arcsin(x / a) + x ^ 2 / 2 * arcsin(x / a) to (x ^ 2 / 2 - a ^ 2 / 4) * arcsin(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2)
+done
 
 // 6
 prove (INT x. x ^ 2 * arcsin(x / a)) = x ^ 3 / 3 * arcsin(x / a) + 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
@@ -99,8 +108,21 @@ prove (INT x. arccos(x / a) ^ n) = x * arccos(x / a) ^ n -  n * sqrt(a ^ 2 - x ^
 sorry
 
 // 5
-prove (INT x. x * arccos(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arccos(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. x * arccos(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arccos(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arccos(x / a), v = x ^ 2 / 2
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x ^ 2 / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to x ^ 2 * a / sqrt(a ^ 2 - x ^ 2)
+    simplify
+    apply integral identity
+    simplify
+    rewrite a ^ 2 / 4 * arcsin(x / a) - x * sqrt(a ^ 2 - x ^ 2) / 4 + x ^ 2 / 2 * arccos(x / a) + SKOLEM_CONST(C) to a ^ 2 / 4 * (pi / 2 - arccos(x / a)) - x * sqrt(a ^ 2 - x ^ 2) / 4 + x ^ 2 / 2 * arccos(x / a) + SKOLEM_CONST(C)
+    expand polynomial
+    simplify
+    rewrite -(x * sqrt(a ^ 2 - x ^ 2) / 4) - a ^ 2 / 4 * arccos(x / a) + x ^ 2 / 2 * arccos(x / a) + a ^ 2 * pi / 8 + SKOLEM_CONST(C) to (x ^ 2 / 2 - a ^ 2 / 4) * arccos(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + (a ^ 2 * pi / 8 + SKOLEM_CONST(C))
+    rewrite (a ^ 2 * pi / 8 + SKOLEM_CONST(C)) to SKOLEM_CONST(C)
+done
 
 // 6
 prove (INT x. x ^ 2 * arccos(x / a)) = x ^ 3 / 3 * arccos(x / a) - 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
@@ -156,11 +178,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
-    substitute u for x/a
-    simplify
-    apply integral identity
-    replace substitution
     rewrite x ^ 2 / 2 * arctan(x / a) - a / 2 * (x - a * arctan(x / a)) to (a^2 / 2 + x^2 / 2) * arctan(x / a) - a * x / 2
     simplify
 done
@@ -194,11 +211,7 @@ lhs:
     rewrite x ^ 4 / (a ^ 2 + x ^ 2) to x ^ 2 - a ^ 2 + a ^ 4 / (a ^ 2 + x ^ 2)
     simplify
     apply integral identity
-    rewrite 1 / (a^2 + x^2) to (1/a^2) / (1 + (x/a)^2)
-    substitute u for x/a
     simplify
-    apply integral identity
-    replace substitution
     rewrite x ^ 4 / 4 * arctan(x / a) - a / 4 * (a ^ 3 * arctan(x / a) - a ^ 2 * x + x ^ 3 / 3) to (x^4 / 4 - a^4 / 4) * arctan(x / a) + a^3 * x / 4 - a * x^3 / 12
     simplify
 done
@@ -258,11 +271,6 @@ lhs:
     partial fraction decomposition
     apply integral identity
     simplify
-    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
-    substitute u for x/a
-    simplify
-    apply integral identity
-    replace substitution
     rewrite 1 / (2 * a) * (-(1 / a * arctan(x / a)) - 1 / x) - 1 / (2 * x ^ 2) * arctan(x / a) to -1/2 * (1 / x ^ 2 + 1 / a ^ 2) * arctan(x / a) - 1 / (2 * a * x)
 done
 
@@ -297,11 +305,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
-    substitute u for x/a
-    simplify
-    apply integral identity
-    replace substitution
     rewrite arctan(x / a) to pi / 2 - arccot(x / a)
     rewrite a / 2 * (x - a * (pi / 2 - arccot(x / a))) to a / 2 * x - a ^ 2 / 2 * (pi / 2 - arccot(x / a))
     rewrite a ^ 2 / 2 * (pi / 2 - arccot(x / a)) to a ^ 2 * pi / 4 - a ^ 2 / 2 * arccot(x / a)
@@ -378,11 +381,6 @@ lhs:
     partial fraction decomposition
     apply integral identity
     simplify
-    rewrite 1/(a^2 + x^2) to (1/a^2)/(1 + (x/a)^2)
-    substitute u for x/a
-    simplify
-    apply integral identity
-    replace substitution
     rewrite arctan(x / a) to pi / 2 - arccot(x / a)
     rewrite to -1/2 * (1 / x ^ 2 + 1 / a ^ 2) * arccot(x / a) + 1 / (2 * a * x) + SKOLEM_CONST(C)
 done

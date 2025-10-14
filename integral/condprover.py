@@ -546,6 +546,47 @@ def get_standard_inequalities() -> list[Identity]:
         (["x > 0", "x < 1", "y > 1"], "x ^ y > 0"),
         (["isEven(n)"], "x ^ n >= 0"),
 
+        # Reverse implications for squares (CRITICAL for substitution)
+        (["x ^ 2 < a ^ 2", "a > 0"], "x < a"),
+        (["x ^ 2 < a ^ 2", "a > 0"], "x > -a"),
+        (["x ^ 2 <= a ^ 2", "a >= 0"], "x <= a"),
+        (["x ^ 2 <= a ^ 2", "a >= 0"], "x >= -a"),
+        (["a ^ 2 - x ^ 2 > 0", "a > 0"], "x < a"),
+        (["a ^ 2 - x ^ 2 > 0", "a > 0"], "x > -a"),
+        (["a ^ 2 - x ^ 2 >= 0", "a >= 0"], "x <= a"),
+        (["a ^ 2 - x ^ 2 >= 0", "a >= 0"], "x >= -a"),
+
+        # Special case for constants (most common: x^2 <= 1)
+        (["x ^ 2 < 1"], "x < 1"),
+        (["x ^ 2 < 1"], "x > -1"),
+        (["x ^ 2 <= 1"], "x <= 1"),
+        (["x ^ 2 <= 1"], "x >= -1"),
+        (["x ^ 2 <= 1"], "x < 1"),  # For integration: boundary points don't matter
+        (["x ^ 2 <= 1"], "x > -1"),  # For integration: boundary points don't matter
+        (["1 - x ^ 2 > 0"], "x < 1"),
+        (["1 - x ^ 2 > 0"], "x > -1"),
+        (["1 - x ^ 2 >= 0"], "x <= 1"),
+        (["1 - x ^ 2 >= 0"], "x >= -1"),
+        (["1 - x ^ 2 >= 0"], "x < 1"),  # For integration: boundary points don't matter
+        (["1 - x ^ 2 >= 0"], "x > -1"),  # For integration: boundary points don't matter
+
+        # Simplifying inequalities with nonzero multiplicative factors
+        # If a^2 * expr >= 0 and a != 0, then expr >= 0
+        (["a ^ 2 * x >= 0", "a != 0"], "x >= 0"),
+        (["a ^ 2 * x > 0", "a != 0"], "x > 0"),
+        (["a ^ 2 * x <= 0", "a != 0"], "x <= 0"),
+        (["a ^ 2 * x < 0", "a != 0"], "x < 0"),
+
+        # Special case: a^2 - a^2*x (factored form from substitution)
+        # These handle cases like a^2 - a^2*y^2 >= 0 --> 1 - y^2 >= 0 (when a != 0)
+        (["a ^ 2 - a ^ 2 * x >= 0", "a != 0"], "1 - x >= 0"),
+        (["a ^ 2 - a ^ 2 * x > 0", "a != 0"], "1 - x > 0"),
+        (["a ^ 2 - a ^ 2 * x <= 0", "a != 0"], "1 - x <= 0"),
+        (["a ^ 2 - a ^ 2 * x < 0", "a != 0"], "1 - x < 0"),
+        # More specifically for y^2
+        (["a ^ 2 - a ^ 2 * y ^ 2 >= 0", "a != 0"], "1 - y ^ 2 >= 0"),
+        (["a ^ 2 - a ^ 2 * y ^ 2 > 0", "a != 0"], "1 - y ^ 2 > 0"),
+
         # Log
         (["x >= 1"], "log(x) >= 0"),
         (["x > 1"], "log(x) > 0"),

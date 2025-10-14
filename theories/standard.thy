@@ -496,6 +496,17 @@ lhs:
     apply integral identity
 done
 
+# Version with relaxed conditions - used by standard3 and standard4
+prove (INT x. 1/sqrt(1-x^2)) = arcsin(x) + SKOLEM_CONST(C) for 1 - x^2 >= 0
+lhs:
+    substitute sin(u) for x
+    rewrite 1 - sin(u)^2 to cos(u)^2
+    simplify
+    apply integral identity
+    replace substitution
+    simplify
+done
+
 prove (INT x. 1/sqrt(a-x^2)) = arcsin(x/sqrt(a)) + SKOLEM_CONST(C) for a > 0, x > -sqrt(a), x < sqrt(a), a-x^2>0
 lhs:
     substitute y for x / sqrt(a)

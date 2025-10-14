@@ -1,4 +1,4 @@
-imports base
+imports standard4
 
 # Handbook of mathematical formulas and integrals
 ## Chapter 4 Indefinite Integrals of Algebraic Functions
@@ -64,9 +64,6 @@ lhs:
     rewrite x / (a + b * x) to 1 / b - a / (b * (a + b * x))
     simplify
     apply integral identity
-    substitute u for a + b * x
-    apply integral identity
-    replace substitution
     simplify
 done
 
@@ -110,10 +107,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    substitute u for a + b * x
-    apply integral identity
-    replace substitution
-    simplify
 done
 
 // 2
@@ -137,11 +130,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    substitute u for a + b*x
-    simplify
-    apply integral identity
-    simplify
-    replace substitution
 done
 
 // 2
@@ -254,10 +242,6 @@ lhs:
     rewrite (a + b*x)/(c + d*x) to b/d + (a*d - b*c)/d^2 * d/(c + d*x)
     simplify
     apply integral identity
-    substitute u for c + d*x
-    simplify
-    apply integral identity
-    replace substitution
 done
 
 // 2
@@ -265,12 +249,6 @@ prove (INT x. 1 / ((x - a) * (x - b))) = 1 / (a - b) * log(abs((x - a) / (x - b)
 lhs:
     rewrite 1 / ((x - a) * (x - b)) to 1 / ((a - b) * (x - a)) - 1 / ((a - b) * (x - b))
     apply integral identity
-    substitute u for x - a
-    apply integral identity
-    replace substitution
-    substitute v for x - b
-    apply integral identity
-    replace substitution
     simplify
     rewrite log(abs(x - a)) / (a - b) - log(abs(x - b)) / (a - b) to (log(abs(x - a)) - log(abs(x - b))) / (a - b)
     simplify
@@ -281,12 +259,6 @@ prove (INT x. x / ((x - a) * (x - b))) = a / (a - b) * log(abs(x - a)) - b / (a 
 lhs:
     rewrite x / ((x - a) * (x - b)) to a / ((a - b) * (x - a)) - b / ((a - b) * (x - b))
     apply integral identity
-    substitute u for x - a
-    apply integral identity
-    replace substitution
-    substitute v for x - b
-    apply integral identity
-    replace substitution
     simplify
 done
 
@@ -295,12 +267,7 @@ prove (INT x. 1 / ((x - a) ^ 2 * (x - b))) = -1 / ((x - a) * (a - b)) - 1 / (a -
 lhs:
     rewrite 1 / ((x - a) ^ 2 * (x - b)) to 1 / ((a - b) ^ 2 * (x - b)) - 1 / ((a - b) ^ 2 * (x - a)) + 1 / ((a - b) * (x - a) ^ 2)
     apply integral identity
-    substitute u for x - b
-    apply integral identity
-    replace substitution
-    substitute v for x - a
-    apply integral identity
-    replace substitution
+    simplify
     substitute w for x - a
     apply integral identity
     replace substitution
