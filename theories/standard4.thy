@@ -1,4 +1,5 @@
 imports standard3
+imports sqrt_integrals
 
 # Indefinite Integrals of Inverse Trigonometric Functions
 # Handbook of mathematical formulas and integrals
@@ -50,27 +51,54 @@ lhs:
 done
 
 // 6
-prove (INT x. x ^ 2 * arcsin(x / a)) = x ^ 3 / 3 * arcsin(x / a) + 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. x ^ 2 * arcsin(x / a)) = x ^ 3 / 3 * arcsin(x / a) + 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, a ^ 2 - x ^ 2 >= 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arcsin(x / a), v = x ^ 3 / 3
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x ^ 3 / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to x ^ 3 * a / sqrt(a ^ 2 - x ^ 2)
+    simplify
+    apply integral identity
+    simplify
+    rewrite sqrt(a ^ 2 - x ^ 2) * (-(2 * a ^ 2) - x ^ 2) / 9 to sqrt(a ^ 2 - x ^ 2) * (x ^ 2 + 2 * a ^ 2) / 9
+    rewrite x ^ 3 / 3 * arcsin(x / a) - sqrt(a ^ 2 - x ^ 2) * (x ^ 2 + 2 * a ^ 2) / 9 + SKOLEM_CONST(C) to x ^ 3 / 3 * arcsin(x / a) + 1/9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C)
+done
 
 // 7
 prove (INT x. x ^ 3 * arcsin(x / a)) = (x ^ 4 / 4 -  3 * a ^ 4 / 32) * arcsin(x / a) + 1 / 32 * (2 * x ^ 3 + 3 * a ^ 2 * x) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
 sorry
 
 // 8
-prove (INT x. x ^ n * arcsin(x / a)) = x ^ (n + 1) / (n + 1) * arcsin(x / a) - 1 / (n + 1) * (INT x. x ^ (n + 1) / sqrt(a ^ 2 - x ^ 2)) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
+prove (INT x. x ^ n * arcsin(x / a)) = x ^ (n + 1) / (n + 1) * arcsin(x / a) - 1 / (n + 1) * (INT x. x ^ (n + 1) / sqrt(a ^ 2 - x ^ 2)) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, n >= 0, isInt(n), a ^ 2 - x ^ 2 > 0
 sorry
 
 ## 10.1.2 Integrands Involving x ^ (-n) * arcsin(x/a)
 #### 10.1.2.1
 
 // 2
-prove (INT x. 1 / x ^ 2 * arcsin(x / a)) = -1 / x * arcsin(x / a) - 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2))/x)) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. 1 / x ^ 2 * arcsin(x / a)) = -1 / x * arcsin(x / a) - 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2))/x)) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arcsin(x / a), v = -1 / x
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite 1 / (x * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x * sqrt(a ^ 2 - x ^ 2))
+    simplify
+    apply integral identity
+    simplify
+    rewrite -(1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / abs(x))) to -1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
+done
 
 // 3
-prove (INT x. 1 / x ^ 3 * arcsin(x / a)) = -1 / (2 * x ^ 2 ) * arcsin(x / a) - sqrt(a ^ 2 - x ^ 2)/(2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. 1 / x ^ 3 * arcsin(x / a)) = -1 / (2 * x ^ 2 ) * arcsin(x / a) - sqrt(a ^ 2 - x ^ 2)/(2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arcsin(x / a), v = -1 / (2 * x ^ 2)
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite 1 / (x ^ 2 * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x ^ 2 * sqrt(a ^ 2 - x ^ 2))
+    simplify
+    apply integral identity
+    simplify
+done
 
 // 4
 prove (INT x. 1 / x ^ n * arcsin(x / a)) = -1 / ((n - 1) * x ^ (n - 1)) * arcsin(x / a) + 1 / (n - 1) * (INT x. 1 / (x ^ (n - 1) * sqrt(a ^ 2 - x ^ 2))) + SKOLEM_CONST(C) for abs(x / a) < 1, n != 1, a != 0
@@ -125,27 +153,53 @@ lhs:
 done
 
 // 6
-prove (INT x. x ^ 2 * arccos(x / a)) = x ^ 3 / 3 * arccos(x / a) - 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. x ^ 2 * arccos(x / a)) = x ^ 3 / 3 * arccos(x / a) - 1 / 9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, a ^ 2 - x ^ 2 >= 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arccos(x / a), v = x ^ 3 / 3
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x ^ 3 / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to x ^ 3 * a / sqrt(a ^ 2 - x ^ 2)
+    simplify
+    apply integral identity
+    simplify
+    rewrite sqrt(a ^ 2 - x ^ 2) * (-(2 * a ^ 2) - x ^ 2) / 9 + x ^ 3 / 3 * arccos(x / a) + SKOLEM_CONST(C) to x ^ 3 / 3 * arccos(x / a) - 1/9 * (x ^ 2 + 2 * a ^ 2) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C)
+done
 
 // 7
 prove (INT x. x ^ 3 * arccos(x / a)) = (x ^ 4 / 4 -  3 * a ^ 4 / 32) * arccos(x / a) - 1 / 32 * (2 * x ^ 3 + 3 * a ^ 2 * x) * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
 sorry
 
 // 8
-prove (INT x. x ^ n * arccos(x / a)) = x ^ (n + 1) / (n + 1) * arccos(x / a) + 1 / (n + 1) * INT x. x ^ ( n + 1 / sqrt(a ^ 2 - x ^ 2)) + SKOLEM_CONST(C) for abs(x / a) <= 1, n != 1, a != 0
+prove (INT x. x ^ n * arccos(x / a)) = x ^ (n + 1) / (n + 1) * arccos(x / a) + 1 / (n + 1) * (INT x. x ^ (n + 1) / sqrt(a ^ 2 - x ^ 2)) + SKOLEM_CONST(C) for abs(x / a) <= 1, n != 1, a != 0
 sorry
 
 ## 10.1.4 Integrands Involving x ^ (-n) * arccos(x/a)
 ### 10.1.4.1
 
 // 2
-prove (INT x. 1 / x ^ 2 * arccos(x / a)) = -1 / x * arccos(x / a) + a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x)) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. 1 / x ^ 2 * arccos(x / a)) = -1 / x * arccos(x / a) + 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x)) + SKOLEM_CONST(C) for abs(x / a) <= 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arccos(x / a), v = -1 / x
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite 1 / (x * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x * sqrt(a ^ 2 - x ^ 2))
+    simplify
+    apply integral identity
+    simplify
+    rewrite 1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / abs(x)) to 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
+done
 
 // 3
-prove (INT x. 1 / x ^ 3 * arccos(x / a)) = -1 / (2 * x ^ 2) * arccos(x / a) + sqrt(a ^ 2 - x ^ 2) / (2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. 1 / x ^ 3 * arccos(x / a)) = -1 / (2 * x ^ 2) * arccos(x / a) + sqrt(a ^ 2 - x ^ 2) / (2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+lhs:
+    integrate by parts with u = arccos(x / a), v = -1 / (2 * x ^ 2)
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite 1 / (x ^ 2 * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x ^ 2 * sqrt(a ^ 2 - x ^ 2))
+    simplify
+    apply integral identity
+    simplify
+done
 
 // 4
 prove (INT x. 1 / x ^ n * arccos(x / a)) = -1 / ((n - 1) * x ^ (n - 1)) * arccos(x / a) - 1 / (n - 1) * (INT x. 1 / (x ^ (n - 1) * sqrt(a ^ 2 - x ^ 2))) + SKOLEM_CONST(C) for abs(x / a) <= 1, n != 1, a != 0
@@ -354,7 +408,7 @@ lhs:
 done
 
 // 5
-prove (INT x. x ^ n * arccot(x / a)) = x ^ (n + 1) / (n + 1) * arccot(x / a) + a / (n + 1) * (INT x. x ^ (n - 1) / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for a != 0, x != 0
+prove (INT x. x ^ n * arccot(x / a)) = x ^ (n + 1) / (n + 1) * arccot(x / a) + a / (n + 1) * (INT x. x ^ (n + 1) / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for a != 0, x != 0
 sorry
 
 ## 10.1.8 Integrands Involving x ^ (-n) * arccot(x/a)

@@ -20,6 +20,8 @@ axiom (INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)
 
 axiom (INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)
 
+axiom (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for sin(x) != 0
+
 axiom (INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)
 
 # Common series expansion
@@ -440,6 +442,8 @@ axiom [bidirectional] arccot(x) = pi/2 - arctan(x)
 axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
+
+axiom [simp] abs(cos(arcsin(x))) = cos(arcsin(x)) for abs(x) <= 1
 
 axiom [simp] tan(arcsec(x)) = sqrt(x ^ 2 - 1)
 

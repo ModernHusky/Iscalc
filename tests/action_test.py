@@ -54,14 +54,14 @@ class ActionTest(unittest.TestCase):
             st = st.process_action(a)
         self.assertTrue(st.is_finished())
 
+    def testSqrtIntegrals(self):
+        self.check_file("sqrt_integrals")
+
     def testStandard(self):
         self.check_file("standard")
 
     def testStandard2(self):
         self.check_file("standard2")
-
-    def testTest(self):
-        self.check_file("test", print_state=True)
 
     def testStandard3(self):
         self.check_file("standard3")
