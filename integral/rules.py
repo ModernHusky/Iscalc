@@ -1864,8 +1864,32 @@ class IntegrationByParts(Rule):
                 return expr.EvalAt(e.var, e.lower, e.upper, normalize(self.u * self.v, ctx2)) - \
                        expr.Integral(e.var, e.lower, e.upper, normalize(self.v * du, ctx2))
             elif expr.is_indefinite_integral(e):
-                return normalize(self.u * self.v, ctx2) - \
-                       expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
+                # For indefinite integrals, we need to add SKOLEM_CONST
+                # IBP formula: INT u dv = u*v - INT v du + C
+                result = normalize(self.u * self.v, ctx2) - \
+                         expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
+
+                # Check if result contains an indefinite integral
+                # If it does, don't add SKOLEM_CONST (the integrals share the same constant)
+                def contains_indefinite_integral(e):
+                    if expr.is_indefinite_integral(e):
+                        return True
+                    elif expr.is_var(e) or expr.is_const(e) or expr.is_skolem_func(e):
+                        return False
+                    elif expr.is_op(e) or expr.is_fun(e):
+                        return any(contains_indefinite_integral(arg) for arg in e.args)
+                    else:
+                        return False
+
+                # Add SKOLEM_CONST only if:
+                # 1. Not already present, AND
+                # 2. Result doesn't contain another indefinite integral
+                has_skolem = expr.is_plus(result) and (expr.is_skolem_func(result.args[0]) or expr.is_skolem_func(result.args[1]))
+                has_indefinite = contains_indefinite_integral(result)
+
+                if not has_skolem and not has_indefinite:
+                    result = result + expr.SkolemFunc("C", tuple(Var(arg) for arg in e.skolem_args))
+                return result
         else:
             raise RuleException(self.name, f"u * dv does not equal body: {udv} != {e.body}")
 
@@ -1968,14 +1992,26 @@ class IntegrateByEquation(Rule):
         """Eliminate the lhs's integral in rhs by solving equation."""
 
         def get_coeff(t: Expr, lhs: Expr) -> tuple[Expr, Expr]:
-            """Rewrite t in the form a * lhs + b."""
+            """Rewrite t in the form a * lhs + b.
+
+            SKOLEM_CONST is treated as part of the constant term b.
+            """
             if t == lhs:
                 return Const(1), Const(0)
 
             if expr.is_plus(t):
-                a1, b1 = get_coeff(t.args[0], lhs)
-                a2, b2 = get_coeff(t.args[1], lhs)
-                return a1 + a2, b1 + b2
+                # Check if one of the args is SKOLEM_CONST
+                if expr.is_skolem_func(t.args[1]):
+                    # t = arg0 + SKOLEM_CONST => treat SKOLEM_CONST as part of b
+                    a1, b1 = get_coeff(t.args[0], lhs)
+                    return a1, b1 + t.args[1]
+                elif expr.is_skolem_func(t.args[0]):
+                    a2, b2 = get_coeff(t.args[1], lhs)
+                    return a2, t.args[0] + b2
+                else:
+                    a1, b1 = get_coeff(t.args[0], lhs)
+                    a2, b2 = get_coeff(t.args[1], lhs)
+                    return a1 + a2, b1 + b2
             elif expr.is_minus(t):
                 a1, b1 = get_coeff(t.args[0], lhs)
                 a2, b2 = get_coeff(t.args[1], lhs)
@@ -1995,6 +2031,9 @@ class IntegrateByEquation(Rule):
             elif expr.is_divides(t):
                 a1, b1 = get_coeff(t.args[0], lhs)
                 return a1 / t.args[1], b1 / t.args[1]
+            elif expr.is_skolem_func(t):
+                # SKOLEM_CONST is a constant term
+                return Const(0), t
             else:
                 return Const(0), t
 
@@ -2017,7 +2056,24 @@ class IntegrateByEquation(Rule):
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
             rest = rest2
-        res = normalize(rest / (Const(1) - coeff), ctx)
+
+        # Extract SKOLEM_CONST from rest before solving
+        # If rest = expr + SKOLEM_CONST, we want to preserve it
+        skolem_term = None
+        rest_without_skolem = rest
+        if expr.is_plus(rest) and expr.is_skolem_func(rest.args[1]):
+            skolem_term = rest.args[1]
+            rest_without_skolem = rest.args[0]
+        elif expr.is_plus(rest) and expr.is_skolem_func(rest.args[0]):
+            skolem_term = rest.args[0]
+            rest_without_skolem = rest.args[1]
+
+        # Solve for the integral: lhs = rest_without_skolem / (1 - coeff)
+        res = normalize(rest_without_skolem / (Const(1) - coeff), ctx)
+
+        # Add back SKOLEM_CONST if it was present
+        if skolem_term is not None:
+            res = res + skolem_term
 
         return res
 

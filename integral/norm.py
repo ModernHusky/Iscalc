@@ -285,6 +285,19 @@ def normalize_power(e: Expr, ctx: Context) -> NormalPower:
         elif e.is_power():
             if expr.is_const(e.args[1]):
                 return exp_normal_power(rec(e.args[0]), e.args[1].val)
+            # Handle power splitting for parametric exponents: f^(a+b) = f^a * f^b
+            elif e.args[1].is_plus():
+                # Split: base^(exp1 + exp2) -> base^exp1 * base^exp2
+                base = e.args[0]
+                exp1 = e.args[1].args[0]
+                exp2 = e.args[1].args[1]
+                return mult_normal_power(rec(base ** exp1), rec(base ** exp2))
+            # Handle power splitting for difference: f^(a-b) = f^a / f^b
+            elif e.args[1].is_minus():
+                base = e.args[0]
+                exp1 = e.args[1].args[0]
+                exp2 = e.args[1].args[1]
+                return divide_normal_power(rec(base ** exp1), rec(base ** exp2))
         elif expr.is_fun(e):
             if e.func_name == 'sqrt':
                 return rec(e.args[0] ** Const(Fraction(1,2)))

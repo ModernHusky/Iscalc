@@ -437,7 +437,6 @@ calculate INT x. tan(x)^4 for cos(x) != 0
     apply integral identity
     solve integral INT x. tan(x)^4
     expand polynomial
-    simplify
 done
 
 calculate INT x. 1/sin(x)^3 for x>0, x<pi
@@ -448,7 +447,6 @@ calculate INT x. 1/sin(x)^3 for x>0, x<pi
     apply integral identity
     solve integral INT x. csc(x)^3
     expand polynomial
-    simplify
 done
 
 calculate INT x. arcsin(x)^3 for x>-1, x<1

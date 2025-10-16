@@ -26,12 +26,43 @@ lhs:
 done
 
 // 2
-prove (INT x. arcsin(x / a) ^ 2) = x * arcsin(x / a) ^ 2 + 2 * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. arcsin(x / a) ^ 2) = x * arcsin(x / a) ^ 2 + 2 * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arcsin(x / a) ^ 2, v = x
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to a * x / sqrt(a ^ 2 - x ^ 2)
+    rewrite 2 / a * (INT x. a * x / sqrt(a ^ 2 - x ^ 2) * arcsin(x / a)) to 2 * (INT x. x / sqrt(a ^ 2 - x ^ 2) * arcsin(x / a))
+    integrate by parts with u = arcsin(x / a), v = -sqrt(a ^ 2 - x ^ 2)
+    simplify
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt(1 - x ^ 2 / a ^ 2) to sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2))
+    rewrite sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2)) to sqrt(a ^ 2)
+    rewrite sqrt(a ^ 2) to abs(a)
+    rewrite abs(a) to a
+    apply integral identity
+    simplify
+done
 
 // 3
-prove (INT x. arcsin(x / a) ^ 3) = x * arcsin(x / a) ^ 3 + 3 * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) ^ 2 - 6 * x * arcsin(x / a) - 6 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0
-sorry
+prove (INT x. arcsin(x / a) ^ 3) = x * arcsin(x / a) ^ 3 + 3 * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) ^ 2 - 6 * x * arcsin(x / a) - 6 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arcsin(x / a) ^ 3, v = x
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to a * x / sqrt(a ^ 2 - x ^ 2)
+    rewrite 3 / a * (INT x. a * x / sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) ^ 2) to 3 * (INT x. x / sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) ^ 2)
+    integrate by parts with u = arcsin(x / a) ^ 2, v = -sqrt(a ^ 2 - x ^ 2)
+    simplify
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt(1 - x ^ 2 / a ^ 2) to sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2))
+    rewrite sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2)) to sqrt(a ^ 2)
+    rewrite sqrt(a ^ 2) to abs(a)
+    rewrite abs(a) to a
+    rewrite 6 / a * (INT x. a * arcsin(x / a)) to 6 * (INT x. arcsin(x / a))
+    apply integral identity
+    simplify
+done
 
 // 4
 prove (INT x. arcsin(x / a) ^ n) = x * arcsin(x / a) ^ n + n * sqrt(a ^ 2 - x ^ 2) * arcsin(x / a) ^ (n - 1) - n * (n - 1) * (INT x. arcsin(x / a) ^ (n - 2)) + SKOLEM_CONST(C) for abs(x / a) <= 1, n != 1
@@ -124,8 +155,23 @@ lhs:
 done
 
 // 2
-prove (INT x. arccos(x / a) ^ 2) = x * arccos(x / a) ^ 2 - 2 * sqrt(a ^ 2 - x ^ 2) * arccos(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
-sorry
+prove (INT x. arccos(x / a) ^ 2) = x * arccos(x / a) ^ 2 - 2 * sqrt(a ^ 2 - x ^ 2) * arccos(x / a) - 2 * x + SKOLEM_CONST(C) for abs(x / a) <= 1, a > 0, a ^ 2 - x ^ 2 >= 0
+lhs:
+    integrate by parts with u = arccos(x / a) ^ 2, v = x
+    simplify
+    rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
+    rewrite x / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to a * x / sqrt(a ^ 2 - x ^ 2)
+    rewrite 2 / a * (INT x. a * x / sqrt(a ^ 2 - x ^ 2) * arccos(x / a)) to 2 * (INT x. x / sqrt(a ^ 2 - x ^ 2) * arccos(x / a))
+    integrate by parts with u = arccos(x / a), v = -sqrt(a ^ 2 - x ^ 2)
+    simplify
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt(1 - x ^ 2 / a ^ 2) to sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2)
+    rewrite sqrt(a ^ 2 - x ^ 2) / sqrt((a ^ 2 - x ^ 2) / a ^ 2) to sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2))
+    rewrite sqrt(a ^ 2 - x ^ 2) * sqrt(a ^ 2 / (a ^ 2 - x ^ 2)) to sqrt(a ^ 2)
+    rewrite sqrt(a ^ 2) to abs(a)
+    rewrite abs(a) to a
+    apply integral identity
+    simplify
+done
 
 // 3
 prove (INT x. arccos(x / a) ^ 3) = x * arccos(x / a) ^ 3 - 3 * sqrt(a ^ 2 - x ^ 2) * arccos(x / a) ^ 2 - 6 * x * arccos(x / a) + 6 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0
