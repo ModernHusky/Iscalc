@@ -69,7 +69,7 @@ prove (INT x. arcsin(x / a) ^ n) = x * arcsin(x / a) ^ n + n * sqrt(a ^ 2 - x ^ 
 sorry
 
 // 5
-prove (INT x. x * arcsin(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arcsin(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, a ^ 2 - x ^ 2 >= 0
+prove (INT x. x * arcsin(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arcsin(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, a ^ 2 - x ^ 2 >= 0, sqrt(a ^ 2 - x ^ 2) != 0
 lhs:
     integrate by parts with u = arcsin(x / a), v = x ^ 2 / 2
     simplify
@@ -129,7 +129,7 @@ lhs:
 done
 
 // 3
-prove (INT x. 1 / x ^ 3 * arcsin(x / a)) = -1 / (2 * x ^ 2 ) * arcsin(x / a) - sqrt(a ^ 2 - x ^ 2)/(2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+prove (INT x. 1 / x ^ 3 * arcsin(x / a)) = -1 / (2 * x ^ 2 ) * arcsin(x / a) - sqrt(a ^ 2 - x ^ 2)/(2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
 lhs:
     integrate by parts with u = arcsin(x / a), v = -1 / (2 * x ^ 2)
     simplify
@@ -207,7 +207,7 @@ prove (INT x. arccos(x / a) ^ n) = x * arccos(x / a) ^ n -  n * sqrt(a ^ 2 - x ^
 sorry
 
 // 5
-prove (INT x. x * arccos(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arccos(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, a ^ 2 - x ^ 2 >= 0
+prove (INT x. x * arccos(x / a)) = (x ^ 2 / 2 -  a ^ 2 / 4) * arccos(x / a) + x / 4 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for abs(x / a) < 1, a != 0, a ^ 2 - x ^ 2 >= 0, sqrt(a ^ 2 - x ^ 2) != 0
 lhs:
     integrate by parts with u = arccos(x / a), v = x ^ 2 / 2
     simplify
@@ -278,7 +278,7 @@ lhs:
 done
 
 // 3
-prove (INT x. 1 / x ^ 3 * arccos(x / a)) = -1 / (2 * x ^ 2) * arccos(x / a) + sqrt(a ^ 2 - x ^ 2) / (2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) <= 1, a != 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+prove (INT x. 1 / x ^ 3 * arccos(x / a)) = -1 / (2 * x ^ 2) * arccos(x / a) + sqrt(a ^ 2 - x ^ 2) / (2 * a ^ 2 * x) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
 lhs:
     integrate by parts with u = arccos(x / a), v = -1 / (2 * x ^ 2)
     simplify

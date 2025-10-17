@@ -72,6 +72,14 @@ axiom [simp] abs(x / y) = abs(x) / abs(y) for y != 0
 
 axiom [simp] abs(x ^ n) = abs(x) ^ n for n: int
 
+axiom [simp] x / abs(x) = 1 for x > 0
+
+axiom [simp] x / abs(x) = -1 for x < 0
+
+axiom [simp] cos(u) / abs(cos(u)) = 1 for cos(u) > 0
+
+axiom [simp] cos(u) / abs(cos(u)) = -1 for cos(u) < 0
+
 ## Complex numbers
 
 axiom [simp] abs(b * i + a) = sqrt(a^2 + b^2) for a b: real
@@ -159,6 +167,14 @@ axiom [simp] (-1) ^ (2 * n) = 1 for n: int
 axiom [simp] (-x) ^ (2 * n) = x ^ (2 * n) for n: int
 
 axiom [bidirectional] a ^ (-x) = (1 / a) ^ x for a != 0
+
+## Square root
+
+axiom [simp] sqrt(a ^ 2 * b ^ 2) = abs(a) * abs(b)
+
+axiom [simp] sqrt(a ^ 2 * b) = abs(a) * sqrt(b) for b >= 0
+
+axiom [simp] sqrt(a * b ^ 2) = sqrt(a) * abs(b) for a >= 0
 
 ## Exponential and Logarithm
 
@@ -448,6 +464,8 @@ axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
 
 axiom [simp] abs(cos(arcsin(x))) = cos(arcsin(x)) for abs(x) <= 1
+
+axiom [simp] abs(cos(arcsin(x / a))) = cos(arcsin(x / a)) for abs(x / a) <= 1
 
 axiom [simp] tan(arcsec(x)) = sqrt(x ^ 2 - 1)
 

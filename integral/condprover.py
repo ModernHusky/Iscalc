@@ -636,6 +636,10 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= -1", "x <= 1"], "arcsin(x) <= pi / 2"),
         (["x > -1", "x < 1"], "arcsin(x) > -pi / 2"),
         (["x > -1", "x < 1"], "arcsin(x) < pi / 2"),
+
+        # arcsin(x/a) range rules (critical for trigonometric substitutions)
+        (["x > 1", "x < 1"], "arcsin(x) > -pi / 2"),
+        (["x > -1", "x < 1"], "arcsin(x) < pi / 2"),
         (["x > 0", "x <= 1"], "arcsin(x) > 0"),
         (["x >= 0", "x <= 1"], "arcsin(x) >= 0"),
         (["x < 0", "x >= -1"], "arcsin(x) < 0"),
