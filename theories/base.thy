@@ -24,6 +24,8 @@ axiom (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST
 
 axiom (INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)
 
+axiom (INT x. 1 / sqrt(1 - x ^ 2)) = arcsin(x) + SKOLEM_CONST(C) for x >= -1, x <= 1
+
 # Common series expansion
 
 axiom exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))
@@ -187,6 +189,8 @@ axiom [bidirectional] log(abs(a / b)) = -log(abs(b / a)) for a != 0, b != 0
 axiom [simp] log(1 / x) = -log(x) for x > 0
 
 axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
+
+axiom [simp] log(abs(x) ^ a) = a * log(abs(x)) for x != 0, a: real
 
 ## Trigonometric identities
 
@@ -480,6 +484,8 @@ axiom [simp] sin(2 * arctan(z)) = (2 * z) / (1 + z^2)
 axiom arctan(x ^ -1) = pi/2 - arctan(x) for x != 0
 
 axiom [simp] sin(2 * arcsin(x)) = 2 * x * sqrt(1 - x^2)
+
+axiom [simp] sin(4 * arcsin(x)) = 4 * x * sqrt(1 - x^2) * (1 - 2 * x^2)
 
 axiom arctan(-x) = -arctan(x)
 

@@ -303,7 +303,6 @@ lhs:
 done
 
 # Version with relaxed conditions - used by standard4
-# This follows from the strict version since boundary points have measure zero
 prove (INT x. 1 / sqrt(a ^ 2 - x ^ 2)) = arcsin(x / a) + SKOLEM_CONST(C) for a != 0, a ^ 2 - x ^ 2 >= 0
 sorry
 
@@ -327,6 +326,5 @@ lhs:
 done
 
 # Version with relaxed conditions - used by standard4
-# This follows from the strict version since boundary points have measure zero
 prove (INT x. x ^ 2 / sqrt(a ^ 2 - x ^ 2)) = a ^ 2 / 2 * arcsin(x / a) - x / 2 * sqrt(a ^ 2 - x ^ 2) + SKOLEM_CONST(C) for a != 0, a ^ 2 - x ^ 2 >= 0
 sorry

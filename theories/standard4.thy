@@ -116,7 +116,7 @@ sorry
 #### 10.1.2.1
 
 // 2
-prove (INT x. 1 / x ^ 2 * arcsin(x / a)) = -1 / x * arcsin(x / a) - 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2))/x)) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+prove (INT x. 1 / x ^ 2 * arcsin(x / a)) = -1 / x * arcsin(x / a) - 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2))/x)) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x > 0, a ^ 2 - x ^ 2 > 0
 lhs:
     integrate by parts with u = arcsin(x / a), v = -1 / x
     simplify
@@ -125,7 +125,7 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite -(1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / abs(x))) to -1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
+    rewrite -(1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / x)) to -1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
 done
 
 // 3
@@ -265,7 +265,7 @@ sorry
 ### 10.1.4.1
 
 // 2
-prove (INT x. 1 / x ^ 2 * arccos(x / a)) = -1 / x * arccos(x / a) + 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x)) + SKOLEM_CONST(C) for abs(x / a) <= 1, a > 0, x != 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
+prove (INT x. 1 / x ^ 2 * arccos(x / a)) = -1 / x * arccos(x / a) + 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x)) + SKOLEM_CONST(C) for abs(x / a) < 1, a > 0, x > 0, a ^ 2 - x ^ 2 > 0, sqrt(a ^ 2 - x ^ 2) != 0
 lhs:
     integrate by parts with u = arccos(x / a), v = -1 / x
     simplify
@@ -274,7 +274,7 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite 1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / abs(x)) to 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
+    rewrite 1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / x) to 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
 done
 
 // 3
