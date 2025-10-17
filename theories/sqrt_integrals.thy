@@ -141,7 +141,6 @@ sorry
 ## Integrals with x in denominator and sqrt
 
 # Needed for standard4.thy lines 68-73 (1/x^2 * arcsin, 1/x^3 * arcsin)
-# This is challenging - let me try a different approach using IBP
 prove (INT x. 1 / (x * sqrt(a ^ 2 - x ^ 2))) = -1 / a * log((a + sqrt(a ^ 2 - x ^ 2)) / x) + SKOLEM_CONST(C) for x != 0, a > 0, a ^ 2 - x ^ 2 > 0, x / a > 0, x / a < 1, (a + sqrt(a ^ 2 - x ^ 2)) / x > 0
 lhs:
     substitute u for x / a
