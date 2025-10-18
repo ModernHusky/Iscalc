@@ -130,7 +130,28 @@ done
 
 # General formula for x^n / sqrt(a^2 - x^2)
 prove (INT x. x ^ n / sqrt(a ^ 2 - x ^ 2)) = -x ^ (n - 1) * sqrt(a ^ 2 - x ^ 2) / n + (n - 1) * a ^ 2 / n * (INT x. x ^ (n - 2) / sqrt(a ^ 2 - x ^ 2)) for n >= 2, isInt(n), x / a < 1, x / a > 0, a > 0, a ^ 2 - x ^ 2 > 0
-sorry
+lhs:
+    rewrite x ^ n / sqrt(a ^ 2 - x ^ 2) to x ^ (n - 1) * x / sqrt(a ^ 2 - x ^ 2)
+    integrate by parts with u = x ^ (n - 1), v = -sqrt(a ^ 2 - x ^ 2)
+    simplify
+    rewrite x ^ (n - 2) * sqrt(a ^ 2 - x ^ 2) to x ^ (n - 2) * (a ^ 2 - x ^ 2) / sqrt(a ^ 2 - x ^ 2)
+    expand polynomial
+    simplify
+    rewrite x ^ (n - 2) * x ^ 2 to x ^ n
+    solve integral INT x. x ^ n / sqrt(a ^ 2 - x ^ 2)
+    expand polynomial
+    rewrite x ^ (n - 2) * x ^ 2 / sqrt(a ^ 2 - x ^ 2) to x ^ n / sqrt(a ^ 2 - x ^ 2)
+    solve integral INT x. x ^ n / sqrt(a ^ 2 - x ^ 2)
+    expand polynomial
+    simplify
+    rewrite (n + 1) * (1 - 1 / (n + 1)) to n
+    rewrite a ^ 2 / ((n + 1) * (1 - 1 / (n + 1))) to a ^ 2 / n
+    rewrite x ^ (n - 1) * sqrt(a ^ 2 - x ^ 2) / ((n + 1) * (1 - 1 / (n + 1))) to x ^ (n - 1) * sqrt(a ^ 2 - x ^ 2) / n
+    simplify
+    rewrite a ^ 2 * (INT x. x ^ (n - 2) / sqrt(a ^ 2 - x ^ 2)) - a ^ 2 / n * (INT x. x ^ (n - 2) / sqrt(a ^ 2 - x ^ 2)) to (a ^ 2 - a ^ 2 / n) * (INT x. x ^ (n - 2) / sqrt(a ^ 2 - x ^ 2))
+    rewrite a ^ 2 - a ^ 2 / n to a ^ 2 * (n - 1) / n
+    rewrite a ^ 2 * (n - 1) / n to (n - 1) * a ^ 2 / n
+done
 
 ## Integrals with x in denominator and sqrt
 
