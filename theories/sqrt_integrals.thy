@@ -185,11 +185,6 @@ rhs:
     rewrite (a + sqrt(a ^ 2 - x ^ 2)) / x to (sqrt(a ^ 2 - x ^ 2) + a) / x
 done
 
-# BLOCKED: abs(cos(u)) simplification issue
-# After substitution u = arcsin(x/a), we get abs(cos(u)) which should simplify to cos(u)
-# because u is in the range [-pi/2, pi/2] where cos is non-negative.
-# However, the system doesn't propagate this information through the substitution context.
-# Needs: condition propagation through substitutions or context-aware simplification
 prove (INT x. 1 / (x ^ 2 * sqrt(a ^ 2 - x ^ 2))) = -sqrt(a ^ 2 - x ^ 2) / (a ^ 2 * x) + SKOLEM_CONST(C) for x != 0, a > 0, abs(x / a) < 1, a ^ 2 - x ^ 2 > 0
 subgoal 1: sin(arcsin(x / a)) != 0
 lhs:
