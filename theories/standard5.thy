@@ -96,7 +96,7 @@ done
 
 // 4
 // This reduction formula requires complex algebraic manipulation that is beyond// the current automation capabilities of the system.
-prove (INT x. x / (a + b * x) ^ n) = x / (b * (2 - n) * (a + b * x) ^ (n - 1)) - a / (b * (2 - n)) * INT x. 1 / (a + b * x) ^ n for a + b * x != 0, n != 2, b != 0
+prove (INT x. x / (a + b * x) ^ n) = x / (b * (2 - n) * (a + b * x) ^ (n - 1)) - a / (b * (2 - n)) * (INT x. 1 / (a + b * x) ^ n) for a + b * x != 0, n != 2, b != 0
 sorry
 
 #### 4.2.2.3
@@ -131,7 +131,7 @@ prove (INT x. x ^ 2 / (a + b * x) ^ 3) = (2 * a * x / b ^ 2 + 3 * a ^ 2 / (2 * b
 sorry
 
 // 4
-prove (INT x. x ^ 2 / (a + b * x) ^ n) = x ^ 2 / (b * (3 - n) * (a + b * x) ^ (n - 1)) - 2 * a / (b * (3 - n)) * INT x. x / (a + b * x) ^ n for n = 3, a + b * x != 0, b != 0
+prove (INT x. x ^ 2 / (a + b * x) ^ n) = x ^ 2 / (b * (3 - n) * (a + b * x) ^ (n - 1)) - 2 * a / (b * (3 - n)) * (INT x. x / (a + b * x) ^ n) for n = 3, a + b * x != 0, b != 0
 sorry
 
 #### 4.2.2.4
@@ -164,17 +164,17 @@ prove (INT x. x ^ 3 / (a + b * x) ^ 3) = (x ^ 3 / b + 2 * a * x ^ 2 / b ^ 2 - 2 
 sorry
 
 // 4
-prove (INT x. x ^ 3 / (a + b * x) ^ n) = x ^ 3 / (b * (4 - n) * (a + b * x) ^ (n - 1)) - 3 * a / (b * (4 - n)) * INT x. x ^ 2 / (a + b * x) ^ n for n != 4, b != 0, a + b * x != 0
+prove (INT x. x ^ 3 / (a + b * x) ^ n) = x ^ 3 / (b * (4 - n) * (a + b * x) ^ (n - 1)) - 3 * a / (b * (4 - n)) * (INT x. x ^ 2 / (a + b * x) ^ n) for n != 4, b != 0, a + b * x != 0
 sorry
 
 #### 4.2.2.5
 
 // 1
-prove (INT x. x ^ m / (a + b * x) ^ n) = -(x ^ m) / (b * (m + 1 - n) * (a + b * x) ^ (n - 1)) - m * a / (b * (m + 1 - n)) * INT x. x ^ (m - 1) / (a + b * x) ^ n for isInt(m), isInt(n), m > 0, n > 0, m != n - 1, b != 0, a + b * x != 0
+prove (INT x. x ^ m / (a + b * x) ^ n) = -(x ^ m) / (b * (m + 1 - n) * (a + b * x) ^ (n - 1)) - m * a / (b * (m + 1 - n)) * (INT x. x ^ (m - 1) / (a + b * x) ^ n) for isInt(m), isInt(n), m > 0, n > 0, m != n - 1, b != 0, a + b * x != 0
 sorry
 
 // 2
-prove (INT x. x ^ (n - 1) / (a + b * x) ^ n) = x ^ (n - 1) / (b * (n - 1) * (a + b * x) ^ (n - 1)) + 1 / b * INT x. x ^ (n - 2) / (a + b * x) ^ (n - 1) for isInt(n), m > 0, n > 0, n != 1, b != 0, a + b * x != 0
+prove (INT x. x ^ (n - 1) / (a + b * x) ^ n) = x ^ (n - 1) / (b * (n - 1) * (a + b * x) ^ (n - 1)) + 1 / b * (INT x. x ^ (n - 2) / (a + b * x) ^ (n - 1)) for isInt(n), m > 0, n > 0, n != 1, b != 0, a + b * x != 0
 sorry
 
 #### 4.2.2.6
@@ -232,7 +232,7 @@ prove (INT x. 1 / (x * (a + b * x) ^ 3)) = (3 / (2 * a) + b * x / a ^ 2) - 1 / a
 sorry
 
 // 4
-prove (INT x. 1 / (x * (a + b * x) ^ n)) = 1 / (a * (n - 1) * (a + b * x) ^ (n - 1)) + 1 / a * INT x. 1 / (x * (a + b * x) ^ (n - 1)) for n != 1, a + b * x != 0, x != 0, a != 0
+prove (INT x. 1 / (x * (a + b * x) ^ n)) = 1 / (a * (n - 1) * (a + b * x) ^ (n - 1)) + 1 / a * (INT x. 1 / (x * (a + b * x) ^ (n - 1))) for n != 1, a + b * x != 0, x != 0, a != 0
 sorry
 
 #### 4.2.2.8
@@ -253,7 +253,7 @@ prove (INT x. 1 / (x ^ 2 * (a + b * x) ^ 3)) = -(1 / (a * x) + 9 * b / (2 * a ^ 
 sorry
 
 // 4
-prove (INT x. 1 / (x ^ 2 * (a + b * x) ^ n)) = -1 / (a * x * (a + b * x) ^ (n - 1)) - n * b / a * INT x. 1 / (x * (a + b * x) ^ n) for x != 0, a + b * x != 0, a != 0
+prove (INT x. 1 / (x ^ 2 * (a + b * x) ^ n)) = -1 / (a * x * (a + b * x) ^ (n - 1)) - n * b / a * (INT x. 1 / (x * (a + b * x) ^ n)) for x != 0, a + b * x != 0, a != 0
 sorry
 
 ### 4.2.3 Integrands Involving Linear Factors
@@ -319,3 +319,23 @@ sorry
 
 ### 4.2.4 Integrands Involving a ^ 2 +- b ^ 2 * x ^ 2
 #### 4.2.4.1
+
+// Helper lemmas for reduction formulas in standard4.thy
+// These are needed for 1/x^n * arctan(x/a) and 1/x^n * arccot(x/a)
+
+// 1 - Base case: 1/(x*(x^2+a^2))
+prove (INT x. 1 / (x * (x ^ 2 + a ^ 2))) = 1 / (2 * a ^ 2) * log(x ^ 2 / (x ^ 2 + a ^ 2)) + SKOLEM_CONST(C) for x != 0, a != 0
+lhs:
+    partial fraction decomposition
+    apply integral identity
+    simplify
+    substitute u for a ^ 2 + x ^ 2
+    apply integral identity
+    replace substitution
+    simplify
+    rewrite log(abs(x)) / a ^ 2 - log(a ^ 2 + x ^ 2) / (2 * a ^ 2) to (2 * log(abs(x)) - log(a ^ 2 + x ^ 2)) / (2 * a ^ 2)
+    rewrite 2 * log(abs(x)) to log(x ^ 2)
+    rewrite (log(x ^ 2) - log(a ^ 2 + x ^ 2)) / (2 * a ^ 2) to 1 / (2 * a ^ 2) * (log(x ^ 2) - log(a ^ 2 + x ^ 2))
+    rewrite log(x ^ 2) - log(a ^ 2 + x ^ 2) to log(x ^ 2 / (a ^ 2 + x ^ 2))
+    rewrite a ^ 2 + x ^ 2 to x ^ 2 + a ^ 2
+done

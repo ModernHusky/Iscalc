@@ -208,6 +208,8 @@ axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
 
 axiom [simp] log(abs(x) ^ a) = a * log(abs(x)) for x != 0, a: real
 
+axiom 2 * log(abs(x)) = log(x ^ 2) for x != 0
+
 ## Trigonometric identities
 
 axiom_define tan(x) for cos(x) != 0
