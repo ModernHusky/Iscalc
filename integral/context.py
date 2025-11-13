@@ -594,7 +594,6 @@ def body_conds(e: Expr, ctx: Context) -> Context:
         if e.upper != expr.POS_INF:
             ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
     elif expr.is_cintegral(e):
-        ctx2.add_condition(expr.Fun("notReal", expr.Var(e.var)))
         for path in e.paths:
             ctx2.add_condition(expr.Fun("isReal", expr.Var(path.var)))
             ctx2.add_condition(Op(">", expr.Var(path.var), path.start_expr))

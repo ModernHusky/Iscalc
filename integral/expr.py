@@ -2181,31 +2181,6 @@ def factorial(n):
         result *= i
     return Const(result)
 
-def is_complex_analytic(e: Expr) -> bool:
-    """判断表达式是否为解析函数。"""
-    if is_const(e) or is_var(e):
-        return True
-        
-    elif e.is_plus() or e.is_minus() or e.is_times():
-        return all(is_complex_analytic(arg) for arg in e.args)
-        
-    elif e.is_divides():
-        # 分母不为0时解析
-        return is_complex_analytic(e.args[0]) and is_complex_analytic(e.args[1])
-        
-    elif e.is_power():
-        base, exp = e.args
-        if is_const(exp) and isinstance(exp.val, int) and exp.val >= 0:
-            return is_complex_analytic(base)
-        return False
-        
-    elif is_fun(e):
-        if e.func_name in ["sin", "cos", "tan", "exp", "log"]:
-            return all(is_complex_analytic(arg) for arg in e.args)
-        return False
-        
-    return False
-
 class CIntegral(Expr):
     """Contour integral of an expression.
     

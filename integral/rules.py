@@ -2623,6 +2623,24 @@ class Rewriting(Rule):
                                 # reverse_match: CINT = -INT (需要负号)
                                 if (forward_match and not needs_negation) or (reverse_match and needs_negation):
                                     return self.new_expr
+                                else:
+                                    # 方向和符号不匹配，给出具体的错误提示
+                                    if reverse_match and not needs_negation:
+                                        # 路径是逆向的，但用户没有加负号
+                                        raise RuleException(
+                                            "Rewriting",
+                                            f"The contour path is in reverse direction (from {z_end} to {z_start}), "
+                                            f"but the rewritten integral {self.new_expr} is missing the negative sign. "
+                                            f"Please rewrite to -{self.new_expr}"
+                                        )
+                                    elif forward_match and needs_negation:
+                                        # 路径是正向的，但用户加了负号
+                                        raise RuleException(
+                                            "Rewriting",
+                                            f"The contour path is in forward direction (from {z_start} to {z_end}), "
+                                            f"but the rewritten integral has an unnecessary negative sign. "
+                                            f"Please rewrite to {target_integral} instead of {self.new_expr}"
+                                        )
         # apply identity
         for identity in ctx.get_other_identities():
             inst = expr.match(e, identity.lhs)
