@@ -16,6 +16,30 @@ axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C)
 
+axiom (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (-a + x)) = log(abs(-a + x)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (a + x)) = log(abs(a + x)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (a * x + b)) = 1/a * log(abs(a * x + b)) + SKOLEM_CONST(C) for a != 0, isReal(a), isReal(b)
+
+axiom (INT x. 1 / (b + a * x)) = 1/a * log(abs(b + a * x)) + SKOLEM_CONST(C) for a != 0, isReal(a), isReal(b)
+
+axiom (INT x. 1 / (x - a)) = log(x - a) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (-a + x)) = log(-a + x) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (x + a)) = log(x + a) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (a + x)) = log(a + x) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (a * x + b)) = 1/a * log(a * x + b) + SKOLEM_CONST(C) for a != 0, notReal(b)
+
+axiom (INT x. 1 / (b + a * x)) = 1/a * log(b + a * x) + SKOLEM_CONST(C) for a != 0, notReal(b)
+
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
 axiom (INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C) for n != 1
