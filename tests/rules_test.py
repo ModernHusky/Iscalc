@@ -401,5 +401,264 @@ class RulesTest(unittest.TestCase):
         print(e)
 
 
+class CIntegralToIntegralTest(unittest.TestCase):
+    """测试围道积分到普通积分的转换"""
+    
+    def setUp(self):
+        self.ctx = context.Context()
+        self.ctx.load_book("base")
+    
+    def testForwardPathConversion(self):
+        """测试正向路径转换: CINT z:(t)_(t:[0,1]). z^2 → INT x:[0,1]. x^2"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建路径 (t)_(t:[0,1]) - 实值路径从 0 到 1
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标: INT x:[0,1]. x^2
+        target = parse_expr('INT x:[0,1]. x^2')
+        
+        # 使用 Rewriting 规则
+        rule = rules.Rewriting(None, target)
+        result = rule.eval(cint, self.ctx)
+        self.assertEqual(result, target)
+    
+    def testReversePathConversion(self):
+        """测试逆向路径转换: CINT z:(t)_(t:[1,0]). z^2 → -INT x:[0,1]. x^2"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建路径 (t)_(t:[1,0]) - 实值路径从 1 到 0 (逆向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('1'), parse_expr('0'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标: -INT x:[0,1]. x^2
+        target = parse_expr('-(INT x:[0,1]. x^2)')
+        
+        # 使用 Rewriting 规则
+        rule = rules.Rewriting(None, target)
+        result = rule.eval(cint, self.ctx)
+        self.assertEqual(result, target)
+    
+    def testReversePathMissingNegation(self):
+        """测试逆向路径缺少负号时应该报错"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建路径 (t)_(t:[1,0]) - 实值路径从 1 到 0 (逆向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('1'), parse_expr('0'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 错误目标: INT x:[0,1]. x^2 (缺少负号)
+        target = parse_expr('INT x:[0,1]. x^2')
+        
+        # 使用 Rewriting 规则，应该抛出异常
+        rule = rules.Rewriting(None, target)
+        with self.assertRaises(RuleException) as cm:
+            rule.eval(cint, self.ctx)
+        self.assertIn("reverse direction", str(cm.exception))
+    
+    def testForwardPathUnnecessaryNegation(self):
+        """测试正向路径不应该有负号"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建路径 (t)_(t:[0,1]) - 实值路径从 0 到 1 (正向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 错误目标: -INT x:[0,1]. x^2 (不应该有负号)
+        target = parse_expr('-(INT x:[0,1]. x^2)')
+        
+        # 使用 Rewriting 规则，应该抛出异常
+        rule = rules.Rewriting(None, target)
+        with self.assertRaises(RuleException) as cm:
+            rule.eval(cint, self.ctx)
+        self.assertIn("forward direction", str(cm.exception))
+    
+    def testComplexPathNotConverted(self):
+        """测试复数路径不应该转换为普通积分"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建复数路径 exp(2*pi*i*t)_(t:[0,1])
+        path = CINTPath('t', parse_expr('exp(2*pi*i*t)'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('1/z'))
+        
+        # 目标: INT x:[0,1]. 1/x (不应该匹配，因为路径是复数)
+        target = parse_expr('INT x:[0,1]. 1/x')
+        
+        # 使用 Rewriting 规则，应该失败
+        rule = rules.Rewriting(None, target)
+        with self.assertRaises(RuleException):
+            rule.eval(cint, self.ctx)
+    
+    def testLinearRealPath(self):
+        """测试线性实值路径: CINT z:(2*t+1)_(t:[0,1]). z → INT x:[1,3]. x"""
+        from integral.expr import CINTPath, CIntegral
+        
+        # 创建路径 (2*t+1)_(t:[0,1]) - 从 1 到 3
+        path = CINTPath('t', parse_expr('2*t+1'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z'))
+        
+        # 目标: INT x:[1,3]. x
+        target = parse_expr('INT x:[1,3]. x')
+        
+        # 使用 Rewriting 规则
+        rule = rules.Rewriting(None, target)
+        result = rule.eval(cint, self.ctx)
+        self.assertEqual(result, target)
+
+
+class TryCintegralToIntegralTest(unittest.TestCase):
+    """测试 try_cintegral_to_integral 函数"""
+    
+    def setUp(self):
+        self.ctx = context.Context()
+        self.ctx.load_book("base")
+    
+    def testForwardPathReturnsNewExpr(self):
+        """测试正向路径转换返回 new_expr"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 创建路径 (t)_(t:[0,1]) - 实值路径从 0 到 1
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标: INT x:[0,1]. x^2
+        target = parse_expr('INT x:[0,1]. x^2')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertEqual(result, target)
+    
+    def testReversePathReturnsNegatedExpr(self):
+        """测试逆向路径转换返回带负号的表达式"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 创建路径 (t)_(t:[1,0]) - 实值路径从 1 到 0 (逆向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('1'), parse_expr('0'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标: -INT x:[0,1]. x^2
+        target = parse_expr('-(INT x:[0,1]. x^2)')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertEqual(result, target)
+    
+    def testNonCintegralReturnsNone(self):
+        """测试非围道积分返回 None"""
+        from integral.rules import try_cintegral_to_integral
+        
+        # 普通积分
+        e = parse_expr('INT x:[0,1]. x^2')
+        target = parse_expr('INT y:[0,1]. y^2')
+        
+        result = try_cintegral_to_integral(e, target, self.ctx)
+        self.assertIsNone(result)
+    
+    def testNonIntegralTargetReturnsNone(self):
+        """测试目标不是积分时返回 None"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标不是积分
+        target = parse_expr('x^2')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIsNone(result)
+    
+    def testBoundaryMismatchReturnsNone(self):
+        """测试边界不匹配时返回 None"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 路径从 0 到 1
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标边界是 [0, 2]，不匹配
+        target = parse_expr('INT x:[0,2]. x^2')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIsNone(result)
+    
+    def testBodyMismatchReturnsNone(self):
+        """测试主体不匹配时返回 None"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标主体是 x^3，不匹配
+        target = parse_expr('INT x:[0,1]. x^3')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIsNone(result)
+    
+    def testReversePathMissingNegationRaisesException(self):
+        """测试逆向路径缺少负号时抛出异常"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 路径从 1 到 0 (逆向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('1'), parse_expr('0'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标缺少负号
+        target = parse_expr('INT x:[0,1]. x^2')
+        
+        with self.assertRaises(RuleException) as cm:
+            try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIn("reverse direction", str(cm.exception))
+    
+    def testForwardPathUnnecessaryNegationRaisesException(self):
+        """测试正向路径有不必要的负号时抛出异常"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 路径从 0 到 1 (正向)
+        path = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z^2'))
+        
+        # 目标有不必要的负号
+        target = parse_expr('-(INT x:[0,1]. x^2)')
+        
+        with self.assertRaises(RuleException) as cm:
+            try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIn("forward direction", str(cm.exception))
+    
+    def testLinearRealPath(self):
+        """测试线性实值路径"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        # 路径 (2*t+1)_(t:[0,1]) - 从 1 到 3
+        path = CINTPath('t', parse_expr('2*t+1'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path], parse_expr('z'))
+        
+        # 目标: INT x:[1,3]. x
+        target = parse_expr('INT x:[1,3]. x')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertEqual(result, target)
+    
+    def testMultiplePathsReturnsNone(self):
+        """测试多路径围道积分返回 None"""
+        from integral.expr import CINTPath, CIntegral
+        from integral.rules import try_cintegral_to_integral
+        
+        path1 = CINTPath('t', parse_expr('t'), parse_expr('0'), parse_expr('1'))
+        path2 = CINTPath('t', parse_expr('1-t'), parse_expr('0'), parse_expr('1'))
+        cint = CIntegral('z', [path1, path2], parse_expr('z^2'))
+        
+        target = parse_expr('INT x:[0,1]. x^2')
+        
+        result = try_cintegral_to_integral(cint, target, self.ctx)
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()

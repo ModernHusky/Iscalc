@@ -320,9 +320,15 @@ def minus_normal_log(a: NormalLog, b: NormalLog) -> NormalLog:
 def add_normal_log(a: NormalLog, b: NormalLog) -> NormalLog:
     return NormalLog(a.e * b.e)
 
+def uminus_normal_log(a: NormalLog) -> NormalLog:
+    """Handle unary minus: -log(x) = log(1/x)"""
+    return NormalLog(poly.singleton(expr.Const(1)) / a.e)
+
 def normalize_log(e: Expr, ctx: Context) -> NormalLog:
     def rec(e: Expr) -> NormalLog:
-        if e.is_minus():
+        if expr.is_uminus(e):
+            return uminus_normal_log(rec(e.args[0]))
+        elif e.is_minus():
             return minus_normal_log(rec(e.args[0]), rec(e.args[1]))
         elif e.is_plus():
             return add_normal_log(rec(e.args[0]), rec(e.args[1]))

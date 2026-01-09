@@ -801,111 +801,6 @@ class EvaluateIndefiniteIntegral(Rule):
 
         ctx2 = context.body_conds(e, ctx)
         
-        # 统一处理线性分式 1/(a*x+b) 的积分
-        # 支持实数和复数两种情况
-        if expr.is_divides(e.body) and e.body.args[0] == Const(1):
-            from integral.solve import extract_linear
-            denom = e.body.args[1]
-            linear_form = extract_linear(denom, e.var)
-            
-            if linear_form is not None:
-                a_coeff, b_const = linear_form
-                a_coeff = normalize(a_coeff, ctx2)
-                b_const = normalize(b_const, ctx2)
-                
-                # 检查系数是否非零
-                is_coeff_nonzero = ctx2.check_condition(Op("!=", a_coeff, Const(0)))
-                
-                if is_coeff_nonzero:
-                    # 判断是复数域还是实数域
-                    # 复数域：分母本身是 notReal，或者系数/常数中有 notReal
-                    is_denom_notreal = ctx2.check_condition(expr.Fun("notReal", denom))
-                    is_coeff_notreal = ctx2.check_condition(expr.Fun("notReal", a_coeff))
-                    is_const_notreal = ctx2.check_condition(expr.Fun("notReal", b_const))
-                    
-                    is_complex_case = is_denom_notreal or is_coeff_notreal or is_const_notreal
-                    
-                    # 实数域：需要确认都是实数
-                    # 对于常量，直接检查；对于变量，考虑替换关系
-                    denom_for_real_check = denom
-                    if ctx2.get_substs():
-                        for var, subst_e in reversed(ctx2.get_substs()):
-                            denom_for_real_check = denom_for_real_check.subst(var, subst_e)
-                
-                    # 只有明确确定是复数域时才使用不带abs的log
-                    # 其他情况（包括无法确定时）都使用带abs的log（实数域公式）
-                    if is_complex_case:
-                        # 复数域: ∫1/(ax+b) dx = (1/a)*log(ax+b) + C
-                        log_expr = Fun("log", denom)
-                        if a_coeff == Const(1):
-                            return log_expr
-                        else:
-                            return (Const(1) / a_coeff) * log_expr
-                    else:
-                        # 实数域或无法确定：默认使用abs
-                        # 如果分母是替换变量，不能省略abs，因为替换回去后会丢失符号信息
-                        is_subst_var = False
-                        if ctx2.get_substs() and expr.is_var(denom):
-                            for var, _ in ctx2.get_substs():
-                                if denom.name == var:
-                                    is_subst_var = True
-                                    break
-                        
-                        if is_subst_var:
-                            # 替换变量：始终使用abs
-                            denom_always_positive = False
-                            denom_always_negative = False
-                        else:
-                            # 非替换变量：可以检查符号
-                            denom_always_positive = ctx2.check_condition(Op(">", denom, Const(0)))
-                            denom_always_negative = ctx2.check_condition(Op("<", denom, Const(0)))
-                        
-                        if denom_always_positive or denom_always_negative:
-                            # 符号确定，不需要 abs
-                            log_expr = Fun("log", denom if denom_always_positive else -denom)
-                            if a_coeff == Const(1):
-                                return log_expr
-                            else:
-                                coeff_result = (Const(1) / a_coeff) if denom_always_positive else -(Const(1) / a_coeff)
-                                return coeff_result * log_expr
-                        else:
-                            # 符号不确定，使用 abs
-                            log_expr = Fun("log", Fun("abs", denom))
-                            if a_coeff == Const(1):
-                                return log_expr
-                            else:
-                                return (Const(1) / a_coeff) * log_expr
-            
-            # 处理特殊形式: (x+a*i)^n或(a*x+b*i)^n
-            elif expr.is_power(e.body):
-                base = e.body.args[0]
-                exponent = e.body.args[1]
-                
-                # 检查是否是(x+a*i)形式
-                if ctx.check_condition(expr.Fun("notReal", base)) and not ctx.check_condition(expr.Fun("notReal", exponent)) and exponent.is_constant():
-                    # 检查底数是否为线性
-                    if (expr.is_plus(base) or expr.is_minus(base)) and \
-                       (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
-                       (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
-
-                        n = exponent.val
-                        if isinstance(n, (int, float, Fraction)) and n != -1:
-                            # 使用∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
-                            n_plus_1 = Const(n + 1)
-                            
-                            # 提取x的系数
-                            x_coeff = Const(1)
-                            if expr.is_times(base.args[0]):
-                                for arg in base.args[0].args:
-                                    if expr.is_var(arg) and arg.name == e.var:
-                                        other_factors = [f for f in base.args[0].args if f != arg]
-                                        if other_factors:
-                                            x_coeff = functools.reduce(operator.mul, other_factors)
-                                        break
-                            
-                            coeff = normalize(x_coeff * n_plus_1, ctx)
-                            return normalize(1 / coeff * (base ^ n_plus_1), ctx)
-
         # 应用原有的积分规则（查找恒等式）
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
@@ -940,142 +835,6 @@ class EvaluateDefiniteIntegral(Rule):
 
         ctx2 = context.body_conds(e, ctx)
         
-        # 检查是否含有复数单位i
-        has_complex = ctx2.check_condition(expr.Fun("notReal", e.body))
-        
-        # 统一处理线性分式 1/(a*x+b) 的定积分
-        # 支持实数和复数两种情况
-        if expr.is_divides(e.body) and e.body.args[0] == Const(1):
-            from integral.solve import extract_linear
-            denom = e.body.args[1]
-            linear_form = extract_linear(denom, e.var)
-            
-            if linear_form is not None:
-                a_coeff, b_const = linear_form
-                a_coeff = normalize(a_coeff, ctx2)
-                b_const = normalize(b_const, ctx2)
-                
-                # 检查系数是否非零
-                is_coeff_nonzero = ctx2.check_condition(Op("!=", a_coeff, Const(0)))
-                
-                if is_coeff_nonzero:
-                    # 判断是复数域还是实数域
-                    is_denom_notreal = ctx2.check_condition(expr.Fun("notReal", denom))
-                    is_coeff_notreal = ctx2.check_condition(expr.Fun("notReal", a_coeff))
-                    is_const_notreal = ctx2.check_condition(expr.Fun("notReal", b_const))
-                    
-                    is_complex_case = is_denom_notreal or is_coeff_notreal or is_const_notreal
-                    
-                    is_coeff_real = ctx2.check_condition(expr.Fun("isReal", a_coeff))
-                    is_const_real = ctx2.check_condition(expr.Fun("isReal", b_const))
-                    is_real_case = is_coeff_real and is_const_real
-                    
-                    if is_complex_case:
-                        # 复数域: ∫1/(ax+b) dx = [(1/a)*log(ax+b)]_lower^upper
-                        log_expr = Fun("log", denom)
-                        if a_coeff == Const(1):
-                            return EvalAt(e.var, e.lower, e.upper, log_expr)
-                        else:
-                            return EvalAt(e.var, e.lower, e.upper, (Const(1) / a_coeff) * log_expr)
-                    elif is_real_case:
-                        # 实数域: ∫1/(ax+b) dx = [(1/a)*log(abs(ax+b))]_lower^upper
-                        # 但如果能确定分母恒正或恒负，可以省略 abs
-                        denom_always_positive = ctx2.check_condition(Op(">", denom, Const(0)))
-                        denom_always_negative = ctx2.check_condition(Op("<", denom, Const(0)))
-                        
-                        # 如果无法直接推断，检查边界值
-                        if not (denom_always_positive or denom_always_negative):
-                            lower_val = normalize(denom.subst(e.var, e.lower), ctx) if not expr.is_neg_inf(e.lower) else None
-                            upper_val = normalize(denom.subst(e.var, e.upper), ctx) if not expr.is_pos_inf(e.upper) else None
-                            
-                            if lower_val is not None and ctx2.check_condition(Op(">", lower_val, Const(0))):
-                                if ctx2.check_condition(Op(">", a_coeff, Const(0))):
-                                    denom_always_positive = True
-                                elif ctx2.check_condition(Op("<", a_coeff, Const(0))):
-                                    if upper_val is not None and ctx2.check_condition(Op(">", upper_val, Const(0))):
-                                        denom_always_positive = True
-                        
-                        if denom_always_positive or denom_always_negative:
-                            # 符号确定，不需要 abs
-                            log_expr = Fun("log", denom if denom_always_positive else -denom)
-                            if a_coeff == Const(1):
-                                return EvalAt(e.var, e.lower, e.upper, log_expr)
-                            else:
-                                coeff_result = (Const(1) / a_coeff) if denom_always_positive else -(Const(1) / a_coeff)
-                                return EvalAt(e.var, e.lower, e.upper, coeff_result * log_expr)
-                        else:
-                            # 符号不确定，使用 abs
-                            log_expr = Fun("log", Fun("abs", denom))
-                            if a_coeff == Const(1):
-                                return EvalAt(e.var, e.lower, e.upper, log_expr)
-                            else:
-                                return EvalAt(e.var, e.lower, e.upper, (Const(1) / a_coeff) * log_expr)
-                    else:
-                        # 类型不明确时的后备逻辑
-                        # 如果积分变量是实数，且分母不包含 notReal，则默认为实数域
-                        var_is_real = ctx2.check_condition(expr.Fun("isReal", Var(e.var)))
-                        if var_is_real and not is_denom_notreal:
-                            # 检查分母在积分区间内的符号
-                            denom_always_positive = ctx2.check_condition(Op(">", denom, Const(0)))
-                            denom_always_negative = ctx2.check_condition(Op("<", denom, Const(0)))
-                            
-                            if not (denom_always_positive or denom_always_negative):
-                                lower_val = normalize(denom.subst(e.var, e.lower), ctx) if not expr.is_neg_inf(e.lower) else None
-                                upper_val = normalize(denom.subst(e.var, e.upper), ctx) if not expr.is_pos_inf(e.upper) else None
-                                
-                                if lower_val is not None and ctx2.check_condition(Op(">", lower_val, Const(0))):
-                                    if ctx2.check_condition(Op(">", a_coeff, Const(0))):
-                                        denom_always_positive = True
-                                    elif ctx2.check_condition(Op("<", a_coeff, Const(0))):
-                                        if upper_val is not None and ctx2.check_condition(Op(">", upper_val, Const(0))):
-                                            denom_always_positive = True
-                            
-                            if denom_always_positive or denom_always_negative:
-                                # 符号确定，不需要 abs
-                                log_expr = Fun("log", denom if denom_always_positive else -denom)
-                                if a_coeff == Const(1):
-                                    return EvalAt(e.var, e.lower, e.upper, log_expr)
-                                else:
-                                    coeff_result = (Const(1) / a_coeff) if denom_always_positive else -(Const(1) / a_coeff)
-                                    return EvalAt(e.var, e.lower, e.upper, coeff_result * log_expr)
-                            else:
-                                # 符号不确定，使用 abs
-                                log_expr = Fun("log", Fun("abs", denom))
-                                if a_coeff == Const(1):
-                                    return EvalAt(e.var, e.lower, e.upper, log_expr)
-                                else:
-                                    return EvalAt(e.var, e.lower, e.upper, (Const(1) / a_coeff) * log_expr)
-            
-            # 处理特殊形式: (x+a*i)^n或(a*x+b*i)^n
-            elif expr.is_power(e.body):
-                base = e.body.args[0]
-                exponent = e.body.args[1]
-                
-                # 检查是否是(x+a*i)形式
-                if ctx.check_condition(expr.Fun("notReal", base)) and not ctx.check_condition(expr.Fun("notReal", exponent)) and exponent.is_constant():
-                    # 检查底数是否为线性
-                    if (expr.is_plus(base) or expr.is_minus(base)) and \
-                       (expr.is_var(base.args[0]) or (expr.is_times(base.args[0]) and any(expr.is_var(a) and a.name == e.var for a in base.args[0].args))) and \
-                       (base.args[1] == Fun("i") or (expr.is_times(base.args[1]) and Fun("i") in base.args[1].args)):
-
-                        n = exponent.val
-                        if isinstance(n, (int, float, Fraction)) and n != -1:
-                            # 使用∫(x+a)^n dx = (x+a)^(n+1)/(n+1) + C
-                            n_plus_1 = Const(n + 1)
-                            
-                            # 提取x的系数
-                            x_coeff = Const(1)
-                            if expr.is_times(base.args[0]):
-                                for arg in base.args[0].args:
-                                    if expr.is_var(arg) and arg.name == e.var:
-                                        other_factors = [f for f in base.args[0].args if f != arg]
-                                        if other_factors:
-                                            x_coeff = functools.reduce(operator.mul, other_factors)
-                                        break
-                            
-                            coeff = normalize(x_coeff * n_plus_1, ctx)
-                            return EvalAt(e.var, e.lower, e.upper, 1 / coeff * (base ^ n_plus_1))
-
         # 查找定积分恒等式
         for identity in ctx.get_definite_integrals():
             inst = expr.match(e, identity.lhs)
@@ -2258,6 +2017,131 @@ class SubstitutionInverse(Rule):
         else:
             raise AssertionError("SubstitutionInverse")
 
+def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional[Expr]:
+    """尝试将围道积分转换为普通积分。
+    
+    当围道积分的路径是实值路径时，可以转换为普通定积分。
+    规则: CINT z:path. f(z) → INT x:[a,b]. f(x) 或 -INT x:[a,b]. f(x)
+    
+    Args:
+        e: 原始围道积分表达式
+        new_expr: 目标表达式（普通积分或其相反数）
+        ctx: 上下文
+        
+    Returns:
+        如果转换成功，返回 new_expr；否则返回 None
+        
+    Raises:
+        RuleException: 当方向和符号不匹配时抛出具体错误
+    """
+    # 处理实值围道积分到普通积分的转换
+    # 围道积分到普通积分的转换规则: CINT z:path. f(z) → INT x:[a,b]. f(x) 或 -INT x:[a,b]. f(x) (当路径是实值时)
+    # 先检查 e 是否是单路径围道积分，避免不必要的计算
+    if expr.is_cintegral(e) and len(e.paths) == 1:
+        # 检查new_expr是否是普通积分或其相反数
+        target_integral = None
+        needs_negation = False
+        
+        if expr.is_integral(new_expr):
+            target_integral = new_expr
+            needs_negation = False
+        elif isinstance(new_expr, expr.Op) and new_expr.op == '-' and len(new_expr.args) == 1:
+            if expr.is_integral(new_expr.args[0]):
+                target_integral = new_expr.args[0]
+                needs_negation = True
+        elif isinstance(new_expr, expr.Op) and new_expr.op == '*' and len(new_expr.args) == 2:
+            if new_expr.args[0] == expr.Const(-1) and expr.is_integral(new_expr.args[1]):
+                target_integral = new_expr.args[1]
+                needs_negation = True
+            elif new_expr.args[1] == expr.Const(-1) and expr.is_integral(new_expr.args[0]):
+                target_integral = new_expr.args[0]
+                needs_negation = True
+        
+        if target_integral is not None:
+            path = e.paths[0]
+            path_obj = None
+            matched_defn = None
+            inst = None
+            
+            # 获取实际的 CINTPath 对象
+            if isinstance(path, expr.CINTPath):
+                path_obj = path
+            elif isinstance(path, str):
+                # 路径是字符串引用，在上下文定义中查找
+                try:
+                    path_ref = parser.parse_expr(path)
+                    for defn in ctx.get_definitions():
+                        inst = expr.match(path_ref, defn.lhs)
+                        if inst is not None and isinstance(defn.rhs, expr.CINTPath):
+                            path_obj = defn.rhs.inst_pat(inst)
+                            matched_defn = defn
+                            break
+                except:
+                    pass
+            
+            if path_obj is not None:
+                path_expr = path_obj.path_expr
+                path_var = path_obj.var
+                lower_t = path_obj.start_expr
+                upper_t = path_obj.end_expr
+                
+                # 先计算端点，这是轻量级操作
+                z_start = normalize(path_expr.subst(path_var, lower_t), ctx)
+                z_end = normalize(path_expr.subst(path_var, upper_t), ctx)
+                
+                # 检查边界是否匹配（先做轻量级检查）
+                new_lower = normalize(target_integral.lower, ctx)
+                new_upper = normalize(target_integral.upper, ctx)
+                
+                forward_match = (z_start == new_lower and z_end == new_upper)
+                reverse_match = (z_start == new_upper and z_end == new_lower)
+                
+                if forward_match or reverse_match:
+                    # 在变量替换后验证主体是否匹配
+                    expected_body = e.body.subst(e.var, expr.Var(target_integral.var))
+                    
+                    if normalize(expected_body, ctx) == normalize(target_integral.body, ctx):
+                        # 只有在边界和主体都匹配时，才进行昂贵的 notReal 检查
+                        # 创建带有定义条件的临时上下文
+                        from integral.context import Context as ContextClass
+                        check_ctx = ContextClass(ctx)
+                        check_ctx.add_condition(expr.Fun("isReal", expr.Var(path_var)))
+                        
+                        if matched_defn is not None:
+                            for cond in matched_defn.conds.data:
+                                inst_cond = cond.inst_pat(inst) if inst else cond
+                                check_ctx.add_condition(inst_cond)
+                            if inst:
+                                for _, var_expr in inst.items():
+                                    if expr.is_var(var_expr):
+                                        check_ctx.add_condition(expr.Fun("isReal", var_expr))
+                        
+                        # 检查 notReal - 只有在其他条件都满足时才执行
+                        is_not_real = check_ctx.check_condition(expr.Fun("notReal", path_expr))
+                        
+                        if not is_not_real:  # 路径可能是实数
+                            # 检查方向和符号是否一致
+                            if (forward_match and not needs_negation) or (reverse_match and needs_negation):
+                                return new_expr
+                            else:
+                                # 方向和符号不匹配，给出具体的错误提示
+                                if reverse_match and not needs_negation:
+                                    raise RuleException(
+                                        "Rewriting",
+                                        f"The contour path is in reverse direction (from {z_end} to {z_start}), "
+                                        f"but the rewritten integral {new_expr} is missing the negative sign. "
+                                        f"Please rewrite to -{new_expr}"
+                                    )
+                                elif forward_match and needs_negation:
+                                    raise RuleException(
+                                        "Rewriting",
+                                        f"The contour path is in forward direction (from {z_start} to {z_end}), "
+                                        f"but the rewritten integral has an unnecessary negative sign. "
+                                        f"Please rewrite to {target_integral} instead of {new_expr}"
+                                    )
+    return None
+
+
 class ExpandPolynomial(Rule):
     """Expand multiplication and power."""
 
@@ -2511,136 +2395,10 @@ class Rewriting(Rule):
                 return self.new_expr
         
         # 处理实值围道积分到普通积分的转换
-        # 围道积分到普通积分的转换规则: CINT z:path. f(z) → INT x:[a,b]. f(x) 或 -INT x:[a,b]. f(x) (当路径是实值时)
-        # 检查new_expr是否是普通积分或其相反数
-        target_integral_check = None
+        cint_result = try_cintegral_to_integral(e, self.new_expr, ctx)
+        if cint_result is not None:
+            return cint_result
         
-        if expr.is_integral(self.new_expr):
-            target_integral_check = self.new_expr
-        elif isinstance(self.new_expr, expr.Op) and self.new_expr.op == '-' and len(self.new_expr.args) == 1:
-            if expr.is_integral(self.new_expr.args[0]):
-                target_integral_check = self.new_expr.args[0]
-        elif isinstance(self.new_expr, expr.Op) and self.new_expr.op == '*' and len(self.new_expr.args) == 2:
-            if self.new_expr.args[0] == expr.Const(-1) and expr.is_integral(self.new_expr.args[1]):
-                target_integral_check = self.new_expr.args[1]
-            elif self.new_expr.args[1] == expr.Const(-1) and expr.is_integral(self.new_expr.args[0]):
-                target_integral_check = self.new_expr.args[0]
-        
-        if expr.is_cintegral(e) and len(e.paths) == 1 and target_integral_check is not None:
-            path = e.paths[0]
-            path_obj = None
-            matched_defn = None
-            inst = None
-            
-            # 获取实际的 CINTPath 对象
-            if isinstance(path, expr.CINTPath):
-                path_obj = path
-            elif isinstance(path, str):
-                # 路径是字符串引用，在上下文定义中查找
-                try:
-                    path_ref = parser.parse_expr(path)
-                    for defn in ctx.get_definitions():
-                        inst = expr.match(path_ref, defn.lhs)
-                        if inst is not None and isinstance(defn.rhs, expr.CINTPath):
-                            path_obj = defn.rhs.inst_pat(inst)
-                            matched_defn = defn
-                            break
-                except:
-                    pass
-            
-            if path_obj is not None:
-                path_expr = path_obj.path_expr
-                path_var = path_obj.var
-                lower_t = path_obj.start_expr
-                upper_t = path_obj.end_expr
-                
-                # 创建带有定义条件的临时上下文
-                # 路径参数 (t) 总是实数，函数参数来自定义
-                from integral.context import Context as ContextClass
-                check_ctx = ContextClass(ctx)
-                
-                # 添加路径参数为实数（积分变量总是实数）
-                check_ctx.add_condition(expr.Fun("isReal", expr.Var(path_var)))
-                
-                # 从定义中添加实例化条件（如果可用）
-                if matched_defn is not None:
-                    for cond in matched_defn.conds.data:
-                        inst_cond = cond.inst_pat(inst) if inst else cond
-                        check_ctx.add_condition(inst_cond)
-                    
-                    # 为函数参数添加 isReal 条件（如果它们的值在实例化中是变量）
-                    # 这对于围道积分转换是安全的，因为我们只在推导 notReal 时使用这些条件
-                    if inst:
-                        for _, var_expr in inst.items():
-                            if expr.is_var(var_expr):
-                                check_ctx.add_condition(expr.Fun("isReal", var_expr))
-                
-                # 检查 notReal
-                # 如果可以证明 notReal(path_expr)，路径不是实数 → 无法转换
-                is_not_real = check_ctx.check_condition(expr.Fun("notReal", path_expr))
-                
-                if not is_not_real:  # 路径可能是实数，继续验证
-                    # 计算端点
-                    z_start = normalize(path_expr.subst(path_var, lower_t), ctx)
-                    z_end = normalize(path_expr.subst(path_var, upper_t), ctx)
-                    
-                    # 检查new_expr是否是普通积分或其相反数
-                    target_integral = None
-                    needs_negation = False
-                    
-                    if expr.is_integral(self.new_expr):
-                        target_integral = self.new_expr
-                        needs_negation = False
-                    elif isinstance(self.new_expr, expr.Op) and self.new_expr.op == '-' and len(self.new_expr.args) == 1:
-                        # 处理 -INT 形式
-                        if expr.is_integral(self.new_expr.args[0]):
-                            target_integral = self.new_expr.args[0]
-                            needs_negation = True
-                    elif isinstance(self.new_expr, expr.Op) and self.new_expr.op == '*' and len(self.new_expr.args) == 2:
-                        # 处理 -1 * INT 形式
-                        if self.new_expr.args[0] == expr.Const(-1) and expr.is_integral(self.new_expr.args[1]):
-                            target_integral = self.new_expr.args[1]
-                            needs_negation = True
-                        elif self.new_expr.args[1] == expr.Const(-1) and expr.is_integral(self.new_expr.args[0]):
-                            target_integral = self.new_expr.args[0]
-                            needs_negation = True
-                    
-                    if target_integral is not None:
-                        # 检查边界是否匹配
-                        new_lower = normalize(target_integral.lower, ctx)
-                        new_upper = normalize(target_integral.upper, ctx)
-                        
-                        forward_match = (z_start == new_lower and z_end == new_upper)
-                        reverse_match = (z_start == new_upper and z_end == new_lower)
-                        
-                        if forward_match or reverse_match:
-                            # 在变量替换后验证主体是否匹配
-                            expected_body = e.body.subst(e.var, expr.Var(target_integral.var))
-                            
-                            if normalize(expected_body, ctx) == normalize(target_integral.body, ctx):
-                                # 检查方向和符号是否一致
-                                # forward_match: CINT = INT (不需要负号)
-                                # reverse_match: CINT = -INT (需要负号)
-                                if (forward_match and not needs_negation) or (reverse_match and needs_negation):
-                                    return self.new_expr
-                                else:
-                                    # 方向和符号不匹配，给出具体的错误提示
-                                    if reverse_match and not needs_negation:
-                                        # 路径是逆向的，但用户没有加负号
-                                        raise RuleException(
-                                            "Rewriting",
-                                            f"The contour path is in reverse direction (from {z_end} to {z_start}), "
-                                            f"but the rewritten integral {self.new_expr} is missing the negative sign. "
-                                            f"Please rewrite to -{self.new_expr}"
-                                        )
-                                    elif forward_match and needs_negation:
-                                        # 路径是正向的，但用户加了负号
-                                        raise RuleException(
-                                            "Rewriting",
-                                            f"The contour path is in forward direction (from {z_start} to {z_end}), "
-                                            f"but the rewritten integral has an unnecessary negative sign. "
-                                            f"Please rewrite to {target_integral} instead of {self.new_expr}"
-                                        )
         # apply identity
         for identity in ctx.get_other_identities():
             inst = expr.match(e, identity.lhs)
