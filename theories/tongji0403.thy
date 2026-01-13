@@ -189,11 +189,13 @@ calculate INT x. exp(x) * sin(x)^2
     rewrite sin(x)^2 to (1 - cos(2*x)) / 2
     expand polynomial
     apply integral identity
+	simplify
     integrate by parts with u = exp(x), v = sin(2*x)/2
     simplify
     integrate by parts with u = exp(x), v = -cos(2*x)/2
     simplify
-    sorry
+	solve integral (INT x. exp(x) * cos(2 * x))
+done
 
 calculate INT x. x * log(x)^2 for x > 0
     integrate by parts with u = log(x)^2, v = x^2/2

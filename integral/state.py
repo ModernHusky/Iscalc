@@ -197,13 +197,19 @@ class CalculateState(State):
             # Special check for IntegrateByEquation: lhs must appear exactly
             # as one of the steps.
             if isinstance(action.rule, IntegrateByEquation):
-                if not (self.calc.start == action.rule.lhs or
-                        any(step.res == action.rule.lhs for step in self.calc.steps)):
+                # Check if lhs appears as a subexpression in any step
+                def check_step(expr):
+                    # Use the existing find_subexpr_pred method to check if lhs is a subexpression
+                    subexprs = expr.find_subexpr_pred(lambda e: e == action.rule.lhs, is_nested=False)
+                    return len(subexprs) > 0
+                
+                if not (check_step(self.calc.start) or
+                        any(check_step(step.res) for step in self.calc.steps)):
                     # print("Current calculation is:")
                     # print(self.calc)
                     raise RuleException(
                         "IntegrateByEquation",
-                        f"lhs {action.rule.lhs} must appear exactly as one of the steps")
+                        f"lhs {action.rule.lhs} must appear as one of the steps")
             self.calc.perform_rule(action.rule)
             return self
         
