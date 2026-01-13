@@ -473,6 +473,8 @@ axiom [simp] tan(arcsec(x)) = sqrt(x ^ 2 - 1)
 
 axiom [simp] tan(arcsin(x)) = x / sqrt(1 - x ^ 2)
 
+axiom [simp] tan(arcsin(x)/2) = (1 - sqrt(1 - x ^ 2)) / x
+
 axiom [simp] cos(arctan(x)) = 1 / sqrt(x ^ 2 + 1)
 
 axiom [simp] sin(arctan(x)) = x / sqrt(x ^ 2 + 1)

@@ -501,9 +501,17 @@ class Expr:
         elif is_inf(self):
             return self
         elif is_integral(self):
-            return Integral(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
+            # Don't substitute the bound variable inside the integral
+            if self.var == var:
+                return Integral(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body)
+            else:
+                return Integral(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
         elif is_indefinite_integral(self):
-            return IndefiniteIntegral(self.var, self.body.subst(var, e), self.skolem_args)
+            # Don't substitute the bound variable inside the integral
+            if self.var == var:
+                return IndefiniteIntegral(self.var, self.body, self.skolem_args)
+            else:
+                return IndefiniteIntegral(self.var, self.body.subst(var, e), self.skolem_args)
         elif is_evalat(self):
             return EvalAt(self.var, self.lower.subst(var, e), self.upper.subst(var, e), self.body.subst(var, e))
         elif is_summation(self):

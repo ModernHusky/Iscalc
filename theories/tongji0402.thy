@@ -326,7 +326,7 @@ calculate INT x. 1 / (1 + sqrt(2*x)) for x > 0
     simplify
 done
 
-calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x > -1, x < 1
+calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x >= -1, x <= 1, x != 0
     substitute sin(t) for x
     rewrite 1 - sin(t)^2 to cos(t)^2
     simplify
@@ -341,7 +341,11 @@ calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x > -1, x < 1
     apply integral identity
     replace substitution
     simplify
-    sorry
+	substitute u for t/2
+	apply integral identity
+	replace substitution
+	simplify
+done
 
 calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, x + sqrt(1 - x^2) != 0, cos(arcsin(x)) + sin(arcsin(x)) != 0
     substitute sin(t) for x
