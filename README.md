@@ -37,3 +37,16 @@ run the user interface server, in a different terminal
 change to `./app` and use ```npm install``` followed by ```npm run serve```.
 
 In your browser the user interface is at page `localhost:8080`.
+
+### LLM-Iscalc Integration
+
+`iscalc` now supports LLM-assisted solving. To use the LLM features:
+
+1.  **Configure API**: Set your API key in `llm_iscalc/config.py`.
+2.  **Run Service**: 
+    ```bash
+    python run_llm_iscalc.py
+    ```
+    Access the interface at `http://127.0.0.1:7860`.
+
+For detailed information, see the [LLM-Iscalc README](llm_iscalc/README.md).

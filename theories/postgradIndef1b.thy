@@ -121,6 +121,7 @@ calculate INT x. 1 / (exp(x)-exp(-x)) for x > 0
     rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1/sqrt(exp(2*x)+1)
@@ -134,6 +135,7 @@ calculate INT x. 1/sqrt(exp(2*x)+1)
     rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1/sqrt(exp(2*x)-1) for x > 0
@@ -143,6 +145,7 @@ calculate INT x. 1/sqrt(exp(2*x)-1) for x > 0
     simplify
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. sqrt((exp(x)-1)/(exp(x)+1)) for x > 0
@@ -154,4 +157,5 @@ calculate INT x. sqrt((exp(x)-1)/(exp(x)+1)) for x > 0
     simplify
     apply integral identity
     replace substitution
+    simplify
 done

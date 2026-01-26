@@ -892,14 +892,16 @@ class CompFile:
     ctx - initial context of the file.
         either a Context or a string, specifying the base context or
         file name.
+    filename - optional filename for the CompFile (for identification purposes)
 
     """
-    def __init__(self, ctx: Union[Context, str]):
+    def __init__(self, ctx: Union[Context, str], filename: str = ""):
         if isinstance(ctx, str):
             self.ctx = Context()
             self.ctx.load_book(ctx)
         else:
             self.ctx = ctx
+        self.filename = filename
         self.content: list[StateItem] = []
 
     def __eq__(self, other):

@@ -68,7 +68,7 @@ class CommandExecutor:
             parsed_expr = parser.parse_expr(expression)
             
             # 创建InitialState
-            initial_state = state_module.InitialState(self.comp_file)
+            initial_state = state_module.InitialState(self.comp_file.ctx)
             
             # 解析条件
             cond_list = None

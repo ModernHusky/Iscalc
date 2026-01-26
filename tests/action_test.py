@@ -4,14 +4,17 @@ import unittest
 import sys
 import cProfile
 import pstats
+import os
+from pathlib import Path
 
 from integral import compstate
 from integral import state
 from integral import parser
 from integral import context
 
-import os
-os.chdir(r"E:\Apostgraduatelife\learn-git\iscalc")
+# 获取项目根目录（tests 目录的父目录）
+PROJECT_ROOT = Path(__file__).parent.parent
+os.chdir(PROJECT_ROOT)
 
 
 class ActionTest(unittest.TestCase):

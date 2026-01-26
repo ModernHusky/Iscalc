@@ -272,9 +272,7 @@ class CalculateState(State):
 
             self.calc.check_wellformed()
 
-
-            normalized_res = poly.normalize(res, self.calc.ctx)
-            return normalized_res.is_closed_form() and poly.normalize(normalized_res, self.calc.ctx) == normalized_res
+            return res.is_closed_form() and poly.normalize(res, self.calc.ctx) == res
         else:
             return self.past.is_finished()
 

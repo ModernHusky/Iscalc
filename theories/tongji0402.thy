@@ -169,6 +169,7 @@ done
     substitute u for 2 * x
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. log(tan(x)) / (cos(x) * sin(x)) for x > 0, x < pi / 2
@@ -185,6 +186,7 @@ calculate INT x. cos(x)^3
     substitute u for sin(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT t. cos(w*t + phi)^2
@@ -192,21 +194,25 @@ calculate INT t. cos(w*t + phi)^2
     rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. sin(2*x) * cos(3*x)
     rewrite sin(2*x) * cos(3*x) to 1/2 * (sin(5*x) - sin(1*x))
     apply integral identity
+    simplify
 done
 
 calculate INT x. cos(x) * cos(x/2)
     rewrite cos(x) * cos(x/2) to 1/2 * (cos(3/2*x) + cos(1/2*x))
     apply integral identity
+    simplify
 done
 
 calculate INT x. sin(5*x) * sin(7*x)
     rewrite sin(5*x) * sin(7*x) to -1/2 * (cos(-2*x) - cos(12*x))
     apply integral identity
+    simplify
 done
 
 calculate INT x. tan(x)^3 * sec(x) for x > -pi/2, x < pi/2
@@ -215,6 +221,7 @@ calculate INT x. tan(x)^3 * sec(x) for x > -pi/2, x < pi/2
     substitute u for sec(x)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (exp(x) + exp(-x))
@@ -233,6 +240,7 @@ calculate INT x. (1 - x) / sqrt(9 - 4 * x^2) for x > -3/2, x < 3/2
     simplify
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. x^3 / (9 + x^2) for x != 0
@@ -251,11 +259,13 @@ calculate INT x. 1 / (2*x^2 - 1) for x != sqrt(2)/2, x != -sqrt(2)/2, x^2 != 1/2
     partial fraction decomposition
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / ((x + 1) * (x - 2)) for x != -1, x != 2
     partial fraction decomposition
     apply integral identity
+    simplify
 done
 
 calculate INT x. x / (x^2 - x - 2) for x != -1, x != 2
@@ -265,6 +275,7 @@ lhs:
 done
     partial fraction decomposition
     apply integral identity
+    simplify
 done
 
 calculate INT x. x^2 / sqrt(a^2 - x^2) for a > 0, x > -a, x < a
@@ -276,6 +287,7 @@ calculate INT x. x^2 / sqrt(a^2 - x^2) for a > 0, x > -a, x < a
     apply integral identity
     replace substitution
     expand polynomial
+    simplify
 done
 
 calculate INT x. 1 / (x * sqrt(x^2 - 1)) for x > 1
@@ -292,6 +304,7 @@ calculate INT x. 1 / sqrt((x^2 + 1)^3)
     rewrite 1 / sec(t) to cos(t)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. sqrt(x^2 - 9) / x for x > 3
@@ -303,6 +316,7 @@ calculate INT x. sqrt(x^2 - 9) / x for x > 3
     rewrite tan(u)^2 to sec(u)^2 - 1
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (1 + sqrt(2*x)) for x > 0
@@ -310,6 +324,7 @@ calculate INT x. 1 / (1 + sqrt(2*x)) for x > 0
     partial fraction decomposition
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x > -1, x < 1
@@ -337,6 +352,7 @@ calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, x + sqrt(1 - x^2) !=
     substitute u for cos(t) + sin(t)
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. (x - 1) / (x^2 + 2*x + 3)
@@ -354,6 +370,7 @@ done
     substitute u for z^2 + 1
     apply integral identity
     replace substitution
+    simplify
 done
 
 calculate INT x. (x^3 + 1) / (x^2 + 1)^2
@@ -373,4 +390,5 @@ calculate INT x. (x^3 + 1) / (x^2 + 1)^2
     rewrite cos(t)^2 to 1/2*(1+cos(2*t))
     apply integral identity
     replace substitution
+    simplify
 done

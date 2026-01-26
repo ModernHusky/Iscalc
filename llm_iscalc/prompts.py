@@ -108,8 +108,8 @@ x/(x-1)     → 1 + 1/(x-1)      # 当 x → ∞ 时
 
 ### 7. 简化 (simplify)
 语法: simplify
-作用: 自动简化当前表达式
-适用: 在大多数步骤后使用
+作用: 自动简化当前表达式 (包含线性性处理、导数简化等)
+适用: 在大多数步骤后使用，特别是替代 linearity 命令
 
 ### 8. 多项式展开 (expand polynomial)
 语法: expand polynomial
@@ -121,9 +121,10 @@ x/(x-1)     → 1 + 1/(x-1)      # 当 x → ∞ 时
 作用: 对有理函数进行部分分式分解
 示例: 1/(x^2-1) 分解为 1/(2*(x-1)) - 1/(2*(x+1))
 
-### 10. 线性性 (linearity)
-语法: linearity
-作用: 应用积分的线性性质，提取常数或分拆求和
+### 10. 求解积分方程 (solve integral)
+语法: solve integral <expr>
+作用: 用于通过方程求解积分 (例如分部积分后出现原积分的情况)
+示例: solve integral INT x. exp(x)*sin(x)
 
 ### 11. 洛必达法则 (l'Hopital's rule)
 语法: l'Hopital's rule
@@ -137,6 +138,7 @@ x/(x-1)     → 1 + 1/(x-1)      # 当 x → ∞ 时
 语法: improper integral to limit creating <var>
 作用: 将广义积分转换为极限形式
 示例: improper integral to limit creating t
+**注意**: 转换后通常需要随后调用 apply integral identity 计算积分，最后调用 simplify 计算极限。
 
 ### 14. 级数展开 (series expansion)
 语法: apply series expansion on <expr> index <var>
@@ -146,6 +148,15 @@ x/(x-1)     → 1 + 1/(x-1)      # 当 x → ∞ 时
 ### 15. 交换积分与求和 (exchange integral and sum)
 语法: exchange integral and sum
 作用: 交换积分和求和的顺序
+
+### 16. 交换导数与积分 (exchange derivative and integral)
+语法: exchange derivative and integral
+作用: 交换求导和积分的顺序 (莱布尼茨积分法则)
+
+### 17. 展开定义 (expand definition)
+语法: expand definition for <name>
+作用: 展开函数或变量的定义
+示例: expand definition for f
 
 ## 输出格式
 
