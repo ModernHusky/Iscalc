@@ -291,7 +291,7 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
     elif a.e == NEG_INF and b.e == POS_INF:
         return limit_add(b, a, ctx)
     elif a.e == NEG_INF and b.e == NEG_INF:
-        return Limit(NEG_INF, asymp=asymp_add(a.asymp, b.asymp))
+        return Limit(NEG_INF, asymp=asymp_add(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF:
         return Limit(POS_INF, asymp=a.asymp)
     elif b.e == POS_INF:
@@ -391,7 +391,7 @@ def limit_mult(a: Limit, b: Limit, ctx: Context) -> Limit:
             elif cmp == GREATER:
                 return Limit(POS_INF, asymp=asymp_div(a.asymp, b.asymp, ctx))
             else:  # EQUAL case
-                return Limit(None)
+                return Limit(Const(1), side=AT_CONST)
         else:
             return Limit(None)
     elif b.e == POS_INF:
@@ -446,6 +446,21 @@ def limit_inverse(a: Limit, ctx: Context) -> Limit:
         else:
             raise NotImplementedError
     else:
+        # Check if a.e evaluates to 0 to avoid ZeroDivisionError
+        if a.e.is_evaluable():
+            val = expr.eval_expr(a.e)
+            if val == 0:
+                # Treat as approaching 0
+                if a.side == TWO_SIDED or a.side == AT_CONST:
+                    return Limit(None)
+                elif a.side == FROM_ABOVE:
+                    return Limit(POS_INF, asymp=a.asymp)
+                elif a.side == FROM_BELOW:
+                    return Limit(NEG_INF, asymp=a.asymp)
+                else:
+                    return Limit(None)
+        
+        # Safe to normalize now
         res_e = normalize(Const(1) / a.e, ctx)
         if a.side == TWO_SIDED:
             return Limit(res_e, asymp=a.asymp, side=TWO_SIDED)

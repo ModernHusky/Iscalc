@@ -1,3 +1,5 @@
+imports standard
+
 # 4.2 Substitution
 # Section A
 // page 171
@@ -11,7 +13,6 @@ calculate INT x. exp(sin(x))*cos(x)
     substitute u for sin(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. exp(x^2)*x
@@ -21,18 +22,16 @@ calculate INT x. exp(x^2)*x
     simplify
 done
 
-calculate INT x. exp(tan(x))*sec(x)^2
+calculate INT x. exp(tan(x))*sec(x)^2 for cos(x) != 0
     substitute u for tan(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. exp(sqrt(x)) / sqrt(x)
+calculate INT x. exp(sqrt(x)) / sqrt(x) for x > 0
     substitute u for sqrt(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. sin(sin(x))*cos(x)
@@ -42,7 +41,7 @@ calculate INT x. sin(sin(x))*cos(x)
     simplify
 done
 
-calculate INT x. sin(log(x))/x
+calculate INT x. sin(log(x))/x for x > 0
     substitute u for log(x)
     apply integral identity
     replace substitution
@@ -51,7 +50,7 @@ done
 
 // page 172
 
-calculate INT x. sin(sqrt(x)) / sqrt(x)
+calculate INT x. sin(sqrt(x)) / sqrt(x) for x > 0
     substitute u for sqrt(x)
     apply integral identity
     replace substitution
@@ -67,13 +66,12 @@ done
 
 calculate INT x. sin(sqrt(1+x^2))*x/sqrt(1+x^2) for x != 0
     substitute u for sqrt(1+x^2)
-    simplify
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 1/(2-3*x)^(1/3)
+calculate INT x. 1/(2-3*x)^(1/3) for 2-3*x != 0
     substitute u for 2-3*x
     simplify
     apply integral identity
@@ -81,76 +79,83 @@ calculate INT x. 1/(2-3*x)^(1/3)
     simplify
 done
 
-calculate INT x. sin(x) / cos(x)^3 for sin(x) != 0
+calculate INT x. sin(x) / cos(x)^3 for cos(x) != 0
     substitute u for cos(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. x / sqrt(2-3*x^2)
+calculate INT x. x / sqrt(2-3*x^2) for 2-3*x^2 > 0
     substitute u for 2-3*x^2
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. (1+log(x))/(x*log(x))^2 for x > exp(-1)
+calculate INT x. (1+log(x))/(x*log(x))^2 for x > exp(-1), x*log(x) != 0
     substitute u for x*log(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. tan(x)^9*sec(x)^2
+calculate INT x. tan(x)^9*sec(x)^2 for cos(x) != 0
     substitute u for tan(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 1 / (arcsin(x)^2*sqrt(1-x^2)) for x < 1, x > -1
+calculate INT x. 1 / (arcsin(x)^2*sqrt(1-x^2)) for x < 1, x > -1, arcsin(x) != 0
     substitute u for arcsin(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. (sin(x)+cos(x))/(sin(x)-cos(x))^(1/3) for x>0, x < pi/2
+calculate INT x. (sin(x)+cos(x))/(sin(x)-cos(x))^(1/3) for x>0, x < pi/2, sin(x)-cos(x) != 0
     substitute u for sin(x)-cos(x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 1/(1-3*x)
+calculate INT x. 1 / (1-3*x) for 1-3*x != 0
     apply integral identity
     simplify
 done
 
-calculate INT x. (x+1)/(x^2+2*x+5) for x != -1
+calculate INT x. (x+1)/(x^2+2*x+5)
+subgoal 1: x^2 + 2 * x + 5 != 0
+lhs:
+    rewrite x^2 + 2*x + 5 to (x+1)^2 + 4
+done
     rewrite x^2+2*x+5 to (x+1)^2+4
     substitute u for (x+1)^2
-    simplify
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 3*x^2/(1-x^4)
+calculate INT x. 3*x^2/(1-x^4) for x > -1, x < 1
+subgoal 1: 1-x^4 != 0
+lhs:
+    rewrite 1 - x^4 to (1 + x^2) * (1-x) * (1 + x)
+done
     partial fraction decomposition
     apply integral identity
     simplify
 done
 
-calculate INT x. 3*x^3/(1-x^4)
+calculate INT x. 3*x^3/(1-x^4) for x^4 != 1
     substitute u for x^4
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. tan(x)
+calculate INT x. tan(x) for cos(x) != 0
     rewrite tan(x) to sin(x)/cos(x)
     substitute u for cos(x)
     apply integral identity
@@ -158,23 +163,21 @@ calculate INT x. tan(x)
     simplify
 done
 
-calculate INT x. cot(x)
+calculate INT x. cot(x) for sin(x) != 0
     rewrite cot(x) to cos(x)/sin(x)
     substitute u for sin(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. 1 / (x*log(x)*log(log(x))) for x > 1
+calculate INT x. 1 / (x*log(x)*log(log(x))) for x > 1, log(log(x)) != 0
     substitute u for log(x)
     substitute v for log(u)
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. 1 / sqrt(4-9*x^2)
+calculate INT x. 1 / sqrt(4-9*x^2) for x < 2 / 3, x > -2 / 3
     rewrite 4-9*x^2 to 4*(1 - (3/2*x)^2)
     rewrite sqrt(4*(1 - (3/2*x)^2)) to 2 * sqrt(1 - (3/2*x)^2)
     substitute u for 3/2*x
@@ -183,7 +186,11 @@ calculate INT x. 1 / sqrt(4-9*x^2)
     simplify
 done
 
-calculate INT x. 1/sqrt(5-2*x-x^2)
+calculate INT x. 1/sqrt(5-2*x-x^2) for (x+1)/sqrt(6) > -1, (x+1)/sqrt(6) < 1, (1+x)^2 < 6
+subgoal 1: 5 - 2 * x - x ^ 2 > 0
+lhs:
+    rewrite 5 - 2 * x - x ^ 2 to 6 - (1 + x)^2
+done
     rewrite 5-2*x-x^2 to 6*(1-((x+1)/sqrt(6))^2)
     rewrite sqrt(6*(1-((x+1)/sqrt(6))^2)) to sqrt(6)*sqrt(1-((x+1)/sqrt(6))^2)
     substitute u for (x+1)/sqrt(6)
@@ -192,18 +199,16 @@ calculate INT x. 1/sqrt(5-2*x-x^2)
     simplify
 done
 
-calculate INT x. 1/sqrt(x*(4-x))
+calculate INT x. 1/sqrt(x*(4-x)) for x > 0, x < 4
     rewrite x*(4-x) to 4*(1-((x-2)/2)^2)
     rewrite sqrt(4*(1-((x-2)/2)^2)) to 2 * sqrt(1-((x-2)/2)^2)
     substitute u for (x-2)/2
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. 1/(x*sqrt(1-log(x)^2))
+calculate INT x. 1/(x*sqrt(1-log(x)^2)) for log(x) > -1, log(x) < 1, x > 0
     substitute u for log(x)
     apply integral identity
     replace substitution
-    simplify
 done

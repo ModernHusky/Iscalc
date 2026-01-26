@@ -27,7 +27,7 @@ class ImportsAction(Action):
 
 class AxiomAction(Action):
     """State an axiom."""
-    def __init__(self, expr: Expr, conditions: tuple[Expr], attrs: Iterable[str]):
+    def __init__(self, expr: Expr, conditions: Iterable[Expr], attrs: Iterable[str]):
         self.expr = expr
         self.conditions = Conditions(conditions)
         self.attrs = tuple(attrs)
@@ -47,18 +47,38 @@ class AxiomAction(Action):
 
 class ProveAction(Action):
     """Start a proof."""
+    def __init__(self, expr: Expr, conditions: Iterable[Expr], attrs: Iterable[str]):
+        self.expr = expr
+        self.conditions = Conditions(conditions)
+        self.attrs = tuple(attrs)
+
+    def __str__(self):
+        res = "prove "
+        if self.attrs:
+            res += "[" + ', '.join(self.attrs) + "] "
+        res += str(self.expr)
+        if self.conditions:
+            res += " for " + ', '.join(str(cond) for cond in self.conditions.data)
+        return res
+
+    def get_start_states(self) -> list[str]:
+        return ["initial"]
+
+
+class LetAction(Action):
+    """Make a local definition."""
     def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
         self.expr = expr
         self.conditions = Conditions(conditions)
 
     def __str__(self):
         if self.conditions:
-            return "prove %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
+            return "let %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
         else:
-            return "prove %s" % self.expr
+            return "let %s" % self.expr
 
     def get_start_states(self) -> list[str]:
-        return ["initial"]
+        return ["proof"]
 
 
 class DefineAction(Action):
@@ -74,7 +94,23 @@ class DefineAction(Action):
             return "define %s" % self.expr
 
     def get_start_states(self) -> list[str]:
-        return ["initial", "proof"]
+        return ["initial"]
+
+
+class AxiomDefineAction(Action):
+    """Make an axiomatic definition."""
+    def __init__(self, expr: Expr, conditions: Optional[Conditions] = None):
+        self.expr = expr
+        self.conditions = Conditions(conditions)
+
+    def __str__(self):
+        if self.conditions:
+            return "axiom_define %s for %s" % (self.expr, ', '.join(str(cond) for cond in self.conditions.data))
+        else:
+            return "axiom_define %s" % self.expr
+
+    def get_start_states(self) -> list[str]:
+        return ["initial"]
 
 
 class SubgoalAction(Action):

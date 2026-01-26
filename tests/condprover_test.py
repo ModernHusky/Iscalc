@@ -120,6 +120,7 @@ class CondProverTest(unittest.TestCase):
         # For each triple (s, conds, res), res equals whether s can be
         # derived from conds.
         test_data = [
+            ("x ^ 2 != 2 / 3", ["x != sqrt(2/3)"], True),
             ("cos(x) >= 0", ["x > 0", "x < pi / 2"], True),
             ("log(x) >= 0", ["x > 1"], True),
             ("1 + x ^ 2 > 0", ["x > 0"], True),
@@ -133,6 +134,7 @@ class CondProverTest(unittest.TestCase):
             ("-k + 1 != 0", ["k > 1"], True),
             ("(p ^ 2 - 5) ^ 2 - 16 != 0", ["p > 3"], True),
             ("1 - sqrt(3) / 2 > 0", [], True),
+            ("s ^ 2 + t ^ 2 != 0", ["s >= a", "a > 0", "t > 0"], True),
             # ("a + b * cos(x) != 0", ["a > b", "b >= 0", "x > 0", "x < pi"], True),
         ]
 
@@ -140,6 +142,7 @@ class CondProverTest(unittest.TestCase):
             e = parse_expr(s)
             ctx = Context()
             ctx.load_book("base")
+            conds = [parse_expr(cond) for cond in conds]
             ctx.extend_condition(Conditions(conds))
             self.assertEqual(check_condition(e, ctx), res, "%s [%s]" % (e, conds))
 

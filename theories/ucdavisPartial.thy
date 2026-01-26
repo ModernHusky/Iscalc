@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on partial fractions
 
 // Source:
@@ -91,7 +93,11 @@ calculate INT x:[3, 4]. (x ^ 3 + 2 * x - 1) / (x ^ 2 - x - 2) ^ 2
     simplify
 done
 
-calculate INT x:[pi/12, pi/6]. sec(x) ^ 2 / (tan(x) ^ 3 - tan(x) ^ 2)
+calculate INT x:[pi/12, pi/6]. sec(x) ^ 2 / (tan(x) ^ 3 - tan(x) ^ 2) for cos(x) != 0
+subgoal 1: tan(x) ^ 3 - tan(x) ^ 2 != 0 for x > pi / 12, x < pi / 6
+lhs:
+    rewrite tan(x)^3 - tan(x)^2 to tan(x)^2 * (tan(x) - 1)
+done
     substitute u for tan(x)
     partial fraction decomposition
     apply integral identity
@@ -162,7 +168,7 @@ calculate INT x:[pi/6, pi/3]. cos(x) / (sin(x) ^ 3 + sin(x))
     substitute u for sin(x)
     partial fraction decomposition
     simplify
-    substitute v for u ^ 2 + 1
+    substitute v for u ^ 2 + 1 (at 2)
     apply integral identity
     simplify
 done

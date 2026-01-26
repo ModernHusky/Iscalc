@@ -1,14 +1,14 @@
 """State of computation"""
 from typing import List, Optional, Tuple, Union
 
-from integral.expr import Expr, Var, Const, Op
+from typing import List, Optional, Union
+
+from integral.expr import Expr, Var, Const
 from integral import rules, expr
-from integral.rules import Rule, check_wellformed
+from integral.rules import Rule, check_wellformed, ProofObligation
 from integral.conditions import Conditions
 from integral import condprover
-from integral.context import Context, Identity
-from integral import latex
-from integral import parser
+from integral.context import Context, Definition, Identity
 from integral.poly import normalize
 from integral import utils
 
@@ -100,14 +100,6 @@ class StateItem:
     """Items in a state of computation"""
     ctx: Context
 
-    def export(self):
-        """Obtain the JSON representation of the item."""
-        raise NotImplementedError
-
-    def export_book(self):
-        """Obtain the JSON representation of the item in the book file."""
-        raise NotImplementedError
-
     def get_by_label(self, label: Label) -> "StateItem":
         """Return the object at the given label."""
         raise NotImplementedError
@@ -125,80 +117,12 @@ class StateItem:
         return True
 
 
-class FuncDef(StateItem):
-    """Introduce a new function definition."""
-
-    def __init__(self, parent: "CompFile", ctx: Context, eq: Expr, conds: Optional[Conditions] = None):
-        if not eq.is_equals():
-            raise StateException("FuncDef", "input should be an equation")
-
-        self.parent = parent
-        self.ctx = ctx
-        self.eq = eq
-        if expr.is_fun(self.eq.lhs):
-            self.symb = self.eq.lhs.func_name
-            self.args = self.eq.lhs.args
-        elif expr.is_var(self.eq.lhs):
-            self.symb = self.eq.lhs.name
-            self.args = []
-        else:
-            raise StateException("FuncDef", "left side of equation must be variable or function")
-        self.body = self.eq.rhs
-
-        if any(not expr.is_var(arg) for arg in self.args) or len(self.args) != len(set(self.args)):
-            raise StateException("FuncDef", "arguments should be distinct variables")
-
-        if conds is None:
-            conds = Conditions()
-        self.conds = conds
-
-    def __str__(self):
-        res = "Definition\n"
-        res += "  %s\n" % self.eq
-        return res
-
-    def __eq__(self, other):
-        return isinstance(other, FuncDef) and self.eq == other.eq and self.conds == other.conds
-
-    def export(self):
-        res = {
-            "type": "FuncDef",
-            "eq": str(self.eq),
-            "latex_lhs": latex.convert_expr(self.eq.lhs),
-            "latex_eq": latex.convert_expr(self.eq)
-        }
-        if self.conds.data:
-            res["conds"] = self.conds.export()
-        return res
-
-    def export_book(self):
-        p = self.parent
-        while (not isinstance(p, CompFile)):
-            p = p.parent
-        res = {
-            "type": "definition",
-            "expr": str(self.eq),
-            "path": p.name
-        }
-        if self.conds.data:
-            res["conds"] = [str(cond) for cond in self.conds.data]
-        return res
-
-    def get_by_label(self, label: Label):
-        if not label.empty():
-            raise AssertionError("get_by_label: invalid label")
-        return self
-
-    def get_facts(self):
-        return [self.eq]
-
-
 class Goal(StateItem):
     """Goal to be proved.
     
     Attributes
     ----------
-    parent: CompFile | StateItem
+    parent: Optional[StateItem]
         parent of the goal
     ctx: Context
         initial context of the goal. Note this may be different from context
@@ -209,7 +133,7 @@ class Goal(StateItem):
         additional conditions of the goal
 
     """
-    def __init__(self, parent: Union['CompFile', StateItem], ctx: Context, goal: Expr, *,
+    def __init__(self, parent: Optional[StateItem], ctx: Context, goal: Expr, *,
                  conds: Optional[Conditions] = None):
         self.parent = parent
 
@@ -221,55 +145,19 @@ class Goal(StateItem):
             conds = Conditions()
         self.conds = conds
 
-        self.proof = None
+        # Initialize context
         self.ctx = Context(ctx)
-
         self.ctx.extend_vars(goal.get_vars())
         self.ctx.extend_condition(self.conds)
 
-        # Check for potential division by zero
-        def check_division_by_zero(e: Expr):
-            if expr.is_divides(e):
-                denominator = e.args[1]
-                # check if the denominator is not constant or is zero
-                if not denominator.is_constant() or denominator == Const(0):
-                    # check if the condition already contains the condition that the denominator is not zero
-                    has_condition = False
-                    for cond in self.conds.data:
-                        if expr.is_not_equals(cond) and cond.args[0] == denominator and cond.args[1] == Const(0):
-                            has_condition = True
-                            break
-                    if not has_condition:
-                        # add the condition that the denominator is not zero
-                        self.ctx.add_condition(Op("!=", denominator, Const(0)))
-            # recursively check the subexpressions
-            if e.ty in (expr.OP, expr.FUN):
-                for arg in e.args:
-                    check_division_by_zero(arg)
-            if expr.is_integral(e) or expr.is_deriv(e) or expr.is_limit(e) or expr.is_summation(e) or expr.is_product(e):
-                check_division_by_zero(e.body)
+        # Initialize proof
+        self.proof = None
 
-
-        check_division_by_zero(goal)
-
-        # Check well-formedness of the goal
-        proof_obligations_raw = check_wellformed(goal, self.ctx)
-        self.proof_obligations: list[rules.ProofObligation] = []
-        for oblig in proof_obligations_raw:
-            found = False
-            for _, subgoal in self.ctx.get_all_subgoals().items():
-                if subgoal.covers_obligation(oblig):
-                    found = True
-                    break
-            if not found:
-                self.proof_obligations.append(oblig)
-        self.wellformed = (len(self.proof_obligations) == 0)
+        # List of local definitions
+        self.definitions: list[Definition] = list()
 
         # List of subgoals, as (name, goal) pairs
         self.subgoals: list[tuple[str, Goal]] = list()
-
-        # List of temporary definitions
-        self.definitions: list[FuncDef] = list()
 
     def __str__(self):
         if self.is_finished():
@@ -280,6 +168,8 @@ class Goal(StateItem):
         if self.conds.data:
             res += " for %s" % (", ".join(str(cond) for cond in self.conds.data))
         res += "\n"
+        for definition in self.definitions:
+            res += str(definition) + "\n"
         for n, subgoal in self.subgoals:
             res += "subgoal %s\n" % n
             res += str(subgoal)
@@ -294,10 +184,7 @@ class Goal(StateItem):
             else:
                 print("prove %s" % self.goal)
         for func_def in self.definitions:
-            if func_def.conds and func_def.conds.data:
-                print("define %s for %s" % (func_def.eq, ', '.join(str(cond) for cond in func_def.conds.data)))
-            else:
-                print("define %s" % func_def.eq)
+            print(func_def)
         for n, subgoal in self.subgoals:
             if subgoal.conds and subgoal.conds.data:
                 print("subgoal %s: %s for %s" % (n, subgoal.goal, ', '.join(str(cond) for cond in subgoal.conds.data)))
@@ -318,25 +205,17 @@ class Goal(StateItem):
             return False
         return self.proof == other.proof
 
-    def is_finished(self):
-        if self.proof is None:
-            return False
-        if not self.wellformed:
-            return False
-        for _, subgoal in self.subgoals:
-            if not subgoal.is_finished():
-                return False
-        return self.proof.is_finished()
-
     def check_finished(self, stack: tuple[str]):
         goal_str = str(self.goal)
         if self.conds:
             goal_str += " for " + ', '.join(str(cond) for cond in self.conds.data)
         if self.proof is None:
             raise CheckFinishedException(stack, f"goal {goal_str} has no proof")
-        if not self.wellformed:
+        
+        proof_obligs: list[ProofObligation] = check_wellformed(self.goal, self.ctx)
+        if proof_obligs:
             msg = f"goal {self.goal} is not wellformed."
-            for i, obligation in enumerate(self.proof_obligations, 1):
+            for i, obligation in enumerate(proof_obligs, 1):
                 msg += f"\nObligation {i}\n"
                 msg += utils.indent(str(obligation))
             raise CheckFinishedException(stack, msg)
@@ -347,126 +226,41 @@ class Goal(StateItem):
     def clear(self):
         self.proof = None
 
-    def export(self):
-        res = {
-            "type": "Goal",
-            "goal": str(self.goal),
-            "latex_goal": latex.convert_expr(self.goal),
-            "finished": self.is_finished(),
-        }
-        if self.proof:
-            res['proof'] = self.proof.export()
-        if self.conds.data:
-            res['conds'] = self.conds.export()
-        if self.subgoals:
-            res['subgoals'] = [{'name': name, 'goal': goal.export()}
-                               for name, goal in self.subgoals]
-        if not self.wellformed:
-            res['wellformed'] = False
-            res['obligations'] = [p.export() for p in self.proof_obligations]
-        return res
-
-    def export_book(self):
-        p = self.parent
-        while (not isinstance(p, CompFile)):
-            p = p.parent
-        res = {
-            "type": "problem",
-            "expr": str(self.goal),
-            "path": p.name
-        }
-        if self.conds.data:
-            res["conds"] = [str(cond) for cond in self.conds.data]
-        return res
-    
-    def covers_obligation(self, oblig: rules.ProofObligation) -> bool:
-        # List of conditions is a subset of conditions on obligation
-        for cond in self.conds.data:
-            if cond not in oblig.conds.data:
-                return False
-
-        # Satisfies the goal in one branch
-        for branch in oblig.branches:
-            if len(branch.exprs) == 1 and self.goal == branch.exprs[0]:
-                return True
-            
-        return False
-
-    def add_subgoal(self, name: str, expr: Union[str, Expr],
-                    conds: Optional[list[Union[str, Expr]]] = None) -> "Goal":
+    def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> "Goal":
         """Add subgoal with given name and expression."""
 
         # Form context of the subgoal by adding existing subgoal and definitions
         # in the current goal.
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
-        self.subgoals.append((name, Goal(self, ctx, expr, conds=Conditions(conds))))
+        conds = Conditions(conds)
+        goal = Goal(self, self.ctx, expr, conds=conds)
+        self.subgoals.append((name, goal))
+        self.ctx = Context(self.ctx)
+        self.ctx.add_subgoal(name, Identity(expr, conds=conds))
+        return goal
 
-        # Recheck wellformedness conditions
-        ctx = Context(ctx)
-        ctx.subgoals[name] = Identity(expr, conds=Conditions(conds))
-        proof_obligations_raw = check_wellformed(self.goal, ctx)
-        self.proof_obligations = []
-        for oblig in proof_obligations_raw:
-            found = False
-            for _, subgoal in self.subgoals:
-                if subgoal.covers_obligation(oblig):
-                    found = True
-                    break
-            if not found:
-                self.proof_obligations.append(oblig)
-        self.wellformed = (len(self.proof_obligations) == 0)
+    def add_definition(self, eq: Expr, conds: Optional[list[Expr]] = None):
+        if not eq.is_equals():
+            raise AssertionError(f"define: {eq}")
 
-        return self.subgoals[-1][1]
+        self.ctx = Context(self.ctx)
+        self.ctx.add_definition(eq, conds)
 
-    def add_definition(self, expr: Union[str, Expr],
-                       conds: Optional[List[Union[str, Expr]]] = None) -> FuncDef:
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
-        self.definitions.append(FuncDef(self, self.ctx, expr, conds=Conditions(conds)))
-        return self.definitions[-1]
-
-    def proof_by_rewrite_goal(self, *, begin: str):
+    def proof_by_rewrite_goal(self, *, begin: str) -> "RewriteGoalProof":
         if not isinstance(begin, str):
             raise StateException("RewriteGoalProof", "begin should be a string")
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = RewriteGoalProof(self, ctx, self.goal, start=begin)
+        self.proof = RewriteGoalProof(self, self.ctx, self.goal, start=begin)
         return self.proof
 
-    def proof_by_calculation(self):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = CalculationProof(self, ctx, self.goal)
+    def proof_by_calculation(self) -> "CalculationProof":
+        self.proof = CalculationProof(self, self.ctx, self.goal)
         return self.proof
 
-    def proof_by_induction(self, induct_var: str, start: int = 0):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = InductionProof(self, ctx, self.goal, induct_var, start=start)
+    def proof_by_induction(self, induct_var: str, start: int = 0) -> "InductionProof":
+        self.proof = InductionProof(self, self.ctx, self.goal, induct_var, start=start)
         return self.proof
 
-    def proof_by_case(self, split_cond: Expr):
-        ctx = Context(self.ctx)
-        for n, subgoal in self.subgoals:
-            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
-        for funcdef in self.definitions:
-            ctx.add_definition(funcdef.eq, funcdef.conds)
-        self.proof = CaseProof(self, ctx, self.goal, split_cond=split_cond)
+    def proof_by_case(self, split_cond: Expr) -> "CaseProof":
+        self.proof = CaseProof(self, self.ctx, self.goal, split_cond=split_cond)
         return self.proof
 
     def get_by_label(self, label: Label):
@@ -513,15 +307,6 @@ class CalculationStep(StateItem):
             return False
         return self.rule.name == other.rule.name and str(self.res) == str(other.res)
 
-    def export(self):
-        res = {
-            "type": "CalculationStep",
-            "rule": self.rule.export(),
-            "res": str(self.res),
-            "latex_res": latex.convert_expr(self.res)
-        }
-        return res
-
     def clear(self):
         self.parent.clear(id=self.id)
 
@@ -537,7 +322,7 @@ class Calculation(StateItem):
 
     Attributes
     ----------
-    parent: Union[StateItem, CompFile]
+    parent: Optional[StateItem]
         parent of the calculation
     ctx: Context
         context of the calculation
@@ -551,20 +336,44 @@ class Calculation(StateItem):
         conditions under which the calculation is carried out.
 
     """
-    def __init__(self, parent, ctx: Context, start: Expr, *,
+    def __init__(self, parent: Optional[StateItem], ctx: Context, start: Expr, *,
                  connection_symbol: str = '=', conds: Optional[Conditions] = None):
         self.parent = parent
         self.start = start
+
         self.steps: list[CalculationStep] = []
         if conds is None:
             conds = Conditions()
         self.conds = conds
         self.connection_symbol = connection_symbol
 
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.ctx.extend_vars(start.get_vars())
         if conds is not None:
             self.ctx.extend_condition(self.conds)
+
+        self.subgoals = list()
+
+    def check_wellformed(self):
+        proof_obligs: list[ProofObligation] = check_wellformed(self.start, self.ctx)
+        if proof_obligs:
+            msg = f"start {self.start} is not wellformed."
+            for i, obligation in enumerate(proof_obligs, 1):
+                msg += f"\nObligation {i}\n"
+                msg += utils.indent(str(obligation))
+            raise CheckFinishedException(tuple(), msg)
+
+    def add_subgoal(self, name: str, expr: Expr, conds: Optional[list[Expr]] = None) -> Goal:
+        """Add subgoal with given name and expression."""
+
+        # Form context of the subgoal by adding existing subgoal and definitions
+        # in the current goal.
+        conds = Conditions(conds)
+        goal = Goal(self, self.ctx, expr, conds=Conditions(conds))
+        self.subgoals.append((name, goal))
+        self.ctx = Context(self.ctx)
+        self.ctx.add_subgoal(name, Identity(expr, conds=conds))
+        return goal
 
     def __eq__(self, other):
         if not isinstance(other, Calculation):
@@ -581,17 +390,6 @@ class Calculation(StateItem):
         print("calculate %s" % self.start)
         for step in self.steps:
             print(str(step.rule))
-
-    def export(self):
-        res = {
-            "type": "Calculation",
-            "start": str(self.start),
-            "latex_start": latex.convert_expr(self.start),
-            "steps": [step.export() for step in self.steps],
-        }
-        if self.conds.data:
-            res["conds"] = self.conds.export()
-        return res
 
     def clear(self, id: int = 0):
         self.steps = self.steps[:id]
@@ -618,11 +416,15 @@ class Calculation(StateItem):
 
         e = self.last_expr
         ctx = Context(self.ctx)
+        for n, subgoal in self.subgoals:
+            ctx.subgoals[n] = Identity(subgoal.goal, conds=subgoal.conds)
         cur_e = self.start
         for step in self.steps:
             ctx = step.rule.update_context(cur_e, ctx)
             cur_e = step.res
         new_e = rule.eval(e, ctx)
+        if str(new_e) == str(e):  # check equality ignoring alpha equivalence
+            raise rules.RuleException(rules.get_rule_name(rule), f"Applying the rule has no effect: {str(rule)}")
         step = CalculationStep(self, rule, new_e, id + 1)
         self.add_step(step)
 
@@ -638,9 +440,6 @@ class Calculation(StateItem):
         else:
             raise AssertionError("get_by_label: invalid label")
 
-    def parse_expr(self, s: str) -> Expr:
-        return parser.parse_expr(s)
-
 
 class CalculationProof(StateItem):
     """Proof for an equation by calculation.
@@ -651,7 +450,7 @@ class CalculationProof(StateItem):
     def __init__(self, parent, ctx: Context, goal: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.calcs: list[Calculation] = []
         if expr.is_compare(goal):
             self.predicate = goal.op
@@ -699,7 +498,13 @@ class CalculationProof(StateItem):
 
     @property
     def lhs_calc(self) -> Calculation:
-        assert self.goal.is_compare()
+        if not self.goal.is_compare():
+            if expr.is_fun(self.goal) and self.goal.func_name == "converges":
+                raise StateException(
+                    "Calculate",
+                    f"Action type lhs: cannot be performed in calculate state when proving the convergence goal({str(self.goal)}).")
+            else:
+                raise StateException("CalculationProof", "currently only support equation goals.")
         return self.calcs[0]
 
     @property
@@ -709,7 +514,8 @@ class CalculationProof(StateItem):
 
     @property
     def arg_calc(self) -> Calculation:
-        assert expr.is_fun(self.goal)
+        if not expr.is_fun(self.goal):
+            raise StateException("CalculationProof", "Cannot perform the arg: operation in the lhs: context.")
         return self.calcs[0]
 
     def is_finished(self):
@@ -732,9 +538,9 @@ class CalculationProof(StateItem):
 
     def check_finished(self, stack: tuple[str]):
         if self.predicate in ('=', '>', '<', '<=', '>=', '!='):
-            lhs = normalize(self.lhs_calc.last_expr, self.ctx)
-            rhs = normalize(self.rhs_calc.last_expr, self.ctx)
-            if self.predicate == '=' and lhs != rhs:
+            lhs = self.lhs_calc.last_expr
+            rhs = self.rhs_calc.last_expr
+            if self.predicate == '=' and normalize(lhs, self.ctx) != normalize(rhs, self.ctx):
                 raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
             if self.predicate == '>' and not self.ctx.is_greater(lhs, rhs):
                 raise CheckFinishedException(stack, f"calculation: {lhs} > {rhs}")
@@ -747,20 +553,12 @@ class CalculationProof(StateItem):
             if self.predicate == '!=' and not self.ctx.is_not_equal(lhs, rhs):
                 raise CheckFinishedException(stack, f"calculation: {lhs} != {rhs}")
         elif self.predicate == 'converges':
-            e = normalize(self.arg_calc.last_expr, self.ctx)
-            if not rules.check_converge(e, self.ctx):
-                raise CheckFinishedException(stack, f"calculation: {e} does not converge")
+            e1 = normalize(self.arg_calc.last_expr, self.ctx)
+            e2 = normalize(-e1, self.ctx)
+            if not rules.check_converge(e1, self.ctx) and not rules.check_converge(e2, self.ctx):
+                raise CheckFinishedException(stack, f"calculation: {e1} does not converge")
         else:
             raise NotImplementedError(f"predicate: {self.predicate}")
-
-    def export(self):
-        return {
-            "type": "CalculationProof",
-            "goal": str(self.goal),
-            "latex_goal": latex.convert_expr(self.goal),
-            "finished": self.is_finished(),
-            "calcs": [calc.export() for calc in self.calcs]
-        }
 
     def clear(self):
         for calc in self.calcs:
@@ -773,19 +571,6 @@ class CalculationProof(StateItem):
             return self.calcs[label.head].get_by_label(label.tail)
         else:
             raise AssertionError("get_by_label: invalid label")
-
-
-def get_comp_file(p):
-    while not isinstance(p, CompFile):
-        p = p.parent
-    return p
-
-
-def conds_subst(conds: Conditions, var: str, e: Expr):
-    res = Conditions()
-    for cond in conds.data:
-        res.add_condition(parser.parse_expr(str(cond.subst(var, e))))
-    return res
 
 
 class InductionProof(StateItem):
@@ -804,7 +589,7 @@ class InductionProof(StateItem):
         self.parent = parent
         self.goal = goal
         self.induct_var = induct_var
-        self.ctx = ctx
+        self.ctx = Context(ctx)
 
         if isinstance(start, int):
             self.start = Const(start)
@@ -868,18 +653,6 @@ class InductionProof(StateItem):
         self.base_case.check_finished(stack + ("base case",))
         self.induct_case.check_finished(stack + ("induct case",))
 
-    def export(self):
-        return {
-            "type": "InductionProof",
-            "goal": str(self.goal),
-            "latex_goal": latex.convert_expr(self.goal),
-            "induct_var": self.induct_var,
-            "base_case": self.base_case.export(),
-            "induct_case": self.induct_case.export(),
-            'start': str(self.start),
-            "finished": self.is_finished()
-        }
-
     def clear(self):
         self.base_case.clear()
         self.induct_case.clear()
@@ -908,7 +681,7 @@ class CaseProof(StateItem):
     def __init__(self, parent: Goal, ctx: Context, goal: Expr, *, split_cond: Expr):
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.split_cond = split_cond
         self.split_type = ""
         self.cases: List[Goal] = []
@@ -1024,17 +797,6 @@ class CaseProof(StateItem):
         else:
             raise NotImplementedError(f"split_type = {self.split_type}")
 
-    def export(self):
-        return {
-            "type": "CaseProof",
-            "goal": str(self.goal),
-            "latex_goal": latex.convert_expr(self.goal),
-            "cases": [case.export() for case in self.cases],
-            "split_cond": str(self.split_cond),
-            "latex_split_cond": latex.convert_expr(self.split_cond),
-            "finished": self.is_finished()
-        }
-
     def clear(self):
         for case in self.cases:
             case.clear()
@@ -1068,7 +830,7 @@ class RewriteGoalProof(StateItem):
             raise StateException("RewriteGoalProof", f"goal {goal} is not an equality.")
         self.parent = parent
         self.goal = goal
-        self.ctx = ctx
+        self.ctx = Context(ctx)
         self.start = start
         start_goal = ctx.get_subgoal(start)
         if not start_goal:
@@ -1103,16 +865,6 @@ class RewriteGoalProof(StateItem):
         if calc_rhs != goal_rhs:
             raise CheckFinishedException(stack, f"rewrite goal rhs not equal: {calc_rhs} != {goal_rhs}")
 
-    def export(self):
-        res = {
-            "type": "RewriteGoalProof",
-            "goal": str(self.goal),
-            "latex_goal": latex.convert_expr(self.goal),
-            "start": self.start,
-            "finished": self.is_finished()
-        }
-        return res
-
     def clear(self):
         self.begin.clear()
 
@@ -1140,123 +892,39 @@ class CompFile:
     ctx - initial context of the file.
         either a Context or a string, specifying the base context or
         file name.
-    name - name of the file.
 
     """
-    def __init__(self, ctx: Union[Context, str], name: str):
+    def __init__(self, ctx: Union[Context, str]):
         if isinstance(ctx, str):
             self.ctx = Context()
-            self.ctx.load_book(ctx, upto=name)
+            self.ctx.load_book(ctx)
         else:
             self.ctx = ctx
-        self.name: str = name
         self.content: list[StateItem] = []
 
     def __eq__(self, other):
-        return isinstance(other, CompFile) and \
-            self.name == other.name and self.content == other.content
+        return isinstance(other, CompFile) and self.content == other.content
 
     def __str__(self):
-        res = "File %s\n" % self.name
+        res = ""
         for st in self.content:
             res += str(st)
         return res
 
-    def get_context(self, index: int = -1) -> Context:
-        """Obtain the context up to the particular index (exclusive).
-
-        If index = -1, return the context after processing all the content.
-
-        """
-        ctx = Context(self.ctx)
-        for item in (self.content if index == -1 else self.content[:index]):
-            if isinstance(item, FuncDef):
-                ctx.add_definition(item.eq, item.conds)
-                ctx.add_lemma(item.eq, item.conds)
-            elif isinstance(item, Goal):
-                ctx.add_lemma(item.goal, item.conds)
-                ctx.extend_by_item(item.export_book())
-        return ctx
-
-    def add_definition(self, funcdef: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> FuncDef:
-        """Add a function definition.
-
-        funcdef: statement of the definition.
-        conds: list of conditions for the definition. This is ignored if input
-               is already of type FuncDef.
-
-        """
-        if conds is not None:
-            if isinstance(conds, Conditions):
-                pass
-            else:
-                for i in range(len(conds)):
-                    if isinstance(conds[i], str):
-                        conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-        if isinstance(funcdef, str):
-            funcdef = parser.parse_expr(funcdef)
-        if isinstance(funcdef, Expr):
-            if funcdef.is_equals():
-                self.content.append(FuncDef(self, self.ctx, funcdef, Conditions(conds)))
-            else:
-                raise NotImplementedError
-        else:
-            raise NotImplementedError
-
+    def add_definition(self, funcdef: Expr, *, conds: list[Expr] = None) -> Definition:
+        """Add a function definition."""
+        self.content.append(Definition(funcdef, Conditions(conds)))
         return self.content[-1]
 
-    def add_calculation(self, calc: Union[str, Expr], *, conds: List[Union[str, Expr]] = None) -> Calculation:
+    def add_calculation(self, calc: Expr, *, conds: list[Expr] = None) -> Calculation:
         """Add a calculation."""
-        ctx = self.get_context()
-        if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-        conds = Conditions(conds)
-        if isinstance(calc, str):
-            self.content.append(Calculation(self, ctx, parser.parse_expr(calc), conds=conds))
-        elif isinstance(calc, Expr):
-            self.content.append(Calculation(self, ctx, calc, conds=conds))
-        else:
-            raise NotImplementedError
+        self.content.append(Calculation(self, self.ctx, calc, conds=Conditions(conds)))
         return self.content[-1]
-
-    def make_goal(self, goal: Union[str, Expr, Goal], *,
-                  conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
-        if isinstance(goal, Goal):
-            self.content.append(goal)
-            return self.content[-1]
-        # Parse goal statement
-        if isinstance(goal, str):
-            goal = parser.parse_expr(goal)
-        assert isinstance(goal, Expr)
-
-        # Parse conditions
-        if conds is not None:
-            for i in range(len(conds)):
-                if isinstance(conds[i], str):
-                    conds[i] = parser.parse_expr(conds[i])
-        else:
-            conds = []
-
-        conds = Conditions(conds)
-        ctx = self.get_context()
-        return Goal(self, ctx, goal, conds=conds)
 
     def add_goal(self, goal: Union[str, Expr, Goal], *,
                  conds: Optional[List[Union[str, Expr]]] = None) -> Goal:
-        """Add a goal.
-
-        goal: statement of the goal.
-        conds: list of conditions for the goal. This is ignored if input goal
-               is already of type Goal.
-
-        """
-        self.content.append(self.make_goal(goal, conds=conds))
+        """Add a goal."""
+        self.content.append(Goal(self, self.ctx, goal, conds))
         return self.content[-1]
 
     def add_item(self, item: StateItem):
@@ -1290,7 +958,7 @@ class CompFile:
             elif isinstance(root, CaseProof):
                 for i, c in enumerate(root.cases):
                     rec(c, loc.append(i))
-            elif isinstance(root, FuncDef) or isinstance(root, CalculationStep):
+            elif isinstance(root, Definition) or isinstance(root, CalculationStep):
                 pass
             elif isinstance(root, Calculation):
                 for i, step in enumerate(root.steps):
@@ -1314,269 +982,3 @@ class CompFile:
                 raise NotImplementedError
 
         return rec(self, label)
-
-    def export(self):
-        self.name = self.name
-        return {
-            "name": self.name,
-            "content": [item.export() for item in self.content]
-        }
-
-
-def parse_rule(item, parent) -> Rule:
-    if 'loc' in item:
-        if item['loc'] == 'subterms':
-            del item['loc']
-            return rules.OnSubterm(parse_rule(item, parent))
-        else:
-            loc = item['loc']
-            del item['loc']
-            if loc == '' or loc == '.':
-                return parse_rule(item, parent)
-            else:
-                return rules.OnLocation(parse_rule(item, parent), loc)
-    elif item['name'] == 'ExpandDefinition':
-        func_name = item['func_name']
-        return rules.ExpandDefinition(func_name=func_name)
-    elif item['name'] == 'FoldDefinition':
-        func_name = item['func_name']
-        return rules.FoldDefinition(func_name=func_name)
-    elif item['name'] == 'DerivIntExchange':
-        return rules.DerivIntExchange()
-    elif item['name'] == 'Simplify':
-        return rules.Simplify()
-    elif item['name'] == 'ElimInfInterval':
-        a = Const(0)
-        if 'a' in item:
-            a = parser.parse_expr(item['a'])
-        return rules.ElimInfInterval(a)
-    elif item['name'] == 'Substitution':
-        var_name = item['var_name']
-        var_subst = parser.parse_expr(item['var_subst'])
-        return rules.Substitution(var_name, var_subst)
-    elif item['name'] == 'SubstitutionInverse':
-        var_name = item['var_name']
-        old_var = item['old_var']
-        var_subst = parser.parse_expr(item['var_subst'])
-        return rules.SubstitutionInverse(var_name, old_var, var_subst)
-    elif item['name'] == 'IntegrationByParts':
-        u = parser.parse_expr(item['u'])
-        v = parser.parse_expr(item['v'])
-        return rules.IntegrationByParts(u, v)
-    elif item['name'] == 'Equation':
-        new_expr = parser.parse_expr(item['new_expr'])
-        old_expr = parser.parse_expr(item['old_expr']) if ('old_expr' in item) else None
-        return rules.Equation(old_expr, new_expr)
-    elif item['name'] == 'ApplyEquation':
-        eq = parser.parse_expr(item['eq'])
-        if 'source' in item:
-            source = parser.parse_expr(item['source'])
-        else:
-            source = None
-        return rules.ApplyEquation(eq, source)
-    elif item['name'] == 'ExpandPolynomial':
-        return rules.ExpandPolynomial()
-    elif item['name'] == 'SplitRegion':
-        c = parser.parse_expr(item['c'])
-        return rules.SplitRegion(c)
-    elif item['name'] == 'IntegrateByEquation':
-        lhs = parser.parse_expr(item['lhs'])
-        return rules.IntegrateByEquation(lhs)
-    elif item['name'] == 'LHopital':
-        return rules.LHopital()
-    elif item['name'] == 'ApplyInductHyp':
-        return rules.ApplyInductHyp()
-    elif item['name'] == 'DerivativeSimplify':
-        return rules.DerivativeSimplify()
-    elif item['name'] == 'IntegrateBothSide':
-        return rules.IntegralEquation()
-    elif item['name'] == 'LimitEquation':
-        var = item['var']
-        lim = parser.parse_expr(item['lim'])
-        return rules.LimitEquation(var, lim)
-    elif item['name'] == 'IntSumExchange':
-        return rules.IntSumExchange()
-    elif item['name'] == 'DerivEquation':
-        var = item['var']
-        return rules.DerivEquation(var)
-    elif item['name'] == 'SolveEquation':
-        solve_for = parser.parse_expr(item['solve_for'])
-        return rules.SolveEquation(solve_for)
-    elif item['name'] == 'VarSubsOfEquation':
-        subst = item['subst']
-        return rules.VarSubsOfEquation(subst)
-    elif item['name'] == 'ApplyIdentity':
-        source = parser.parse_expr(item['source'])
-        target = parser.parse_expr(item['target'])
-        return rules.ApplyIdentity(source, target)
-    elif item['name'] == 'IndefiniteIntegralIdentity':
-        return rules.IndefiniteIntegralIdentity()
-    elif item['name'] == 'DefiniteIntegralIdentity':
-        return rules.DefiniteIntegralIdentity()
-    elif item['name'] == 'SeriesExpansionIdentity':
-        index_var = item['index_var']
-        old_expr = None
-        if 'old_expr' in item:
-            old_expr = parser.parse_expr(item['old_expr'])
-        return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=index_var)
-    elif item['name'] == 'SeriesEvaluationIdentity':
-        return rules.SeriesEvaluationIdentity()
-    elif item['name'] == 'ReplaceSubstitution':
-        return rules.ReplaceSubstitution()
-    elif item['name'] == 'ChangeSummationIndex':
-        e = parser.parse_expr(item['new_lower'])
-        return rules.ChangeSummationIndex(e)
-    elif item['name'] == 'SummationEquation':
-        idx_v = item['index_var']
-        lower = parser.parse_expr(item['lower'])
-        upper = parser.parse_expr(item['upper'])
-        return rules.SummationEquation(idx_v, lower, upper)
-    elif item['name'] == 'FunEquation':
-        func_name = item['func_name']
-        return rules.FunEquation(func_name)
-    elif item['name'] == 'PartialFractionDecomposition':
-        return rules.PartialFractionDecomposition()
-    else:
-        print(item['name'], flush=True)
-        raise NotImplementedError
-
-
-def parse_step(calc: Calculation, item, id: int) -> CalculationStep:
-    assert item['type'] == 'CalculationStep'
-    assert isinstance(calc, Calculation), "it should belong to a Calculation"
-    rule = parse_rule(item['rule'], calc)
-    ctx = Context(calc.ctx)
-    cur_e = calc.start
-    for step in calc.steps:
-        ctx = step.rule.update_context(cur_e, ctx)
-        cur_e = step.res
-    new_e = rule.eval(calc.last_expr, ctx)
-    step = CalculationStep(calc, rule, new_e, id)
-    return step
-
-
-def parse_conds(item) -> Conditions:
-    res = Conditions()
-    if 'conds' in item:
-        for subitem in item['conds']:
-            res.add_condition(parser.parse_expr(subitem['cond']))
-    return res
-
-
-def parse_calculatioin(parent, item) -> Calculation:
-    assert item['type'] == 'Calculation'
-    file = get_comp_file(parent)
-    cur_id = len(file.content)
-    if isinstance(parent, CompFile):
-        ctx = parent.get_context()
-        start = parser.parse_expr(item['start'])
-        conds = parse_conds(item)
-        res = Calculation(parent, ctx, start, conds=conds)
-    elif isinstance(parent, CalculationProof):
-        ctx = file.get_context(cur_id)
-        goal = parent.parent
-        assert isinstance(goal, Goal), "this calculation should belong to a Goal"
-        if len(goal.ctx.induct_hyps) > 0:
-            ctx.add_induct_hyp(goal.ctx.induct_hyps[0].expr)
-        start = parser.parse_expr(item['start'])
-        conds = goal.conds
-        res = Calculation(parent, ctx, start, conds=conds)
-    elif isinstance(parent, RewriteGoalProof):
-        ctx = file.get_context(cur_id)
-        start = item['start']
-        conds = parse_conds(item)
-        res = Calculation(parent, ctx, start, conds=conds)
-    else:
-        raise NotImplementedError
-    for i, step in enumerate(item['steps']):
-        e = res.last_expr
-        res.add_step(parse_step(res, step, i))
-    return res
-
-
-def parse_goal(parent, item, ih=None) -> Goal:
-    assert item['type'] == 'Goal'
-    file = get_comp_file(parent)
-    ctx = file.get_context(len(file.content) - 1)
-    if ih is not None:
-        ctx.add_induct_hyp(ih)
-    goal = parser.parse_expr(item['goal'])
-    conds = parse_conds(item)
-    res = Goal(parent, ctx, goal, conds=conds)
-    if 'subgoals' in item:
-        res.subgoals = []
-        for subgoal in item['subgoals']:
-            res.subgoals.append((subgoal['name'], parse_goal(res, subgoal['goal'])))
-    if 'proof' in item:
-        res.proof = parse_item(res, item['proof'])
-    if 'wellformed' in item:
-        res.wellformed = item['wellformed']
-        if not res.wellformed and 'obligations' in item:
-            res.proof_obligations = list()
-            for obligation in item['obligations']:
-                branches = list()
-                for b in obligation['branches']:
-                    tmp = list()
-                    for e in b['exprs']:
-                        tmp.append(parser.parse_expr(e))
-                    branches.append(rules.ProofObligationBranch(tmp))
-                c = parse_conds(obligation)
-                res.proof_obligations.append(rules.ProofObligation(branches, c))
-    return res
-
-
-def parse_item(parent, item) -> StateItem:
-    file = get_comp_file(parent)
-    if item['type'] == 'FuncDef':
-        conds = parse_conds(item)
-        eq = parser.parse_expr(item['eq'])
-        return FuncDef(parent, parent.ctx, eq, conds=conds)
-    elif item['type'] == 'CalculationProof':
-        goal = parser.parse_expr(item['goal'])
-        res = CalculationProof(parent, parent.ctx, goal)
-        for i, calc_item in enumerate(item['calcs']):
-            res.calcs[i] = parse_calculatioin(res, calc_item)
-        return res
-    elif item['type'] == 'Goal':
-        return parse_goal(parent, item)
-    elif item['type'] == 'Calculation':
-        return parse_calculatioin(parent, item)
-    elif item['type'] == 'InductionProof':
-        file = get_comp_file(parent)
-        assert isinstance(parent, Goal)
-        goal = parser.parse_expr(item['goal'])
-        induct_var = item['induct_var']
-        res = InductionProof(parent, goal, induct_var)
-        res.start = parser.parse_expr(item['start'])
-        res.base_case = parse_goal(res, item['base_case'])
-        res.induct_case = parse_goal(res, item['induct_case'], ih=goal)
-        return res
-    elif item['type'] == 'CaseProof':
-        ctx = parent.ctx
-        goal = parser.parse_expr(item['goal'])
-        split_cond = parser.parse_expr(item['split_cond'])
-        res = CaseProof(parent, goal, split_cond=split_cond)
-        assert len(res.cases) == len(item['cases'])
-        for i, case in enumerate(item['cases']):
-            res.cases[i] = parse_goal(res, case)
-        return res
-    elif item['type'] == 'RewriteGoalProof':
-        goal = parser.parse_expr(item['goal'])
-        begin_goal=parser.parse_expr(item['start'])
-        res = RewriteGoalProof(parent, goal, begin=begin_goal)
-        res.begin = parse_calculatioin(res, item['start'])
-        return res
-    else:
-        print(item['type'])
-        raise NotImplementedError
-
-
-def get_next_step_label(step: Union[Calculation, CalculationStep], label: Label) -> Label:
-    if isinstance(step, Calculation):
-        return Label(label.data + [0])
-    elif isinstance(step, CalculationStep):
-        return Label(label.data[:-1] + [label.data[-1] + 1])
-    elif isinstance(step, RewriteGoalProof):
-        return Label(label.data + [0])
-    else:
-        raise NotImplementedError

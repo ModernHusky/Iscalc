@@ -31,9 +31,9 @@ class PolyTest(unittest.TestCase):
         t = parser.parse_expr("pi / abs(4 * cos(a))")
         ctx = context.Context()
         ctx.load_book("base")
-        ctx.add_condition("isReal(a)")
-        ctx.add_condition("cos(a) < 0")
-        ctx.add_condition("cos(a) != 0")
+        ctx.add_condition(parser.parse_expr("isReal(a)"))
+        ctx.add_condition(parser.parse_expr("cos(a) < 0"))
+        ctx.add_condition(parser.parse_expr("cos(a) != 0"))
         simp_t = poly.normalize(t, ctx)
         self.assertEqual(simp_t, parser.parse_expr("-(pi / (4 * cos(a)))"))
 

@@ -7,7 +7,7 @@ from fractions import Fraction
 
 from integral import expr
 from integral.expr import Expr
-
+from integral import action
 
 grammar = r"""
     ?atom: CNAME -> var_expr
@@ -63,10 +63,14 @@ grammar = r"""
 
     ?expr: compare
 
-    ?condition: expr -> expr_condition
-        | (expr)+ ":" expr -> member_condition
+    ?atom_condition: (expr)+ ":" expr -> member_condition
+        | "(" or_condition ("," or_condition)+ ")" -> and_condition
+        | expr
 
-    ?conditions: condition ("," condition)* -> conditions
+    ?or_condition: atom_condition ("or" atom_condition)+ -> or_condition
+        | atom_condition
+
+    ?conditions: or_condition ("," or_condition)* -> conditions
 
     ?imports_action: "imports" CNAME ("," CNAME)* -> imports_action
 
@@ -75,11 +79,17 @@ grammar = r"""
     ?axiom_action: "axiom" attributes expr -> axiom_action
         | "axiom" attributes expr "for" conditions -> axiom_with_condition_action
 
-    ?prove_action: "prove" expr -> prove_action
-        | "prove" expr "for" conditions -> prove_with_condition_action
+    ?prove_action: "prove" attributes expr -> prove_action
+        | "prove" attributes expr "for" conditions -> prove_with_condition_action
+
+    ?let_action: "let" expr -> let_action
+        | "let" expr "for" conditions -> let_with_condition_action
 
     ?define_action: "define" expr -> define_action
         | "define" expr "for" conditions -> define_with_condition_action
+
+    ?axiom_define_action: "axiom_define" expr -> axiom_define_action
+        | "axiom_define" expr "for" conditions -> axiom_define_with_condition_action
 
     ?calculate_action: "calculate" expr -> calculate_action
         | "calculate" expr "for" conditions -> calculate_with_condition_action
@@ -113,10 +123,13 @@ grammar = r"""
 
     ?atomic_rule: "substitute" CNAME "for" expr -> substitute_rule
         | "substitute" expr "for" CNAME -> inverse_substitute_rule
-        | "apply" "integral" "identity" -> integral_identity_rule
+        | "apply" "linearity" -> linearity_rule
+        | "apply" "integral" "identity" attributes -> integral_identity_rule
         | "apply" "cintegral" "identity" -> cintegral_identity_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
+        | "split" "sum" "region" "at" expr -> split_sum_region_rule
+        | "change" "sum" "lower" "to" expr -> change_sum_lower_rule
         | "rewrite" expr "to" expr -> equation_rule
         | "rewrite" "to" expr -> equation_none_rule
         | "expand" "polynomial" -> expand_polynomial_rule
@@ -138,7 +151,6 @@ grammar = r"""
         | "exchange" "integral" "and" "integral" -> exchange_integral_rule
         | "apply" "residue" "theorem" -> residue_theorem_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
-        | "linearity" -> apply_linearity_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
         | "replace" "substitution" -> replace_substitution_rule
         | "l'Hopital's" "rule" -> lhopitals_rule
@@ -157,7 +169,9 @@ grammar = r"""
         | rewrite_goal_action
         | induction_action
         | case_analysis_action
+        | let_action
         | define_action
+        | axiom_define_action
         | calculate_action
         | lhs_action
         | rhs_action
@@ -181,7 +195,7 @@ class ExprTransformer(Transformer):
     # 类级别的缓存，避免重复创建
     _symbol_cache = {}
     _var_cache = {}
-    
+
     def __init__(self):
         # 添加__slots__以减少内存占用
         pass
@@ -298,13 +312,21 @@ class ExprTransformer(Transformer):
     def abs_expr(self, arg: Expr):
         return expr.Fun("abs", arg)
 
-    def deriv_expr(self, var, body):
+    def deriv_expr(self, var:Token, body:expr.Expr):
+        if body.is_equals():
+            raise Exception(
+                f"The expression inside a derivative cannot be an equation. Perhaps you meant to say: ({str(expr.Deriv(str(var), body.lhs))}) = {body.rhs}")
         return expr.Deriv(str(var), body)
 
-    def integral_expr(self, var, lower, upper, body):
+    def integral_expr(self, var:Token, lower:expr.Expr, upper:expr.Expr, body:expr.Expr):
+        if body.is_equals():
+            raise Exception(f"The expression inside an integral cannot be an equation. Perhaps you meant to say: ({str(expr.Integral(str(var), lower, upper, body.lhs))}) = {body.rhs}")
         return expr.Integral(str(var), lower, upper, body)
 
-    def indefinite_integral_expr(self, var, body):
+    def indefinite_integral_expr(self, var:Token, body: expr.Expr):
+        if body.is_equals():
+            raise Exception(
+                f"The expression inside an integral cannot be an equation. Perhaps you meant to say: ({str(expr.IndefiniteIntegral(str(var), body.lhs, tuple()))}) = {body.rhs}")
         return expr.IndefiniteIntegral(str(var), body, tuple())
 
     def indefinite_integral_skolem_expr(self, *args):
@@ -342,16 +364,29 @@ class ExprTransformer(Transformer):
                 res.append(expr.Fun("notReal", mem_expr))
             else:
                 raise NotImplementedError(f"set_expr = {set_expr}")
-        return tuple(res)
+        if len(res) == 1:
+            return res[0]
+        else:
+            return expr.Op("&&", *res)
 
-    def conditions(self, *exprs: tuple[Expr]) -> tuple[Expr]:
+    def and_condition(self, *args: Expr) -> Expr:
+        assert len(args) >= 2
+        return expr.Op("&&", *args)
+
+    def or_condition(self, *args: tuple[Expr]) -> Expr:
+        assert len(args) >= 2
+        return expr.Op("||", *args)
+
+    def conditions(self, *conds: Expr) -> tuple[Expr]:
         res = list()
-        for expr_list in exprs:
-            res.extend(expr_list)
+        for cond in conds:
+            if expr.is_conj(cond):
+                res.extend(cond.args)
+            else:
+                res.append(cond)
         return tuple(res)
 
     def imports_action(self, *theories: Token):
-        from integral import action
         theories = [str(s) for s in theories]
         return action.ImportsAction(theories)
 
@@ -359,107 +394,93 @@ class ExprTransformer(Transformer):
         return tuple(str(attr) for attr in attrs)
 
     def axiom_action(self, attrs: tuple[str], expr: Expr):
-        from integral import action
         return action.AxiomAction(expr, tuple(), attrs)
     
     def axiom_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.AxiomAction(expr, conditions, attrs)
 
-    def prove_action(self, expr: Expr):
-        from integral import action
-        return action.ProveAction(expr)
+    def prove_action(self, attrs: tuple[str], expr: Expr):
+        return action.ProveAction(expr, tuple(), attrs)
 
-    def prove_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
-        from integral import action
-        return action.ProveAction(expr, conditions)
+    def prove_with_condition_action(self, attrs: tuple[str], expr: Expr, conditions: tuple[Expr]):
+        return action.ProveAction(expr, conditions, attrs)
+
+    def let_action(self, expr: Expr):
+        return action.LetAction(expr)
+
+    def let_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
+        return action.LetAction(expr, conditions)
 
     def define_action(self, expr: Expr):
-        from integral import action
         return action.DefineAction(expr)
     
     def define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
-        from integral import action
         return action.DefineAction(expr, conditions)
 
+    def axiom_define_action(self, expr: Expr):
+        return action.AxiomDefineAction(expr)
+
+    def axiom_define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
+        return action.AxiomDefineAction(expr, conditions)
+
     def calculate_action(self, expr: Expr):
-        from integral import action
         return action.CalculateAction(expr)
     
     def calculate_with_condition_action(self, expr: Expr, conditions: Tuple[Expr]):
-        from integral import action
         return action.CalculateAction(expr, conditions)
 
     def subgoal_action(self, name: Token, expr: Expr):
-        from integral import action
         return action.SubgoalAction(str(name), expr)
     
     def subgoal_with_condition_action(self, name: Token, expr: Expr, conditions: Tuple[Expr]):
-        from integral import action
         return action.SubgoalAction(str(name), expr, conditions)
     
     def done_action(self):
-        from integral import action
         return action.DoneAction()
 
     def sorry_action(self):
-        from integral import action
         return action.SorryAction()
  
     def rewrite_goal_action(self, name: Token):
-        from integral import action
         return action.RewriteGoalAction(str(name))
     
     def induction_action(self, var_name: Token):
-        from integral import action
         return action.InductionAction(str(var_name), expr.Const(0))
 
     def induction_starting_action(self, var_name: Token, start: Expr):
-        from integral import action
         return action.InductionAction(str(var_name), start)
 
     def case_analysis_action(self, split_cond: Expr):
-        from integral import action
         return action.CaseAnalysisAction(split_cond)
 
     def lhs_action(self):
-        from integral import action
         return action.LHSAction()
 
     def rhs_action(self):
-        from integral import action
         return action.RHSAction()
 
     def arg_action(self):
-        from integral import action
         return action.ArgAction()
 
     def base_case_action(self):
-        from integral import action
         return action.BaseCaseAction()
     
     def induct_case_action(self):
-        from integral import action
         return action.InductCaseAction()
 
     def case_true(self):
-        from integral import action
         return action.CaseAction("true")
 
     def case_false(self):
-        from integral import action
         return action.CaseAction("false")
 
     def case_negative(self):
-        from integral import action
         return action.CaseAction("negative")
 
     def case_zero(self):
-        from integral import action
         return action.CaseAction("zero")
 
     def case_positive(self):
-        from integral import action
         return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
@@ -470,14 +491,14 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.SubstitutionInverse(str(old_var), expr)
 
-    def integral_identity_rule(self):
+    def integral_identity_rule(self, attrs: tuple[str]):
         from integral import rules
-        return rules.IntegralIdentity()
+        return rules.IntegralIdentity(attrs)
     
     def cintegral_identity_rule(self):
         from integral import rules
         return rules.CIntegralIdentity()
-    
+
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
         from integral import rules
         return rules.IntegrationByParts(u_expr, v_expr)
@@ -485,7 +506,15 @@ class ExprTransformer(Transformer):
     def split_region_rule(self, expr: Expr):
         from integral import rules
         return rules.SplitRegion(expr)
-    
+
+    def split_sum_region_rule(self, e: Expr):
+        from integral import rules
+        return rules.SplitSummationRegion(e)
+
+    def change_sum_lower_rule(self, e:Expr):
+        from integral import rules
+        return rules.ChangeSummationIndex(e)
+
     def equation_rule(self, old_expr: Expr, new_expr: Expr):
         from integral import rules
         return rules.Rewriting(old_expr, new_expr)
@@ -557,9 +586,6 @@ class ExprTransformer(Transformer):
         from integral import rules
         return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
 
-    def apply_linearity_rule(self):
-        from integral import rules
-        return rules.Linearity()
     def apply_series_evaluation_rule(self):
         from integral import rules
         return rules.SeriesEvaluationIdentity()
@@ -609,7 +635,7 @@ class ExprTransformer(Transformer):
         body = path_exprs_and_body[-1]
         # 路径表达式列表（除了最后一个是body）
         path_exprs = path_exprs_and_body[:-1]
-        
+
         # 将路径表达式转换为路径对象
         paths = []
         for path_expr in path_exprs:
@@ -622,9 +648,9 @@ class ExprTransformer(Transformer):
             else:
                 # 其他情况，转换为字符串
                 paths.append(str(path_expr))
-        
+
         return expr.CIntegral(str(var), paths, body)
-    
+
     def single_contour_expr(self, var, path_expr, body):
         """Transform single contour integral like CINT z:C(t). 1/(z^2+1)."""
         # 处理单个路径表达式
@@ -636,9 +662,9 @@ class ExprTransformer(Transformer):
         else:
             # 其他情况，转换为字符串
             paths = [str(path_expr)]
-        
+
         return expr.CIntegral(str(var), paths, body)
-    
+
     def contour_path_expr(self, path_expr: Expr, var: Token, start_expr: Expr, end_expr: Expr):
         """Transform contour path expression like (r*exp(i*pi*t))_(t:[0,1])."""
         return expr.CINTPath(str(var), path_expr, start_expr, end_expr)
@@ -653,6 +679,7 @@ transformer = ExprTransformer()
 
 # 使用cache=True启用Lark的解析缓存
 expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer, cache=True)
+condition_parser = Lark(grammar, start="or_condition", parser="lalr", transformer=transformer)
 action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer, cache=True)
 
 
@@ -677,9 +704,17 @@ class ParseException(expr.IscalcException):
 
 
 def parse_expr(s: str) -> Expr:
-    """Parse an integral expression."""
+    """Parse an expression."""
     try:
         res = expr_parser.parse(s)
+        return res
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken, Exception) as e:
+        raise ParseException(s, str(e))
+
+def parse_condition(s: str) -> Expr:
+    """Parse a condition."""
+    try:
+        res = condition_parser.parse(s)
         return res
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
         raise ParseException(s, str(e))

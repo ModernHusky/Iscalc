@@ -1,6 +1,6 @@
-imports standard
+imports interesting1
 
-# Chapter 2
+# Inside Interesting Integrals, Chapter 2
 
 ## Chapter 2, Section 1, Six 'Easy' Warm-Ups
 
@@ -65,11 +65,15 @@ lhs:
     substitute u for log(x ^ (1 - sqrt(2)) + 1)
     apply integral identity
     simplify
-    rewrite -sqrt(2) + 1 to -1 / (1 + sqrt(2)) (at 2)
+    rewrite -(log(sqrt(2) ^ (1 - sqrt(2)) + 1) / (1 - sqrt(2))) to -(log(sqrt(2) ^ (1 - sqrt(2)) + 1) / (-1 / (1 + sqrt(2))))
     simplify
+    rewrite sqrt(2) to 2 ^ (1/2) (at 1)
     rewrite sqrt(2) to 2 ^ (1/2) (at 2)
-    rewrite 2 ^ (1/2) ^ (-sqrt(2) + 1) to 2 ^ (1/2 * (-sqrt(2) + 1))
-    rewrite (sqrt(2) + 1) * log(2 ^ (1/2 * (-sqrt(2) + 1)) + 1) to (1 + sqrt(2)) * log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
+    rewrite sqrt(2) ^ (1 - 2 ^ (1/2)) to (2 ^ (1/2)) ^ (1 - 2 ^ (1/2))
+    rewrite (2 ^ (1/2)) ^ (1 - 2 ^ (1/2)) to 2 ^ (1/2 * (1 - 2 ^ (1/2)))
+    rewrite 1/2 * (1 - 2 ^ (1/2)) to 1/2 * (1 - sqrt(2))
+    rewrite 2 ^ (1/2) + 1 to 1 + sqrt(2)
+    rewrite log(2 ^ (1/2 * (1 - sqrt(2))) + 1) to log(1 + 2 ^ (1/2 * (1 - sqrt(2))))
 done
 
 prove (INT x:[-oo,oo]. 1 / cosh(x)) = pi
@@ -94,8 +98,16 @@ calculate INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
     substitute y for pi - x
     expand polynomial
     simplify
+    substitute x for y (at 1)
+    substitute x for y (at 2)
+    rewrite sin(pi - x) to sin(x)
+    rewrite cos(pi - x) to -cos(x)
+    simplify
+    rewrite sin(pi - x) to sin(x)
+    rewrite cos(pi - x) to -cos(x)
+    simplify
     solve integral INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
-    substitute u for cos(y)
+    substitute u for cos(x) (at 1)
     rewrite -(1 / (-(u ^ 2) - 1)) to 1/(u^2+1)
     apply integral identity
     simplify
@@ -120,7 +132,7 @@ lhs:
     apply 2 on INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))
     substitute z for tan(x / 2)
     simplify
-    rewrite (-(z ^ 2) + 1) / (z ^ 2 + 1) + 2 * z / (z ^ 2 + 1) to (2 - (z - 1) ^ 2) / (z ^ 2 + 1)
+    rewrite (1 - z ^ 2) / (z ^ 2 + 1) + 2 * z / (z ^ 2 + 1) to (2 - (z - 1) ^ 2) / (z ^ 2 + 1)
     rewrite (z ^ 2 + 1) * ((2 - (z - 1) ^ 2) / (z ^ 2 + 1)) to 2 - (z - 1) ^ 2
     rewrite 2 - (z - 1) ^ 2 to (sqrt(2) + (z - 1)) * (sqrt(2) - (z - 1))
     rewrite 1 / ((sqrt(2) + (z - 1)) * (sqrt(2) - (z - 1))) to sqrt(2) / 4 * (1 / (sqrt(2) + (z - 1)) + 1 / (sqrt(2) - (z - 1)))
@@ -149,7 +161,7 @@ lhs:
     simplify
     rewrite tan(pi / 4 - y) to (tan(pi / 4) - tan(y)) / (1 + tan(pi / 4) * tan(y))
     simplify
-    rewrite (-tan(y) + 1) / (tan(y) + 1) + 1 to 2 / (1 + tan(y))
+    rewrite (1 - tan(y)) / (tan(y) + 1) + 1 to 2 / (1 + tan(y))
     rewrite log(2 / (1 + tan(y))) to log(2) - log(1 + tan(y))
     apply integral identity
     simplify
@@ -167,9 +179,11 @@ lhs:
     rewrite 1 / (t ^ 2 / a ^ 2 + 1) * log(t / a + 1) to log(t / a + 1) * a ^ 2 / (t ^ 2 + a ^ 2)
     rewrite t / a + 1 to (t + a) / a
     simplify
-    rewrite log((a + t) / a) to log(a + t) - log(a)
-    rewrite 1 / (a ^ 2 + t ^ 2) * (log(a + t) - log(a)) to log(a + t) / (a ^ 2 + t ^ 2) - log(a) / (a ^ 2 + t ^ 2)
+    expand polynomial
     simplify
+    rewrite 1 / (a ^ 2 + t ^ 2) to 1/a^2*1/(1+(t/a)^2)
+    simplify
+    substitute  u for t/a (at 2)
     apply integral identity
     simplify
     expand polynomial
@@ -206,7 +220,7 @@ lhs:
 done
 
 prove (INT x:[0,oo]. 1/(x^4+2*x^2*cos(2*a)+1)) = pi/abs((4*cos(a))) for a: real, cos(a) != 0
-subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0 for cos(a) != 0
+subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0
 case analysis on x != 0
     case true:
     lhs:
@@ -219,7 +233,7 @@ case analysis on x != 0
         simplify                    
     done
 done
-subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0 for cos(a) != 0
+subgoal c2: (x^2 - 2*x*sin(a) + 1) * (x^2 + 2*x*sin(a) + 1) != 0
 case analysis on x != 0
     case true:
     lhs:
@@ -264,7 +278,7 @@ subgoal 4: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 
 lhs:
     substitute u for -x
     substitute x for u
-    rewrite (INT x:[-oo,oo]. -(2 * x * sin(a) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))) to -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
+    rewrite (INT x:[-oo,oo]. -(2 * x * sin(a) / ((2 * x * sin(a) + x ^ 2 + 1) * (x ^ 2 - 2 * x * sin(a) + 1)))) to -(INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
 done
 subgoal 5: (INT x:[-oo,oo]. 2*x*sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = 0
 lhs:
@@ -278,8 +292,8 @@ rhs:
     expand polynomial
     rewrite (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
     simplify
-    rewrite 2 * sin(a) * (INT x:[-oo,oo]. x / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1))) to (INT x:[-oo,oo]. (2*x*sin(a)) / ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)))
-    rewrite ((2 * x * sin(a) + x ^ 2 + 1) * (-(2 * x * sin(a)) + x ^ 2 + 1)) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
+    rewrite 2 * sin(a) * (INT x:[-oo,oo]. x / ((2 * x * sin(a) + x ^ 2 + 1) * (x ^ 2 - 2 * x * sin(a) + 1))) to (INT x:[-oo,oo]. (2*x*sin(a)) / ((2 * x * sin(a) + x ^ 2 + 1) * (x ^ 2 - 2 * x * sin(a) + 1)))
+    rewrite ((2 * x * sin(a) + x ^ 2 + 1) * (x ^ 2 - 2 * x * sin(a) + 1)) to ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))
     apply 5 on (INT x:[-oo,oo]. 2 * x * sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1)))
     rewrite to (INT x:[-oo,oo]. (x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)))
     rewrite x ^ 2 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) + 1 / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1) to (1 + x ^ 2) / (-(4 * x ^ 2 * sin(a) ^ 2) + 2 * x ^ 2 + x ^ 4 + 1)
@@ -355,9 +369,15 @@ lhs:
     simplify
     split region at pi/2
     simplify
-    substitute u for pi-t
+    substitute u for pi-t (at 2)
+    rewrite sin(pi-u) to sin(u)
+    substitute x for t (at 1)
+    substitute x for u (at 2)
     simplify
-    substitute x for pi-u
+    substitute t for 2*x (at 2)
+    simplify
+    rewrite log(a) * (INT x:[0,pi / 2]. 1) to INT x:[0,pi / 2]. log(a)
+    rewrite to (INT x:[0,pi / 2]. log(a*sin(x)))
 done
 subgoal 3: 2*cos(x)*sin(x) = sin(2*x)
 rhs:
@@ -380,6 +400,8 @@ lhs:
     rewrite log(a * sin(2 * x) * a) to log(a * sin(2 * x))+log(a)
     apply integral identity
     simplify
+    rewrite 1/2 * (INT x:[0,pi / 2]. log(sin(2 * x))) + 1/2 * (INT x:[0,pi / 2]. log(a)) to 1/2 * (INT x:[0,pi / 2]. log(sin(2 * x)) + log(a))
+    rewrite log(sin(2 * x)) + log(a) to log(a*sin(2*x))
     apply 2 on (INT x:[0,pi / 2]. log(a * sin(2 * x)))
 done
 subgoal 5: (INT x:[0,pi / 2]. log(a * sin(x))) = pi * log(a) / 2 - pi * log(2) / 2 
@@ -462,14 +484,13 @@ lhs:
     substitute u for 2 * (x + 1/2) / sqrt(3)
     rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
     simplify
-    rewrite 1 / (u ^ 2 + 1) * (-(u * sqrt(3) / 2) + 3/2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
+    rewrite 1 / (u ^ 2 + 1) * (3/2 - u * sqrt(3) / 2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
     apply integral identity
     simplify
     substitute t for u ^ 2 + 1
     apply integral identity
     simplify
     expand polynomial
-    simplify
 done
 
 ## Chapter 2, Section 5, Challenge Problems
@@ -505,13 +526,10 @@ lhs:
 done
 lhs:
     substitute y for x / 4
-    rewrite log(4 * y) to log(4) + log(y)
-    rewrite sqrt(-(16 * y ^ 2) + 16 * y) to 4 * sqrt(-(y ^ 2) + y)
-    rewrite sqrt(-(y ^ 2) + y) to sqrt(y) * sqrt(1 - y)
+    rewrite sqrt(16 * y - 16 * y ^ 2) to 4 * sqrt(y - y ^ 2)
+    rewrite sqrt(y - y ^ 2) to sqrt(y) * sqrt(1 - y)
     expand polynomial
     simplify
-    rewrite -y + 1 to 1 - y
-    rewrite -y + 1 to 1 - y
     apply 1 on INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))
     apply 2 on INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))
     simplify
@@ -533,7 +551,6 @@ lhs:
 done
 subgoal 3:3/2*(INT u:[-1/2,1/2]. 1/(u^2+3/4)) = pi/sqrt(3)
 lhs:
-    simplify
     rewrite 1 / (u ^ 2 + 3/4) to (4/3)/((4/3)*u^2+(4/3)*(3/4))
     simplify
     substitute t for (2*u)/sqrt(3)
@@ -565,7 +582,7 @@ lhs:
 done
 from 1:
     solve equation for INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ (m + 1)
-    rewrite -(1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m)) + (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) to (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m)
+    rewrite (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) - 1 / (4 * m) * (INT x:[0,oo]. (x ^ 4 + 1) ^ -m) to (4 * m - 1) / (4 * m) * (INT x:[0,oo]. 1 / (x ^ 4 + 1) ^ m)
 done
 
 // Problem C2.5

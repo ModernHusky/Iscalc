@@ -10,21 +10,76 @@ from integral import parser
 from integral.conditions import Conditions
 from integral import action
 
-dirname = os.path.dirname(__file__)
+
+class Definition:
+    """Introduce a new function definition.
+
+    Attributes
+    ----------
+    symbol: str
+        symbol to be defined
+    args: tuple[str]
+        list of names of arguments
+    conds: Conditions
+        conditions on the symbol
+    define_eq: Optional[Expr]
+        equality of definition, does not contain patterns
+
+    """
+    def __init__(self, symbol: str, args: Iterable[str], conds: Conditions,
+                 define_eq: Optional[Expr] = None):
+        self.symbol = symbol
+        self.args = tuple(args)
+        if len(self.args) != len(set(self.args)):
+            raise AssertionError("Definition: arguments must be distinct")
+        self.conds = conds
+        if define_eq is None:
+            self.define_eq = None
+        else:
+            self.define_eq = define_eq
+
+    def __str__(self):
+        res = "define "
+        if not self.define_eq:
+            res += f"{self.symbol}({', '.join(self.args)})"
+        else:
+            res += str(self.define_eq)
+        if self.conds:
+            res += " for " + str(self.conds)
+        return res
+
+    def __repr__(self):
+        return f"Definition({repr(self.symbol)}, {repr(self.args)}, [{str(self.conds)}], {str(self.define_eq)})"
+
+    def __eq__(self, other):
+        return isinstance(other, Definition) and self.symbol == other.symbol and \
+            self.conds == other.conds and self.define_eq == other.define_eq
+
 
 class Identity:
-    def __init__(self, expr: Union[str, Expr], *,
-                 conds: Optional[Conditions] = None):
-        if isinstance(expr, str):
-            expr = parser.parse_expr(expr)
+    """Introduces a theorem.
+
+    Attributes
+    ----------
+    expr: Expr
+        statement of the theorem
+    conds: Conditions
+        conditions on the theorem
+    attributes: tuple[str]
+        list of attributes of the theorem
+
+            """
+    def __init__(self, expr: Expr, *, conds: Conditions = None,
+                 attrs: Iterable[str] = tuple()):
         self.expr = expr
         if conds is None:
             conds = Conditions()
         self.conds = conds
+        self.attrs = attrs
 
     def __eq__(self, other: "Identity"):
         return isinstance(other, Identity) and self.expr == other.expr and \
-            self.conds == other.conds
+            self.conds == other.conds and self.attrs == other.attrs
 
     @property
     def lhs(self):
@@ -43,19 +98,15 @@ class Identity:
     def __repr__(self):
         return str(self)
 
-    # TODO: here oblig is of type ProofObligation
-    def covers_obligation(self, oblig):
-        # List of conditions is a subset of conditions on obligation
-        for cond in self.conds.data:
-            if cond not in oblig.conds.data:
-                return False
 
-        # Satisfies the goal in one branch
-        for branch in oblig.branches:
-            if len(branch.exprs) == 1 and self.expr == branch.exprs[0]:
-                return True
-            
-        return False
+def symb_identity(e: Expr, conds: Conditions, attrs: Iterable[str] = tuple()) -> Identity:
+    """Obtain identity with symbolic variables."""
+    if expr.is_compare(e):
+        symb_e = expr.Op(e.op, expr_to_pattern(e.args[0]), expr_to_pattern(e.args[1]))
+    else:
+        symb_e = expr_to_pattern(e)
+    symb_conds = [expr_to_pattern(cond) for cond in conds.data]
+    return Identity(symb_e, conds=Conditions(symb_conds), attrs=attrs)
 
 class Context:
     """Maintains the current context of calculation.
@@ -75,40 +126,36 @@ class Context:
     def __init__(self, parent: Optional["Context"] = None):
 
         # Parent context
+        if parent is not None:
+            assert isinstance(parent, Context)
         self.parent = parent
 
         # List of definitions
-        self.definitions: List[Identity] = list()
+        self.definitions: dict[str, Definition] = dict()
 
         # List of indefinite integral identities
-        self.indefinite_integrals: List[Identity] = list()
+        self.indefinite_integrals: list[Identity] = list()
 
         # List of definite integral identities
-        self.definite_integrals: List[Identity] = list()
+        self.definite_integrals: list[Identity] = list()
 
         # List of series expansions
-        self.series_expansions: List[Identity] = list()
+        self.series_expansions: list[Identity] = list()
 
         # List of series evaluations
-        self.series_evaluations: List[Identity] = list()
+        self.series_evaluations: list[Identity] = list()
 
         # List of other identities (trigonometric, etc)
-        self.other_identities: List[Identity] = list()
+        self.other_identities: list[Identity] = list()
 
         # List of simplification rules
-        self.simp_identities: List[Identity] = list()
-
-        # List of tables of function values
-        self.function_tables: Dict[str, Dict[Expr, Expr]] = dict()
+        self.simp_identities: list[Identity] = list()
 
         # List of inequalities
-        self.inequalities: List[Identity] = list()
-
-        # Lemmas
-        self.lemmas: List[Identity] = list()
+        self.inequalities: list[Identity] = list()
 
         # Inductive hypothesis
-        self.induct_hyps: List[Identity] = list()
+        self.induct_hyps: list[Identity] = list()
 
         # List of variables
         self.vars: list[str] = list()
@@ -116,20 +163,24 @@ class Context:
         # List of assumptions
         self.conds: Conditions = Conditions()
 
-        # List of substitutions.
+        # List of substitutions
         self.substs: list[tuple[str, Expr]] = list()
 
         # List of subgoals
-        self.subgoals: Dict[str, Identity] = dict()
+        self.subgoals: dict[str, Identity] = dict()
 
-        # List of identities of summation split
-        self.summation_split_identities: List[Identity] = list()
+        # List of identities of summation/product split
+        self.split_identities: list[Identity] = list()
+
+        # Set of Skolem functions currently being solved for (should not be merged)
+        # Each entry is a string like "C(a)" representing the Skolem function
+        self.solving_skolem_funcs: set[str] = set()
 
     def __str__(self):
         res = ""
         res += "Definitions\n"
-        for identity in self.get_definitions():
-            res += str(identity) + "\n"
+        for _, definition in self.get_definitions().items():
+            res += str(definition) + "\n"
         res += "Indefinite integrals\n"
         for identity in self.get_indefinite_integrals():
             res += str(identity) + "\n"
@@ -148,14 +199,8 @@ class Context:
         res += "Simplification rules\n"
         for identity in self.get_simp_identities():
             res += str(identity) + "\n"
-        res += "Function tables\n"
-        for funcname in self.get_function_tables():
-            res += "  table for %s\n" % funcname
         res += "Inequalities\n"
         for identity in self.get_inequalities():
-            res += str(identity) + "\n"
-        res += "Lemmas\n"
-        for identity in self.get_lemmas():
             res += str(identity) + "\n"
         res += "Inductive hypothesis\n"
         for identity in self.get_induct_hyps():
@@ -169,62 +214,54 @@ class Context:
 
         return res
 
-    def get_definitions(self) -> List[Identity]:
-        res = self.parent.get_definitions() if self.parent is not None else []
-        res.extend(self.definitions)
+    def get_definitions(self) -> dict[str, Definition]:
+        """Obtain all definitions in the context."""
+        res = self.parent.get_definitions() if self.parent is not None else dict()
+        for name, definition in self.definitions.items():
+            res[name] = definition
         return res
 
-    def get_summation_split_identities(self) -> List[Identity]:
-        res = self.parent.get_summation_split_identities() if self.parent is not None else []
-        res.extend(self.summation_split_identities)
+    def get_split_identities(self) -> list[Identity]:
+        res = self.parent.get_split_identities() if self.parent is not None else []
+        res.extend(self.split_identities)
         return res
 
-    def get_indefinite_integrals(self) -> List[Identity]:
+    def get_indefinite_integrals(self) -> list[Identity]:
         res = self.parent.get_indefinite_integrals() if self.parent is not None else []
         res.extend(self.indefinite_integrals)
         return res
 
-    def get_definite_integrals(self) -> List[Identity]:
+    def get_definite_integrals(self) -> list[Identity]:
         res = self.parent.get_definite_integrals() if self.parent is not None else []
         res.extend(self.definite_integrals)
         return res
 
-    def get_series_expansions(self) -> List[Identity]:
+    def get_series_expansions(self) -> list[Identity]:
         res = self.parent.get_series_expansions() if self.parent is not None else []
         res.extend(self.series_expansions)
         return res
 
-    def get_series_evaluations(self) -> List[Identity]:
+    def get_series_evaluations(self) -> list[Identity]:
         res = self.parent.get_series_evaluations() if self.parent is not None else []
         res.extend(self.series_evaluations)
         return res
 
-    def get_other_identities(self) -> List[Identity]:
+    def get_other_identities(self) -> list[Identity]:
         res = self.parent.get_other_identities() if self.parent is not None else []
         res.extend(self.other_identities)
         return res
 
-    def get_simp_identities(self) -> List[Identity]:
+    def get_simp_identities(self) -> list[Identity]:
         res = self.parent.get_simp_identities() if self.parent is not None else []
         res.extend(self.simp_identities)
         return res
 
-    def get_function_tables(self) -> Dict[str, Dict[Expr, Expr]]:
-        res = self.parent.get_function_tables() if self.parent is not None else dict()
-        res.update(self.function_tables)
-        return res
-
-    def get_inequalities(self) -> List[Identity]:
+    def get_inequalities(self) -> list[Identity]:
         res = self.parent.get_inequalities() if self.parent is not None else []
         res.extend(self.inequalities)
         return res
 
-    def get_lemmas(self) -> List[Identity]:
-        res = self.parent.get_lemmas() if self.parent is not None else []
-        res.extend(self.lemmas)
-        return res
-
-    def get_induct_hyps(self) -> List[Identity]:
+    def get_induct_hyps(self) -> list[Identity]:
         res = self.parent.get_induct_hyps() if self.parent is not None else []
         res.extend(self.induct_hyps)
         return res
@@ -273,104 +310,106 @@ class Context:
         res.extend(self.substs)
         return res
 
-    def add_definition(self, eq: Expr, conds:Conditions):
+    def add_axiom_definition(self, e: Expr, conds: Conditions):
+        """Add axiomatic definition."""
+        if isinstance(e, expr.Var):
+            if conds:
+                raise AssertionError(f"axiom_define: no condition allowed for {e}")
+            self.definitions[e.name] = Definition(e.name, tuple(), Conditions())
+        elif isinstance(e, expr.Fun):
+            if not all(expr.is_var(arg) for arg in e.args):
+                raise AssertionError(f"axiom_define: all arguments of {e} must be variables")
+            args = list(arg.name for arg in e.args)
+            for cond in conds.data:
+                if not cond.get_vars().issubset(args):
+                    raise AssertionError(f"axiom_define: condition {cond} contains extra variable")
+            self.definitions[e.func_name] = Definition(e.func_name, args, conds)
+        else:
+            raise AssertionError(f"axiom define: unrecognized expression {e}")
+
+    def add_definition(self, eq: Expr, conds: Conditions):
+        """Add definition."""
         if not eq.is_equals():
-            raise TypeError
+            raise AssertionError(f"define: {eq}")
 
-        symb_e = expr_to_pattern(eq)
-        symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        self.definitions.append(Identity(symb_e, conds=Conditions(symb_conds)))
+        e = eq.lhs
+        if isinstance(e, expr.Var):
+            if conds:
+                raise AssertionError(f"define: no condition allowed for {e}")
+            self.definitions[e.name] = Definition(e.name, tuple(), Conditions(), eq)
+        elif isinstance(e, expr.Fun):
+            if not all(expr.is_var(arg) for arg in e.args):
+                raise AssertionError(f"axiom_define: all arguments of {e} must be variables")
+            args = list(arg.name for arg in e.args)
+            for cond in conds.data:
+                if not cond.get_vars().issubset(args):
+                    raise AssertionError(f"define: condition {cond} for {e} contains extra variable")
+            self.definitions[e.func_name] = Definition(e.func_name, args, conds, eq)
+        else:
+            raise AssertionError(f"axiom define: unrecognized expression {e}")
 
-    def add_indefinite_integral(self, eq: Expr, conds: Conditions):
+    def add_indefinite_integral(self, eq: Expr, conds: Conditions, attrs: Iterable[str]):
+        assert isinstance(conds, Conditions)
         if not (eq.is_equals() and expr.is_indefinite_integral(eq.lhs)):
-            raise TypeError
+            raise AssertionError(f"add_indefinite_integral: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        self.indefinite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.indefinite_integrals.append(symb_identity(eq, conds, attrs))
 
-    def add_definite_integral(self, eq: Expr, conds: Conditions):
+    def add_definite_integral(self, eq: Expr, conds: Conditions, attrs: Iterable[str]):
+        assert isinstance(conds, Conditions)
         if not (eq.is_equals() and expr.is_integral(eq.lhs)):
-            raise TypeError
+            raise AssertionError(f"add_definite_integral: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        self.definite_integrals.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.definite_integrals.append(symb_identity(eq, conds, attrs))
 
     def add_series_expansion(self, eq: Expr, conds: Conditions):
+        assert isinstance(conds, Conditions)
         if not (eq.is_equals() and not expr.is_summation(eq.lhs) and expr.is_summation(eq.rhs)):
-            raise TypeError
+            raise AssertionError(f"add_series_expansion: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        self.series_expansions.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.series_expansions.append(symb_identity(eq, conds))
 
     def add_series_evaluation(self, eq: Expr, conds: Conditions):
+        assert isinstance(conds, Conditions)
         if not (eq.is_equals() and expr.is_summation(eq.lhs) and not expr.is_summation(eq.rhs)):
-            raise TypeError
+            raise AssertionError(f"add_series_expansion: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        self.series_evaluations.append(Identity(Eq(symb_lhs, symb_rhs), conds=conds))
+        self.series_evaluations.append(symb_identity(eq, conds))
 
-    def add_other_identities(self, eq: Expr,
-                             attributes: Optional[List[str]] = None, conds: Conditions = None):
+    def add_other_identities(self, eq: Expr, conds: Conditions, attrs: Iterable[str]):
+        assert isinstance(conds, Conditions)
         if not eq.is_equals():
-            raise TypeError
+            raise AssertionError(f"add_other_identities: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        symb_conds = [expr_to_pattern(cond) for cond in conds.data] if conds != None else []
-        self.other_identities.append(Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds)))
-        if attributes is not None and 'bidirectional' in attributes:
-            self.other_identities.append(Identity(Eq(symb_rhs, symb_lhs), conds=Conditions(symb_conds)))
+        self.other_identities.append(symb_identity(eq, conds, attrs))
+        attrs = tuple(attrs)
+        if attrs and 'bidirectional' in attrs:
+            rev_eq = Eq(eq.rhs, eq.lhs)
+            self.other_identities.append(symb_identity(rev_eq, conds, attrs))
 
     def add_simp_identity(self, eq: Expr, conds: Conditions):
+        assert isinstance(conds, Conditions)
         if not eq.is_equals():
-            raise TypeError
+            raise AssertionError(f"add_simp_identity: {eq}")
 
-        symb_lhs = expr_to_pattern(eq.lhs)
-        symb_rhs = expr_to_pattern(eq.rhs)
-        symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        self.simp_identities.append(Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds)))
-
-    def add_function_table(self, funcname: str, table: Dict[str, str]):
-        self.function_tables[funcname] = dict()
-        for input, output in table.items():
-            input = parser.parse_expr(input)
-            output = parser.parse_expr(output)
-            self.function_tables[funcname][input] = output
+        self.simp_identities.append(symb_identity(eq, conds))
 
     def add_inequality(self, e: Expr, conds: Conditions):
-        symb_e = expr_to_pattern(e)
-        symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        self.inequalities.append(Identity(symb_e, conds=Conditions(symb_conds)))
+        assert isinstance(conds, Conditions)
+        if not expr.is_compare(e):
+            raise AssertionError(f"add_inequality: {e}")
 
-    def add_lemma(self, e: Union[Expr, str], conds: Conditions):
-        if isinstance(e, str):
-            e = parser.parse_expr(e)
-        tmp = Identity(e, conds=conds)
-        if tmp not in self.lemmas:
-            self.lemmas.append(tmp)
+        self.inequalities.append(symb_identity(e, conds))
 
-    def add_summation_split_identities(self, e: Expr, conds: Conditions):
-        symb_lhs = expr_to_pattern(e.lhs)
-        symb_rhs = expr_to_pattern(e.rhs)
-        symb_conds = [expr_to_pattern(cond) for cond in conds.data]
-        tmp = Identity(Eq(symb_lhs, symb_rhs), conds=Conditions(symb_conds))
-        if tmp not in self.summation_split_identities:
-            self.summation_split_identities.append(tmp)
+    def add_split_identities(self, e: Expr, conds: Conditions):
+        assert isinstance(conds, Conditions)
+        self.split_identities.append(symb_identity(e, conds))
 
-    def add_induct_hyp(self, e: Union[Expr, str]):
-        if isinstance(e, str):
-            e = parser.parse_expr(e)
-
+    def add_induct_hyp(self, e: Expr):
         # Note: no conversion to symbols for inductive hypothesis
         self.induct_hyps.append(Identity(e))
 
-    def add_condition(self, cond: Union[Expr, str]):
-        if isinstance(cond, str):
-            cond = parser.parse_expr(cond)
+    def add_condition(self, cond: Expr):
         if cond not in self.conds.data:
             self.conds.add_condition(cond)
 
@@ -384,156 +423,85 @@ class Context:
         for cond in conds.data:
             self.add_condition(cond)
 
-    def add_subst(self, var: str, expr: Expr):
-        self.substs.append((var, expr))
+    def add_subst(self, var: str, expr: Expr, old_var:str):
+        self.substs.append((var, expr, old_var))
 
-    def extend_by_item(self, item: dict):
-        if item['type'] == 'axiom' or item['type'] == 'problem':
-            e = parser.parse_expr(item['expr'])
-            if e.is_equals() and expr.is_indefinite_integral(e.lhs):
-                conds = Conditions()
-                if 'conds' in item:
-                    for cond in item['conds']:
-                        conds.add_condition(parser.parse_expr(cond))
-                self.add_indefinite_integral(e, conds)
-            elif e.is_equals() and expr.is_integral(e.lhs):
-                conds = Conditions()
-                if 'conds' in item:
-                    for cond in item['conds']:
-                        conds.add_condition(parser.parse_expr(cond))
-                self.add_definite_integral(e, conds)
-            elif e.is_equals() and not expr.is_summation(e.lhs) and expr.is_summation(e.rhs):
-                conds = Conditions()
-                if 'conds' in item:
-                    for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c))
-                self.add_series_expansion(e, conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
-            elif e.is_equals() and expr.is_summation(e.lhs) and not expr.is_summation(e.rhs):
-                conds = Conditions()
-                if 'conds' in item:
-                    for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c))
-                self.add_series_evaluation(e, conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
-            elif e.is_equals():
-                conds = Conditions()
-                if 'conds' in item:
-                    for c in item['conds']:
-                        conds.add_condition(parser.parse_expr(c))
-                self.add_other_identities(e, item.get('attributes'), conds)
-                if item['type'] == 'problem':
-                    self.add_lemma(e, conds)
-        if 'attributes' in item and 'simplify' in item['attributes']:
-            e = parser.parse_expr(item['expr'])
-            conds = Conditions()
-            if 'conds' in item:
-                for cond in item['conds']:
-                    conds.add_condition(parser.parse_expr(cond))
-            self.add_simp_identity(e, conds)
-        if 'attributes' in item and 'inequality' in item['attributes']:
-            e = parser.parse_expr(item['expr'])
-            conds = Conditions()
-            if 'conds' in item:
-                for cond in item['conds']:
-                    conds.add_condition(parser.parse_expr(cond))
-            self.add_inequality(e, conds)
-        if 'attributes' in item and 'summation-split' in item['attributes']:
-            conds = Conditions()
-            if 'conds' in item:
-                for c in item['conds']:
-                    conds.add_condition(parser.parse_expr(c))
-            self.add_summation_split_identities(e, conds)
-        if item['type'] == 'definition':
-            e = parser.parse_expr(item['expr'])
-            conds = Conditions()
-            if 'conds' in item:
-                for cond in item['conds']:
-                    conds.add_condition(parser.parse_expr(cond))
-            self.add_definition(e, conds)
-        if item['type'] == 'table':
-            self.add_function_table(item['name'], item['table'])
+    def add_subgoal(self, name: str, identity: Identity):
+        self.subgoals[name] = identity
 
-    def load_book(self, book_name: str, *, upto: Optional[str] = None):
+    def mark_skolem_solving(self, skolem_str: str):
+        """Mark a Skolem function as being solved for (should not be auto-merged)."""
+        self.solving_skolem_funcs.add(skolem_str)
+
+    def unmark_skolem_solving(self, skolem_str: str):
+        """Unmark a Skolem function after solving is complete."""
+        self.solving_skolem_funcs.discard(skolem_str)
+
+    def is_skolem_solving(self, skolem_func: Expr) -> bool:
+        """Check if a Skolem function is currently being solved for."""
+        if not expr.is_skolem_func(skolem_func):
+            return False
+        # Convert to string representation like "C(a, b)"
+        if len(skolem_func.dependent_vars) == 0:
+            skolem_str = skolem_func.name
+        else:
+            args_str = ",".join(str(arg) for arg in skolem_func.dependent_vars)
+            skolem_str = f"{skolem_func.name}({args_str})"
+
+        # Check in current context
+        if skolem_str in self.solving_skolem_funcs:
+            return True
+        # Check in parent context
+        if self.parent is not None:
+            return self.parent.is_skolem_solving(skolem_func)
+        return False
+
+    def load_book(self, book_name: str):
         """Load the book with the given name.
         
         This function recursively loads imported books.
         
         """
+        from integral import parser
+
         assert isinstance(book_name, str)
-        root_dir = os.path.dirname(dirname)
+        root_dir = os.path.dirname(os.path.dirname(__file__))
 
-        json_filename = os.path.join(root_dir, 'examples', book_name + '.json')
-
-        if os.path.exists(json_filename):
-            # Old json format
-            with open(json_filename, 'r', encoding='utf-8') as f:
-                info = json.load(f)
-
-            # Load imported books
-            if 'imports' in info:
-                for book_name in info['imports']:
+        thy_filename = os.path.join(root_dir, 'theories', book_name + '.thy')
+        with open(thy_filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        actions = [s for s in content.split('\n') if s.strip()]
+        for act in actions:
+            if act.lstrip().startswith("#") or act.lstrip().startswith("//"):
+                # title of comment
+                continue
+            a = parser.parse_action(act)
+            if isinstance(a, action.ImportsAction):
+                for book_name in a.theories:
                     self.load_book(book_name)
-
-            # Load content
-            if 'content' in info:
-                for item in info['content']:
-                    if upto is not None and "path" in item and item['path'] == upto:
-                        break
-                    self.extend_by_item(item)
-
-        else:
-            # New theory format
-            thy_filename = os.path.join(root_dir, 'theories', book_name + '.thy')
-            with open(thy_filename, 'r', encoding='utf-8') as f:
-                content = f.read()
-            actions = [s for s in content.split('\n') if s.strip()]
-            for act in actions:
-                if act.lstrip().startswith("#") or act.lstrip().startswith("//"):
-                    # title of comment
-                    continue
-                a = parser.parse_action(act)
-                if isinstance(a, action.ImportsAction):
-                    for book_name in a.theories:
-                        self.load_book(book_name)
-
-                elif isinstance(a, (action.AxiomAction, action.ProveAction)):
-                    if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
-                        self.add_indefinite_integral(a.expr, a.conditions)
-                    elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
-                        self.add_definite_integral(a.expr, a.conditions)
-                    elif a.expr.is_equals() and not expr.is_summation(a.expr.lhs) and expr.is_summation(a.expr.rhs):
-                        self.add_series_expansion(a.expr, a.conditions)
-                    elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not expr.is_summation(a.expr.rhs):
-                        self.add_series_evaluation(a.expr, a.conditions)
-                    elif isinstance(a, action.AxiomAction) and 'simp' in a.attrs:
-                        self.add_simp_identity(a.expr, a.conditions)
-                        self.add_other_identities(a.expr, a.attrs, a.conditions)
-                    else:
-                        self.add_other_identities(a.expr, a.attrs, a.conditions)
-
+            elif isinstance(a, action.DefineAction):
+                self.add_definition(a.expr, conds=a.conditions)
+            elif isinstance(a, action.AxiomDefineAction):
+                self.add_axiom_definition(a.expr, conds=a.conditions)
+            elif isinstance(a, (action.AxiomAction, action.ProveAction)):
+                if a.expr.is_equals() and expr.is_indefinite_integral(a.expr.lhs):
+                    self.add_indefinite_integral(a.expr, a.conditions, a.attrs)
+                elif a.expr.is_equals() and expr.is_integral(a.expr.lhs):
+                    self.add_definite_integral(a.expr, a.conditions, a.attrs)
+                elif a.expr.is_equals() and not expr.is_summation(a.expr.lhs) and expr.is_summation(a.expr.rhs):
+                    self.add_series_expansion(a.expr, a.conditions)
+                elif a.expr.is_equals() and expr.is_summation(a.expr.lhs) and not a.expr.rhs.contains_summation():
+                    self.add_series_evaluation(a.expr, a.conditions)
+                elif 'simp' in a.attrs:
+                    self.add_simp_identity(a.expr, a.conditions)
+                    self.add_other_identities(a.expr, a.conditions, a.attrs)
+                else:
+                    self.add_other_identities(a.expr, a.conditions, a.attrs)
 
     def check_condition(self, e: Expr) -> bool:
         """Check the given condition under the extra conditions"""
         from integral import condprover
-        f = condprover.check_condition(e, self)
-        if f:
-            return True
-        if expr.is_op(e) and e.op in ('>', '<', '!=', '>=', '<='):
-            match e.op:
-                case '>':
-                    f = condprover.check_condition(Op('<', e.args[1], e.args[0]), self)
-                case '<':
-                    f = condprover.check_condition(Op('>', e.args[1], e.args[0]), self)
-                case '>=':
-                    f = condprover.check_condition(Op('<=', e.args[1], e.args[0]), self)
-                case '<=':
-                    f = condprover.check_condition(Op('>=', e.args[1], e.args[0]), self)
-                case '!=':
-                    f = condprover.check_condition(Op('!=', e.args[1], e.args[0]), self)
-        return f
+        return condprover.check_condition(e, self)
 
     def is_positive(self, e: Expr) -> bool:
         return self.check_condition(Op(">", e, Const(0)))
@@ -648,4 +616,3 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
         else:
             raise NotImplementedError
     return rec(e, ctx)
-

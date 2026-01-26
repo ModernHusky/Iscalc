@@ -1,3 +1,5 @@
+imports standard
+
 # 4.2 Substitution
 # Section B
 // page 175
@@ -10,32 +12,35 @@ calculate INT x. exp(exp(x)*sin(x))*(sin(x)+cos(x))*exp(x) for cos(x) + sin(x) !
     substitute u for exp(x)*sin(x)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. exp(arcsin(sqrt(x)))/sqrt(x-x^2) for x < 1, x > 0
+subgoal 1: x-x^2 > 0
+lhs:
+    rewrite x-x^2 to 1/4 - (x-1/2)^2
+done
     rewrite sqrt(x-x^2) to sqrt(x) * sqrt(1-x)
     substitute u for arcsin(sqrt(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
-calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2 for sec(1/x) != 0, x != 0
+calculate INT x. exp(tan(1/x))/x^2 * sec(1/x)^2 for cos(1/x) != 0, x != 0
     substitute u for tan(1/x)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x))
+calculate INT x. exp(sqrt(1+sin(x)))*cos(x) / sqrt(1+sin(x)) for cos(x) != 0
     substitute u for sqrt(1+sin(x))
+    simplify
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2))
+calculate INT x. (1+2*x^2)*exp(x^2) / (2-3*x*exp(x^2)) for 2-3*x*exp(x^2) != 0
     substitute u for 2-3*x*exp(x^2)
     apply integral identity
     replace substitution
@@ -45,7 +50,6 @@ done
 calculate INT x. sin(x)*cos(x)^3 / (1+cos(x)^2) for sin(x) != 0, cos(x) != 0
     substitute u for cos(x)
     substitute v for u^2
-    simplify
     partial fraction decomposition
     apply integral identity
     replace substitution
@@ -55,12 +59,15 @@ done
 // page 176
 
 calculate INT x. 1 / (arcsin(sqrt(x))*sqrt(x-x^2)) for x > 0, x < 1
+subgoal 1: x-x^2 > 0
+lhs:
+    rewrite x-x^2 to 1/4-(x-1/2)^2
+done
     rewrite sqrt(x-x^2) to sqrt(x)*sqrt(1-x)
     rewrite 1 / (arcsin(sqrt(x)) * (sqrt(x) * sqrt(1 - x))) to 1 / arcsin(sqrt(x)) / (sqrt(x) * sqrt(1 - x))
     substitute u for arcsin(sqrt(x))
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1 / (sqrt(1+x)+(1+x)^(3/2)) for x > -1
@@ -97,7 +104,7 @@ calculate INT x. 1 / ((2-x)*sqrt(1-x)) for x < 1
     simplify
 done
 
-calculate INT x. 1/(a^2*sin(x)^2+b^2*cos(x)^2) for a != 0, b != 0
+calculate INT x. 1/(a^2*sin(x)^2+b^2*cos(x)^2) for a != 0, b != 0, sin(x) != 0, cos(x) != 0
     rewrite 1/(a^2*sin(x)^2+b^2*cos(x)^2) to (1/cos(x)^2) / (a^2*(sin(x)/cos(x))^2 + b^2)
     rewrite 1/cos(x)^2 to sec(x)^2
     rewrite sin(x)/cos(x) to tan(x) 
@@ -139,7 +146,7 @@ done
 
 // page 177
 
-calculate INT x. sqrt(x/(1-x^3)) for  x != 0
+calculate INT x. sqrt(x/(1-x^3)) for  x > 0, x < 1
     rewrite x^3 to x^(3/2)^2
     substitute u for x^(3/2)
     simplify
@@ -148,11 +155,11 @@ calculate INT x. sqrt(x/(1-x^3)) for  x != 0
     simplify
 done
 
-calculate INT x. exp(x/2) / (16-exp(x))     
+calculate INT x. exp(x/2) / (16-exp(x)) for 16-exp(x) != 0, exp(x/2)/4 != 1, exp(x/2)/4 != -1
     rewrite exp(x) to exp(x/2)^2
     substitute u for exp(x/2)
     substitute v for u/4
-    rewrite 4 / (-(8 * v ^ 2) + 8) to 1/2 * (1 / (1-v^2))
+    rewrite 4 / (8 - 8 * v ^ 2) to 1/2 * (1 / (1-v^2))
     apply integral identity
     partial fraction decomposition
     apply integral identity
@@ -160,20 +167,25 @@ calculate INT x. exp(x/2) / (16-exp(x))
     simplify
 done
 
-calculate INT x. cos(x) / sqrt(2+cos(2*x))
+calculate INT x. cos(x) / sqrt(2+cos(2*x)) for sqrt(2)*sin(x)/sqrt(3) > -1, sqrt(2)*sin(x)/sqrt(3) < 1
     rewrite cos(2*x) to cos(x)^2 - sin(x)^2
     rewrite cos(x)^2 to 1-sin(x)^2
     simplify
     substitute u for sin(x)
-    apply integral identity
     substitute v for sqrt(2)*u/sqrt(3)
-    rewrite sqrt(-(3 * v ^ 2) + 3) to sqrt(3) * sqrt(1-v^2)
+    rewrite sqrt(3 - 3 * v ^ 2) to sqrt(3) * sqrt(1-v^2)
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 1/sqrt((x-a)*(x-b)) for a < b
+calculate INT x. 1/sqrt((x-a)*(x-b)) for x < a,  a < b
+subgoal 1: (x - (a + b) / 2) / ((a - b) / 2) > 1
+lhs:
+    rewrite (x - (a + b) / 2) / ((a - b) / 2) to (2 * x - a - b) / (a - b)
+    rewrite 2 * x - a - b to (a - b) + 2*(x-a)
+    rewrite (a - b + 2 * (x - a)) / (a - b) to 1 + 2 * (x-a) / (a-b)
+done
     rewrite (x-a)*(x-b) to (x-(a+b)/2)^2 - ((a-b)/2)^2
     substitute u for (x-(a+b)/2)/((a-b)/2)
     simplify
@@ -183,7 +195,7 @@ calculate INT x. 1/sqrt((x-a)*(x-b)) for a < b
     simplify
 done
 
-calculate INT x. (1+x) / (x*(1+x*exp(x))) for x != -1, x != 0
+calculate INT x. (1+x) / (x*(1+x*exp(x))) for x > 0
     rewrite (1+x) / (x*(1+x*exp(x))) to ((1+x)*exp(x))/((x*exp(x)) * (1+x*exp(x)))
     substitute u for x*exp(x)
     partial fraction decomposition
@@ -196,12 +208,13 @@ done
 
 calculate INT x. exp(x)*(1+x)/(1-x*exp(x)) for x != -1, x * exp(x) != 1
     substitute u for x*exp(x)
+    rewrite 1 / (1 - u) to -1 / (u - 1)
     apply integral identity
-    replace substitution
     simplify
+    replace substitution
 done
 
-calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
+calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0, 1-exp(x)/x != 0
     rewrite exp(x)*(x-1)/(x-exp(x))^2 to (exp(x)*(x-1)/x^2) / (1 - exp(x)/x)^2
     substitute u for exp(x)/x
     substitute v for 1-u
@@ -210,7 +223,7 @@ calculate INT x. exp(x)*(x-1)/(x-exp(x))^2 for x != 0
     simplify
 done
 
-calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2
+calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 for -(x*tan(x))+1 != 0, cos(x)-x*sin(x) != 0
     rewrite (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2 to (x * (1/cos(x)^2) + sin(x)/cos(x)) / (1 - x * (sin(x)/cos(x)))^2
     rewrite 1/cos(x)^2 to sec(x)^2
     rewrite sin(x)/cos(x) to tan(x)
@@ -222,9 +235,9 @@ calculate INT x. (x + sin(x)*cos(x)) / (cos(x) - x*sin(x))^2
     simplify
 done
 
-calculate INT x. (1-log(x))/(x-log(x))^2
+calculate INT x. (1-log(x))/(x-log(x))^2 for x > 0, x < 1
     substitute u for log(x)
-    rewrite exp(u) * (-u + 1) / (exp(u) - u) ^ 2 to -exp(u) * (u-1)/u^2 / (exp(u)/u - 1) ^ 2
+    rewrite exp(u) * (1 - u) / (exp(u) - u) ^ 2 to -exp(u) * (u-1)/u^2 / (exp(u)/u - 1) ^ 2
     substitute v for exp(u) / u
     substitute w for v-1
     apply integral identity

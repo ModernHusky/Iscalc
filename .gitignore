@@ -4,3 +4,4 @@ node_modules
 *.ipynb
 *.zip
 .kiro
+**/.ipynb_checkpoints/

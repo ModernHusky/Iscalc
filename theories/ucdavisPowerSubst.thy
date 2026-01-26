@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on power substitution
 
 // Source:
@@ -5,7 +7,7 @@
 // Problems on power substitution
 // URL: https://www.math.ucdavis.edu/~kouba/CalcTwoDIRECTORY/powersubdirectory/PowerSub.html
 
-calculate INT x. 1 / (1 + sqrt(x))
+calculate INT x. 1 / (1 + sqrt(x)) for x >= 0
     substitute u for sqrt(x)
     partial fraction decomposition
     simplify
@@ -15,7 +17,7 @@ calculate INT x. 1 / (1 + sqrt(x))
     simplify
 done
 
-calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))
+calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x)) for x >= 0, sqrt(x) - 3 != 0
     substitute u for sqrt(x)
     partial fraction decomposition
     simplify
@@ -25,7 +27,7 @@ calculate INT x. (2 + sqrt(x)) / (3 - sqrt(x))
     simplify
 done
 
-calculate INT x. 3 / (4 + x ^ (1/3))
+calculate INT x. 3 / (4 + x ^ (1/3)) for x ^ (1/3) + 4 != 0
     substitute u for x ^ (1/3)
     simplify
     partial fraction decomposition
@@ -54,7 +56,11 @@ calculate INT x. (3 * x + 2) / sqrt(x - 9) for x > 9
     simplify
 done
 
-calculate INT x. 1 / (x ^ (2/3) - x ^ (1/3))
+calculate INT x. 1 / (x ^ (2/3) - x ^ (1/3)) for x^(1/3) - 1 != 0, x != 0
+subgoal 1: x^(2/3) - x^(1/3) != 0
+lhs:
+    rewrite x^(2/3) - x^(1/3) to (x^(1/3) - 1) * x^(1/3)
+done
     substitute u for x ^ (1/3)
     partial fraction decomposition
     substitute v for u - 1
@@ -119,20 +125,19 @@ calculate INT x. 1 / sqrt(2 + sqrt(1 + sqrt(x))) for x > 0
     simplify
 done
 
-calculate INT x. sqrt(x) / (x - 1)
+calculate INT x. sqrt(x) / (x - 1) for x >= 0, x != 1
     substitute u for sqrt(x)
     simplify
     partial fraction decomposition
     simplify
     substitute v for 2 * u + 2
     substitute w for 2 * u - 2 (at 2)
-    simplify
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. sqrt(4 - x) / x ^ 2 for x < 4
+calculate INT x. sqrt(4 - x) / x ^ 2 for x <= 4, x != 0
     substitute u for sqrt(4 - x)
     simplify
     partial fraction decomposition
@@ -147,7 +152,7 @@ calculate INT x. sqrt(4 - x) / x ^ 2 for x < 4
     simplify
 done
 
-calculate INT x. (x ^ (1/4) + 5) / (x - 16) for x > 0
+calculate INT x. (x ^ (1/4) + 5) / (x - 16) for x >= 0, x != 16
     substitute u for x ^ (1/4)
     simplify
     partial fraction decomposition

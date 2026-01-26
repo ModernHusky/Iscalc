@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on rational functions, resulting in log or arctangent functions
 
 // Source:
@@ -46,6 +48,11 @@ calculate INT x:[-1, 1]. (x^4 + x^3)/(x^2 + 1)
     substitute u for x ^ 2 + 1
     substitute u for x ^ 2 + 1 (at 2)
     apply integral identity
+    simplify
+    split region at 0 (at 1)
+    substitute u for -x (at 1)
+    rewrite u / (u ^ 2 + 1) to -((-u) / (u ^ 2 + 1))
+    substitute x for u
     simplify
 done
 
@@ -172,7 +179,6 @@ calculate INT x:[1, 4]. (9 + 6*sqrt(x) + x)/(4*sqrt(x) + x)
     rewrite 4*sqrt(x) + x to sqrt(x) * (4 + sqrt(x))
     substitute (u - 4)^2 for x
     substitute t for u - 4
-    simplify
     partial fraction decomposition
     apply integral identity
     simplify

@@ -1,3 +1,5 @@
+imports standard
+
 # 5.1 Definite integrals
 # Section A
 
@@ -45,7 +47,7 @@ calculate INT x:[sqrt(2)/2, 1]. sqrt(1-x^2)/x^2
     simplify
 done
 
-calculate INT x:[0, a]. x^2*sqrt(a^2-x^2) for a>0
+calculate INT x:[0, a]. x ^ 2 * sqrt(a ^ 2 - x ^ 2) for a > 0, a ^ 2 - x ^ 2 >= 0
     substitute a*sin(u) for x
     rewrite a^2-(a*sin(u))^2 to a^2*(1-sin(u)^2)
     rewrite 1-sin(u)^2 to cos(u)^2
@@ -84,6 +86,10 @@ calculate INT x:[1, exp(1)^2]. 1/(x*sqrt(1+log(x)))
 done
 
 calculate INT x:[-2, 0]. (x+2)/(x^2+2*x+2)
+subgoal 1: x ^ 2 + 2 * x + 2 != 0
+lhs:
+    rewrite x ^ 2 + 2 * x + 2 to (x + 1) ^ 2 + 1
+done
     substitute u for x+1
     expand polynomial
     apply integral identity
@@ -107,7 +113,7 @@ calculate INT x:[-pi/2, pi/2]. sqrt(cos(x)-cos(x)^3)
     split region at 0
     substitute u for -x
     simplify
-    rewrite -cos(u)^3+cos(u) to cos(u)*(1-cos(u)^2)
+    rewrite cos(u)-cos(u)^3 to cos(u)*(1-cos(u)^2)
     rewrite 1-cos(u)^2 to sin(u)^2
     simplify
     substitute v for cos(u)

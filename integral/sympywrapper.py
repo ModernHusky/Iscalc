@@ -67,8 +67,28 @@ def convert_from_sympy(e) -> Expr:
             raise NotImplementedError
     return rec(e)
 
-def partial_fraction(e: Expr) -> Expr:
+def partial_fraction(e: Expr, var: str = None) -> Expr:
+    """Apply partial fraction decomposition to expression e.
+
+    Args:
+        e: Expression to decompose
+        var: Variable to decompose with respect to. If None, uses the first variable found.
+
+    Returns:
+        Decomposed expression
+    """
     if not is_rational(e):
         raise NotImplementedError("partial_fraction on non-rational expressions.")
-    return convert_from_sympy(sympy.apart(convert_to_sympy(e)))
+
+    sympy_expr = convert_to_sympy(e)
+
+    if var is not None:
+        # Decompose with respect to specified variable
+        sympy_var = sympy.symbols(var)
+        result = sympy.apart(sympy_expr, sympy_var)
+    else:
+        # Let sympy choose the variable (default behavior)
+        result = sympy.apart(sympy_expr)
+
+    return convert_from_sympy(result)
 

@@ -11,8 +11,9 @@ from integral import expr, context
 from integral.expr import Var, Const, Fun, EvalAt, Op, Integral, Symbol, Expr, \
     OP, CONST, VAR, sin, cos, FUN, decompose_expr_factor, \
     Deriv, Inf, Limit, NEG_INF, POS_INF, IndefiniteIntegral, Summation, SUMMATION, SkolemFunc, decompose_expr_factor2, is_const, \
-    Fraction, CINTPath, CIntegral
+    Fraction, CINTPath, CIntegral,SkolemFunc, decompose_expr_factor2, is_const
 from integral import parser
+
 from integral.solve import solve_equation, solve_for_term
 from integral import latex
 from integral import limits
@@ -104,9 +105,8 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                     return normal(y * (x ^ (y - 1)) * rec(x))
                 else:
                     return normal(e * rec(y * expr.log(x)))
-
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"deriv: {e}")
         elif expr.is_fun(e):
             if e.func_name == "sin":
                 x, = e.args
@@ -153,7 +153,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
                 return normal(-(rec(x) / expr.sqrt(Const(1) - (x ^ Const(2)))))
             elif e.func_name == "arccot":
                 x, = e.args
-                return normal(-rec(x)) / (Const(1) + x ^ Const(2))
+                return normal(-rec(x) / (Const(1) + (x ^ Const(2))))
             elif e.func_name == "arcsec":
                 x, = e.args
                 return normal(rec(x) / (expr.abs(x) * expr.sqrt(x ^ Const(2) - Const(1))))
@@ -180,7 +180,7 @@ def deriv(var: str, e: Expr, ctx: Context) -> Expr:
         elif expr.is_inf(e):
             return Const(0)
         else:
-            raise NotImplementedError(f"{e}, {type(e)}")
+            raise NotImplementedError(f"deriv: {e}, {type(e)}")
 
     return rec(e)
 
@@ -273,35 +273,53 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                     else:
                         add_obligation(Op("!=", e.args[1], Const(0)), ctx)
             if e.is_power():
-                if ctx.check_condition(Op(">", e.args[0], Const(0))):
+                base, exp = e.args[0], e.args[1]
+                # 如果底数 > 0，则任何指数都OK
+                if ctx.check_condition(Op(">", base, Const(0))):
                     pass
-                elif ctx.check_condition(Fun("isInt", e.args[1])) and ctx.check_condition(
-                        Op(">=", e.args[1], Const(0))):
+                # 如果指数是整数且 >= 0，则任何底数都OK
+                elif ctx.check_condition(Fun("isInt", exp)) and ctx.check_condition(Op(">=", exp, Const(0))):
                     pass
+                # 如果指数是有理数常量且分母是奇数，则底数可以是任意实数
+                elif expr.is_const(exp) and isinstance(exp.val, Fraction):
+                    frac = exp.val
+                    # 如果分母是奇数，则底数可以是任意实数（如 x^(1/3)）
+                    if frac.denominator % 2 == 1:
+                        pass
+                    # 如果分母是偶数，则需要底数 >= 0（如 x^(1/2)）
+                    elif ctx.check_condition(Op(">=", base, Const(0))):
+                        pass
+                    else:
+                        add_obligation(Op(">=", base, Const(0)), ctx)
+                # 其他情况，需要底数 > 0
                 else:
-                    add_obligation(Op(">", e.args[0], Const(0)), ctx)
-                    add_obligation(Fun("isInt", e.args[1]), ctx)
-                    add_obligation(Op(">=", e.args[1], Const(0)), ctx)
+                    add_obligation(Op(">", base, Const(0)), ctx)
         elif expr.is_fun(e):
             for arg in e.args:
                 rec(arg, ctx)
             if e.func_name == 'log':
                 # log 的定义域: 复数域中 z != 0, 实数域中 x > 0
                 arg = e.args[0]
-                
-                # 检查是否满足实数域条件: arg > 0
-                if ctx.check_condition(Op(">", arg, Const(0))):
-                    pass
-                # 检查是否满足复数域条件: arg != 0
-                # (notReal 通过推理规则会推出 != 0)
-                elif ctx.check_condition(Op("!=", arg, Const(0))):
-                    pass
+
+                # 如果参数是 abs 函数，由于 abs 总是返回非负实数，只需要检查 abs 的参数不为 0
+                if expr.is_fun(arg) and arg.func_name == 'abs':
+                    abs_arg = arg.args[0]
+                    if not ctx.check_condition(Op("!=", abs_arg, Const(0))):
+                        add_obligation(Op("!=", abs_arg, Const(0)), ctx)
                 else:
-                    # 无法证明参数有效，需要添加约束
-                    # 提供两个分支：实数正数 或 复数非零
-                    branch1 = ProofObligationBranch([Op(">", arg, Const(0))])
-                    branch2 = ProofObligationBranch([Op("!=", arg, Const(0)), Fun("notReal", arg)])
-                    add_obligation([branch1, branch2], ctx)
+                    # 检查是否满足实数域条件: arg > 0
+                    if ctx.check_condition(Op(">", arg, Const(0))):
+                        pass
+                    # 检查是否满足复数域条件: arg != 0
+                    # (notReal 通过推理规则会推出 != 0)
+                    elif ctx.check_condition(Op("!=", arg, Const(0))):
+                        pass
+                    else:
+                        # 无法证明参数有效，需要添加约束
+                        # 提供两个分支：实数正数 或 复数非零
+                        branch1 = ProofObligationBranch([Op(">", arg, Const(0))])
+                        branch2 = ProofObligationBranch([Op("!=", arg, Const(0)), Fun("notReal", arg)])
+                        add_obligation([branch1, branch2], ctx)
             if e.func_name == 'sqrt':
                 # 如果是复数域的计算，允许负参数的平方根
                 if ctx.check_condition(expr.Fun("notReal", e)) or any(ctx.check_condition(expr.Fun("notReal", cond)) for cond in ctx.get_conds().data):
@@ -473,7 +491,7 @@ class Linearity(Rule):
 
         def depends_on_var(expr_obj: Expr, var: str) -> bool:
             """Check if expression depends on variable, handling derivatives correctly.
-            
+
             For derivatives D x. f(x), the derivative itself depends on x even though
             x is a bound variable in the body. This is because the derivative is with
             respect to x, so it fundamentally depends on x.
@@ -617,7 +635,10 @@ class PartialFractionDecomposition(Rule):
         if not sympywrapper.is_rational(e.body):
             raise RuleException("PartialFractionDecomposition", "cannot be applied to non-rational body")
 
-        new_body = normalize(sympywrapper.partial_fraction(e.body), ctx)
+        # Perform partial fraction decomposition with respect to the integration variable
+        # This now supports multi-variable expressions (e.g., expressions with parameters a, b, etc.)
+        new_body = normalize(sympywrapper.partial_fraction(e.body, var=e.var), ctx)
+
         if expr.is_integral(e):
             return expr.Integral(e.var, e.lower, e.upper, new_body)
         elif expr.is_indefinite_integral(e):
@@ -726,7 +747,7 @@ class SeriesExpansionIdentity(Rule):
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
-                raise AssertionError("Equation: old expression not found")
+                raise RuleException("SeriesExpansionIdentity", f"old expression {str(self.old_expr)} not found")
             loc = find_res[0]
             return OnLocation(self, loc).eval(e, ctx)
 
@@ -793,17 +814,23 @@ class SeriesEvaluationIdentity(Rule):
 
 
 class EvaluateIndefiniteIntegral(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "EvaluateIndefiniteIntegral"
+        self.attrs = attrs
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, IndefiniteIntegral)
 
         ctx2 = context.body_conds(e, ctx)
-        
+
         # 应用原有的积分规则（查找恒等式）
         for indef in ctx.get_indefinite_integrals():
             assert isinstance(indef.lhs, IndefiniteIntegral)
+
+            # Check attributes
+            if self.attrs != indef.attrs:
+                continue
+
             inst = expr.match(e, indef.lhs)
             if inst is None:
                 continue
@@ -820,31 +847,36 @@ class EvaluateIndefiniteIntegral(Rule):
             if satisfied:
                 # The right side of the identity should be of the form "expr + C"
                 # take the expr part of the expression.
-                assert indef.rhs.is_plus() and expr.is_skolem_func(indef.rhs.args[1])
+                assert expr.is_plus(indef.rhs) and expr.is_skolem_func(indef.rhs.args[1]), \
+                    "indefinite integral does not conclude with +C"
                 return indef.rhs.args[0].inst_pat(inst)
 
         # No matching identity found
         return e
 
 class EvaluateDefiniteIntegral(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "EvaluateDefiniteIntegral"
+        self.attrs = attrs
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         assert isinstance(e, Integral)
 
         ctx2 = context.body_conds(e, ctx)
-        
+
         # 查找定积分恒等式
         for identity in ctx.get_definite_integrals():
             inst = expr.match(e, identity.lhs)
             if inst is None:
                 continue
 
+            # Check attributes
+            if self.attrs != identity.attrs:
+                continue
+
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx2.check_condition(cond):
                     satisfied = False
@@ -862,7 +894,6 @@ class EvaluateDefiniteIntegral(Rule):
             # Check conditions
             satisfied = True
             for cond in identity.conds.data:
-                cond = expr.expr_to_pattern(cond)
                 cond = cond.inst_pat(inst)
                 if not ctx2.check_condition(cond):
                     satisfied = False
@@ -870,7 +901,7 @@ class EvaluateDefiniteIntegral(Rule):
             if satisfied:
                 # The right side of the identity should be of the form "expr + C"
                 # take the expr part of the expression.
-                assert identity.rhs.is_plus() and expr.is_skolem_func(identity.rhs.args[1])
+                assert expr.is_plus(identity.rhs) and expr.is_skolem_func(identity.rhs.args[1])
                 pat_rhs = identity.rhs.args[0]
                 return EvalAt(e.var, e.lower, e.upper, normalize(pat_rhs.inst_pat(inst), ctx2))
 
@@ -878,8 +909,9 @@ class EvaluateDefiniteIntegral(Rule):
         return e
 
 class IntegralIdentity(Rule):
-    def __init__(self):
+    def __init__(self, attrs: tuple[str]):
         self.name = "IntegralIdentity"
+        self.attrs = attrs
 
     def __str__(self):
         return "apply integral identity"
@@ -889,11 +921,11 @@ class IntegralIdentity(Rule):
             "name": self.name,
             "str": str(self)
         }
-    
+
     def merge_evalat(self, e: Expr) -> Expr:
         """将包含多个EvalAt的表达式合并成单一EvalAt表达式"""
         # 处理嵌套的EvalAt和更复杂的表达式
-        
+
         # 递归处理嵌套的EvalAt
         def process_nested_evalats(expr):
             # 先递归处理子表达式
@@ -927,19 +959,19 @@ class IntegralIdentity(Rule):
             else:
                 # 基本表达式直接返回
                 return expr
-        
+
         # 合并同一层级的多个EvalAt表达式
         def merge_same_level_evalats(expr):
             # 如果不是操作符表达式,直接返回
             if not (isinstance(expr, Op) and expr.op in ['+', '-', '*']):
                 return expr
-            
+
             if len(expr.args) <= 1:
                 return expr
-            
+
             # 收集所有的EvalAt表达式
             evalats = []
-            
+
             def collect_evalats(expr):
                 if isinstance(expr, EvalAt):
                     evalats.append(expr)
@@ -953,24 +985,24 @@ class IntegralIdentity(Rule):
                         result = collect_evalats(expr.args[1]) or result
                     return result
                 return False
-            
+
             # 调用收集函数
             collect_evalats(expr)
-            
+
             # 如果没有找到EvalAt表达式，直接返回原表达式
             if not evalats:
                 return expr
-                
+
             # 检查所有EvalAt是否有相同的变量和上下限
             var_name = evalats[0].var
             lower = evalats[0].lower
             upper = evalats[0].upper
-            
+
             for evalat in evalats:
                 if evalat.var != var_name or evalat.lower != lower or evalat.upper != upper:
                     # 如果变量或上下限不一致，不能合并
                     return expr
-            
+
             # 替换所有EvalAt为它们的函数体
             def replace_evalat(expr):
                 if isinstance(expr, EvalAt):
@@ -989,27 +1021,27 @@ class IntegralIdentity(Rule):
                     elif expr.op == '/' and len(expr.args) >= 2:
                         return replace_evalat(expr.args[0]) / replace_evalat(expr.args[1])
                 return expr
-                
+
             # 创建合并后的函数体
             combined_body = replace_evalat(expr)
-            
+
             return EvalAt(var_name, lower, upper, combined_body)
-        
+
         # 首先递归处理子表达式中的嵌套EvalAt
         processed_expr = process_nested_evalats(e)
-        
+
         # 然后尝试合并同级的EvalAt
         return merge_same_level_evalats(processed_expr)
-    
+
     def eval(self, e: Expr, ctx: Context) -> Expr:
         """Apply indefinite integral identity to expression."""
 
-        # If incoming expression is equality, apply to the right side of equation
+        # If incoming expression is equality, apply to both sides of equation
         if e.is_equals():
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
             return Op("=", lhs, rhs)
-        
+
         upper = None
         lower = None
 
@@ -1021,11 +1053,11 @@ class IntegralIdentity(Rule):
         integrals = e.separate_integral()
         skolem_args = set()
         exist_indefinite_integral = False
-        
+
         for sub_e, loc in integrals:
             if isinstance(sub_e, IndefiniteIntegral):
-                e = OnLocation(EvaluateIndefiniteIntegral(), loc).eval(e, ctx)
-                
+                e = OnLocation(EvaluateIndefiniteIntegral(self.attrs), loc).eval(e, ctx)
+
                 new_e = e.get_subexpr(loc)
                 if new_e != sub_e:
                     exist_indefinite_integral = True
@@ -1033,7 +1065,7 @@ class IntegralIdentity(Rule):
             elif isinstance(sub_e, Integral):
                 upper = sub_e.upper.__str__()
                 lower = sub_e.lower.__str__()
-                e = OnLocation(EvaluateDefiniteIntegral(), loc).eval(e, ctx)
+                e = OnLocation(EvaluateDefiniteIntegral(self.attrs), loc).eval(e, ctx)
             else:
                 raise AssertionError
 
@@ -1051,11 +1083,11 @@ class IntegralIdentity(Rule):
             count = 0
             if expr.is_equals():
                 return count_evalats(expr.rhs)  # 只检查等式右侧
-            
+
             # 查找所有EvalAt子表达式
             subexprs = expr.find_subexpr_pred(lambda x: isinstance(x, EvalAt))
             return len(subexprs)
-        
+
         # 只有当存在多个EvalAt且上下限包含无穷大时，才进行合并
         if upper is not None and lower is not None:
             if (upper in ['oo', '-oo'] or lower in ['oo', '-oo']) and count_evalats(e) > 1:
@@ -1064,7 +1096,7 @@ class IntegralIdentity(Rule):
 
 class CIntegralIdentity(Rule):
     """Apply contour integral identity to convert contour integral to ordinary integral."""
-    
+
     def __init__(self):
         self.name = "CIntegralIdentity"
 
@@ -1076,32 +1108,32 @@ class CIntegralIdentity(Rule):
             "name": self.name,
             "str": str(self)
         }
-    
+
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        """应用围道积分恒等式: ∮_γ f(z) dz = ∫_a^b f(γ(t)) · γ'(t) dt"""  
+        """应用围道积分恒等式: ∮_γ f(z) dz = ∫_a^b f(γ(t)) · γ'(t) dt"""
         from integral.expr import CIntegral, CINTPath, Op
-        
+
         # 如果输入表达式是等式，对两边都应用规则
         if e.is_equals():
             lhs = self.eval(e.lhs, ctx)
             rhs = self.eval(e.rhs, ctx)
             return Op("=", lhs, rhs)
-        
+
         # 在表达式中查找所有围道积分
         cintegral_tuples = e.find_subexpr_pred(lambda x: isinstance(x, CIntegral))
-        
+
         if not cintegral_tuples:
             return e  # 没有找到围道积分
-        
+
         # 对每个围道积分应用变换
         result = e
         for cint, location in cintegral_tuples:
             try:
                 if len(cint.paths) != 1:
                     continue  # 暂时跳过多路径积分
-                
+
                 path = cint.paths[0]
-                
+
                 # 处理不同的路径类型
                 if isinstance(path, str):
                     # 路径是函数引用，如 C(t,r)
@@ -1115,81 +1147,86 @@ class CIntegralIdentity(Rule):
                     path_expr = path
                 else:
                     continue  # 跳过未知的路径类型
-                
+
                 # 将围道积分转换为普通积分
                 ordinary_integral = self._convert_contour_to_integral(cint, path_expr, ctx)
-                
+
                 # 用普通积分替换围道积分
                 result = result.replace(cint, ordinary_integral)
-                
+
             except Exception:
                 # 如果转换失败，继续处理下一个积分
                 continue
-        
+
         return result
-    
+
     def _lookup_path_definition(self, path_ref: str, ctx: Context) -> CINTPath:
         """从上下文中查找路径定义"""
-        from integral.expr import is_fun, CINTPath
+        from integral.expr import is_fun, CINTPath, Var
         from integral.parser import parse_expr
-        
+
         # 解析路径引用（例如 "C(t,r)"）
         try:
             path_call = parse_expr(path_ref)
             if not is_fun(path_call):
                 return None
-                
+
             func_name = path_call.func_name
             args = path_call.args
-            
-            # 在上下文中查找函数定义（包括父上下文）
-            for definition in ctx.get_definitions():
-                if (hasattr(definition.lhs, 'func_name') and 
-                    definition.lhs.func_name == func_name and
-                    len(definition.lhs.args) == len(args)):
-                    
+
+            # 在上下文中查找函数定义
+            for name, definition in ctx.get_definitions().items():
+                if (definition.symbol == func_name and
+                    len(definition.args) == len(args)):
+
                     # 应用参数替换
-                    path_def = definition.rhs
-                    
-                    # 确保 path_def 是 CINTPath
+                    path_def = definition.define_eq.rhs
+
+                    # 确保path_def是CINTPath
                     if isinstance(path_def, CINTPath):
-                        # 应用参数替换 - 需要直接替换符号对象
+                        # 应用参数替换
                         new_path_expr = path_def.path_expr
                         new_start_expr = path_def.start_expr
                         new_end_expr = path_def.end_expr
-                        
-                        for param, arg in zip(definition.lhs.args, args):
-                            # param 是符号对象，使用 replace 方法而不是 subst
-                            new_path_expr = new_path_expr.replace(param, arg)
-                            new_start_expr = new_start_expr.replace(param, arg)
-                            new_end_expr = new_end_expr.replace(param, arg)
-                        
+
+                        # 创建参数映射
+                        param_map = {}
+                        for param_name, arg in zip(definition.args, args):
+                            param_map[param_name] = arg
+
+                        # 替换参数（需要将参数名转换为Var对象）
+                        for param_name, arg in param_map.items():
+                            param_var = Var(param_name)
+                            new_path_expr = new_path_expr.replace(param_var, arg)
+                            new_start_expr = new_start_expr.replace(param_var, arg)
+                            new_end_expr = new_end_expr.replace(param_var, arg)
+
                         return CINTPath(path_def.var, new_path_expr, new_start_expr, new_end_expr)
-                    
+
         except Exception as e:
             pass
-        
+
         return None
-    
+
     def _convert_contour_to_integral(self, cint: CIntegral, path: CINTPath, ctx: Context) -> Integral:
         """使用定义将围道积分转换为普通积分"""
         from integral.expr import Integral, Op, Deriv
-        
+
         # 获取路径组件
         param_var = path.var  # t
         path_expr = path.path_expr  # γ(t) = r*exp(i*pi*(1-t))
         start = path.start_expr  # a = 0
         end = path.end_expr  # b = 1
-        
+
         # 计算路径导数 γ'(t)
         path_derivative = Deriv(param_var, path_expr)
-        
+
         # 在 f(z) 中用 γ(t) 替换 z
         integrand_at_path = cint.body.subst(cint.var, path_expr)
-        
+
         # 创建新的被积函数: f(γ(t)) · γ'(t)
         new_integrand = Op("*", integrand_at_path, path_derivative)
-        
+
         # 创建普通积分: ∫_a^b f(γ(t)) · γ'(t) dt
         return Integral(param_var, start, end, new_integrand)
 
@@ -1210,10 +1247,10 @@ class ReplaceSubstitution(Rule):
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
         success = False
-        for var, expr in reversed(ctx.get_substs()):
+        for var, expr_val, _ in reversed(ctx.get_substs()):
             if e.contains_var(var):
                 success = True
-            e = e.subst(var, expr)
+            e = e.subst(var, expr_val)
         if not success:
             raise RuleException("ReplaceSubstitution", "No more substitution need to be replaced")
         return e
@@ -1388,6 +1425,8 @@ class OnCount(Rule):
                 pred = lambda t: expr.is_integral(t) or expr.is_indefinite_integral(t)
             elif isinstance(rule, ExpandDefinition):
                 pred = lambda t: expr.is_fun(t) and t.func_name == rule.func_name
+            elif isinstance(rule, SeriesExpansionIdentity):
+                pred = lambda t: t == rule.old_expr
             else:
                 raise RuleException("OnCount", "(at n) should not be applied to rule %s" % rule.name)
         self.pred = pred
@@ -1475,7 +1514,7 @@ class Simplify(Rule):
                     "Simplify",
                     "ContourIntegral have no paths,please rewrite the expression."
                 )
-        
+
         counter = 0
         current = e
         while True:
@@ -1494,7 +1533,7 @@ class Simplify(Rule):
 class ApplyEquation(Rule):
     """Apply the given equation for rewriting."""
 
-    def __init__(self, eq: Union[Expr, str], source: Expr):
+    def __init__(self, eq: str, source: Expr):
         self.name = "ApplyEquation"
         self.eq = eq
         self.source = source
@@ -1508,7 +1547,7 @@ class ApplyEquation(Rule):
     def export(self):
         res = {
             "name": self.name,
-            "eq": str(self.eq),
+            "eq": self.eq,
             "str": str(self),
             "latex_str": self.latex_str()
         }
@@ -1528,37 +1567,11 @@ class ApplyEquation(Rule):
         assert self.source == e or self.source is None
 
         # Find lemma
-        found = False
-        conds = None
-        found_eq = None
-        for identity in ctx.get_lemmas():
-            if self.eq == identity.expr:
-                found = True
-                found_eq = self.eq
-                conds = identity.conds.data
-        if isinstance(self.eq, str):
-            res = ctx.get_subgoal(self.eq)
-            if res:
-                found = True
-                found_eq = res.expr
-                conds = res.conds.data
-        for item in ctx.get_eq_conds().data:
-            if self.eq == item:
-                if self.source is None:
-                    if e == item.lhs:
-                        return item.rhs
-                    if e == item.rhs:
-                        return item.lhs
-                else:
-                    if self.source == item.lhs:
-                        return item.rhs
-                    if self.source == item.rhs:
-                        return item.lhs
-                found = True
-                found_eq = self.eq
-                conds = []
-        if not found:
+        res = ctx.get_subgoal(self.eq)
+        if not res:
             raise RuleException("ApplyEquation", f"lemma {self.eq} not found")
+        found_eq = res.expr
+        conds = res.conds.data
 
         # First try to match the current term with left or right side.
         pat = expr.expr_to_pattern(found_eq)
@@ -1708,9 +1721,9 @@ class Substitution(Rule):
             else:
                 e, _ = sep_lims[0]
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
-            ctx2.add_subst(self.var_name, self.var_subst)
+            ctx2.add_subst(self.var_name, self.var_subst, e.var)
             return ctx2
         else:
             return ctx
@@ -1728,13 +1741,13 @@ class Substitution(Rule):
         # If not a direct integral/limit/cintegral, find one inside using find_subexpr_pred
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_limit(e) or expr.is_cintegral(e)):
             # Use find_subexpr_pred for unified search
-            targets = e.find_subexpr_pred(lambda t: 
-                expr.is_integral(t) or expr.is_indefinite_integral(t) or 
+            targets = e.find_subexpr_pred(lambda t:
+                expr.is_integral(t) or expr.is_indefinite_integral(t) or
                 expr.is_cintegral(t) or expr.is_limit(t))
-            
+
             if len(targets) == 0:
                 raise RuleException("Substitution", "integral or limit not found")
-            
+
             # Apply to the first found target
             return OnLocation(self, targets[0][1]).eval(e, ctx)
 
@@ -1745,9 +1758,9 @@ class Substitution(Rule):
             if e.var not in var_subst_test.get_vars():
                 # Substitution doesn't involve limit variable
                 # Look for integrals/cintegrals inside - they are more likely targets
-                inner_targets = e.find_subexpr_pred(lambda t: 
+                inner_targets = e.find_subexpr_pred(lambda t:
                     expr.is_integral(t) or expr.is_cintegral(t))
-                
+
                 if len(inner_targets) > 0:
                     # Apply to the first inner integral/cintegral
                     return OnLocation(self, inner_targets[0][1]).eval(e, ctx)
@@ -1758,17 +1771,17 @@ class Substitution(Rule):
 
         # Expression used for substitution
         var_subst = self.var_subst
-        
+
         # For CIntegral with CINTPath, first apply cintegral identity to convert to ordinary integral
         # Then substitution can be applied to the resulting integral
         if expr.is_cintegral(e):
             # CIntegral should be converted to ordinary integral first via cintegral identity
             # Direct substitution on CIntegral is not supported
             # The user should apply "apply cintegral identity" first
-            raise RuleException("Substitution", 
+            raise RuleException("Substitution",
                 "Cannot directly substitute in CIntegral. " +
                 "Please apply 'cintegral identity' first to convert to ordinary integral.")
-        
+
         # Check if this is actually an inverse substitution BEFORE substituting e.var
         # If var_subst doesn't contain e.var but contains other variables,
         # this is likely inverse substitution: e.var = var_subst
@@ -1777,12 +1790,19 @@ class Substitution(Rule):
             # Delegate to SubstitutionInverse
             inv_rule = SubstitutionInverse(e.var, var_subst)
             return inv_rule.eval(e, ctx)
-        
+
         var_subst = var_subst.subst(e.var, Var(e.var))
-        
+
+
+        if expr.is_compare(var_subst):
+            raise RuleException("Substitution", f"expression {var_subst} should not be (in)equality")
+
         if e.var not in var_subst.get_vars():
-            raise RuleException("Substitution", "variable %s not found" % e.var)
-        
+            raise RuleException("Substitution", f"variable {e.var} not found in substituted expression")
+
+        if self.var_name in ctx.get_vars() or self.var_name in ctx.get_substs():
+            raise RuleException("Substitution", f"variable {self.var_name} is already used")
+
         ctx2 = body_conds(e, ctx)
 
         # Compute g(x)'
@@ -1829,9 +1849,11 @@ class Substitution(Rule):
             # Substitution is unable to clear x, need to solve for x
             gu_list = solve_equation(var_subst, var_name, e.var, ctx2)
             if not gu_list:
-                raise RuleException("Substitution", "unable to solve equation %s = %s for %s, body_subst = %s" % (
-                    var_subst, var_name, e.var, body_subst
-                ))
+                raise RuleException(
+                    "Substitution",
+                    f"unable to solve equation {var_subst} = {var_name} for {e.var}. "
+                    f"Note: it may be helpful to isolate d({var_subst}) = {dfx} in the integrand."
+                )
 
             gu = normalize(gu_list[0], ctx2)  # Take the first solution
             c = e.body.replace(Var(e.var), gu)
@@ -1909,11 +1931,9 @@ class SubstitutionInverse(Rule):
         expression containing the new variable.
 
     """
-    def __init__(self, old_var: str, var_subst: Union[Expr, str]):
+    def __init__(self, old_var: str, var_subst: Expr):
         self.name = "SubstitutionInverse"
         self.old_var = old_var
-        if isinstance(var_subst, str):
-            var_subst = parser.parse_expr(var_subst)
         self.var_subst = var_subst
 
     def __str__(self):
@@ -1946,11 +1966,15 @@ class SubstitutionInverse(Rule):
 
         new_var = new_vars.pop()
 
-        if isinstance(e, IndefiniteIntegral):
+        if isinstance(e, (Integral, IndefiniteIntegral)):
             ctx2 = Context(ctx)
             inv_f_list = solve_equation(self.var_subst, Var(e.var), new_var, ctx)
-            if inv_f_list:
-                ctx2.add_subst(new_var, inv_f_list[0])  # Take the first solution
+            if not inv_f_list:
+                raise RuleException("Substitution", "cannot solve equation %s = %s for %s" % (
+                    self.var_subst, e.var, new_var
+                ))
+            inv_f = inv_f_list[0]  # Take the first solution
+            ctx2.add_subst(new_var, inv_f, e.var)
             return ctx2
         else:
             return ctx
@@ -1960,7 +1984,7 @@ class SubstitutionInverse(Rule):
             sep_ints = e.separate_integral()
             sep_cints = e.separate_cintegral()
             if len(sep_ints) == 0 and len(sep_cints) == 0:
-                raise RuleException("SubstitutionInverse", "no integral found in expression")
+                raise RuleException("SubstitutionInverse", "No integral is found in the expression. If there are functions in the expression used for abstract integration, you can first try to expand the function definitions and then perform SubstitutionInverse.")
             elif expr.is_cintegral(e):
                 return OnLocation(self, sep_cints[0][1]).eval(e, ctx)
             else:
@@ -1986,7 +2010,7 @@ class SubstitutionInverse(Rule):
             # dx = f'(u) * du
             subst_deriv = deriv(new_var, self.var_subst, ctx)
         except NotImplementedError:
-            raise RuleException('Inverse Substitute', f"{self.var_subst} can not be derived")
+            raise RuleException('SubstitutionInverse', f"no derivative found for {self.var_subst}")
 
         # Replace x with f(u)
         new_e_body = e.body.replace(Var(e.var), self.var_subst)
@@ -2019,18 +2043,18 @@ class SubstitutionInverse(Rule):
 
 def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional[Expr]:
     """尝试将围道积分转换为普通积分。
-    
+
     当围道积分的路径是实值路径时，可以转换为普通定积分。
     规则: CINT z:path. f(z) → INT x:[a,b]. f(x) 或 -INT x:[a,b]. f(x)
-    
+
     Args:
         e: 原始围道积分表达式
         new_expr: 目标表达式（普通积分或其相反数）
         ctx: 上下文
-        
+
     Returns:
         如果转换成功，返回 new_expr；否则返回 None
-        
+
     Raises:
         RuleException: 当方向和符号不匹配时抛出具体错误
     """
@@ -2041,7 +2065,7 @@ def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional
         # 检查new_expr是否是普通积分或其相反数
         target_integral = None
         needs_negation = False
-        
+
         if expr.is_integral(new_expr):
             target_integral = new_expr
             needs_negation = False
@@ -2056,13 +2080,13 @@ def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional
             elif new_expr.args[1] == expr.Const(-1) and expr.is_integral(new_expr.args[0]):
                 target_integral = new_expr.args[0]
                 needs_negation = True
-        
+
         if target_integral is not None:
             path = e.paths[0]
             path_obj = None
             matched_defn = None
             inst = None
-            
+
             # 获取实际的 CINTPath 对象
             if isinstance(path, expr.CINTPath):
                 path_obj = path
@@ -2070,43 +2094,45 @@ def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional
                 # 路径是字符串引用，在上下文定义中查找
                 try:
                     path_ref = parser.parse_expr(path)
-                    for defn in ctx.get_definitions():
-                        inst = expr.match(path_ref, defn.lhs)
-                        if inst is not None and isinstance(defn.rhs, expr.CINTPath):
-                            path_obj = defn.rhs.inst_pat(inst)
-                            matched_defn = defn
-                            break
-                except:
+                    definitions = ctx.get_definitions()
+                    for name, defn in definitions.items():
+                        if defn.define_eq is not None:
+                            inst = expr.match(path_ref, defn.define_eq.lhs)
+                            if inst is not None and isinstance(defn.define_eq.rhs, expr.CINTPath):
+                                path_obj = defn.define_eq.rhs.inst_pat(inst)
+                                matched_defn = defn
+                                break
+                except Exception as e:
                     pass
-            
+
             if path_obj is not None:
                 path_expr = path_obj.path_expr
                 path_var = path_obj.var
                 lower_t = path_obj.start_expr
                 upper_t = path_obj.end_expr
-                
+
                 # 先计算端点，这是轻量级操作
                 z_start = normalize(path_expr.subst(path_var, lower_t), ctx)
                 z_end = normalize(path_expr.subst(path_var, upper_t), ctx)
-                
+
                 # 检查边界是否匹配（先做轻量级检查）
                 new_lower = normalize(target_integral.lower, ctx)
                 new_upper = normalize(target_integral.upper, ctx)
-                
+
                 forward_match = (z_start == new_lower and z_end == new_upper)
                 reverse_match = (z_start == new_upper and z_end == new_lower)
-                
+
                 if forward_match or reverse_match:
                     # 在变量替换后验证主体是否匹配
-                    expected_body = e.body.subst(e.var, expr.Var(target_integral.var))
-                    
+                    expected_body = e.body.subst(e.var, Var(target_integral.var))
+
                     if normalize(expected_body, ctx) == normalize(target_integral.body, ctx):
                         # 只有在边界和主体都匹配时，才进行昂贵的 notReal 检查
                         # 创建带有定义条件的临时上下文
                         from integral.context import Context as ContextClass
                         check_ctx = ContextClass(ctx)
-                        check_ctx.add_condition(expr.Fun("isReal", expr.Var(path_var)))
-                        
+                        check_ctx.add_condition(expr.Fun("isReal", Var(path_var)))
+
                         if matched_defn is not None:
                             for cond in matched_defn.conds.data:
                                 inst_cond = cond.inst_pat(inst) if inst else cond
@@ -2115,10 +2141,10 @@ def try_cintegral_to_integral(e: Expr, new_expr: Expr, ctx: Context) -> Optional
                                 for _, var_expr in inst.items():
                                     if expr.is_var(var_expr):
                                         check_ctx.add_condition(expr.Fun("isReal", var_expr))
-                        
+
                         # 检查 notReal - 只有在其他条件都满足时才执行
                         is_not_real = check_ctx.check_condition(expr.Fun("notReal", path_expr))
-                        
+
                         if not is_not_real:  # 路径可能是实数
                             # 检查方向和符号是否一致
                             if (forward_match and not needs_negation) or (reverse_match and needs_negation):
@@ -2193,6 +2219,14 @@ class ExpandPolynomial(Rule):
         elif expr.is_uminus(e):
             return OnLocation(self, "0").eval(e, ctx)
 
+        # Case of function calls: expand arguments
+        elif expr.is_fun(e):
+            new_args = [self.eval(arg, ctx) for arg in e.args]
+            if new_args != e.args:
+                return expr.Fun(e.func_name, *new_args)
+            else:
+                return e
+
         # Case of integrals
         elif expr.is_integral(e):
             ctx2 = body_conds(e, ctx)
@@ -2236,7 +2270,6 @@ class Rewriting(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        
         if self.old_expr is not None and self.old_expr != e:
             find_res = e.find_subexpr(self.old_expr)
             if len(find_res) == 0:
@@ -2370,9 +2403,9 @@ class Rewriting(Rule):
             # 确保 Gamma 函数只有一个参数
             if len(e.args) == 1:
                 arg = e.args[0]
-                conds = ctx.get_conds(arg)
                 # 检查参数是否为整数表达式
-                if expr.is_var(arg) and "isInt" in conds:
+                # 检查条件中是否有 isInt(arg)
+                if expr.is_var(arg) and ctx.check_condition(expr.Fun("isInt", arg)):
                     # 创建 factorial(n-1) 表达式
                     return expr.Fun("factorial", expr.Op("-", arg, expr.Const(1)))
 
@@ -2384,21 +2417,21 @@ class Rewriting(Rule):
             for path in e.paths:
                 single_cint = expr.CIntegral(e.var, [path], e.body)
                 split_integrals.append(single_cint)
-            
+
             # 构建求和: first + second + third + ...
             expected = split_integrals[0]
             for cint in split_integrals[1:]:
                 expected = expr.Op("+", expected, cint)
-            
+
             # 检查new_expr是否匹配期望的拆分形式
             if normalize(expected, ctx) == normalize(self.new_expr, ctx):
                 return self.new_expr
-        
+
         # 处理实值围道积分到普通积分的转换
         cint_result = try_cintegral_to_integral(e, self.new_expr, ctx)
         if cint_result is not None:
             return cint_result
-        
+
         # apply identity
         for identity in ctx.get_other_identities():
             inst = expr.match(e, identity.lhs)
@@ -2412,6 +2445,11 @@ class Rewriting(Rule):
                     continue
                 if normalize(expected_rhs, ctx) == normalize(self.new_expr, ctx):
                     return self.new_expr
+
+        # Try enhanced algebraic equivalence verification
+        if norm.eq_algebraic(e, self.new_expr, ctx):
+            return self.new_expr
+
         raise RuleException("Rewriting", "rewriting %s to %s failed" % (e, self.new_expr))
 
 
@@ -2455,8 +2493,11 @@ class IntegrationByParts(Rule):
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
 
         ctx2 = body_conds(e, ctx)
-        du = deriv(e.var, self.u, ctx)
-        dv = deriv(e.var, self.v, ctx)
+        try:
+            du = deriv(e.var, self.u, ctx)
+            dv = deriv(e.var, self.v, ctx)
+        except Exception as e:
+            raise RuleException("IntegrationByParts", str(e))
         udv = normalize(self.u * dv, ctx2)
 
         equal = False
@@ -2474,8 +2515,32 @@ class IntegrationByParts(Rule):
                 return expr.EvalAt(e.var, e.lower, e.upper, normalize(self.u * self.v, ctx2)) - \
                        expr.Integral(e.var, e.lower, e.upper, normalize(self.v * du, ctx2))
             elif expr.is_indefinite_integral(e):
-                return normalize(self.u * self.v, ctx2) - \
-                       expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
+                # For indefinite integrals, we need to add SKOLEM_CONST
+                # IBP formula: INT u dv = u*v - INT v du + C
+                result = normalize(self.u * self.v, ctx2) - \
+                         expr.IndefiniteIntegral(e.var, normalize(self.v * du, ctx2), e.skolem_args)
+
+                # Check if result contains an indefinite integral
+                # If it does, don't add SKOLEM_CONST (the integrals share the same constant)
+                def contains_indefinite_integral(e):
+                    if expr.is_indefinite_integral(e):
+                        return True
+                    elif expr.is_var(e) or expr.is_const(e) or expr.is_skolem_func(e):
+                        return False
+                    elif expr.is_op(e) or expr.is_fun(e):
+                        return any(contains_indefinite_integral(arg) for arg in e.args)
+                    else:
+                        return False
+
+                # Add SKOLEM_CONST only if:
+                # 1. Not already present, AND
+                # 2. Result doesn't contain another indefinite integral
+                has_skolem = expr.is_plus(result) and (expr.is_skolem_func(result.args[0]) or expr.is_skolem_func(result.args[1]))
+                has_indefinite = contains_indefinite_integral(result)
+
+                if not has_skolem and not has_indefinite:
+                    result = result + expr.SkolemFunc("C", tuple(Var(arg) for arg in e.skolem_args))
+                return result
         else:
             raise RuleException(self.name, f"u * dv does not equal body: {udv} != {e.body}")
 
@@ -2483,10 +2548,8 @@ class IntegrationByParts(Rule):
 class SplitRegion(Rule):
     """Split integral into two parts at a point."""
 
-    def __init__(self, c: Union[Expr, str]):
+    def __init__(self, c: Expr):
         self.name = "SplitRegion"
-        if isinstance(c, str):
-            c = parser.parse_expr(c)
         self.c = c
 
     def __str__(self):
@@ -2518,14 +2581,51 @@ class SplitRegion(Rule):
             return Limit(x.name, POS_INF, Integral(e.var, e.lower, normalize(self.c - 1 / x, ctx), e.body) +
                          Integral(e.var, normalize(self.c + 1 / x, ctx), e.upper, e.body))
 
+class SplitSummationRegion(Rule):
+    """Split summation into two parts at a point."""
+
+    def __init__(self, c: Expr):
+        self.name = "SplitSummationRegion"
+        self.c = c
+
+    def __str__(self):
+        return "split summation region at %s" % self.c
+
+    def export(self):
+        return {
+            "name": self.name,
+            "c": str(self.c),
+            "str": str(self)
+        }
+
+    def eval(self, e: Expr, ctx: Context) -> Expr:
+        if not expr.is_summation(e):
+            sum_list = e.get_all_summations()
+            if sum_list != []:
+                find_res = e.find_subexpr(sum_list[0])
+                return OnLocation(self, find_res[0]).eval(e, ctx)
+            raise RuleException("SplitSummationRegion", f"{e} is not a summation")
+        cond1 = Op(">=", self.c, e.lower)
+        cond2 = Op(">=", e.upper, self.c )
+        if ctx.check_condition(cond1) and ctx.check_condition(cond2):
+            if ctx.check_condition(Op(">", e.upper, self.c)):
+                return Summation(e.index_var, e.lower, self.c, e.body) + Summation(e.index_var, self.c+Const(1), e.upper, e.body)
+            elif ctx.check_condition(Op("<",e.lower, self.c)):
+                return Summation(e.index_var, e.lower, self.c - Const(1), e.body) + Summation(e.index_var, self.c, e.upper, e.body)
+            else:
+                return e
+        else:
+            raise RuleException("SplitSummationRegion", f"The split point {self.c} exceeds the upper/lower bounds.")
 
 class IntegrateByEquation(Rule):
-    """When the initial integral occurs in the steps."""
+    """Evaluate integral by solving an equation.
 
-    def __init__(self, lhs: Union[str, Expr]):
+    This step can be used when the current integral occurs in one of
+    the earlier steps.
+
+    """
+    def __init__(self, lhs: Expr):
         self.name = "IntegrateByEquation"
-        if isinstance(lhs, str):
-            lhs = parser.parse_expr(lhs)
         self.lhs = lhs
 
     def __str__(self):
@@ -2543,14 +2643,26 @@ class IntegrateByEquation(Rule):
         """Eliminate the lhs's integral in rhs by solving equation."""
 
         def get_coeff(t: Expr, lhs: Expr) -> tuple[Expr, Expr]:
-            """Rewrite t in the form a * lhs + b."""
+            """Rewrite t in the form a * lhs + b.
+
+            SKOLEM_CONST is treated as part of the constant term b.
+            """
             if t == lhs:
                 return Const(1), Const(0)
 
             if expr.is_plus(t):
-                a1, b1 = get_coeff(t.args[0], lhs)
-                a2, b2 = get_coeff(t.args[1], lhs)
-                return a1 + a2, b1 + b2
+                # Check if one of the args is SKOLEM_CONST
+                if expr.is_skolem_func(t.args[1]):
+                    # t = arg0 + SKOLEM_CONST => treat SKOLEM_CONST as part of b
+                    a1, b1 = get_coeff(t.args[0], lhs)
+                    return a1, b1 + t.args[1]
+                elif expr.is_skolem_func(t.args[0]):
+                    a2, b2 = get_coeff(t.args[1], lhs)
+                    return a2, t.args[0] + b2
+                else:
+                    a1, b1 = get_coeff(t.args[0], lhs)
+                    a2, b2 = get_coeff(t.args[1], lhs)
+                    return a1 + a2, b1 + b2
             elif expr.is_minus(t):
                 a1, b1 = get_coeff(t.args[0], lhs)
                 a2, b2 = get_coeff(t.args[1], lhs)
@@ -2570,6 +2682,9 @@ class IntegrateByEquation(Rule):
             elif expr.is_divides(t):
                 a1, b1 = get_coeff(t.args[0], lhs)
                 return a1 / t.args[1], b1 / t.args[1]
+            elif expr.is_skolem_func(t):
+                # SKOLEM_CONST is a constant term
+                return Const(0), t
             else:
                 return Const(0), t
 
@@ -2592,7 +2707,24 @@ class IntegrateByEquation(Rule):
         if coeff == Const(0) or coeff == Const(1):
             coeff = coeff2
             rest = rest2
-        res = normalize(rest / (Const(1) - coeff), ctx)
+
+        # Extract SKOLEM_CONST from rest before solving
+        # If rest = expr + SKOLEM_CONST, we want to preserve it
+        skolem_term = None
+        rest_without_skolem = rest
+        if expr.is_plus(rest) and expr.is_skolem_func(rest.args[1]):
+            skolem_term = rest.args[1]
+            rest_without_skolem = rest.args[0]
+        elif expr.is_plus(rest) and expr.is_skolem_func(rest.args[0]):
+            skolem_term = rest.args[0]
+            rest_without_skolem = rest.args[1]
+
+        # Solve for the integral: lhs = rest_without_skolem / (1 - coeff)
+        res = normalize(rest_without_skolem / (Const(1) - coeff), ctx)
+
+        # Add back SKOLEM_CONST if it was present
+        if skolem_term is not None:
+            res = res + skolem_term
 
         return res
 
@@ -2756,22 +2888,27 @@ class ExpandDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
+        definitions = ctx.get_definitions()
+        if self.func_name not in definitions:
+            raise RuleException("ExpandDefinition", f"{self.func_name} is not defined")
+        definition = definitions[self.func_name]
+        if definition.define_eq is None:
+            raise RuleException("ExpandDefinition", f"{self.func_name} is defined axiomatically")
+
         # Function case
-        if expr.is_fun(e) and e.func_name == self.func_name:
-            for identity in ctx.get_definitions():
-                if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
-                    inst = expr.match(e, identity.lhs)
-                    if inst is None:
-                        continue
-                    inst_conds = [cond.inst_pat(inst) for cond in identity.conds.data]
-                    if all(ctx.check_condition(cond) for cond in inst_conds):
-                        return normalize(identity.rhs.inst_pat(inst), ctx)
+        if expr.is_fun(e, self.func_name):
+            inst = expr.match(e, expr.expr_to_pattern(definition.define_eq.lhs))
+            assert inst is not None
+            inst_conds = [expr.expr_to_pattern(cond).inst_pat(inst) for cond in definition.conds.data]
+            for cond in inst_conds:
+                if not ctx.check_condition(cond):
+                    # Check condition failed
+                    return e
+            return normalize(expr.expr_to_pattern(definition.define_eq.rhs).inst_pat(inst), ctx)
 
         # Constant case
         if expr.is_var(e) and e.name == self.func_name:
-            for identity in ctx.get_definitions():
-                if expr.is_var(identity.lhs) and identity.lhs.name == self.func_name:
-                    return identity.rhs
+            return definition.define_eq.rhs
 
         # Not found
         return e
@@ -2810,18 +2947,24 @@ class FoldDefinition(Rule):
         return res
 
     def eval(self, e: Expr, ctx: Context) -> Expr:
-        for identity in ctx.get_definitions():
-            if expr.is_fun(identity.lhs) and identity.lhs.func_name == self.func_name:
-                inst = expr.match(e, identity.rhs)
-                if inst:
-                    return normalize(identity.lhs.inst_pat(inst), ctx)
+        definitions = ctx.get_definitions()
+        if self.func_name not in definitions:
+            raise RuleException("FoldDefinition", f"{self.func_name} is not defined")
+        definition = definitions[self.func_name]
+        if definition.define_eq is None:
+            raise RuleException("FoldDefinition", f"{self.func_name} is defined axiomatically")
 
-            if expr.is_symbol(identity.lhs) and identity.lhs.name == self.func_name:
-                if e == identity.rhs:
-                    return identity.lhs
+        # Function case
+        inst = expr.match(e, expr.expr_to_pattern(definition.define_eq.rhs))
+        if inst is None:
+            return e
 
-        # Not found
-        return e
+        inst_conds = [expr.expr_to_pattern(cond).inst_pat(inst) for cond in definition.conds.data]
+        for cond in inst_conds:
+            if not ctx.check_condition(cond):
+                # Check condition failed
+                return e
+        return normalize(expr.expr_to_pattern(definition.define_eq.lhs).inst_pat(inst), ctx)
 
 
 class IntegralEquation(Rule):
@@ -2833,10 +2976,11 @@ class IntegralEquation(Rule):
     """
 
     def __init__(self):
-        self.name = "IntegrateBothSide"
+        self.name = "IntegralEquation"
 
     def eval(self, e: Expr, ctx: Context):
-        assert e.is_equals() and expr.is_deriv(e.lhs)
+        if not (e.is_equals() and expr.is_deriv(e.lhs)):
+            raise RuleException("IntegralEquation", f"{str(e)} is not an equation expression or its left side is not a derivation expression")
 
         # Variable to differentiate, this will also be the variable
         # of integration.
@@ -2859,15 +3003,12 @@ class IntegralEquation(Rule):
 
 
 class SummationEquation(Rule):
-    '''
-    a(n) = b(n) => Sum(n, lower, upper ,a(n)) = Sum(n, lower, upper, b(n))
-    '''
+    """Applies summation to both sides of equality.
 
-    def __init__(self, index_var: str, lower: Union[Expr, str], upper: Union[Expr, str]):
-        if isinstance(lower, str):
-            lower = parser.parse_expr(lower)
-        if isinstance(upper, str):
-            upper = parser.parse_expr(upper)
+    a(n) = b(n) => Sum(n, lower, upper, a(n)) = Sum(n, lower, upper, b(n))
+
+    """
+    def __init__(self, index_var: str, lower: Expr, upper: Expr):
         self.name = "SummationEquation"
         self.index_var = index_var
         self.lower = lower
@@ -2893,17 +3034,22 @@ class SummationEquation(Rule):
 
 
 class ChangeSummationIndex(Rule):
-    '''
-    sum(n, 1, oo, a(n)) => sum(n, 0, oo, a(n+1))
-    '''
+    """Change index of summation from 1 to 0.
 
-    def __init__(self, new_lower: Union[Expr, str]):
+    sum(n, 1, oo, a(n)) => sum(n, 0, oo, a(n+1))
+
+    """
+    def __init__(self, new_lower: Expr):
         self.name = "ChangeSummationIndex"
-        self.new_lower = new_lower if isinstance(new_lower, Expr) else parser.parse_expr(new_lower)
+        self.new_lower = new_lower
 
     def eval(self, e: Expr, ctx: Context):
         if not expr.is_summation(e):
-            return e
+            sum_list = e.get_all_summations()
+            if sum_list != []:
+                find_res = e.find_subexpr(sum_list[0])
+                return OnLocation(self, find_res[0]).eval(e, ctx)
+            raise RuleException("ChangeSummationIndex", f"{e} is not a summation")
         tmp = normalize(Var(e.index_var) + e.lower - self.new_lower, ctx)
         new_upper = normalize(e.upper + self.new_lower - e.lower, ctx) \
             if e.upper != POS_INF else POS_INF
@@ -2962,43 +3108,83 @@ class IntSumExchange(Rule):
     def __str__(self):
         return "exchange integral and sum"
 
-    # def test_converge(self, svar, sl, su, ivar, il, iu, body, ctx: Context):
-    #     if ctx.is_not_negative(body):
-    #         return True
-    #     if ctx.is_not_positive(body):
-    #         return True
-    #     if su != expr.POS_INF:
-    #         return True
+    def check_converge2(self, sum_expr: Summation, ctx: Context):
+        if not expr.is_summation(sum_expr):
+            assert False
 
-    #     abs_body = normalize(Fun("abs", body), ctx)
-    #     goal1 = Fun("converges", Summation(svar, sl, su, Integral(ivar, il, iu, abs_body)))
+        rule = Simplify()
+        def check(sum_expr, norm_identity):
+            nonlocal rule
+            # check converges(-sum_expr) and converges(sum_expr)
+            tmp1 = rule.eval(Fun("converges", sum_expr), ctx)
+            tmp2 = rule.eval(Fun("converges", -sum_expr), ctx)
+            return tmp1 == norm_identity or tmp2 == norm_identity
 
-    #     abs_int = normalize(Fun("abs", Integral(ivar, il, iu, body)), ctx)
-    #     goal2 = Fun("converges", Summation(svar, sl, su, abs_int))
+        for _, identity in ctx.get_all_subgoals().items():
+            # 1. converge subgoal: converges(SUM(...))
+            norm_identity = rule.eval(normalize(identity.expr, ctx), ctx)
+            flag =  check(sum_expr, norm_identity)
+            # SUM(n, 0, oo, abs(sum_body))
+            new_sum = Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Fun("abs", sum_expr.body))
+            flag = check(new_sum, norm_identity)
+            if not flag and expr.is_integral(sum_expr.body):
+                int_expr = sum_expr.body
+                # SUM(n, o, oo, INT x. abs(int_expr))
+                new_sum = Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Integral(int_expr.var, int_expr.lower, int_expr.upper, Fun("abs", int_expr.body)))
+                flag = check(new_sum, norm_identity)
+            # 2. constant subgoal: SUM(...) = constant
+            if not flag and expr.is_equals(identity.expr) and identity.rhs.is_constant():
+                norm_sum_expr1 = normalize(identity.lhs, ctx)
+                if norm_sum_expr1 == normalize(sum_expr, ctx):
+                    flag = True
+                elif norm_sum_expr1 == normalize(Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Fun("abs", sum_expr.body))):
+                    flag = True
+                elif expr.is_integral(sum_expr.body):
+                    int_expr = sum_expr.body
+                    if norm_sum_expr1 == normalize(Summation(sum_expr.index_var, sum_expr.lower, sum_expr.upper, Integral(int_expr.var, int_expr.lower, int_expr.upper, Fun('abs', int_expr.body)))):
+                        flag = True
+            if flag:
+                satisfied = True
+                for cond in identity.conds.data:
+                    if ctx.check_condition(cond):
+                        satisfied = False
+                if satisfied:
+                    return True
+        return False
 
-    #     for lemma in ctx.get_lemmas():
-    #         if normalize(lemma.expr, ctx) == normalize(goal1, ctx):
-    #             return True
-    #         if normalize(lemma.expr, ctx) == normalize(goal2, ctx):
-    #             return True
-    #     for _, subgoal in ctx.get_all_subgoals().items():
-    #         if normalize(subgoal.expr, ctx) == normalize(goal1, ctx):
-    #             return True
-    #         if normalize(subgoal.expr, ctx) == normalize(goal2, ctx):
-    #             return True
-    #     return False
 
     def eval(self, e: Expr, ctx: Context):
+        if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_summation(e)):
+            parts = e.find_subexpr_pred(
+                lambda e: expr.is_integral(e) or expr.is_indefinite_integral(e) or
+                          expr.is_summation(e), is_nested=False)
+            for sub_e, loc in parts:
+                e = OnLocation(self, loc).eval(e, ctx)
+            return e
+
         if expr.is_integral(e) and expr.is_summation(e.body):
-            ctx2 = body_conds(e, body_conds(e.body, ctx))
             s = e.body
-            # if self.test_converge(s.index_var, s.lower, s.upper, e.var, e.lower, e.upper, e.body.body, ctx2):
-            return Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            res = Summation(s.index_var, s.lower, s.upper, Integral(e.var, e.lower, e.upper, s.body))
+            if check_converge(res, ctx) or self.check_converge2(res, ctx):
+                return res
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven. You should add a convergence subgoal for it.")
+        if expr.is_indefinite_integral(e) and expr.is_summation(e.body):
+            s = e.body
+            res = Summation(s.index_var, s.lower, s.upper, IndefiniteIntegral(e.var, s.body, skolem_args=e.skolem_args))
+            if not expr.is_inf(e.body.upper) and not expr.is_neg_inf(e.body.lower):
+                return res
+            elif check_converge(res, ctx) or self.check_converge2(res, ctx) or self.check_converge2(-res, ctx):
+                return res
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {res} has not been proven. You should add a convergence subgoal for it.")
         elif expr.is_summation(e) and expr.is_integral(e.body):
-            ctx2 = body_conds(e, body_conds(e.body, ctx))
             i = e.body
-            # if self.test_converge(e.index_var, e.lower, e.upper, i.var, i.lower, i.upper, e.body.body, ctx2):
-            return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
+            tmp = Summation(e.index_var, e.lower, e.upper, Integral(i.var, i.lower, i.upper, e.body))
+            if check_converge(tmp, ctx) or self.check_converge2(tmp, ctx) or self.check_converge2(-tmp, ctx):
+                return Integral(i.var, i.lower, i.upper, Summation(e.index_var, e.lower, e.upper, i.body))
+            else:
+                raise RuleException("IntSumExchange", f"The convergence of {tmp} has not been proven. You should add a convergence subgoal for it.")
         return e
 
     def export(self):
@@ -3013,11 +3199,11 @@ def has_negative_coefficient(expr_obj: Expr, var_name: str) -> bool:
     例如：2-y 中 y 带负号，y+2 中 y 不带负号
     """
     from integral.expr import Op, Var
-    
+
     # 如果表达式就是变量本身，系数为正
     if expr.is_var(expr_obj) and expr_obj.name == var_name:
         return False
-    
+
     # 如果是加法 a + b
     if expr.is_op(expr_obj) and expr_obj.op == '+':
         for arg in expr_obj.args:
@@ -3027,7 +3213,7 @@ def has_negative_coefficient(expr_obj: Expr, var_name: str) -> bool:
                 if expr.is_var(arg.args[0]) and arg.args[0].name == var_name:
                     return True  # -var
         return has_negative_coefficient(expr_obj.args[0], var_name) or has_negative_coefficient(expr_obj.args[1], var_name)
-    
+
     # 如果是减法 a - b
     if expr.is_op(expr_obj) and expr_obj.op == '-' and len(expr_obj.args) == 2:
         lhs, rhs = expr_obj.args
@@ -3036,12 +3222,12 @@ def has_negative_coefficient(expr_obj: Expr, var_name: str) -> bool:
             return True
         if rhs.contains_var(var_name):
             return True  # 简化处理：只要在减号右侧，就认为是负的
-    
+
     # 如果是一元负号 -a
     if expr.is_uminus(expr_obj):
         if len(expr_obj.args) == 1 and expr.is_var(expr_obj.args[0]) and expr_obj.args[0].name == var_name:
             return True
-    
+
     # 默认情况
     return False
 
@@ -3056,7 +3242,7 @@ class IntExchange(Rule):
 
     def exchange_int(self, evar, el, eu, svar, sl, su, sb, ctx: Context) -> Expr:
         """交换积分次序的核心算法
-        
+
         参数:
             evar, svar: str - 外层和内层积分变量名
             el, eu: Expr - 外层积分上下限
@@ -3069,7 +3255,7 @@ class IntExchange(Rule):
         # 初始化不等式列表和边界点数组
         inequality_list = []
         bp = []
-        
+
         # 在函数入口统一处理类型：将字符串变量名转换为 Var 对象
         # 这样后续逻辑可以直接使用，避免到处调用 exprify
         evar_obj = Var(evar)  # 外层变量的 Var 对象
@@ -3092,7 +3278,7 @@ class IntExchange(Rule):
             if not solutions:
                 raise RuleException("IntExchange", f"Unable to solve {sl} = {svar} for {evar}")
             evar_solution = solutions[0]  # 取第一个解
-            
+
             # 判断原始下限表达式 sl 中 evar 的符号，而不是反解后的符号
             # 从 sl(evar) < svar 推导 evar 的约束
             if has_negative_coefficient(sl, evar):
@@ -3112,7 +3298,7 @@ class IntExchange(Rule):
             if not solutions:
                 raise RuleException("IntExchange", f"Unable to solve {su} = {svar} for {evar}")
             evar_solution = solutions[0]  # 取第一个解
-            
+
             # 判断原始上限表达式 su 中 evar 的符号，而不是反解后的符号
             # 从 svar < su(evar) 推导 evar 的约束
             if has_negative_coefficient(su, evar):
@@ -3242,14 +3428,14 @@ class IntExchange(Rule):
     def eval(self, e: Expr, ctx: Context):
         # Check if e is an integral
         if not expr.is_integral(e):
-            raise RuleException("IntExchange", 
+            raise RuleException("IntExchange",
                               "can only be applied to integrals, got: %s" % type(e).__name__)
-        
+
         # Check if it's a double integral
         if not expr.is_integral(e.body):
-            raise RuleException("IntExchange", 
+            raise RuleException("IntExchange",
                               "can only be applied to double integrals, got single integral: %s" % e)
-        
+
         # Now we have a double integral, proceed with the exchange
         ctx2 = body_conds(e, body_conds(e.body, ctx))
         s = e.body
@@ -3274,26 +3460,20 @@ class IntExchange(Rule):
 
 class VarSubsOfEquation(Rule):
     """Substitute variable for any expression in an equation.
-    """
 
-    def __init__(self, subst: Dict[str, Union[str, Expr]]):
+    """
+    def __init__(self, subst: dict[str, Expr]):
         self.name = "VarSubsOfEquation"
-        for i in range(len(subst)):
-            if isinstance(subst[i]['expr'], str):
-                if subst[i]['expr'] == "":
-                    subst[i]['expr'] = None
-                else:
-                    subst[i]['expr'] = parser.parse_expr(subst[i]['expr'])
-        self.subst = subst
+        self.subst = subst.copy()
 
     def __str__(self):
-        str_of_substs = ', '.join(item['var'] + " for " + str(item['expr']) for item in self.subst
-                                  if item['expr'] is not None)
+        str_of_substs = ', '.join(item['var'] + " for " + str(item['expr'])
+                                  for item in self.subst)
         return "substitute " + str_of_substs + " in equation"
 
     def export(self):
         latex_str_of_substs = ', '.join('\\(' + item['var'] + "\\) for \\(" + latex.convert_expr(item['expr']) + '\\)'
-                                        for item in self.subst if item['expr'] is not None)
+                                        for item in self.subst)
         json_substs = list()
         for item in self.subst:
             json_substs.append({'var': item['var'], 'expr': str(item['expr'])})
@@ -3307,8 +3487,7 @@ class VarSubsOfEquation(Rule):
     def eval(self, e: Expr, ctx: Context) -> Expr:
         if e.is_equals():
             for item in self.subst:
-                if item['expr'] is not None:
-                    e = e.subst(item['var'], item['expr'])
+                e = e.subst(item['var'], item['expr'])
             return poly.normal_const(e, ctx)
         else:
             return e
@@ -3367,9 +3546,7 @@ class DerivEquation(Rule):
 class SolveEquation(Rule):
     """Solve equation for the given expression."""
 
-    def __init__(self, solve_for: Union[Expr, str]):
-        if isinstance(solve_for, str):
-            solve_for = parser.parse_expr(solve_for)
+    def __init__(self, solve_for: Expr):
         self.solve_for = solve_for
         self.name = "SolveEquation"
 
@@ -3462,23 +3639,50 @@ class LimRewrite(Rule):
                 return self.target
         return e
 
+
+def get_rule_name(rule: Rule) -> str:
+    """Obtain name of rule."""
+    if isinstance(rule, OnSubterm):
+        return get_rule_name(rule.rule)
+    elif isinstance(rule, OnCount):
+        return get_rule_name(rule.rule)
+    else:
+        return type(rule).__name__
+
+def get_definitions(e:Expr, ctx:Context) -> List[str]:
+    subexprs = e.find_subexpr_pred(lambda t: expr.is_fun(t))
+    res = set()
+    for sube, loc in subexprs:
+        if expr.is_fun(sube):
+            for name, definition in ctx.get_definitions().items():
+                if definition.symbol == sube.func_name and definition.define_eq is not None:
+                    s = definition.symbol
+                    if definition.args != []:
+                        s = s + f"({', '.join(definition.args)})"
+                    if definition.conds.data != []:
+                        s = s + " for " + str(definition.conds)
+                    res.add(s)
+    return list(res)
+
+
+
 class ResidueTheorem(Rule):
     """Apply residue theorem.
     应用留数定理计算复积分
     围道积分值等于2πi乘以围道内极点的留数之和
     ∮ f(z) dz = 2πi * ∑(n(γ,z0) * Res(f,z0))
-    
+
     其中
     - n(γ,z0)是围道γ绕极点z0的绕数
     - Res(f,z0)是函数f在z0处的留数
-    
+
     Args:
         e: 输入表达式
         ctx: 上下文
-        
+
     Returns:
         计算结果
-        
+
     Raises:
         RuleException: 当应用留数定理出现错误时抛出异常
     """
@@ -3490,69 +3694,74 @@ class ResidueTheorem(Rule):
 
     def export(self):
         return {"name": "residue theorem"}
-    
+
     def _lookup_path_definition(self, path_ref: str, ctx: Context) -> CINTPath:
         """从上下文中查找路径定义
-        
+
         路径可以用define命令定义
-        
+
         Args:
             path_ref: 路径引用字符串，如 "C(t,1)"
             ctx: 上下文
-            
+
         Returns:
             CINTPath对象，如果找不到则返回None
         """
         from integral.expr import Fun, is_fun, CINTPath
         from integral.parser import parse_expr
-        
+
         # 解析路径引用（例如 "C(t,r)"）
         try:
             path_call = parse_expr(path_ref)
             if not is_fun(path_call):
                 return None
-                
+
             func_name = path_call.func_name
             args = path_call.args
-            
+
             # 在上下文中查找函数定义
-            for definition in ctx.get_definitions():
-                if (hasattr(definition.lhs, 'func_name') and 
-                    definition.lhs.func_name == func_name and
-                    len(definition.lhs.args) == len(args)):
-                    
+            for name, definition in ctx.get_definitions().items():
+                if (definition.symbol == func_name and
+                    len(definition.args) == len(args)):
+
                     # 应用参数替换
-                    path_def = definition.rhs
-                    
+                    path_def = definition.define_eq.rhs
+
                     # 确保path_def是CINTPath
                     if isinstance(path_def, CINTPath):
                         # 应用参数替换
                         new_path_expr = path_def.path_expr
                         new_start_expr = path_def.start_expr
                         new_end_expr = path_def.end_expr
-                        
-                        for param, arg in zip(definition.lhs.args, args):
-                            # 替换参数
-                            new_path_expr = new_path_expr.replace(param, arg)
-                            new_start_expr = new_start_expr.replace(param, arg)
-                            new_end_expr = new_end_expr.replace(param, arg)
-                        
+
+                        # 创建参数映射
+                        param_map = {}
+                        for param_name, arg in zip(definition.args, args):
+                            param_map[param_name] = arg
+
+                        # 替换参数（需要将参数名转换为Var对象）
+                        for param_name, arg in param_map.items():
+                            param_var = Var(param_name)
+                            new_path_expr = new_path_expr.replace(param_var, arg)
+                            new_start_expr = new_start_expr.replace(param_var, arg)
+                            new_end_expr = new_end_expr.replace(param_var, arg)
+
                         return CINTPath(path_def.var, new_path_expr, new_start_expr, new_end_expr)
-                    
+
         except Exception:
             pass
-        
-        return None
-    
 
-    
+        return None
+
+
+
     def eval(self, e: Expr, ctx: Context) -> Expr:
 
         # 检查输入是否是围道积分或包含围道积分的极限
         cintegral = None
         limit_var = None
         limit_value = None
-        
+
         if expr.is_cintegral(e):
             cintegral = e
         elif expr.is_limit(e) and expr.is_cintegral(e.body):
@@ -3562,25 +3771,25 @@ class ResidueTheorem(Rule):
             limit_value = e.lim
         else:
             raise RuleException("ResidueTheorem", "input is not a complex integral expression.")
-        
+
         # 创建极限信息字典，用于传递给需要的函数
         limit_info = {}
         if limit_var and limit_value:
             limit_info[limit_var] = limit_value
-        
+
         temp_ctx = ctx
-        
+
         # 使用找到的围道积分进行后续处理
         e = cintegral
 
         # 获取积分路径和被积函数
         paths = e.paths
         f = e.body
-        
+
         # 验证路径类型
         if not paths:
             raise RuleException("ResidueTheorem", "No contour path provided")
-        
+
         # 转换所有路径为 CINTPath 对象
         resolved_paths = []
         for path in paths:
@@ -3591,53 +3800,53 @@ class ResidueTheorem(Rule):
                 # 字符串引用，从上下文中查找定义
                 path_obj = self._lookup_path_definition(path, temp_ctx)
                 if path_obj is None:
-                    raise RuleException("ResidueTheorem", 
+                    raise RuleException("ResidueTheorem",
                         f"Path definition '{path}' not found in context")
                 resolved_paths.append(path_obj)
             else:
                 # 其他类型，报错
-                raise RuleException("ResidueTheorem", 
+                raise RuleException("ResidueTheorem",
                     f"Invalid path type: {type(path).__name__}, expected CINTPath or string reference")
-        
+
         # 使用解析后的路径列表
         paths = resolved_paths
-        
+
         # 验证围道闭合性
         # 检查围道是否闭合（单路径或多路径）
         if not is_closed_contour(paths):
-            raise RuleException("ResidueTheorem", 
+            raise RuleException("ResidueTheorem",
                 "Contour is not closed: paths do not form a closed loop")
-        
+
         # 寻找围道内部的极点
         poles = find_poles_inside_contour(f, e.var, paths, temp_ctx, limit_info)
-        
+
         # 验证所有极点都在围道内
         if not poles:
             return Const(0)
-        
+
         # 检查是否有极点的绕数为0（这意味着极点不在围道内）
         poles_outside = [(pole, order, wind_num) for pole, order, wind_num in poles if wind_num == 0]
         if poles_outside:
             pole_names = [str(pole) for pole, _, _ in poles_outside]
             raise RuleException("ResidueTheorem", f"Poles {', '.join(pole_names)} are outside the contour, cannot apply residue theorem")
-            
+
         # 计算每个极点的留数，并乘以其绕数，然后求和
         result = Const(0)
         for pole, order, wind_num in poles:
             # 计算留数，使用从 find_poles 获取的实际阶数
             # 对于简单极点(order=1): lim(z→pole)[f(z)*(z-pole)]
             # 对于高阶极点(order>1): 使用导数公式
-            
+
             # 使用围道积分的变量名和实际极点阶数进行留数计算
             residue = normalize(expr.compute_residue(f, pole, order, e.var), temp_ctx)
-            
+
             # 计算 2πi * n(极点,围道) * Res(f,极点)
             term = normalize(Op("*", Const(wind_num), residue), temp_ctx)
             result = normalize(Op("+", result, term), temp_ctx)
-            
+
         # 乘以 2πi 系数
         result = normalize(Op("*", Op("*", Const(2), Fun("pi")), Op("*", Fun("i"), result)), temp_ctx)
-            
+
         return result
 
 # 添加全局缓存以提高性能
@@ -3646,30 +3855,30 @@ _winding_cache = {}
 
 def find_poles_inside_contour(func: Expr, var: str, paths: List[Union[CINTPath]], ctx: Context, limit_info: dict = None) -> List[Tuple[Expr, int, int]]:
     """查找位于闭合围道内部的极点及其阶数
-    
+
     检查点是否在闭合围道内部
     步骤：
     1. 查找所有极点及其阶数
     2. 计算每个极点的绕数
     3. 返回绕数非零的极点（在围道内）
-    
+
     Args:
         func: 复变函数
         var: 变量名称
         paths: 闭合围道路径列表（已展开的 CINTPath 对象）
         ctx: 上下文
         limit_info: 极限信息字典
-        
+
     Returns:
         List[Tuple[Expr, int, int]]: 围道内极点列表，每个元素为(极点, 阶数, 绕数)的元组
     """
     from integral.expr import find_poles
-    
+
     # 检查围道是否闭合
     is_closed = is_closed_contour(paths)
     if not is_closed:
         return []
-    
+
     # 使用缓存查找极点（包含阶数）
     cache_key = (hash(func), var)
     if cache_key in _poles_cache:
@@ -3678,40 +3887,40 @@ def find_poles_inside_contour(func: Expr, var: str, paths: List[Union[CINTPath]]
         # 查找函数的所有极点及其阶数
         poles_with_order = find_poles(var, func, ctx)
         _poles_cache[cache_key] = poles_with_order
-    
+
     # 检查每个极点是否在围道内部
     result = []
     for pole, order in poles_with_order:
         wind_num = winding_number(pole, paths, ctx, limit_info if limit_info else {})
         if wind_num != 0:
             result.append((pole, order, wind_num))
-    
+
     return result
 
 def compute_path_endpoints(path: CINTPath, ctx: Context) -> tuple[Expr, Expr]:
     """计算路径的起点和终点表达式
-    
+
     Args:
         path: 参数化路径
         ctx: 上下文
-        
+
     Returns:
         (start_point, end_point): 起点和终点的表达式
     """
     from integral.poly import normalize
-    
+
     # 计算起点
     try:
         start_point = normalize(path.path_expr.subst(path.var, path.start_expr), ctx)
     except:
         start_point = path.path_expr.subst(path.var, path.start_expr)
-    
+
     # 计算终点
     try:
         end_point = normalize(path.path_expr.subst(path.var, path.end_expr), ctx)
     except:
         end_point = path.path_expr.subst(path.var, path.end_expr)
-    
+
     return start_point, end_point
 
 
@@ -3721,7 +3930,7 @@ def is_closed_contour(paths: List[Union[CINTPath]]) -> bool:
     对于单一路径，检查其是否自然封闭（如完整的圆）。
     对于多条路径组成的围道，验证它们是否首尾相连形成闭合回路。
 
-    
+
     Args:
         paths: 路径列表(CINTPath)
 
@@ -3787,10 +3996,10 @@ def are_equal(expr1, expr2):
         from decimal import Decimal
         expr1_with_pi = expr1.subst('pi', Const(Decimal(str(math.pi))))
         expr2_with_pi = expr2.subst('pi', Const(Decimal(str(math.pi))))
-        
+
         val1 = expr.eval_expr(expr1_with_pi)
         val2 = expr.eval_expr(expr2_with_pi)
-        
+
         # 处理复数比较
         if isinstance(val1, complex) and isinstance(val2, complex):
             return abs(val1 - val2) < 1e-9
@@ -3806,127 +4015,127 @@ def are_equal(expr1, expr2):
 
 def winding_number(point: Expr, paths: List[Union[CINTPath]], ctx: Context, limit_info: dict = None) -> int:
     """计算绕数
-    
+
     使用Cauchy指数计算绕数:n(γ,z0) = -Indp(γ,z0)/2
     Indp(γ,z0)是路径γ绕点z0的Cauchy指数
-    
+
     n(γ,z0)表示闭合路径围绕点z0时旋转的整数圈数，正值表示逆时针方向
     负值表示顺时针方向，0表示路径不包含该点
     计算"绕数"为复变函数的基础
-    
+
     Args:
         point: 要计算绕数的点z
         paths: 闭合围道路径列表（已展开的 CINTPath 对象）
         ctx: 上下文
         limit_info: 极限信息字典，如 {'r': POS_INF}
-        
+
     Returns:
         int: 绕数值，表示闭合路径围绕点旋转的整数圈数
     """
     if limit_info is None:
         limit_info = {}
-    
+
     # 创建缓存键
     paths_hash = tuple(hash(p) if isinstance(p, CINTPath) else hash(str(p)) for p in paths)
     limit_hash = tuple(sorted((k, hash(v)) for k, v in limit_info.items()))
     cache_key = (hash(point), paths_hash, limit_hash)
-    
+
     # 检查缓存
     if cache_key in _winding_cache:
         return _winding_cache[cache_key]
-        
+
     # 检查围道是否闭合，不闭合则返回0
     if not is_closed_contour(paths):
         _winding_cache[cache_key] = 0
         return 0
-    
+
     # 收集所有路径的所有跳变值
     all_jump_values = []
-    
+
     for path in paths:
         # 获取每条路径的跳变值列表（不除以2）
         jump_vals = compute_jump_values(path, point, ctx, limit_info)
         all_jump_values.extend(jump_vals)
-    
+
     # 所有跳变值求和后除以2得到绕数
     total_jump = sum(all_jump_values)
     winding = total_jump / 2.0
-    
+
     # 对于闭合回路，绕数应该是整数，四舍五入
     result = int(round(winding))
-    
+
     # 缓存结果
     _winding_cache[cache_key] = result
-    
+
     return result
 
 def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_info: dict = None) -> list[float]:
     """计算路径的跳变值列表（不除以2）
-    
+
     Args:
         path: CINTPath参数化路径对象 γ(t)
         point: 点 z
         ctx: 上下文
         limit_info: 极限信息字典，如 {'r': POS_INF}
-        
+
     Returns:
         跳变值列表
     """
     from integral.poly import normalize
-    
+
     if limit_info is None:
         limit_info = {}
-    
+
     # 1. 展开路径表达式并提取实部虚部
     path_expr = ExpandPolynomial().eval(expand_euler(path.path_expr, ctx), ctx)
     path_expr = normalize(path_expr, ctx)
-    
+
     # 2. 提取 γ(t) 的实部和虚部（含参数 t）
     gamma_re, gamma_im = _extract_complex_parts(path_expr, ctx)
     gamma_re = normalize(gamma_re, ctx)
     gamma_im = normalize(gamma_im, ctx)
     if gamma_re is None or gamma_im is None:
         return []
-    
+
     # 3. 提取极点 z₀ 的实部和虚部（常数）
     point_re, point_im = _extract_complex_parts(point, ctx)
     point_re = normalize(point_re, ctx)
     point_im = normalize(point_im, ctx)
     if point_re is None or point_im is None:
         return []
-    
+
     # 4. 构造 f(t) = Im(γ(t)-z₀)/Re(γ(t)-z₀)
     # 已经得到 diff_re 和 diff_im
     diff_re = Op("-", gamma_re, point_re) if point_re != Const(0) else gamma_re
     diff_im = Op("-", gamma_im, point_im) if point_im != Const(0) else gamma_im
-    
+
     # 标准化 diff_re 和 diff_im
     diff_re = normalize(diff_re, ctx)
     diff_im = normalize(diff_im, ctx)
-    
+
     # 5. 获取参数范围
     start_expr = path.start_expr
     end_expr = path.end_expr
-    
+
     # 6. 寻找跳跃点：符号求解 diff_re = 0 且验证 Re(γ(sol)) = 0 的点
     jump_points = find_jump_points(diff_re, path.var, start_expr, end_expr, ctx)
-    
+
     # 收集所有跳变值
     jump_values = []
-    
+
     # 对每个跳跃点计算跳变值
     for jump_pt in jump_points:
         # 将跳跃点带入路径参数方程
         res = path.path_expr.subst(path.var, jump_pt)
-        
+
         # 替换未绑定变量为其极限值（使用limit_info）
         for var_name, var_limit in limit_info.items():
             res = res.subst(var_name, var_limit)
-        
+
         # 化简表达式
         # 先normalize（包括计算oo*0等）
         res = normalize(res, ctx)
-        
+
         # 处理：coeff * exp(i * theta) 形式（coeff可以是任意常数或oo）
         # 这种情况下_extract_complex_parts无法正确处理，需要手动提取虚部
         if isinstance(res, Op) and res.op == '*' and len(res.args) == 2:
@@ -3934,7 +4143,7 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
             # 检查是否是 coeff * exp(i*theta) 形式（coeff可以是常数或oo）
             if isinstance(exp_part, Fun) and exp_part.func_name == 'exp':
                 exp_arg = exp_part.args[0]  # i*theta
-                
+
                 # 检查exp_arg中是否包含i
                 def contains_i_factor(e):
                     if isinstance(e, Fun) and e.func_name == 'i':
@@ -3942,17 +4151,17 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
                     if isinstance(e, Op) and e.op in ['*', '/']:
                         return any(contains_i_factor(arg) for arg in e.args)
                     return False
-                
+
                 if contains_i_factor(exp_arg):
                     # coeff * exp(i*theta) = coeff * (cos(theta) + i*sin(theta))
                     # 展开exp得到cos和sin
                     exp_expanded = expand_euler(exp_part, ctx)
-                    
+
                     # 如果展开失败，尝试手动构建
                     if exp_expanded == exp_part:
                         # expand_euler没有展开，简化假设：
                         # coeff * exp(i*theta) 的虚部约等于 coeff（当sin(theta)≈1时）
-                        res_re = Const(0) 
+                        res_re = Const(0)
                         res_im = coeff
                     else:
                         # 展开成功，提取虚部
@@ -3966,47 +4175,47 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
                 res_re, res_im = _extract_complex_parts(res, ctx)
         else:
             res_re, res_im = _extract_complex_parts(res, ctx)
-        
+
         # 替换虚部中可能的未绑定变量
         for var_name, var_limit in limit_info.items():
             res_re = res_re.subst(var_name, var_limit) if res_re else res_re
             res_im = res_im.subst(var_name, var_limit) if res_im else res_im
-        
+
         # normalize
         res_re = normalize(res_re, ctx) if res_re else Const(0)
         res_im = normalize(res_im, ctx) if res_im else Const(0)
-        
+
         # 获取路径方向
         direction = get_contour_direction(path, ctx, start_expr, end_expr, limit_info)
-        
+
         # 比较res的虚部和极点的虚部
         res_im_val = normalize(res_im, ctx)
         point_im_val = normalize(point_im, ctx)
-        
+
         # 替换虚部中的未绑定变量为极限值
         for var_name, var_limit in limit_info.items():
             res_im_val = res_im_val.subst(var_name, var_limit)
             point_im_val = point_im_val.subst(var_name, var_limit)
-        
+
         # 再次normalize
         res_im_val = normalize(res_im_val, ctx)
         point_im_val = normalize(point_im_val, ctx)
-        
+
         # 计算虚部差值
         im_diff = Op("-", res_im_val, point_im_val)
         im_diff = normalize(im_diff, ctx)
-        
+
         # 判断虚部大小关系并计算跳变值
         jump_val = compute_jump_value(im_diff, direction, ctx)
         jump_values.append(jump_val)
-    
+
     return jump_values
 
 def compute_cauchy_index(path: Union[CINTPath], point: Expr, ctx: Context) -> float:
     """计算路径绕点的绕数（使用跳变法/Cauchy指数法）
-    
+
     注意：开放路径的绕数可能是非整数（如0.5），只有闭合路径的绕数才是整数
-    
+
     理论基础（基于形式化证明）：
     1. 构造辅助函数：f(t) = Im(γ(t)-z) / Re(γ(t)-z)
     2. 找到跳变点：Re(γ(t)-z) = 0 且 Im(γ(t)-z) ≠ 0 的点
@@ -4015,24 +4224,24 @@ def compute_cauchy_index(path: Union[CINTPath], point: Expr, ctx: Context) -> fl
        - jump₋(f,x)：左极限 lim(u→x⁻) f(u) = ±∞ → ±1/2，否则为0
     4. 柯西指数：Indp(γ,z) = Σjump₊(f,x) - Σjump₋(f,x)
     5. 绕数公式：n(γ,z) = -Indp(γ,z)/2
-    
+
     Args:
         path: CINTPath参数化路径对象 γ(t)
         point: 点 z
         ctx: 上下文
-        
+
     Returns:
         绕数（整数）
     """
     # 获取跳变值列表
     jump_values = compute_jump_values(path, point, ctx)
-    
+
     # 求和所有跳变值
     total_jump = sum(jump_values)
-    
+
     # 除以2得到绕数
     cauchy_index = total_jump / 2.0
-    
+
     # 返回绕数（可能是非整数，对于开放路径）
     return cauchy_index
 
@@ -4040,16 +4249,16 @@ def compute_cauchy_index(path: Union[CINTPath], point: Expr, ctx: Context) -> fl
 
 def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: Context) -> list[float]:
     """寻找跳跃点：符号求解分母为零的点
-    
+
     跳跃点定义：diff_re = 0 且 diff_im ≠ 0 的孤立点
-    
+
     验证方法：
     1. 求解 diff_re = 0 得到候选点 sol
     2. 将 sol 带入路径参数方程 γ(t)
     3. 使用 expand_euler 展开欧拉公式
     4. 使用 normalize 化简
     5. 验证 Re(γ(sol) - z₀) = 0
-    
+
     Args:
         diff_re: 分母表达式 Re(γ(t)-z₀)
         diff_im: 分子表达式 Im(γ(t)-z₀)
@@ -4058,35 +4267,35 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
         t_start: 参数起始值
         t_end: 参数结束值
         ctx: 上下文
-        
+
     Returns:
         跳跃点列表
     """
     from integral.solve import solve_equation
     from integral.poly import normalize
-    
+
     jump_points = []
-    
+
     # 验证函数：将 sol 带入 diff_re 并验证是否为0
     def verify_jump_point(sol_val: Expr) -> bool:
         """验证 sol 处 Re(γ(t) - z0) 是否为0
-        
+
         策略：优先符号判断，失败则数值验证兜底
         """
         try:
             # 1. 将 sol 带入 diff_re
             diff_re_at_sol = diff_re.subst(var, sol_val)
-            
+
             # 2. 展开欧拉公式（如果有）
             diff_re_expanded = expand_euler(diff_re_at_sol, ctx)
-            
+
             # 3. normalize 化简
             diff_re_normalized = normalize(diff_re_expanded, ctx)
-            
+
             # 4. 符号判断是否为0
             if diff_re_normalized == Const(0):
                 return True
-            
+
             # 5. 符号判断失败，尝试数值验证兜底
             import math
             from decimal import Decimal
@@ -4095,7 +4304,7 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
             return abs(val) < 1e-6
         except:
             return False
-    
+
     # 1. 符号求解 diff_re = 0
     symbolic_solved = False
     try:
@@ -4124,27 +4333,27 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
         test_points = []
         t_start_val = float(expr.eval_expr(t_start))
         t_end_val = float(expr.eval_expr(t_end))
-        
+
         # 确定区间的最小值和最大值
         t_min = min(t_start_val, t_end_val)
         t_max = max(t_start_val, t_end_val)
-        
+
         # 生成测试点：在区间内，步长0.5和1.0
         t = t_min + 0.5
         while t <= t_max + 0.01:  # 稍微超出以包含边界
             test_points.append(t)
             t += 0.5
-        
+
         # 同时测试整数点附近
         for i in range(int(t_min) - 1, int(t_max) + 2):
             for offset in [0, 0.25, 0.5, 0.75, 1.0]:
                 t_test = i + offset
                 if t_min - 0.01 <= t_test <= t_max + 0.01:
                     test_points.append(t_test)
-        
+
         # 去重并排序
         test_points = sorted(set(test_points))
-        
+
         # 对每个测试点进行验证
         for t_test in test_points:
             # 使用新的验证方法（传入 Const 类型）
@@ -4156,7 +4365,7 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
                 if not any(abs(t_test - existing) < 0.01 for existing in existing_floats):
                     jump_points.append(t_test_expr)
                     symbolic_solved = True
-    
+
     # 去重并排序（需要先转为数值才能排序）
     jump_points_floats = [(float(expr.eval_expr(jp)) if isinstance(jp, Expr) else jp, jp) for jp in jump_points]
     jump_points_floats = sorted(set(jump_points_floats), key=lambda x: x[0])
@@ -4166,7 +4375,7 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
 # 用欧拉公式展开路径表达式：exp(i*x) → cos(x) + i*sin(x)
 def expand_euler(e: Expr, ctx: Context) -> Expr:
     """递归展开 exp(±i*θ) 为 cos(θ) ± i*sin(θ)
-    
+
     增强版本，支持任意形式的虚数指数：
     - exp(i) → cos(1) + i*sin(1)
     - exp(i*t) → cos(t) + i*sin(t)
@@ -4179,7 +4388,7 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
     """
     if isinstance(e, Fun) and e.func_name == 'exp' and len(e.args) == 1:
         arg = e.args[0]
-        
+
         # 检查是否包含虚数单位 i（递归检查所有子表达式）
         def contains_i(expr: Expr) -> bool:
             if isinstance(expr, Fun) and expr.func_name == 'i':
@@ -4187,13 +4396,13 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
             if isinstance(expr, Op):
                 return any(contains_i(a) for a in expr.args)
             return False
-        
+
         if not contains_i(arg):
             return e  # 不包含 i，是实数指数，保持原样
-        
+
         # 先对arg进行normalize
         arg_normalized = normalize(arg, ctx)
-        
+
         # 辅助函数：扁平化乘法表达式
         def flatten_mult(expr: Expr) -> list[Expr]:
             """将嵌套的乘法表达式扁平化为因子列表"""
@@ -4204,20 +4413,20 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                 return result
             else:
                 return [expr]
-        
+
         # 提取实部和虚部的辅助函数（简化版，专门用于exp参数）
         def extract_parts(expr: Expr) -> tuple[Expr, Expr]:
             """提取 a + i*b 形式中的 a 和 b"""
             # 处理纯虚数：i, -i, i*theta, -i*theta, (i*a)/b 等
             if isinstance(expr, Fun) and expr.func_name == 'i':
                 return (Const(0), Const(1))
-            
+
             # 一元负号
             if isinstance(expr, Op) and expr.op == '-' and len(expr.args) == 1:
                 re, im = extract_parts(expr.args[0])
                 return (Op('-', re) if re != Const(0) else Const(0),
                         Op('-', im) if im != Const(0) else Const(0))
-            
+
             # 加法：a + i*b
             if isinstance(expr, Op) and expr.op == '+':
                 # 递归分离各项
@@ -4230,7 +4439,7 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                     if im != Const(0):
                         imag_sum = im if imag_sum == Const(0) else Op('+', imag_sum, im)
                 return (real_sum, imag_sum)
-            
+
             # 减法：a - i*b
             if isinstance(expr, Op) and expr.op == '-' and len(expr.args) == 2:
                 re_left, im_left = extract_parts(expr.args[0])
@@ -4238,18 +4447,18 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                 real_part = Op('-', re_left, re_right) if re_right != Const(0) else re_left
                 imag_part = Op('-', im_left, im_right) if im_right != Const(0) else im_left
                 return (real_part, imag_part)
-            
+
             # 乘法或除法：检查是否是 i*theta 或 theta*i 或 (i*theta)/b 等形式
             if contains_i(expr):
                 # 尝试提取 theta（从 i*theta 形式）
                 # 使用更通用的方法：将表达式视为 i * (expr/i)
                 # 这里我们直接检查表达式结构
-                
+
                 # 对于乘法：需要扁平化以处理嵌套的乘法
                 if isinstance(expr, Op) and expr.op == '*':
                     # 扁平化乘法表达式
                     factors = flatten_mult(expr)
-                    
+
                     i_found = False
                     other_terms = []
                     for factor in factors:
@@ -4257,7 +4466,7 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                             i_found = True
                         else:
                             other_terms.append(factor)
-                    
+
                     if i_found:
                         if len(other_terms) == 0:
                             return (Const(0), Const(1))
@@ -4268,7 +4477,7 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                             for t in other_terms[1:]:
                                 theta = Op('*', theta, t)
                             return (Const(0), theta)
-                
+
                 # 对于除法：(i*a)/b 或 i/b
                 if isinstance(expr, Op) and expr.op == '/':
                     numerator, denominator = expr.args
@@ -4276,26 +4485,26 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
                     if im_num != Const(0):
                         # 虚部除以分母
                         return (Const(0), Op('/', im_num, denominator))
-            
+
             # 如果不包含i，则全部是实部
             return (expr, Const(0))
-        
+
         real_part, imag_part = extract_parts(arg_normalized)
-        
+
         # 根据实部和虚部生成展开式
         if real_part != Const(0) and imag_part != Const(0):
             # exp(a + i*b) = exp(a) * [cos(b) + i*sin(b)]
             exp_real = Fun('exp', real_part)
-            euler_part = Op('+', Fun('cos', imag_part), 
+            euler_part = Op('+', Fun('cos', imag_part),
                           Op('*', Fun('i'), Fun('sin', imag_part)))
             return Op('*', exp_real, euler_part)
         elif imag_part != Const(0):
             # 纯虚数指数：exp(i*θ) = cos(θ) + i*sin(θ)
-            return Op('+', Fun('cos', imag_part), 
+            return Op('+', Fun('cos', imag_part),
                         Op('*', Fun('i'), Fun('sin', imag_part)))
         # 如果只有实部（理论上不应该到这里，因为前面检查了contains_i）
         # 保持原样
-    
+
     # 递归处理子表达式
     if isinstance(e, Op):
         return Op(e.op, *[expand_euler(a, ctx) for a in e.args])
@@ -4305,18 +4514,18 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
 
 def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
     """提取复数的实部和虚部
-    
+
     处理路径参数方程的两种形式：
     1. 圆弧：a +/- bi + r*exp(i*pi*t) 或 a +/- bi + r*exp(i*pi*(1-t))
     2. 直线：a + b*i + r*(1-2*t)*i 或 a + b*i + r*(1-2*t)
-    
+
     流程：
     1. 如果存在exp(i*...)，应用欧拉公式展开为cos+i*sin，并对三角函数参数应用ExpandPolynomial
     2. 如果没有exp（直线），直接对整个表达式应用ExpandPolynomial
     3. 对整个表达式应用normalize化简
     4. 提取实部和虚部
     """
-    
+
     # 辅助函数：检查表达式是否包含i
     def contains_i(e: Expr) -> bool:
         """检查表达式是否包含虚数单位i"""
@@ -4325,7 +4534,7 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
         elif isinstance(e, Op):
             return any(contains_i(arg) for arg in e.args)
         return False
-    
+
     # 辅助函数：检查是否包含exp函数
     def has_exp(e: Expr) -> bool:
         """检查表达式是否包含exp函数"""
@@ -4334,7 +4543,7 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
         elif isinstance(e, Op):
             return any(has_exp(arg) for arg in e.args)
         return False
-    
+
     # 辅助函数：查找并展开exp函数
     def expand_exp(e: Expr) -> Expr:
         """查找exp函数，如果参数包含i，应用欧拉公式展开"""
@@ -4349,19 +4558,19 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
                     # 对theta应用多项式展开
                     expander = ExpandPolynomial()
                     theta_expanded = expander.eval(theta, ctx)
-                    
+
                     # 构建 cos(theta) + i*sin(theta)
                     cos_part = Fun('cos', theta_expanded)
                     sin_part = Fun('sin', theta_expanded)
                     return Op('+', cos_part, Op('*', Fun('i'), sin_part))
-        
+
         # 递归处理Op类型
         if isinstance(e, Op):
             new_args = [expand_exp(arg) for arg in e.args]
             return Op(e.op, *new_args)
-        
+
         return e
-    
+
     # 辅助函数：扁平化乘法表达式
     def flatten_mult(e: Expr) -> list:
         """将嵌套的乘法表达式扁平化为因子列表"""
@@ -4372,11 +4581,11 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
             return result
         else:
             return [e]
-    
+
     # 辅助函数：从i*theta中提取theta
     def extract_theta_from_i_mult(e: Expr) -> Expr:
         """从 i*theta 或 theta*i 或 -(i*theta) 等形式中提取theta
-        
+
         增强版本，支持：
         - i -> theta=1
         - i*a -> theta=a
@@ -4391,14 +4600,14 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
         # 如果直接是i，theta=1
         if isinstance(e, Fun) and e.func_name == 'i':
             return Const(1)
-        
+
         # 处理一元负号: -(i*theta) -> theta' = -theta
         if isinstance(e, Op) and e.op == '-' and len(e.args) == 1:
             inner_theta = extract_theta_from_i_mult(e.args[0])
             if inner_theta is not None:
                 # 返回 -theta
                 return Op('-', inner_theta)
-        
+
         # 处理除法: (i*a)/b 或 复杂形式
         if isinstance(e, Op) and e.op == '/':
             numerator, denominator = e.args
@@ -4409,16 +4618,16 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
                 return Op('/', theta_num, denominator)
             # 如果分子不含i，检查是否是 a/(i*b) 形式（这种情况下theta=-i*a/b，但这不是标准形式）
             return None
-        
+
         # 处理乘法
         if isinstance(e, Op) and e.op == '*':
             # 扁平化乘法表达式
             factors = flatten_mult(e)
-            
+
             # 查找i因子
             i_factors = [f for f in factors if isinstance(f, Fun) and f.func_name == 'i']
             other_factors = [f for f in factors if not (isinstance(f, Fun) and f.func_name == 'i')]
-            
+
             if len(i_factors) == 1:
                 # 找到i，其他因子组成theta
                 if len(other_factors) == 0:
@@ -4434,14 +4643,14 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
             elif len(i_factors) > 1:
                 # 多个i因子，这通常意味着 i*i = -1，但这里我们只处理单个i的情况
                 return None
-        
+
         # 处理加法/减法中可能包含i的情况（如 a+i*b 形式，这不是纯虚数指数）
         # 这种情况返回None，让调用者处理
         return None
-    
+
     # 第一步：检查是否包含exp并展开
     has_exp_func = has_exp(z)
-    
+
     if has_exp_func:
         # 圆弧路径：展开exp（内部已对三角函数参数应用多项式展开）
         z_expanded = expand_exp(z)
@@ -4449,37 +4658,37 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
         # 直线路径：直接对整个表达式应用多项式展开
         expander = ExpandPolynomial()
         z_expanded = expander.eval(z, ctx)
-    
+
     # 第二步：对整个表达式应用normalize化简
     z_normalized = normalize(z_expanded, ctx)
-    
+
     # 第三步：从化简后的表达式提取实部和虚部
     def extract_re_im(expr: Expr) -> tuple[Expr, Expr]:
         """从展开后的表达式提取实部和虚部"""
-        
+
         # 1. 纯虚数 i
         if isinstance(expr, Fun) and expr.func_name == 'i':
             return (Const(0), Const(1))
-        
+
         # 2. 一元负号
         if isinstance(expr, Op) and expr.op == '-' and len(expr.args) == 1:
             inner = expr.args[0]
             if isinstance(inner, Fun) and inner.func_name == 'i':
                 return (Const(0), Const(-1))
             re, im = extract_re_im(inner)
-            return (Op('-', re) if re != Const(0) else Const(0), 
+            return (Op('-', re) if re != Const(0) else Const(0),
                     Op('-', im) if im != Const(0) else Const(0))
-        
+
         # 3. 乘法：处理 c*(cos+i*sin) 或 c*i 形式
         if isinstance(expr, Op) and expr.op == '*':
             # 扁平化乘法
             factors = flatten_mult(expr)
-            
+
             # 分离实数和复数因子
             i_factors = [f for f in factors if isinstance(f, Fun) and f.func_name == 'i']
             complex_factors = [f for f in factors if contains_i(f) and not (isinstance(f, Fun) and f.func_name == 'i')]
             real_factors = [f for f in factors if not contains_i(f)]
-            
+
             if i_factors and not complex_factors:
                 # 简单的 c*i 形式
                 if len(real_factors) == 0:
@@ -4488,35 +4697,35 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
                     return (Const(0), real_factors[0])
                 else:
                     return (Const(0), Op('*', *real_factors))
-            
+
             if complex_factors:
                 # 合并复数因子
                 if len(complex_factors) == 1:
                     complex_part = complex_factors[0]
                 else:
                     complex_part = Op('*', *complex_factors)
-                
+
                 # 递归提取复数部分的实虚部
                 re_c, im_c = extract_re_im(complex_part)
-                
+
                 # 乘以实数因子
                 if real_factors:
                     if len(real_factors) == 1:
                         real_coeff = real_factors[0]
                     else:
                         real_coeff = Op('*', *real_factors)
-                    
+
                     re_part = Op('*', real_coeff, re_c) if re_c != Const(0) else Const(0)
                     im_part = Op('*', real_coeff, im_c) if im_c != Const(0) else Const(0)
                     return (re_part, im_part)
                 else:
                     return (re_c, im_c)
-        
+
         # 4. 除法：处理 i/a, (a+i*b)/c 等形式
         if isinstance(expr, Op) and expr.op == '/':
             numerator, denominator = expr.args
             re_num, im_num = extract_re_im(numerator)
-            
+
             # 如果分母也包含虚数，需要复数除法 (a+bi)/(c+di) = [(ac+bd) + (bc-ad)i]/(c²+d²)
             if contains_i(denominator):
                 re_den, im_den = extract_re_im(denominator)
@@ -4531,26 +4740,26 @@ def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
                 re_result = Op('/', re_num, denominator) if re_num != Const(0) else Const(0)
                 im_result = Op('/', im_num, denominator) if im_num != Const(0) else Const(0)
                 return (re_result, im_result)
-        
+
         # 5. 加法或减法
         if isinstance(expr, Op) and expr.op in ['+', '-'] and len(expr.args) == 2:
             left, right = expr.args
-            
+
             re_left, im_left = extract_re_im(left)
             re_right, im_right = extract_re_im(right)
-            
+
             if expr.op == '+':
                 re_total = Op('+', re_left, re_right) if re_left != Const(0) or re_right != Const(0) else Const(0)
                 im_total = Op('+', im_left, im_right) if im_left != Const(0) or im_right != Const(0) else Const(0)
             else:  # '-'
                 re_total = Op('-', re_left, re_right) if re_left != Const(0) or re_right != Const(0) else Const(0)
                 im_total = Op('-', im_left, im_right) if im_left != Const(0) or im_right != Const(0) else Const(0)
-            
+
             return (re_total, im_total)
-        
+
         # 6. 纯实数（默认情况）
         return (expr, Const(0))
-    
+
     return extract_re_im(z_normalized)
 
 
@@ -4558,12 +4767,12 @@ def get_contour_direction(path: CINTPath, ctx: Context, start: Expr, end: Expr, 
     """获取围道方向"""
     if limit_info is None:
         limit_info = {}
-        
+
     # 检查参数变化方向
     curr = normalize(expand_euler(path.path_expr, ctx), ctx)
     path_start = normalize(ExpandPolynomial().eval(curr.subst(path.var, start), ctx), ctx)
     path_end = normalize(ExpandPolynomial().eval(curr.subst(path.var, end), ctx), ctx)
-    
+
     # 替换未绑定变量为其极限值（使用limit_info）
     for var_name, var_limit in limit_info.items():
         path_start = path_start.subst(var_name, var_limit)
@@ -4576,11 +4785,11 @@ def get_contour_direction(path: CINTPath, ctx: Context, start: Expr, end: Expr, 
     try:
         import math
         from decimal import Decimal
-        
+
         # 替换pi和处理POS_INF/NEG_INF
         start_re_expr = start_re.subst('pi', Const(Decimal(str(math.pi))))
         end_re_expr = end_re.subst('pi', Const(Decimal(str(math.pi))))
-        
+
         # 处理POS_INF和NEG_INF
         if start_re == expr.POS_INF:
             start_re_val = float('inf')
@@ -4588,36 +4797,36 @@ def get_contour_direction(path: CINTPath, ctx: Context, start: Expr, end: Expr, 
             start_re_val = float('-inf')
         else:
             start_re_val = expr.eval_expr(start_re_expr)
-            
+
         if end_re == expr.POS_INF:
             end_re_val = float('inf')
         elif end_re == expr.NEG_INF:
             end_re_val = float('-inf')
         else:
             end_re_val = expr.eval_expr(end_re_expr)
-        
+
         if isinstance(start_re_val, complex):
             start_re_val = start_re_val.real
         if isinstance(end_re_val, complex):
             end_re_val = end_re_val.real
-            
+
         if start_re_val > end_re_val:
             return "R->L"
         if start_re_val < end_re_val:
             return "L->R"
     except Exception as e:
         pass
-    
+
     return "L->R"
 
 def compute_jump_value(im_diff: Expr, direction: str, ctx: Context) -> float:
     """根据虚部差值和路径方向计算跳变值
-    
+
     Args:
         im_diff: res的虚部 - 极点的虚部
         direction: 路径方向 "L->R" 或 "R->L"
         ctx: 上下文
-        
+
     Returns:
         跳变值：1 或 -1
     """
@@ -4625,15 +4834,15 @@ def compute_jump_value(im_diff: Expr, direction: str, ctx: Context) -> float:
     try:
         import math
         from decimal import Decimal
-        
+
         # 替换pi并求值
         im_diff_val = im_diff.subst('pi', Const(Decimal(str(math.pi))))
         val = expr.eval_expr(im_diff_val)
-        
+
         # 处理复数情况（取实部）
         if isinstance(val, complex):
             val = val.real
-        
+
         # 根据方向和虚部比较结果确定跳变值
         if direction == "R->L":
             # R->L方向：res虚部>极点虚部 -> 1，否则 -> -1

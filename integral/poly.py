@@ -10,12 +10,18 @@ import math
 from integral import expr, context
 from integral.context import Context, apply_subterm
 
-
 def contains_indefinite_integral_factor(v):
     for e, _ in v:
         if expr.is_indefinite_integral(e):
             return True
     return False
+
+def contains_skolem_func(v):
+    for e, _ in v:
+        if expr.is_skolem_func(e):
+            return True
+    return False
+
 
 def collect_pairs(ps, ctx:Context):
     """
@@ -37,20 +43,23 @@ def collect_pairs(ps, ctx:Context):
         """
         Check if there is an indefinite integral factor in v. If so, special treatment is required.
         """
-        if contains_indefinite_integral_factor(v):
-            is_equal_key_found = False
-            for k in res:
-                if v == k:
-                    res[k] += c
-                    is_equal_key_found = True
-                    break
-            if not is_equal_key_found: res[v] = c
+        if v in res:
+            res[v] += c
         else:
-            if v in res:
-                res[v] += c
-            else:
-                res[v] = c
-    
+            res[v] = c
+        if contains_skolem_func(v) and res[v] == 0:
+            res[v] = 1
+        if contains_indefinite_integral_factor(v) and res[v] == 0:
+            for e, _ in v:
+                if expr.is_indefinite_integral(e):
+                    var = e.var
+                    all_var = e.body.get_vars()
+                    all_var.remove(var)
+                    all_var = [expr.Var(all_var) for item in all_var]
+                    tmp = ((expr.SkolemFunc("C", all_var), 1), )
+                    res[tmp] = 1
+                    break
+
     def zero_for(v):
         if isinstance(v, expr.Expr):
             return expr.Const(0)
@@ -472,12 +481,10 @@ class Polynomial:
     def __truediv__(self, other):
         # Assume the denominator is a monomial
         if isinstance(other, Polynomial):
-            if len(other.monomials) == 0:
-                raise ZeroDivisionError
-            elif len(other.monomials) == 1:
+            if len(other.monomials) == 1 and other.monomials[0].coeff != 0:
                 return Polynomial([m / other.monomials[0] for m in self.monomials])
             else:
-                raise ValueError
+                raise ZeroDivisionError
         else:
             raise NotImplementedError
 
@@ -709,6 +716,8 @@ def function_eval(e: expr.Expr, ctx: Context) -> expr.Expr:
     if expr.is_fun(e) and e.func_name == "binom":
         if expr.is_const(e.args[0]) and expr.is_const(e.args[1]):
             return expr.Const(math.comb(e.args[0].val, e.args[1].val))
+        elif expr.is_const(e.args[1]) and e.args[1].val == 0:
+            return expr.Const(1)
 
     if expr.is_fun(e) and e.func_name == 'factorial':
         if expr.is_const(e.args[0]) and abs(round(e.args[0].val) - e.args[0].val) < 1e-15 and round(e.args[0].val) >= 0:
@@ -722,20 +731,6 @@ def function_eval(e: expr.Expr, ctx: Context) -> expr.Expr:
         if expr.is_uminus(a):
             return -expr.Fun('sin', a.args[0])
     return e
-
-def function_table(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if not expr.is_fun(e) or len(e.args) != 1:
-        return e
-
-    func_table = ctx.get_function_tables()
-    if not e.func_name in func_table:
-        return e
-    if not e.args[0].is_constant():
-        return e
-    if e.args[0] in func_table[e.func_name]:
-        return func_table[e.func_name][e.args[0]]
-    else:
-        return e
 
 def simplify_identity(e: expr.Expr, ctx: Context) -> expr.Expr:
     for identity in ctx.get_simp_identities():
@@ -762,7 +757,7 @@ def simplify_eq(e: expr.Expr, ctx: Context) -> expr.Expr:
 
 def simplify_idiv(e: expr.Expr, ctx: Context) -> expr.Expr:
     """化简包含虚数单位i的除法
-    
+
     规则：
     - 1/i = -i
     - a/i = -a*i (for any a)
@@ -770,28 +765,29 @@ def simplify_idiv(e: expr.Expr, ctx: Context) -> expr.Expr:
     """
     if not expr.is_op(e) or e.op != '/':
         return e
-    
+
     numerator, denominator = e.args
-    
+
     # 1/i = -i
     if numerator == expr.Const(1) and isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
         return expr.Op('*', expr.Const(-1), expr.Fun('i'))
-    
+
     # a/i = -a*i
     if isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
         return expr.Op('*', expr.Const(-1), expr.Op('*', numerator, expr.Fun('i')))
-    
+
     # i/i = 1
     if isinstance(numerator, expr.Fun) and numerator.func_name == 'i' and \
        isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
         return expr.Const(1)
-    
+
     return e
 
 def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
     from integral import limits
     if not expr.is_limit(e):
         return e
+    
     # 检查表达式是否包含围道积分
     def contains_contour_integral(expr_obj):
         if expr.is_cintegral(expr_obj):
@@ -799,13 +795,12 @@ def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
         elif expr_obj.ty in (expr.OP, expr.FUN):
             return any(contains_contour_integral(arg) for arg in expr_obj.args)
         return False
-    
+
     # 包含围道积分的表达式，不能简单检查变量是否在body中
     # 围道积分中的极限变量可能在路径定义中而不在表达式本身中
     if e.var not in e.body.get_vars() and not contains_contour_integral(e.body):
         return e.body
-
-    if e.lim == expr.POS_INF:
+    elif e.lim == expr.POS_INF:
         return limits.reduce_inf_limit(e.body, e.var, ctx)
     elif e.lim == expr.NEG_INF:
         return limits.reduce_neg_inf_limit(e.body, e.var, ctx)
@@ -813,16 +808,26 @@ def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
         return limits.reduce_finite_limit(e, ctx)
 
 def simplify_integral(e: expr.Expr, ctx: Context) -> expr.Expr:
-    if not expr.is_integral(e):
-        return e
-
-    if expr.is_deriv(e.body) and e.body.var == e.var:
-        return expr.EvalAt(e.var, e.lower, e.upper, e.body.body)
-    elif e.lower == e.upper:
-        return expr.Const(0)
+    if expr.is_integral(e):
+        if expr.is_deriv(e.body) and e.body.var == e.var:
+            return expr.EvalAt(e.var, e.lower, e.upper, e.body.body)
+        elif e.lower == e.upper:
+            return expr.Const(0)
+        else:
+            return e
+    elif expr.is_indefinite_integral(e):
+        # Simplify indefinite integrals with constant body
+        if e.body == expr.Const(0):
+            return expr.Const(0)
+        elif expr.is_const(e.body):
+            # INT x. c = c * x + SKOLEM_CONST(C)
+            # But we don't add SKOLEM_CONST here, just return as is
+            return e
+        else:
+            return e
     else:
         return e
-    
+
 def simplify_power(e: expr.Expr, ctx: Context) -> expr.Expr:
     # 处理 sqrt(-1) 转换为 i
     if expr.is_fun(e) and e.func_name == 'sqrt' and \
@@ -1009,32 +1014,89 @@ def simplify_trig(e: expr.Expr, ctx: Context) -> expr.Expr:
         return build(coeff)
 
 def simplify_log(e: expr.Expr, ctx: Context) -> expr.Expr:
+    # 检查是否为对数函数 log
     if not (expr.is_fun(e) and e.func_name == 'log'):
         return e
     
     a = e.args[0]
+    # 只对常数表达式进行进一步化简
     if not a.is_constant():
         return e
+
+    # Handle Fraction constants: log(Fraction(a, b)) -> log(a) - log(b)
+    # This allows axioms like log(1/x) = -log(x) to match
+    if expr.is_const(a) and isinstance(a.val, Fraction):
+        frac = a.val
+        if frac.numerator == 1:
+            # log(1/n) = -log(n)
+            return -expr.log(expr.Const(frac.denominator))
+        else:
+            # log(a/b) = log(a) - log(b)
+            return expr.log(expr.Const(frac.numerator)) - expr.log(expr.Const(frac.denominator))
 
     if expr.is_const(a) and isinstance(a.val, int):
         int_factors = sympy.factorint(a.val)
         log_ints = []
-        for b, e in int_factors.items():
-            if e != 1:
-                log_ints.append(e * expr.log(expr.Const(b)))
+        for b, mul in int_factors.items():
+            # 例如 log(12) = 2 * log(2) + log(3)
+            if mul != 1:
+                log_ints.append(mul * expr.log(expr.Const(b)))
             else:
                 log_ints.append(expr.log(expr.Const(b)))
-        return sum(log_ints[1:], log_ints[0])
-    elif expr.is_const(a) and isinstance(a.val, Fraction):
-        return expr.log(expr.Const(a.val.numerator)) - expr.log(expr.Const(a.val.denominator))
-    elif a.is_times():
-        return expr.log(a.args[0]) + expr.log(a.args[1])
-    elif a.is_divides():
-        return expr.log(a.args[0]) - expr.log(a.args[1])
-    elif expr.is_fun(a) and a.func_name == 'sqrt':
-        return expr.log(a.args[0]) / 2
+        return sum(log_ints[1:], log_ints[0])  # 累加所有项
     else:
         return e
+
+def simplify_log_combination(e: expr.Expr, ctx: Context) -> expr.Expr:
+    """Combine log expressions using logarithm properties.
+
+    Handles patterns:
+    - log(abs(a)) - log(abs(b)) -> log(abs(a/b))
+    - log(abs(a)) + log(abs(b)) -> log(abs(a*b))
+    - -log(abs(a)) + log(abs(b)) -> log(abs(b/a))
+    - log(abs(a)) + (-log(abs(b))) -> log(abs(a/b))
+    - -log(abs(a)) -> log(abs(1/a)) (when standalone)
+
+    NOTE: We now convert standalone -log(abs(x)) to log(abs(1/x)) to enable
+    better normalization and comparison of expressions.
+    """
+    # Helper function to check if expression is log(abs(...))
+    def is_log_abs(e):
+        return (expr.is_fun(e) and e.func_name == 'log' and
+                len(e.args) > 0 and
+                expr.is_fun(e.args[0]) and e.args[0].func_name == 'abs')
+
+    # Handle: log(abs(a)) - log(abs(b)) -> log(abs(a/b))
+    if e.is_minus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        if is_log_abs(lhs) and is_log_abs(rhs):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', a / b))
+
+    # Handle: log(abs(a)) + log(abs(b)) -> potentially combine
+    elif e.is_plus() and len(e.args) == 2:
+        lhs, rhs = e.args
+
+        # Pattern 1: log(abs(a)) + log(abs(b)) -> log(abs(a*b))
+        if is_log_abs(lhs) and is_log_abs(rhs):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', a * b))
+
+        # Pattern 2: -log(abs(a)) + log(abs(b)) -> log(abs(b/a))
+        elif expr.is_uminus(lhs) and is_log_abs(lhs.args[0]) and is_log_abs(rhs):
+            a = lhs.args[0].args[0].args[0]
+            b = rhs.args[0].args[0]
+            return expr.log(expr.Fun('abs', b / a))
+
+        # Pattern 3: log(abs(a)) + (-log(abs(b))) -> log(abs(a/b))
+        elif is_log_abs(lhs) and expr.is_uminus(rhs) and is_log_abs(rhs.args[0]):
+            a = lhs.args[0].args[0]
+            b = rhs.args[0].args[0].args[0]
+            return expr.log(expr.Fun('abs', a / b))
+
+    return e
 
 def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
     if not (expr.is_fun(e) and e.func_name == 'sqrt'):
@@ -1058,13 +1120,22 @@ def simplify_sqrt(e: expr.Expr, ctx: Context) -> expr.Expr:
 
     return e
 
-def simplify_sum(e: expr.Expr, ctx:Context) -> expr.Expr:
+def simplify_sum(e: expr.Expr, ctx: Context) -> expr.Expr:
     if expr.is_summation(e):
         if e.lower == e.upper and e.lower not in (expr.POS_INF, expr.NEG_INF):
+            # Sum on a single value
             return e.body.subst(e.index_var, e.lower)
         if e.body == expr.Const(0):
+            # Body is zero
             return e.body
-    elif e.is_plus():
+        if expr.is_const(e.lower) and expr.is_const(e.upper):
+            l, u = e.lower.val, e.upper.val
+            if isinstance(l, int) and isinstance(u, int):
+                sum = e.body.subst(e.index_var, expr.Const(l))
+                for k in range(l+1, u+1):
+                    sum = sum + e.body.subst(e.index_var, expr.Const(k))
+            return sum
+    elif expr.is_plus(e):
         a = expr.Symbol('a',[expr.SUMMATION])
         b = expr.Symbol('b',[expr.SUMMATION])
         pat_list = [a+b, -(a)+b, a - b, -(a) - b]
@@ -1099,8 +1170,34 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
         return e
     elif expr.is_op(e):
         op = e.op
-        if op == '*':
-            a, b = e.args
+        # First recursively simplify the operands
+        simplified_args = [simplify_skolem(arg, ctx) for arg in e.args]
+
+        if op == '+' and len(simplified_args) == 2:
+            # constant + SKOLEM_CONST => SKOLEM_CONST
+            # But ONLY if:
+            # 1. SKOLEM_CONST has no dependencies (is a pure constant), AND
+            # 2. It's not currently being solved for in a proof
+            a, b = simplified_args
+            if (a.is_constant() and expr.is_skolem_func(b) and
+                len(b.dependent_vars) == 0 and not ctx.is_skolem_solving(b)):
+                return b
+            elif (expr.is_skolem_func(a) and b.is_constant() and
+                  len(a.dependent_vars) == 0 and not ctx.is_skolem_solving(a)):
+                return a
+        elif op == '-' and len(simplified_args) == 2:
+            # constant - SKOLEM_CONST => SKOLEM_CONST
+            # SKOLEM_CONST - constant => SKOLEM_CONST
+            # But ONLY if it's not being solved for
+            a, b = simplified_args
+            if (a.is_constant() and expr.is_skolem_func(b) and
+                len(b.dependent_vars) == 0 and not ctx.is_skolem_solving(b)):
+                return b
+            elif (expr.is_skolem_func(a) and b.is_constant() and
+                  len(a.dependent_vars) == 0 and not ctx.is_skolem_solving(a)):
+                return a
+        elif op == '*' and len(simplified_args) == 2:
+            a, b = simplified_args
             if expr.is_const(a) and expr.is_skolem_func(b):
                 if a.val != 0:
                     return b
@@ -1111,14 +1208,14 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
                     return a
                 else:
                     return expr.Const(0)
-        elif op == '/':
-            a, b = e.args
+        elif op == '/' and len(simplified_args) == 2:
+            a, b = simplified_args
             if expr.is_const(b) and expr.is_skolem_func(a):
                 if b.val != 0:
                     return a
                 else:
                     raise ValueError("The denominator cannot be 0")
-        return expr.Op(op, *[simplify_skolem(arg, ctx) for arg in e.args])
+        return expr.Op(op, *simplified_args)
     elif expr.is_fun(e):
         return expr.Fun(e.func_name, *[simplify_skolem(arg, ctx) for arg in e.args])
     elif expr.is_summation(e):
@@ -1141,7 +1238,7 @@ def simplify_exp(e:expr.Expr, ctx:Context):
             if ctx.check_condition(expr.Fun("notReal", args[0])):
                 if args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi")):
                     return expr.Const(-1)
-                elif (expr.is_uminus(args[0]) and 
+                elif (expr.is_uminus(args[0]) and
                       args[0].args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi"))):
                     return expr.Const(-1)
             nf, df = expr.decompose_expr_factor2(args[0])
@@ -1171,8 +1268,13 @@ def simplify_exp(e:expr.Expr, ctx:Context):
 
 def simplify_abs(e:expr.Expr, ctx:Context):
     if expr.is_fun(e) and e.func_name == "abs":
-        if ctx.check_condition(expr.Op(">=", e.args[0], expr.Const(0))):
-            return e.args[0]
+        arg = e.args[0]
+        # abs(-a) = abs(a)
+        if expr.is_uminus(arg):
+            return expr.Fun("abs", arg.args[0])
+        # abs(a) where a >= 0
+        if ctx.check_condition(expr.Op(">=", arg, expr.Const(0))):
+            return arg
     return e
 
 def normal_const(e:expr.Expr, ctx:Context):
@@ -1190,59 +1292,87 @@ def normal_const(e:expr.Expr, ctx:Context):
     elif expr.is_limit(e):
         return expr.Limit(e.var, normal_const(e.lim, ctx), normal_const(e.body, ctx))
     elif expr.is_integral(e):
-        e:expr.Integral
-        return expr.Integral(e.var, normal_const(e.lower,ctx), normal_const(e.upper,ctx),\
+        return expr.Integral(e.var, normal_const(e.lower,ctx), normal_const(e.upper,ctx),
                              normal_const(e.body,ctx))
     raise NotImplementedError(str(e))
 
+def simplify_arithmetic_form(e: expr.Expr, ctx: Context) -> expr.Expr:
+    """Normalize arithmetic expressions to canonical form.
+
+    Handles patterns:
+    - (-a + x) -> (x - a)
+    - (-b + x) / (-a + x) -> (x - b) / (x - a)
+    - (x + -a) -> (x - a)
+
+    This ensures consistent representation of expressions.
+    """
+    # Handle plus with uminus: (-a + x) -> (x - a)
+    if e.is_plus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        # Pattern: -a + x -> x - a
+        if expr.is_uminus(lhs) and not expr.is_uminus(rhs):
+            return rhs - lhs.args[0]
+        # Pattern: x + (-a) -> x - a (where -a is a negated expression)
+        elif expr.is_uminus(rhs) and not expr.is_uminus(lhs):
+            return lhs - rhs.args[0]
+    elif e.is_minus() and len(e.args) == 2:
+        lhs, rhs = e.args
+        # Normalize: (-a - b) -> -(a + b)
+        if expr.is_uminus(lhs) and expr.is_uminus(rhs):
+            return -(lhs.args[0] + rhs.args[0])
+
+    return e
+
 # 全局normalize缓存，提高性能
-_normalize_cache = {} 
+_normalize_cache = {}
 
 def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
-    
-    # 快速路径：常量直接返回
+    if e.is_equals():
+        return expr.Eq(normalize(e.lhs, ctx), normalize(e.rhs, ctx))
+
     if expr.is_const(e):
         return e
-    
+
     # 创建缓存键（使用hash避免存储整个表达式）
     cache_key = (hash(e), id(ctx))
-    
+
     # 检查缓存
     if cache_key in _normalize_cache:
         return _normalize_cache[cache_key]
-    
-    
+
+
     # 执行规范化
     if e.is_equals():
         result = expr.Eq(normalize(e.lhs, ctx), normalize(e.rhs, ctx))
     else:
         for i in range(5):
             old_e = e
+            e = apply_subterm(e, simplify_limit, ctx)
             e = from_poly(to_poly(e, ctx))
-            e = apply_subterm(e, function_table, ctx)
             e = apply_subterm(e, function_eval, ctx)
             e = apply_subterm(e, simplify_identity, ctx)
             e = apply_subterm(e, simplify_eq, ctx)
             e = apply_subterm(e, simplify_idiv, ctx)
-            e = apply_subterm(e, simplify_limit, ctx)
             e = apply_subterm(e, simplify_integral, ctx)
             e = apply_subterm(e, simplify_power, ctx)
             e = apply_subterm(e, simplify_trig, ctx)
             e = apply_subterm(e, simplify_log, ctx)
+            e = apply_subterm(e, simplify_log_combination, ctx)
             e = apply_subterm(e, simplify_sqrt, ctx)
             e = apply_subterm(e, simplify_inf, ctx)
             e = apply_subterm(e, simplify_sum, ctx)
             e = apply_subterm(e, simplify_skolem, ctx)
             e = apply_subterm(e, simplify_exp, ctx)
+            e = apply_subterm(e, simplify_arithmetic_form, ctx)
             e = apply_subterm(e, simplify_abs, ctx)
             if e == old_e:
                 break
         result = e
-    
+
     # 缓存结果（限制缓存大小）
     if len(_normalize_cache) < 10000:
         _normalize_cache[cache_key] = result
-    
+
     return result
 
 

@@ -1,3 +1,5 @@
+imports standard
+
 # 4.1 Application of basic formulas
 # Section B
 // page 168
@@ -16,11 +18,24 @@ calculate INT x. x^4 / (1 + x^2)
     simplify
 done
 
-calculate INT x. 1 / (2-3*x^2) for x != sqrt(2/3), x != -sqrt(2/3)
+calculate INT x. 1 / (2-3*x^2) for x > 0, x < sqrt(2/3)
     substitute u for (sqrt(3/2)*x)
     substitute sin(v) for u
-    rewrite -(6 * sin(v) ^ 2) + 6 to 6*cos(v)^2
+    rewrite 6 - 6 * sin(v) ^ 2 to 6*cos(v)^2
     simplify
+    rewrite 1 / cos(v) to sec(v)
+    apply integral identity
+    replace substitution
+    simplify
+done
+
+# `x > -sqrt(2 / 3), x < 0` can not imply `x ^ 2 != 2 / 3` because of check_cond
+calculate INT x. 1 / (2-3*x^2) for x > -sqrt(2 / 3), x < 0, x ^ 2 != 2 / 3
+    substitute u for (sqrt(3/2)*x)
+    substitute sin(v) for u
+    rewrite 6 - 6 * sin(v) ^ 2 to 6*cos(v)^2
+    simplify
+    rewrite 1 / cos(v) to sec(v)
     apply integral identity
     replace substitution
     simplify
@@ -65,7 +80,7 @@ calculate INT x. x / (4 + x^2) for x>0
     simplify
 done
 
-calculate INT x. 1 / (1 + sin(x))
+calculate INT x. 1 / (1 + sin(x)) for sin(x/2 + pi/4) != 0, sin(x) != -1
     rewrite 1 + sin(x) to (sin(x/2) + cos(x/2))^2
     rewrite sin(x/2)+cos(x/2) to sqrt(2)*sin(x/2+pi/4)
     simplify
@@ -79,14 +94,15 @@ calculate INT x. sqrt((1-x)/(1+x)) for x > -1, x < 1
     rewrite (1-x)/(1+x) to (1-x)^2/(1-x^2)
     simplify
     substitute sin(u) for x
-    rewrite -(sin(u) ^ 2) + 1 to cos(u)^2
+    rewrite 1 - sin(u) ^ 2 to cos(u)^2
     simplify
     apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. 1 / (16-x^4)
+# x > -2, x < 2 can not imply x^4 != 16
+calculate INT x. 1 / (16-x^4) for x^4 != 16, x > -2, x < 2
     partial fraction decomposition
     apply integral identity
     simplify
@@ -102,45 +118,40 @@ calculate INT x. 1 / (exp(x)-exp(-x)) for x > 0
     rewrite sec(v) to 1/cos(v)
     rewrite tan(v) to sin(v)/cos(v)
     simplify
+    rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1/sqrt(exp(2*x)+1)
     substitute u for exp(x)
-    simplify
     substitute tan(v) for u
     rewrite tan(v)^2 + 1 to sec(v)^2
     simplify
     rewrite sec(v) to 1/cos(v)
     rewrite tan(v) to sin(v)/cos(v)
     simplify
+    rewrite 1 / sin(v) to csc(v)
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. 1/sqrt(exp(2*x)-1) for x > 0
     substitute u for exp(x)
-    simplify
     substitute sec(v) for u
     rewrite sec(v)^2 - 1 to tan(v)^2
     simplify
     apply integral identity
     replace substitution
-    simplify
 done
 
 calculate INT x. sqrt((exp(x)-1)/(exp(x)+1)) for x > 0
     rewrite (exp(x)-1)/(exp(x)+1) to (exp(x)-1)^2/(exp(2*x)-1)
     simplify
     substitute u for exp(x)
-    simplify
     substitute sec(v) for u
     rewrite sec(v)^2 - 1 to tan(v)^2
     simplify
     apply integral identity
     replace substitution
-    simplify
 done

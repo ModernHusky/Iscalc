@@ -1,9 +1,11 @@
+imports standard
+
 # 4.4 Integration by parts
 # Section B
 
 # page 186 
 
-calculate INT x. arctan(sqrt(x))
+calculate INT x. arctan(sqrt(x)) for x >= 0
     substitute u for sqrt(x)
     integrate by parts with u=arctan(u), v=u^2
     partial fraction decomposition
@@ -12,7 +14,7 @@ calculate INT x. arctan(sqrt(x))
     simplify
 done
 
-calculate INT x. arctan(x)/x^2
+calculate INT x. arctan(x)/x^2 for x != 0
     integrate by parts with u=arctan(x), v=-1/x
     partial fraction decomposition
     apply integral identity
@@ -78,12 +80,11 @@ calculate INT x. x*exp(x) / (1+x)^2 for x != -1
     rewrite -(x * exp(x)) - exp(x) to -exp(x) * (x+1)
     simplify
     apply integral identity
-    simplify
 done
 
 calculate INT x. x*exp(-x) / (1-x)^2 for x != 1
     integrate by parts with u=x*exp(-x),v=1/(1-x)
-    rewrite -(x * exp(-x)) + exp(-x) to exp(-x) * (-x + 1)
+    rewrite exp(-x) - x * exp(-x) to exp(-x) * (-x + 1)
     simplify
     apply integral identity
     simplify
@@ -134,40 +135,45 @@ calculate INT x. sqrt(a^2+x^2) for a > 0
     simplify
     apply integral identity
     solve integral INT x. sqrt(a^2+x^2)
-    apply integral identity
     replace substitution
     simplify
 done
 
-calculate INT x. sqrt(a^2-x^2) for a > 0
+calculate INT x. sqrt(a^2-x^2) for a:real, a > 0, x > -a, x < a
+subgoal 1: a ^ 2 - x ^ 2 > 0
+lhs:
+    rewrite a ^ 2 - x ^ 2  to (a - x) * (a + x)
+done
+subgoal 2: x > -sqrt(a ^ 2)
+rhs:
+    simplify
+done
+subgoal 3: x < sqrt(a ^ 2)
+rhs:
+    simplify
+done
     integrate by parts with u=sqrt(a^2-x^2),v=x
     simplify
     rewrite x^2 to -(sqrt(a^2-x^2)^2 - a^2)
     rewrite -(sqrt(a ^ 2 - x ^ 2) ^ 2 - a ^ 2) / sqrt(a ^ 2 - x ^ 2) to -sqrt(a^2-x^2)+a^2/sqrt(a^2-x^2)
     apply integral identity
     solve integral INT x. sqrt(a^2-x^2)
-    apply integral identity
-    simplify
 done
 
-calculate INT x. sec(x)^3
+calculate INT x. sec(x)^3 for cos(x) != 0
     integrate by parts with u=sec(x), v=tan(x)
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial
     apply integral identity
     solve integral INT x. sec(x)^3
-    apply integral identity
-    simplify
 done
 
-calculate INT x. csc(x)^3
+calculate INT x. csc(x)^3 for sin(x) != 0
     integrate by parts with u=-csc(x), v=cot(x)
     rewrite cot(x)^2 to csc(x)^2-1
     expand polynomial
     apply integral identity
     solve integral INT x. csc(x)^3
-    apply integral identity
-    simplify
 done
 
 calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
@@ -177,7 +183,6 @@ calculate INT x. exp(a*x)*sin(b*x) for a > 0, b > 0
     simplify
     solve integral INT x. exp(a*x)*sin(b*x)
     expand polynomial
-    apply integral identity
     expand polynomial
     simplify
 done
@@ -189,20 +194,17 @@ calculate INT x. exp(a*x)*cos(b*x) for a > 0, b > 0
     simplify
     solve integral INT x. exp(a*x)*cos(b*x)
     expand polynomial
-    apply integral identity
     expand polynomial
-    simplify
 done
 
 calculate INT x. exp(x) * ((1-x)/(1+x^2))^2
     rewrite ((1-x)/(1+x^2))^2 to 1/(1+x^2) - 2*x/(1+x^2)^2
     expand polynomial
     simplify
-    integrate by parts with u=-exp(x)/2, v=1/(1+x^2)
+    rewrite 2 * x ^ 2 + x ^ 4 + 1 to (x ^ 2 + 1) ^ 2
+    integrate by parts with u=-exp(x)/2, v=1/(1+x^2) (at 2)
     simplify
     rewrite exp(x) / (2 * x ^ 2 + 2) to exp(x)/(x^2+1) * (1/2)
-    simplify
-    apply integral identity
     simplify
 done
 
@@ -218,8 +220,6 @@ calculate INT x. exp(-x) * (1+sin(x)) / (1-cos(x)) for x > 0, x < pi/2
     rewrite 1/sin(x/2) to csc(x/2)
     integrate by parts with u=exp(-x), v=-cot(x/2)*2 (at 2)
     simplify
-    apply integral identity
-    simplify
 done
 
 // page 189
@@ -227,18 +227,16 @@ done
 calculate INT x. exp(sin(x))*(x*cos(x)^3-sin(x))/(cos(x)^2) for x > -pi/2, x < pi / 2
     expand polynomial
     simplify
-    integrate by parts with u=x, v=exp(sin(x)) (at 2)
+    integrate by parts with u=x, v=exp(sin(x)) (at 1)
     simplify
     integrate by parts with u=exp(sin(x)), v=1/cos(x)
-    simplify
-    apply integral identity
     simplify
 done
 
 calculate INT x. sqrt(1-x^2)*arcsin(x) for x > -1, x < 1
     substitute sin(u) for x
     simplify
-    rewrite -(sin(u)^2)+1 to cos(u)^2
+    rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     rewrite cos(u)^2 to (cos(2*u)+1)/2
     expand polynomial
@@ -281,7 +279,7 @@ calculate INT x. arcsin(sqrt(x))/sqrt(x) for x > 0, x < 1
     simplify
 done
 
-calculate INT x. arcsin(exp(x)) / exp(x)
+calculate INT x. arcsin(exp(x)) / exp(x) for x < 0
     substitute u for exp(x)
     substitute sin(v) for u
     simplify
@@ -333,14 +331,14 @@ done
 
 calculate INT x. arcsin(x)-arccos(x) for x > -1, x < 1
     simplify
-    integrate by parts with u=arccos(x), v=x
+    integrate by parts with u=arcsin(x), v=x
     substitute sin(u) for x
-    rewrite -(sin(u)^2)+1 to cos(u)^2
+    rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     apply integral identity
-    integrate by parts with u=arcsin(x), v=x
-    substitute sin(v) for x
-    rewrite -(sin(v)^2)+1 to cos(v)^2
+    integrate by parts with u=arccos(x), v=x
+    substitute cos(v) for x
+    rewrite 1 - cos(v)^2 to sin(v)^2
     simplify
     apply integral identity
     replace substitution
@@ -351,16 +349,20 @@ calculate INT x. arcsin(x)*arccos(x) for x>-1, x<1
     integrate by parts with u=arcsin(x)*arccos(x), v=x
     expand polynomial
     simplify
-    substitute cos(u) for x
+    substitute cos(u) for x (at 1)
     simplify
-    rewrite -(cos(u)^2)+1 to sin(u)^2
+    rewrite 1 - cos(u)^2 to sin(u)^2
     simplify
-    integrate by parts with u=u, v=sin(u) (at 2)
+    expand polynomial
+    simplify
+    integrate by parts with u=u, v=sin(u) (at 3)
     apply integral identity
     substitute sin(v) for x
-    rewrite -(sin(v)^2)+1 to cos(v)^2
+    rewrite 1 - sin(v)^2 to cos(v)^2
     simplify
-    integrate by parts with u=-v,v=cos(v)
+    expand polynomial
+    simplify
+    integrate by parts with u=v,v=-cos(v) (at 2)
     apply integral identity
     replace substitution
     simplify
@@ -368,14 +370,14 @@ done
 
 // page 191
 
-calculate INT x. log(1+x)/x^2
+calculate INT x. log(1+x)/x^2 for x > -1, x != 0
     integrate by parts with u=-log(1+x), v=1/x
     partial fraction decomposition
     apply integral identity
     simplify
 done
 
-calculate INT x. log(1+x^2)/x^2 for x!=0
+calculate INT x. log(1+x^2)/x^2 for x != 0
     integrate by parts with u=log(1+x^2), v=-1/x
     apply integral identity
     simplify
@@ -398,15 +400,13 @@ calculate INT x. x*log(x)/(1+x^2)^2 for x>0
     simplify
 done
 
-calculate INT x. log(log(x))+1/log(x)
+calculate INT x. log(log(x))+1/log(x) for x > 1
     substitute u for log(x)
     expand polynomial
     simplify
     integrate by parts with u=log(u), v=exp(u)
     simplify
     replace substitution
-    simplify
-    apply integral identity
     simplify
 done
 
@@ -424,7 +424,7 @@ done
 
 // page 192
 
-calculate INT x. tan(x)^4
+calculate INT x. tan(x)^4 for cos(x) != 0
     rewrite tan(x)^4 to tan(x)^2^2
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial
@@ -436,9 +436,7 @@ calculate INT x. tan(x)^4
     rewrite tan(x)^2 to sec(x)^2-1
     apply integral identity
     solve integral INT x. tan(x)^4
-    apply integral identity
     expand polynomial
-    simplify
 done
 
 calculate INT x. 1/sin(x)^3 for x>0, x<pi
@@ -448,9 +446,6 @@ calculate INT x. 1/sin(x)^3 for x>0, x<pi
     expand polynomial
     apply integral identity
     solve integral INT x. csc(x)^3
-    apply integral identity
-    expand polynomial
-    simplify
 done
 
 calculate INT x. arcsin(x)^3 for x>-1, x<1

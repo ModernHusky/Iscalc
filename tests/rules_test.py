@@ -3,7 +3,7 @@
 import unittest
 
 from integral import parser
-from integral.parser import parse_expr
+from integral.parser import parse_expr, parse_condition
 from integral import context
 from integral import rules
 from integral import condprover
@@ -13,11 +13,48 @@ from integral.rules import RuleException
 
 class RulesTest(unittest.TestCase):
     def testCheckWellformed(self):
-        data = ["tan(pi)"]
+        data = [
+            ("a ^ b", ["a > 0 or (isInt(b), b >= 0)"]),
+            ("factorial(n)", ["isInt(n)", "n >= 0"]),
+            ("binom(n, m)", ["isInt(m)", "isInt(n)", "m >= 0", "n >= m"]),
+            ("tan(x)", ["cos(x) != 0"]),
+            ("cot(x)", ["sin(x) != 0"]),
+            ("sec(x)", ["cos(x) != 0"]),
+            ("csc(x)", ["sin(x) != 0"])
+        ]
+
         ctx = context.Context()
-        for e in data:
+        ctx.load_book("base")
+        for e, expected_conds in data:
             e = parse_expr(e)
-            assert len(rules.check_wellformed(e, ctx) == 0)
+            expected_conds = list(parse_condition(cond) for cond in expected_conds)
+            conds = rules.check_wellformed(e, ctx)
+            self.assertEqual(len(conds), len(expected_conds))
+            for cond, expected_cond in zip(conds, expected_conds):
+                self.assertEqual(cond.expr, expected_cond)
+
+    def testSimplify(self):
+        data = [
+            ("abs((-1)^k)", ["k>=0", "isInt(k)"], "1"),
+            ("abs(x)", ["x > 0", "isReal(x)"], "x"),
+            ("abs(x)", ["x < 0", "isInt(x)"], "-x"),
+            ("x^(2*n+1) / x", ["x!=0", "isReal(x)"], "x^(2*n)"),
+            ("SUM(k, 0, oo, INT y:[0, 1]. abs(log(y) * y^k * (-1)^k))", [], "-SUM(k, 0, oo, INT y:[0, 1]. log(y) * y^k)"),
+            ("INT y:[0, 1]. -(y^k * log(y))", [], "-INT y:[0, 1]. y^k * log(y)"),
+            ("SUM(k, 0, oo, INT y:[0, 1]. -(y^k * log(y)))", [], "SUM(k, 0, oo, -INT y:[0, 1]. y^k * log(y))")
+        ]
+
+
+        for e, conds, res_e in data:
+            e = parse_expr(e)
+            res_e = parse_expr(res_e)
+            ctx = context.Context()
+            ctx.load_book("base")
+            for item in conds:
+                ctx.add_condition(parse_expr(item))
+            rule = rules.Simplify()
+            print(str(rule.eval(e, ctx)), str(res_e))
+            self.assertEqual(rule.eval(e, ctx), rule.eval(res_e, ctx))
 
     def testSubstitutionIndefinite(self):
         ctx = context.Context()
@@ -78,7 +115,7 @@ class RulesTest(unittest.TestCase):
     def testSubstitutionCondCheck(self):
         # After substituting u for sqrt(5 + sqrt(x)), should be able to derive
         # u ^ 2 - 5 >= 0, so simplify abs(u ^ 2 - 5) to u ^ 2 - 5.
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. sqrt(5 + sqrt(x))")
@@ -95,7 +132,7 @@ class RulesTest(unittest.TestCase):
     def testSubstitutionCondCheck2(self):
         # After substituting u for (1 + sqrt(x - 3)) ^ (1/3), should be able to
         # derive u ^ 3 - 1 >= 0, so simplify abs(u ^ 3 - 1) to u ^ 3 - 1
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. (1 + sqrt(x - 3)) ^ (1/3)")
@@ -110,7 +147,7 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(t3, parse_expr("6 * (INT u. u ^ 3 * (u ^ 3 - 1))"))
 
     def testSubstitutionCondCheck3(self):
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. (x^2 - 1)^(3/2) / x")
@@ -125,7 +162,7 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(u) >= 0"), ctx2))
 
     def testSubstitutionCondCheck3a(self):
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. (x^2 - 1)^(3/2) / x")
@@ -140,7 +177,7 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 0"), ctx2))
 
     def testInverseSubstitutionCondCheck3(self):
-        file = compstate.CompFile("base", "standard")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. (x^2 - 1)^(3/2) / x")
@@ -189,7 +226,7 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(rule.eval(t, ctx), parse_expr(res))
 
     def testSubstitutionCondCheck4(self):
-        file = compstate.CompFile("base", "simple_integral_01")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. 1 / sqrt(x ^ 2 + 1)")
@@ -205,7 +242,7 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("sec(u) > 1"), ctx2))
 
     def testSubstitutionCondCheck5(self):
-        file = compstate.CompFile("base", "simple_integral_01")
+        file = compstate.CompFile("base")
         ctx = file.ctx
 
         t = parse_expr("INT x. sqrt(x ^ 2 + 1)")
@@ -235,9 +272,9 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(rule.eval(t, ctx), parse_expr("INT u. -(1 / (6 * sqrt(u)))"))
 
     def testIntegralIdentitySum(self):
-        file = compstate.CompFile("base", "test_rewriting1")
+        file = compstate.CompFile("base")
         ctx = file.ctx
-        ctx.load_book("interesting")
+        ctx.load_book("base")
 
         e = parse_expr("SUM(k, 0, oo, c ^ k / factorial(k) * (INT x:[0,1]. x ^ (a * k) * log(x) ^ k))")
         ctx.add_condition("a > 0")
@@ -312,7 +349,7 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(condprover.check_condition(parse_expr("cos(x) - sin(x) != 0"), ctx))
 
     def testCondCheck2(self):
-        file = compstate.CompFile("base", "test_rewriting1")
+        file = compstate.CompFile("base")
         ctx = file.ctx
         ctx.load_book("base")
 

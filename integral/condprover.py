@@ -96,7 +96,16 @@ def approx_even(a: Expr) -> bool:
         return False
     except:
         return False
-    
+
+def approx_odd(a: Expr) -> bool:
+    try:
+        if approx_integer(a):
+            a_val = float(eval_expr(a))
+            return round(a_val) % 2 == 1
+        return False
+    except:
+        return False
+
 def approx_real(a: Expr) -> bool:
     try:
         a_val = complex(eval_expr(a))
@@ -181,6 +190,9 @@ def check_cond(cond: Expr, all_conds: dict[Expr, list[Expr]],
                 return [inst]
         elif expr.is_fun(cond, "isEven"):
             if approx_even(x):
+                return [inst]
+        elif expr.is_fun(cond, "isOdd"):
+            if approx_odd(x):
                 return [inst]
         elif expr.is_fun(cond, "isReal"):
             if approx_real(x):
@@ -291,6 +303,8 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
     
     # Rewrite all absolute value conditions
     for cond in conds.data:
+        if not (expr.is_compare(cond) or expr.is_fun(cond)):
+            continue
         x = subject_of(cond)
         add_condition(all_conds, x, cond)
             
@@ -358,7 +372,7 @@ def all_conds_size(all_conds: dict[Expr, list[Expr]]) -> int:
     return res
 
 def saturate(e: Expr, ineqs: list[Identity], all_conds: dict[Expr, list[Expr]], *,
-             round_limit: int = 5, size_limit: int = 200):
+             round_limit: int = 5, size_limit: int = 400):
     """Saturate up to given number of rounds and size limits. New facts
     are added onto `all_conds`.
     
@@ -402,10 +416,12 @@ def get_standard_inequalities() -> list[Identity]:
         (["a != b"], "c + a != c + b"),
         (["a >= b"], "a + c >= b + c"),
         (["a >= b"], "c + a >= c + b"),
+        (["a + b > 0"], "b + a > 0"),
         (["a <= b"], "a + c <= b + c"),
         (["a <= b"], "c + a <= c + b"),
         (["a != -b"], "a + b != 0"),
         (["a != b"], "a - b != 0"),
+        (["a + b != 0"], "b + a != 0"),
         (["a < 0", "isReal(b)"], "a + b * i != 0"),
         (["a < 0", "isReal(b)"], "a - b * i != 0"),
         (["a >= b", "c > d"], "a + c > b + d"),
@@ -414,6 +430,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < b", "c <= d"], "a + c < b + d"),
         (["a >= b", "c >= d"], "a + c >= b + d"),
         (["a <= b", "c <= d"], "a + c <= b + d"),
+        (["x - a > 0"], "-a + x > 0"),
 
         # Unary minus
         (["x > a"], "-x < -a"),
@@ -437,6 +454,12 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > d"], "a - c < b - d"),
         (["a >= b", "c <= d"], "a - c >= b - d"),
         (["a <= b", "c >= d"], "a - c <= b - d"),
+        (["b != c"], "a - b != a - c"),
+        (["a < b"], "a - b < 0"),
+        (["a < b"], "b - a > 0"),
+        (["a > -b"], "a + b > 0"),
+        (["a > -b"], "b + a > 0"),
+        (["a - b != 0"], "b - a != 0"),
 
         # Multiplication (simple)
         (["a != 0", "b != 0"], "a * b != 0"),
@@ -484,6 +507,11 @@ def get_standard_inequalities() -> list[Identity]:
         (["a <= b", "c > 0"], "a / c <= b / c"),
         (["a >= b", "c < 0"], "a / c <= b / c"),
         (["a <= b", "c < 0"], "a / c >= b / c"),
+        (["c <= d", "c > 0", "a > 0"], "a / c >= a / d"),
+        (["c >= d", "d > 0", "a > 0"], "a / c <= a / d"),
+        (["a > 0", "b != 0"], "a / b != 0"),
+        (["a < 0", "b != 0"], "a / b != 0"),
+        (["a != 0", "b != 0"], "a / b != 0"),
         (["x > 1"], "1 / x < 1"),
         (["x > 0"], "1 / x > 0"),
         (["x > -a", "x < a"], "x / a < 1"),
@@ -495,21 +523,70 @@ def get_standard_inequalities() -> list[Identity]:
         (["a < 1", "a > 0"], "sqrt(a) < 1"),
         (["a > b", "b >= 0"], "sqrt(a) > sqrt(b)"),
         (["a >= b", "b >= 0"], "sqrt(a) >= sqrt(b)"),
+        (["a >= 0"], "sqrt(a ^ 2) = a"),
+        (["a >= 0", "a <= 1"], "sqrt(a) <= 1"),
+        (["a >= 0", "a < b"], "sqrt(a) < sqrt(b)"),
 
         # Power
         (["a != 0"], "a ^ 2 > 0"),
         ([], "a ^ 2 >= 0"),
-        (["x > 0"], "x ^ y > 0"),
+        (["x >= 0"], "x ^ y >= 0"),
         (["x != 0"], "x ^ n != 0"),
         (["x > y", "y >= 0", "z > 0"], "x ^ z > y ^ z"),
         (["x < a", "x > -a"], "x ^ 2 < a ^ 2"),
         (["x > a", "a >= 0"], "x ^ 2 > a ^ 2"),
+        (["x < -1"], "x ^ 2 > 1"),
         (["x <= a", "x >= -a"], "x ^ 2 <= a ^ 2"),
         (["x >= a", "a >= 0"], "x ^ 2 >= a ^ 2"),
         (["x != y"], "x ^ 2 - y ^ 2 != 0"),
         (["y != x"], "x ^ 2 - y ^ 2 != 0"),
         (["x != y"], "x ^ 4 - y ^ 4 != 0"),
         (["y != x"], "x ^ 4 - y ^ 4 != 0"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y < 1"),
+        (["x > 0", "x <= 1", "isInt(n)", "n > 0"], "x - x^n >= 0"),
+        (["x > 0", "x < 1", "y > 1"], "x ^ y > 0"),
+        (["isEven(n)"], "x ^ n >= 0"),
+
+        # Reverse implications for squares (CRITICAL for substitution)
+        (["x ^ 2 < a ^ 2", "a > 0"], "x < a"),
+        (["x ^ 2 < a ^ 2", "a > 0"], "x > -a"),
+        (["x ^ 2 <= a ^ 2", "a >= 0"], "x <= a"),
+        (["x ^ 2 <= a ^ 2", "a >= 0"], "x >= -a"),
+        (["a ^ 2 - x ^ 2 > 0", "a > 0"], "x < a"),
+        (["a ^ 2 - x ^ 2 > 0", "a > 0"], "x > -a"),
+        (["a ^ 2 - x ^ 2 >= 0", "a >= 0"], "x <= a"),
+        (["a ^ 2 - x ^ 2 >= 0", "a >= 0"], "x >= -a"),
+
+        # Special case for constants (most common: x^2 <= 1)
+        (["x ^ 2 < 1"], "x < 1"),
+        (["x ^ 2 < 1"], "x > -1"),
+        (["x ^ 2 <= 1"], "x <= 1"),
+        (["x ^ 2 <= 1"], "x >= -1"),
+        (["x ^ 2 <= 1"], "x < 1"),  # For integration: boundary points don't matter
+        (["x ^ 2 <= 1"], "x > -1"),  # For integration: boundary points don't matter
+        (["1 - x ^ 2 > 0"], "x < 1"),
+        (["1 - x ^ 2 > 0"], "x > -1"),
+        (["1 - x ^ 2 >= 0"], "x <= 1"),
+        (["1 - x ^ 2 >= 0"], "x >= -1"),
+        (["1 - x ^ 2 >= 0"], "x < 1"),  # For integration: boundary points don't matter
+        (["1 - x ^ 2 >= 0"], "x > -1"),  # For integration: boundary points don't matter
+
+        # Simplifying inequalities with nonzero multiplicative factors
+        # If a^2 * expr >= 0 and a != 0, then expr >= 0
+        (["a ^ 2 * x >= 0", "a != 0"], "x >= 0"),
+        (["a ^ 2 * x > 0", "a != 0"], "x > 0"),
+        (["a ^ 2 * x <= 0", "a != 0"], "x <= 0"),
+        (["a ^ 2 * x < 0", "a != 0"], "x < 0"),
+
+        # Special case: a^2 - a^2*x (factored form from substitution)
+        # These handle cases like a^2 - a^2*y^2 >= 0 --> 1 - y^2 >= 0 (when a != 0)
+        (["a ^ 2 - a ^ 2 * x >= 0", "a != 0"], "1 - x >= 0"),
+        (["a ^ 2 - a ^ 2 * x > 0", "a != 0"], "1 - x > 0"),
+        (["a ^ 2 - a ^ 2 * x <= 0", "a != 0"], "1 - x <= 0"),
+        (["a ^ 2 - a ^ 2 * x < 0", "a != 0"], "1 - x < 0"),
+        # More specifically for y^2
+        (["a ^ 2 - a ^ 2 * y ^ 2 >= 0", "a != 0"], "1 - y ^ 2 >= 0"),
+        (["a ^ 2 - a ^ 2 * y ^ 2 > 0", "a != 0"], "1 - y ^ 2 > 0"),
 
         # Log
         (["x >= 1"], "log(x) >= 0"),
@@ -531,19 +608,27 @@ def get_standard_inequalities() -> list[Identity]:
 
         # Trigonometric
         (["x > -pi / 2", "x < pi / 2"], "cos(x) > 0"),
+        (["x > -pi / 2", "x < pi / 2"], "cos(x) <= 1"),
         (["x > pi / 2", "x < 3 * pi / 2"], "cos(x) < 0"),
         (["x >= -pi / 2", "x <= pi / 2"], "cos(x) >= 0"),
         (["x >= pi / 2", "x <= 3 * pi / 2"], "cos(x) <= 0"),
+        (["x > 0", "x < 2 * pi"], "cos(x) < 1"),
+        ([], "cos(x) <= 1"),
+        ([], "cos(x) >= -1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) > -1"),
         (["x > -pi / 2", "x < pi / 2"], "sin(x) < 1"),
         (["x > 0", "x < pi"], "sin(x) > 0"),
         (["x > -pi", "x < 0"], "sin(x) < 0"),
         (["x >= 0", "x <= pi"], "sin(x) >= 0"),
         (["x >= -pi", "x <= 0"], "sin(x) <= 0"),
+        ([], "sin(x) <= 1"),
+        ([], "sin(x) >= -1"),
         (["x > -pi / 2", "x < pi / 4"], "tan(x) < 1"),
         (["x > 0", "x < pi / 2"], "tan(x) > 0"),
         (["cos(x) != 0"], "sin(x) > -1"),
         (["cos(x) != 0"], "sin(x) < 1"),
+        (["sin(x) != 0"], "cos(x) > -1"),
+        (["sin(x) != 0"], "cos(x) < 1"),
         (["x > -pi / 2", "x < pi / 2"], "sec(x) >= 1"),
         (["x > pi / 4", " x < pi / 2"], "sec(x) < sqrt(2)"),
 
@@ -552,10 +637,15 @@ def get_standard_inequalities() -> list[Identity]:
         (["x >= -1", "x <= 1"], "arcsin(x) <= pi / 2"),
         (["x > -1", "x < 1"], "arcsin(x) > -pi / 2"),
         (["x > -1", "x < 1"], "arcsin(x) < pi / 2"),
+
+        # arcsin(x/a) range rules (critical for trigonometric substitutions)
+        (["x > 1", "x < 1"], "arcsin(x) > -pi / 2"),
+        (["x > -1", "x < 1"], "arcsin(x) < pi / 2"),
         (["x > 0", "x <= 1"], "arcsin(x) > 0"),
         (["x >= 0", "x <= 1"], "arcsin(x) >= 0"),
         (["x < 0", "x >= -1"], "arcsin(x) < 0"),
         (["x <= 0", "x >= -1"], "arcsin(x) <= 0"),
+        (["x > 0", "x < 1 / 2"], "arcsin(x) < pi / 6"),
         (["x != -1"], "arcsin(x) != -pi/2"),
         (["x != 1"], "arcsin(x) != pi/2"),
         (["x >= -1", "x <= 1"], "arccos(x) >= 0"),
@@ -619,11 +709,18 @@ def get_standard_inequalities() -> list[Identity]:
         (["x != 0"], "arctan(x) < 0"),
         (["x > 0", "x < pi/2"], "sin(x) > 0"),
         (["x < 0", "x > -pi/2"], "sin(x) < 0"),
+        (["x > 0", "x < pi / 6"], "sin(x) < 1 / 2"),
 
         (["a >= b", "a != b"], "a > b"),
         (["a <= b", "a != b"], "a < b"),
         (["a = b", "a > c"], "b > c"),
         (["a > b", "b > c"], "a > c"),
+
+        # power
+        (["x != a", "a >= 0"], "sqrt(x) != sqrt(a)"),
+        (["x != a", "a >= 0"], "sqrt(x) != -sqrt(a)"),
+        (["x != a", "a >= 0"], "x^(1/4) != a^(1/4)"),
+        (["x != a", "a >= 0"], "x^(1/4) != -(a^(1/4))"),
 
         # Complex number rules
         (["isReal(a)"], "isReal(cos(a))"),
@@ -682,7 +779,7 @@ def get_standard_inequalities() -> list[Identity]:
         (["isReal(x)", "notReal(y)", "x = 0"], "isReal(y * x)"),
 
         (["notReal(x)"], "notReal(-x)"),
-        
+
         # Rules for products involving i (need non-zero conditions)
         (["isReal(a)", "a != 0"], "notReal(i * a)"),
         (["isReal(a)", "a != 0"], "notReal(a * i)"),
@@ -701,10 +798,12 @@ def get_standard_inequalities() -> list[Identity]:
         (["isReal(a)", "a != 0", "b = 0"], "isReal(i * a * b)"),
         (["isReal(a)", "a != 0", "b = 0"], "isReal(a * i * b)"),
         (["isReal(a)", "a != 0", "b = 0"], "isReal(a * b * i)"),
-        
+
         # notReal implies non-zero (key rule for log domain checking)
         (["notReal(x)"], "x != 0"),
 
+        ([], "x != log(x)"),
+        (["x != 0"], "x != exp(x)")
     ]
 
     ineqs = []
@@ -716,37 +815,57 @@ def get_standard_inequalities() -> list[Identity]:
 
 standard_inequalities = get_standard_inequalities()
 
-def check_condition(e: Expr, ctx: Context) -> bool:
-    """Check whether e holds under the given context."""
+def check_condition(e: Expr, ctx: Context, _subst_applied: bool = False) -> bool:
+    """Check whether e holds under the given context.
+    
+    Args:
+        e: Expression to check
+        ctx: Context containing conditions and substitutions
+        _subst_applied: Internal flag to prevent infinite recursion in substitution
+    """
 
     ### Some special checks ###
+
+    if expr.is_conj(e):
+        return all(check_condition(arg, ctx, _subst_applied) for arg in e.args)
+    if expr.is_disj(e):
+        return any(check_condition(arg, ctx, _subst_applied) for arg in e.args)
 
     # If integrand is non-negative, then the integral is non-negative
     if expr.is_greater_eq(e) and expr.is_integral(e.args[0]) and e.args[1] == Const(0):
         ctx2 = Context(ctx)
         ctx2.add_condition(Op(">", Var(e.args[0].var), e.args[0].lower))
         ctx2.add_condition(Op("<", Var(e.args[0].var), e.args[0].upper))
-        return check_condition(Op(">=", e.args[0].body, Const(0)), ctx2)
+        return check_condition(Op(">=", e.args[0].body, Const(0)), ctx2, _subst_applied)
     
     # abs(s) < t <-- -t < s < t &&
     if expr.is_less(e) and expr.is_fun(e.args[0], 'abs'):
         arg = e.args[0].args[0]
         e1 = Op("<", arg, e.args[1])
         e2 = Op(">", arg, -e.args[1])
-        return check_condition(e1, ctx) and check_condition(e2,ctx)
+        return check_condition(e1, ctx, _subst_applied) and check_condition(e2, ctx, _subst_applied)
 
     # real vs. non-real
     if expr.is_not_equals(e) and e.rhs.is_constant() and approx_not_real(e.rhs):
-        if check_condition(expr.isReal(e.lhs), ctx):
+        if check_condition(expr.isReal(e.lhs), ctx, _subst_applied):
             return True
 
     # Substitute for equations in the context
-    if ctx.get_substs():
+    # 只在第一次调用时应用替换，避免无限递归
+    if not _subst_applied and ctx.get_substs():
         new_e = e
-        for var, subst_e in reversed(ctx.get_substs()):
+        applied_any = False
+        for var, subst_e, _ in reversed(ctx.get_substs()):
+            # 检查替换是否会产生循环（即替换表达式中包含被替换的变量）
+            if var in subst_e.get_vars():
+                # 跳过会产生循环的替换
+                continue
             new_e = new_e.subst(var, subst_e)
-        if new_e != e:
-            if check_condition(new_e, ctx):
+            applied_any = True
+        
+        if applied_any and new_e != e:
+            # 递归调用，标记已经应用过替换
+            if check_condition(new_e, ctx, True):
                 return True
 
     # a <= inf or a < inf
@@ -761,12 +880,12 @@ def check_condition(e: Expr, ctx: Context) -> bool:
             if var_expr not in all_conds:
                 all_conds[var_expr] = []
             all_conds[var_expr].append(Fun('isReal', var_expr))
-            
+
             # Check if the integral components are real using the new notReal system
-            body_is_real = not check_condition(Fun("notReal", e.body), ctx)
-            lower_is_real = not check_condition(Fun("notReal", e.lower), ctx)  
-            upper_is_real = not check_condition(Fun("notReal", e.upper), ctx)
-            
+            body_is_real = not check_condition(Fun("notReal", e.body), ctx, _subst_applied)
+            lower_is_real = not check_condition(Fun("notReal", e.lower), ctx, _subst_applied)
+            upper_is_real = not check_condition(Fun("notReal", e.upper), ctx, _subst_applied)
+
             if body_is_real and lower_is_real and upper_is_real:
                 if e not in all_conds:
                     all_conds[e] = []
@@ -777,9 +896,17 @@ def check_condition(e: Expr, ctx: Context) -> bool:
             if var_expr not in all_conds:
                 all_conds[var_expr] = []
             all_conds[var_expr].append(Fun('isReal', var_expr))
-                
+
     # Otherwise, perform saturation search
     conds = ctx.get_conds()
+    for _, g in ctx.get_all_subgoals().items():
+        if expr.is_compare(g.expr) and not expr.is_equals(g.expr):
+            satisfied = True
+            for cond in g.conds.data:
+                if cond in ctx.get_conds().data:
+                    satisfied = True
+            if satisfied:
+                conds.add_condition(g.expr)
     all_conds = init_all_conds(conds)
     
     # Check all subexpressions of e
@@ -798,9 +925,6 @@ def check_condition(e: Expr, ctx: Context) -> bool:
     
     ineqs = copy(standard_inequalities)
     ineqs.extend(ctx.get_inequalities())
-    for lemma in ctx.get_lemmas():
-        if lemma.expr.is_compare():
-            ineqs.append(lemma)
 
     saturate(subject_of(e), ineqs, all_conds)
     return len(check_cond(e, all_conds, dict())) == 1

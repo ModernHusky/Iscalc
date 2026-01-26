@@ -1,3 +1,5 @@
+imports standard
+
 # 4.3 Inverse Substitution
 # Section A
 // page 180
@@ -44,6 +46,7 @@ calculate INT x. 1 / (x * sqrt(1-x^2)) for x > 0, x < 1
     substitute sin(u) for x
     rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
+    rewrite 1 / sin(u) to csc(u)
     apply integral identity
     replace substitution
     simplify
@@ -128,6 +131,7 @@ calculate INT x. (x^3+1) / (x^2+1)^2
     substitute v for cos(u)
     simplify
     expand polynomial
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     replace substitution
     simplify
@@ -155,6 +159,7 @@ calculate INT x. sqrt((1-x) / (x^2*(1+x))) for x > 0, x < 1
     rewrite 1-sin(u)^2 to (1+sin(u))*(1-sin(u))
     simplify
     expand polynomial
+    rewrite 1 / sin(u) to csc(u)
     apply integral identity
     replace substitution
     simplify
@@ -180,7 +185,6 @@ calculate INT x. exp(arctan(x))/(1+x^2)^(3/2)
     simplify
     solve integral INT u. cos(u)*exp(u)
     replace substitution
-    apply integral identity
     simplify
 done
 

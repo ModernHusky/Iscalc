@@ -1,16 +1,39 @@
 """State machine for processing the actions."""
 
 from typing import Optional
+import time
 
 from integral import expr
 from integral.rules import IntegrateByEquation, RuleException
 from integral import compstate
-from integral.compstate import Calculation, Goal, CompFile, StateException
+from integral.compstate import Calculation, Goal, StateException
+from integral.context import Context
 from integral import poly
 from integral.action import Action, CalculateAction, ProveAction, LHSAction, \
     RHSAction, DefineAction, ArgAction, RewriteGoalAction, InductionAction, \
     CaseAnalysisAction, SubgoalAction, DoneAction, RuleAction, SorryAction, \
-    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction
+    BaseCaseAction, InductCaseAction, CaseAction, ImportsAction, LetAction
+
+
+def extract_solving_skolem_funcs(goal_expr: expr.Expr) -> list[str]:
+    """Extract Skolem functions that are being solved for in the goal.
+
+    For example, if the goal is: SKOLEM_FUNC(C(a)) = pi/2
+    This returns ["C(a)"] to mark it as being solved.
+    """
+    solving_funcs = []
+
+    # Check if it's an equation with Skolem func on LHS
+    if goal_expr.is_equals():
+        lhs = goal_expr.lhs
+        if expr.is_skolem_func(lhs):
+            if len(lhs.dependent_vars) == 0:
+                solving_funcs.append(lhs.name)
+            else:
+                args_str = ",".join(str(arg) for arg in lhs.dependent_vars)
+                solving_funcs.append(f"{lhs.name}({args_str})")
+
+    return solving_funcs
 
 
 class State:
@@ -30,24 +53,29 @@ class State:
 
 class InitialState(State):
     """Initial state."""
-    def __init__(self, comp_file: CompFile):
-        self.comp_file = comp_file
+    def __init__(self, ctx: Context):
+        self.ctx = ctx
         self.past = None
 
     def process_action(self, action: Action) -> State:
         # Start a calculation
         if isinstance(action, CalculateAction):
-            calc = Calculation(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
+            calc = Calculation(None, self.ctx, action.expr, conds=action.conditions)
             return CalculateState(self, calc)
         
         # Start a proof
         elif isinstance(action, ProveAction):
-            goal = compstate.Goal(self.comp_file, self.comp_file.ctx, action.expr, conds=action.conditions)
+            if expr.is_equals(action.expr) and expr.is_indefinite_integral(action.expr.lhs):
+                action.conditions.add_condition(expr.isReal(expr.Var(action.expr.lhs.var)))
+            goal = Goal(None, self.ctx, action.expr, conds=action.conditions)
+            # Auto-mark Skolem functions that are being solved for
+            for skolem_str in extract_solving_skolem_funcs(action.expr):
+                goal.ctx.mark_skolem_solving(skolem_str)
             return ProveState(self, goal)
         
         # Add a definition
         elif isinstance(action, DefineAction):
-            self.comp_file.ctx.add_definition(action.expr, conds=action.conditions)
+            self.ctx.add_definition(action.expr, conds=action.conditions)
             return self
 
         # Importing a theory, ignored for now        
@@ -70,6 +98,7 @@ class ProveState(State):
     """State when performing a proof."""
     def __init__(self, past: State, goal: Goal):
         self.past = past
+        assert goal is not None
         self.goal = goal
 
     def process_action(self, action: Action) -> State:
@@ -78,7 +107,7 @@ class ProveState(State):
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
-                raise StateException("Prove", "lhs: not in calculation proof")
+                raise StateException("Prove", "lhs: can not appear in a calculation proof")
             return CalculateState(self, self.goal.proof.lhs_calc)
         
         elif isinstance(action, RHSAction):
@@ -89,6 +118,10 @@ class ProveState(State):
             return CalculateState(self, self.goal.proof.rhs_calc)
         
         elif isinstance(action, ArgAction):
+            if self.goal.goal.is_equals():
+                raise StateException(
+                    "Prove",
+                    f"Action type {type(action).__name__} cannot be performed in prove state because {str(self.goal.goal)} is a equation. If you wish to use calculation proof, use lhs: or rhs: to enter the calculate state.")
             if not self.goal.proof:
                 self.goal.proof_by_calculation()
             if not isinstance(self.goal.proof, compstate.CalculationProof):
@@ -112,26 +145,31 @@ class ProveState(State):
 
         # Start a subgoal
         elif isinstance(action, SubgoalAction):
+            if self.goal.parent is not None and isinstance(self.goal.parent, Goal):
+                raise StateException(
+                "Prove",
+                f"Sub-goals cannot be nested.")
             subgoal = self.goal.add_subgoal(action.name, action.expr, action.conditions)
+            # Auto-mark Skolem functions that are being solved for
+            for skolem_str in extract_solving_skolem_funcs(action.expr):
+                subgoal.ctx.mark_skolem_solving(skolem_str)
             return ProveState(self, subgoal)
         
         # Done with current subgoal
         elif isinstance(action, DoneAction):
             self.goal.check_finished(stack=tuple())
-            if isinstance(self.past, InitialState):
-                if self.goal.goal.is_equals() and expr.is_integral(self.goal.goal.lhs):
-                    self.past.comp_file.ctx.add_definite_integral(self.goal.goal, self.goal.conds)
-                elif self.goal.goal.is_equals() and expr.is_indefinite_integral(self.goal.goal.lhs):
-                    self.past.comp_file.ctx.add_indefinite_integral(self.goal.goal, self.goal.conds)
-                else:
-                    self.past.comp_file.ctx.add_lemma(self.goal.goal, self.goal.conds)
             return self.past
+
+        # Make local definition
+        elif isinstance(action, LetAction):
+            self.goal.add_definition(action.expr, action.conditions)
+            return self
 
         # Make definition
         elif isinstance(action, DefineAction):
             self.goal.add_definition(action.expr, action.conditions)
             return self
-        
+
         # Abandon the current calculation or proof
         elif isinstance(action, SorryAction):
             if isinstance(self.past, InitialState):
@@ -186,11 +224,11 @@ class CalculateState(State):
         
         # Done with current calculation or proof
         elif isinstance(action, DoneAction):
+            if not self.is_finished():
+                msg = "Use done when calculation is not finished\n"
+                msg += f"Final expression {self.calc.steps[-1].res} is not closed"
+                raise StateException("Done", msg)
             if isinstance(self.past, InitialState):
-                if not self.is_finished():
-                    msg = "Use done when calculation is not finished\n"
-                    msg += f"Final expression {self.calc.steps[-1].res} is not closed"
-                    raise StateException("Done", msg)
                 return self.past
             else:
                 return self.past.process_action(action)
@@ -205,7 +243,11 @@ class CalculateState(State):
         # Go to the other branch
         elif isinstance(action, RHSAction):
             return self.past.process_action(action)
-        
+
+        elif isinstance(action, SubgoalAction):
+            subgoal = self.calc.add_subgoal(action.name, action.expr, action.conditions)
+            return ProveState(self, subgoal)
+
         # Other cases are invalid
         else:
             raise StateException(
@@ -224,10 +266,15 @@ class CalculateState(State):
                 ctx = step.rule.update_context(cur_e, ctx)
                 cur_e = step.res
             substs = ctx.get_substs()
-            for var, _ in substs:
+            for var, _, _ in substs:
                 if res.contains_var(var) and not self.calc.start.contains_var(var):
                     return False
-            return res.is_closed_form() and poly.normalize(res, self.calc.ctx) == res
+
+            self.calc.check_wellformed()
+
+
+            normalized_res = poly.normalize(res, self.calc.ctx)
+            return normalized_res.is_closed_form() and poly.normalize(normalized_res, self.calc.ctx) == normalized_res
         else:
             return self.past.is_finished()
 
@@ -299,3 +346,148 @@ class CaseAnalysisState(State):
     
     def is_finished(self) -> bool:
         return self.case_proof.is_finished()
+
+
+
+class ProblemInfo:
+    """Information about a single problem.
+    
+    Attributes
+    ----------
+    filename : str
+        name of the file, used for output
+    index : int
+        index of the problem, 1-based
+    context : Context
+        context for the problem
+    problem : str
+        statement of the problem
+    steps : list[str]
+        available answer for the problem
+
+    """
+    def __init__(self, filename: str, index: int, ctx: Context, problem: str, steps: list[str]):
+        self.filename = filename
+        self.index = index
+        self.context = Context(ctx)
+        self.problem = problem
+        self.steps = steps
+
+    def __str__(self):
+        res = f"{self.filename}_{self.index}"
+        if self.steps == ["sorry"]:
+            res += "?"
+        res += " " + self.problem
+        return res
+
+
+def process_file(filename: str) -> list[ProblemInfo]:
+    """Process the content of a file containing calculations.
+    
+    Parameters
+    ----------
+    filename : str
+        name of the file, in `iscalc/theories`.
+
+    Returns
+    -------
+    list[ProblemInfo]
+        list of problem infos contained in the file.
+
+    """
+    from integral import parser
+
+    result = []
+    with open(f'../iscalc/theories/{filename}.thy', 'r', encoding="utf-8") as problem_file:
+        lines = [s for s in problem_file.read().split('\n') if s.strip()]
+        cur_goal = None
+        steps = []
+        i = 0
+        ctx = Context()
+        ctx.load_book("base")
+        for line in lines:
+            line = line.strip()
+            if line.startswith('#') or line.startswith('//'):
+                # title or comment
+                continue
+            a = parser.parse_action(line)
+            if isinstance(a, ImportsAction):
+                for theory in a.theories:
+                    if theory != 'base':
+                        ctx.load_book(theory)
+            if isinstance(a, (ProveAction, CalculateAction)):
+                if cur_goal:
+                    # First create problem using context *without* adding the current
+                    # goal as theorem.
+                    result.append(ProblemInfo(filename, i, ctx, problem, steps))
+                    ctx = Context(ctx)
+
+                    # Then add current theorem to context.
+                    if isinstance(cur_goal, ProveAction):
+                        if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        else:
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                cur_goal = a
+                problem = line
+                steps = []
+                i += 1
+            elif line and line != 'done':
+                steps.append(line)
+        result.append(ProblemInfo(filename, i, ctx, problem, steps))
+    return result
+
+
+def check_actions(content: str, *, print_lines=False, print_state=False,
+                  write_stats=False, filename=""):
+    from integral import parser
+
+    actions = content.split('\n')
+    ctx = Context()
+    st = InitialState(ctx)
+    start_time = None
+    cur_goal = None
+    for i, act in enumerate(actions, 1):
+        if print_lines:
+            print(act)
+        if not act.strip():
+            # empty line
+            continue
+        if act.lstrip().startswith('#') or act.lstrip().startswith('//'):
+            # title or comment
+            continue
+        a = parser.parse_action(act)
+        if isinstance(a, ImportsAction):
+            for thy_name in a.theories:
+                ctx.load_book(thy_name)
+        if isinstance(a, (ProveAction, CalculateAction)):
+            cur_goal = a
+            if write_stats:
+                start_time = time.time()
+                with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                    stats_file.write(f"{filename} {i} {cur_goal}\n")
+        try:
+            st = st.process_action(a)
+            if isinstance(st, InitialState):
+                if isinstance(cur_goal, ProveAction):
+                    if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                        ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                    elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                        ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                    else:
+                        ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                if cur_goal and write_stats:
+                    elapsed_time = time.time() - start_time
+                    with open("stats.txt", "a", encoding='utf-8') as stats_file:
+                        stats_file.write(f"{elapsed_time:.2f} seconds\n")
+                cur_goal = None
+        except Exception as e:
+            print(cur_goal)
+            print(st)
+            raise e
+    if print_state:
+        print(st)
+    if not print_state and not isinstance(st, InitialState):
+        raise AssertionError("Does not end in initial state (add print_state=True to debug)")

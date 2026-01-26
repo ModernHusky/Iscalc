@@ -25,7 +25,9 @@ VAR, CONST, OP, FUN, DERIV, INTEGRAL,CINTEGRAL, EVAL_AT, SYMBOL, LIMIT, INF, IND
 SKOLEMFUNC, SUMMATION, PRODUCT, MULTIPOLECONTOUR, COMPOUNDCONTOUR, CINTPATH = range(18)
 
 op_priority = {
-    "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75, "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50
+    "+": 65, "-": 65, "*": 70, "/": 70, "%": 70, "^": 75,
+    "=": 50, "<": 50, ">": 50, "<=": 50, ">=": 50, "!=": 50,
+    "&&": 45, "||": 35
 }
 
 class Location:
@@ -163,7 +165,7 @@ class Expr:
         elif is_product(self):
             return 1 + self.lower.size() + self.upper.size() + self.body.size()
         elif is_cintegral(self):
-            return 1 + sum(path.size() for path in self.paths) + self.body.size()        
+            return 1 + sum(path.size() for path in self.paths) + self.body.size()
         else:
             raise NotImplementedError
 
@@ -339,10 +341,10 @@ class Expr:
         elif is_op(self) or is_fun(self):
             assert loc.head < len(self.args), "get_subexpr: invalid location"
             return self.args[loc.head].get_subexpr(loc.rest)
-        elif is_deriv(self):
+        elif is_deriv(self) or is_indefinite_integral(self) or is_limit(self):
             assert loc.head == 0, "get_subexpr: invalid location"
             return self.body.get_subexpr(loc.rest)
-        elif is_integral(self) or is_evalat(self):
+        elif is_integral(self) or is_evalat(self) or is_summation(self):
             if loc.head == 0:
                 return self.body.get_subexpr(loc.rest)
             elif loc.head == 1:
@@ -351,12 +353,8 @@ class Expr:
                 return self.upper.get_subexpr(loc.rest)
             else:
                 raise AssertionError("get_subexpr: invalid location")
-        elif is_limit(self):
-            assert loc.head == 0, "get_subexpr: invalid location"
-            return self.body.get_subexpr(loc.rest)
-
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"get_subexpr: {type(self)}")
 
     def replace_expr(self, loc, new_expr: "Expr") -> "Expr":
         """Replace self's subexpr at location."""
@@ -432,11 +430,11 @@ class Expr:
             elif is_op(exp) or is_fun(exp):
                 for i in range(len(exp.args)):
                     get(exp.args[i], loc + "." + str(i))
-            elif is_integral(exp) or is_evalat(exp):
+            elif is_integral(exp) or is_evalat(exp) or is_summation(exp):
                 get(exp.lower, loc + ".1")
                 get(exp.upper, loc + ".2")
                 get(exp.body, loc + ".0")
-            elif is_deriv(exp) or is_summation(exp) or is_limit(exp):
+            elif is_deriv(exp) or is_limit(exp):
                 get(exp.body, loc + ".0")
 
         get(self)
@@ -457,7 +455,7 @@ class Expr:
             elif is_op(e) or is_fun(e):
                 for i, arg in enumerate(e.args):
                     find(arg, loc.append(i))
-            elif is_integral(e) or is_evalat(e):
+            elif is_integral(e) or is_evalat(e) or is_summation(e):
                 find(e.lower, loc.append(1))
                 find(e.upper, loc.append(2))
                 find(e.body, loc.append(0))
@@ -466,37 +464,30 @@ class Expr:
             elif is_cintegral(e):
                 # 对围道积分的递归搜索
                 find(e.body, loc.append(0))
-            elif is_summation(e):
-                find(e.body, loc.append(0))
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
+
         find(self, Location(""))
         return locations
 
-    def find_subexpr_pred(self, pred: Callable[["Expr"], bool]) -> List[Tuple["Expr", Location]]:
-        """Find list of subexpressions satisfying a given predicate.
-
-        Larger expressions are placed later.
-
-        """
+    def find_subexpr_pred(self, pred: Callable[["Expr"], bool],
+                          is_nested=True) -> list[tuple["Expr", Location]]:
+        """Find list of subexpressions satisfying a given predicate."""
         results = []
 
         def find(e: Expr, loc: Location):
-            if is_op(e) or is_fun(e):
-                for i, arg in enumerate(e.args):
-                    find(arg, loc.append(i))
-            elif is_integral(e) or is_evalat(e):
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
-                find(e.body, loc.append(0))
-            elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e) or is_cintegral(e):
-                find(e.body, loc.append(0))
-            elif is_summation(e):
-                find(e.body, loc.append(0))
-                find(e.lower, loc.append(1))
-                find(e.upper, loc.append(2))
+            found = pred(e)
 
-            if pred(e):
+            if not found or is_nested:
+                if is_op(e) or is_fun(e):
+                    for i, arg in enumerate(e.args):
+                        find(arg, loc.append(i))
+                elif is_integral(e) or is_evalat(e) or is_summation(e):
+                    find(e.lower, loc.append(1))
+                    find(e.upper, loc.append(2))
+                    find(e.body, loc.append(0))
+                elif is_deriv(e) or is_limit(e) or is_indefinite_integral(e) or is_cintegral(e):
+                    find(e.body, loc.append(0))
+
+            if found:
                 results.append((e, Location(loc)))
 
         find(self, Location(""))
@@ -553,13 +544,13 @@ class Expr:
                             # Simple variable to variable substitution
                             new_args = re.sub(r'\b' + var + r'\b', e.name, args)
                         elif isinstance(e, Symbol):
-                            # Variable to symbol substitution  
+                            # Variable to symbol substitution
                             new_args = re.sub(r'\b' + var + r'\b', '?' + e.name, args)
                         else:
                             # For complex expressions, keep the original
                             new_args = args
                         return f"{func_name}({new_args})"
-                    
+
                     new_path = re.sub(r'([A-Za-z_]\w*)\((.*?)\)', replace_var, path)
                     new_paths.append(new_path)
                 else:
@@ -575,6 +566,27 @@ class Expr:
                              self.body.subst(var, e))
         else:
             raise NotImplementedError(f"subst: {type(self)}")
+
+    def contains_summation(self) -> bool:
+        """check if the expression contains summation"""
+        if is_summation(self):
+            return True
+        elif is_fun(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_op(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_fun(self):
+            return any(arg.contains_summation() for arg in self.args)
+        elif is_integral(self):
+            return self.upper.contains_summation() or \
+            self.lower.contains_summation() or \
+            self.body.contains_summation()
+        elif is_indefinite_integral(self):
+            return self.body.contains_summation()
+        elif is_deriv(self):
+            return self.body.contains_summation()
+        else:
+            return False
 
     def is_constant(self):
         """Determine whether expr is a number.
@@ -745,10 +757,14 @@ class Expr:
     def separate_limits(self) -> list[tuple["Limit", Location]]:
         """Collect the list of all limits appearing in self."""
         return self.find_subexpr_pred(lambda e: is_limit(e))
-    
+
     def separate_cintegral(self) -> List[Tuple["Expr", Location]]:
         """Collect the list of all integrals appearing in self."""
         return self.find_subexpr_pred(lambda e: is_cintegral(e))
+
+    def separate_summation(self) -> list[tuple["Summation", Location]]:
+        """Collect the list of all summations appearing in self."""
+        return self.find_subexpr_pred(lambda e: is_summation(e))
 
     @property
     def depth(self):
@@ -766,6 +782,23 @@ class Expr:
                 raise TypeError
 
         return d(self)
+
+    def get_all_summations(self):
+        if is_summation(self):
+            return [self]
+        elif is_op(self) or is_fun(self):
+            res = []
+            for arg in self.args:
+                res = res + arg.get_all_summations()
+            return res
+        elif is_integral(self):
+            return self.lower.get_all_summations() + \
+                self.upper.get_all_summations() + \
+                self.body.get_all_summations()
+        elif is_indefinite_integral(self):
+            return self.body.get_all_summations()
+        else:
+            return []
 
     def is_spec_function(self, fun_name):
         """Return true iff e is formed by rational options of fun_name."""
@@ -818,7 +851,7 @@ class Expr:
             subs.remove(self)
         return tuple(subs)
 
-    def inst_pat(self, mapping: Dict) -> "Expr":
+    def inst_pat(self, mapping: dict[str, "Expr"]) -> "Expr":
         """Instantiate by replacing symbols in term with mapping."""
         if is_var(self) or is_const(self) or is_inf(self):
             return self
@@ -989,6 +1022,12 @@ def is_not_equals(e: Expr) -> TypeGuard["Op"]:
 def is_compare(e: Expr) -> TypeGuard["Op"]:
     return is_op(e) and e.op in ('<', '>', '<=', '>=', '=', '!=')
 
+def is_conj(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '&&'
+
+def is_disj(e: Expr) -> TypeGuard["Op"]:
+    return is_op(e) and e.op == '||'
+
 def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
     """Match expr with given pattern.
 
@@ -1095,8 +1134,7 @@ def match(exp: Expr, pattern: Expr) -> Optional[Dict]:
             print("Match Failed for type:", type(exp))
             return False
 
-    bd_vars = dict()
-    if rec(exp, pattern, bd_vars):
+    if rec(exp, pattern, dict()):
         return d
     else:
         return None
@@ -1312,7 +1350,7 @@ def decompose_expr_factor(e) -> tuple[list[Expr], list[Expr]]:
 class Var(Expr):
     """Variable."""
     __slots__ = ('ty', 'name', '_hash')  # 使用__slots__减少内存占用
-    
+
     def __init__(self, name: str):
         assert isinstance(name, str)
         self.ty = VAR
@@ -1366,14 +1404,14 @@ class Const(Expr):
 class Op(Expr):
     """Operators."""
     __slots__ = ('ty', 'op', 'args', '_hash')  # 使用__slots__减少内存占用
-    
+
     def __init__(self, op: str, *args):
         assert isinstance(op, str)
         assert all(isinstance(arg, Expr) for arg in args), op +":"+ str(args)
         if len(args) == 1:
             assert op == "-"
-        elif len(args) == 2:
-            assert op in ["+", "-", "*", "/", "%", "^", "=", "!=", "<", "<=", ">", ">="]
+        elif len(args) >= 2:
+            assert op in ["+", "-", "*", "/", "%", "^", "=", "!=", "<", "<=", ">", ">=", "&&", "||"]
         else:
             raise NotImplementedError
         self.ty = OP
@@ -1390,7 +1428,11 @@ class Op(Expr):
         return isinstance(other, Op) and self.op == other.op and self.args == other.args
 
     def __str__(self):
-        if len(self.args) == 1:
+        if self.op == "&&":
+            return "(" + ", ".join(str(arg) for arg in self.args) + ")"
+        elif self.op == "||":
+            return " or ".join(str(arg) for arg in self.args)
+        elif len(self.args) == 1:
             a, = self.args
             s = str(a)
             if a.priority() < self.priority():
@@ -1946,10 +1988,10 @@ def neg_expr(e: Expr):
 
 class CINTPath(Expr):
     """CINT path for contour integrals.
-    
+
     表示围道路径，对应形式 (path_expr)_(var:[start,end])
     例如：(r*exp(i*pi*t))_(t:[0,1]) 表示参数化路径
-    
+
     Args:
         var: 路径参数变量
         path_expr: 路径表达式
@@ -1962,20 +2004,20 @@ class CINTPath(Expr):
         self.path_expr = path_expr
         self.start_expr = start_expr
         self.end_expr = end_expr
-    
+
     def __hash__(self) -> int:
         return hash((self.ty, self.var, self.path_expr, self.start_expr, self.end_expr))
-    
+
     def __eq__(self, other) -> bool:
         return isinstance(other, CINTPath) and \
                self.var == other.var and \
                self.path_expr == other.path_expr and \
                self.start_expr == other.start_expr and \
                self.end_expr == other.end_expr
-    
+
     def __str__(self) -> str:
         return f"({self.path_expr})_({self.var}:[{self.start_expr},{self.end_expr}])"
-    
+
     def __repr__(self) -> str:
         return f"CINTPath({self.var}, {self.path_expr}, {self.start_expr}, {self.end_expr})"
 
@@ -1984,16 +2026,16 @@ class CINTPath(Expr):
         # 首先检查参数是否相等（快速判断）
         if self.start_expr == self.end_expr:
             return True
-        
+
         # 计算路径表达式在起点和终点的值
         try:
             start_point = self.path_expr.subst(self.var, self.start_expr)
             end_point = self.path_expr.subst(self.var, self.end_expr)
-            
+
             # 尝试简化并比较
             if start_point == end_point:
                 return True
-            
+
             # 特殊情况：对于圆形路径 exp(i*t)，检查参数范围是否为 2π 的整数倍
             if isinstance(self.path_expr, Fun) and self.path_expr.func_name == 'exp':
                 arg = self.path_expr.args[0]
@@ -2001,7 +2043,7 @@ class CINTPath(Expr):
                 if isinstance(arg, Op) and arg.op == '*':
                     has_i = any(isinstance(a, Fun) and a.func_name == 'i' for a in arg.args)
                     has_var = any(isinstance(a, Var) and a.name == self.var for a in arg.args)
-                    
+
                     if has_i and has_var:
                         # exp(i*t) 形式，检查参数范围
                         try:
@@ -2015,9 +2057,9 @@ class CINTPath(Expr):
                                 import sympy
                                 start_val = float(sympy.N(str(self.start_expr)))
                                 end_val = float(sympy.N(str(self.end_expr)))
-                            
+
                             angle_diff = abs(end_val - start_val)
-                            
+
                             # 如果角度差是 2π 的整数倍（允许小误差），则闭合
                             cycles = angle_diff / (2 * math.pi)
                             if abs(cycles - round(cycles)) < 1e-6:
@@ -2025,19 +2067,19 @@ class CINTPath(Expr):
                         except Exception as e:
                             # 静默失败，继续其他检查
                             pass
-            
+
             # 尝试使用 sympy 进行符号计算
             try:
                 import sympy
                 # 将表达式转换为 sympy
                 start_sympy = sympy.simplify(str(start_point))
                 end_sympy = sympy.simplify(str(end_point))
-                
+
                 if start_sympy == end_sympy:
                     return True
             except:
                 pass
-            
+
             return False
         except:
             # 如果无法计算，使用参数相等判断
@@ -2045,7 +2087,7 @@ class CINTPath(Expr):
 
     def size(self) -> int:
         return 1 + self.path_expr.size() + self.start_expr.size() + self.end_expr.size()
-    
+
     def subst(self, var: str, e: "Expr") -> "Expr":
         """用表达式替换变量。"""
         if var == self.var:
@@ -2057,9 +2099,9 @@ class CINTPath(Expr):
             new_path_expr = self.path_expr.subst(var, e)
             new_start_expr = self.start_expr.subst(var, e)
             new_end_expr = self.end_expr.subst(var, e)
-            
+
             return CINTPath(self.var, new_path_expr, new_start_expr, new_end_expr)
-    
+
     def inst_pat(self, mapping: Dict) -> "CINTPath":
         """通过用映射中的值替换符号来实例化模式。"""
         inst_path = self.path_expr.inst_pat(mapping)
@@ -2071,7 +2113,7 @@ class CINTPath(Expr):
 def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
     """
     查找复函数的极点及其阶数。
-    
+
     对于有理函数 p(z)/q(z)，极点是 q(z)=0 的根。
     极点的阶数通过检查 q 及其导数在极点处的值来确定。
 
@@ -2079,26 +2121,26 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
         var: 要查找极点的变量
         e: 要查找极点的表达式
         ctx: 上下文环境(可选)
-        
+
     Returns:
         List[Tuple[Expr, int]]: 极点列表，每个元素为 (极点, 阶数)
     """
     from integral import solve
     from integral.poly import normalize
     from integral import rules
-    
+
     if ctx is None:
         from integral.context import Context
         ctx = Context()
 
     poles = []
-    
+
     # 只处理有理函数（分式）的极点
     if not (is_op(e) and e.op == '/' and len(e.args) == 2):
         return poles
-    
+
     denom = e.args[1]  # 获取分母（除法的第二个参数）
-    
+
     # 分母必须包含变量才有极点
     if not denom.contains_var(var):
         return poles
@@ -2106,63 +2148,63 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
     try:
         # 求解分母为零的点
         zeros = solve.solve_equation(denom, Const(0), var, ctx)
-        
+
         for zero in zeros:
             zero = normalize(zero, ctx)
-            
+
             # 去重检查
             already_exists = False
             for existing_pole, _ in poles:
                 if are_equal(zero, existing_pole):
                     already_exists = True
                     break
-            
+
             if already_exists:
                 continue
-            
+
             # 确定极点的阶数
             order = _determine_pole_order(var, denom, zero, ctx)
             poles.append((zero, order))
-            
+
     except Exception:
         pass
-    
+
     return poles
 
 def _determine_pole_order(var: str, denom: Expr, pole: Expr, ctx, max_order: int = 10) -> int:
     """
     确定极点的阶数
-    
+
     通过计算分母及其导数在极点处的值来判断：
     - 如果 q(pole) = 0 且 q'(pole) ≠ 0，则为1阶极点
     - 如果 q(pole) = 0, q'(pole) = 0, q''(pole) ≠ 0，则为2阶极点
     - 依此类推
-    
+
     Args:
         var: 变量名
         denom: 分母表达式
         pole: 极点
         ctx: 上下文
         max_order: 最大检测阶数
-        
+
     Returns:
         int: 极点阶数
     """
     from integral.poly import normalize
     from integral import rules
-    
+
     # 计算各阶导数在极点处的值
     current_expr = denom
-    
+
     for order in range(1, max_order + 1):
         # 计算导数
         current_expr = rules.deriv(var, current_expr, ctx)
-        
+
         try:
             # 代入极点值
             value_at_pole = current_expr.subst(var, pole)
             value_at_pole = normalize(value_at_pole, ctx)
-            
+
             # 如果导数在极点处非零，说明找到了阶数
             if value_at_pole != Const(0) and not (is_const(value_at_pole) and value_at_pole.val == 0):
                 return order
@@ -2183,7 +2225,7 @@ def factorial(n):
 
 class CIntegral(Expr):
     """Contour integral of an expression.
-    
+
     支持形如 CINT z:com(path1,path2,...). f(z) 的围道积分
     其中path可以是CINTPath对象或路径名称
     """
@@ -2193,7 +2235,7 @@ class CIntegral(Expr):
         self.var = var
         self.paths = self._process_paths(paths)
         self.body = body.subst(var, Var(var))
-    
+
     def _process_paths(self, paths: List[Union[CINTPath, str]]) -> List[Union[CINTPath, str]]:
         """处理路径列表，确保路径格式正确"""
         processed_paths = []
@@ -2205,12 +2247,12 @@ class CIntegral(Expr):
             else:
                 raise ValueError(f"不支持的路径类型: {type(path)}")
         return processed_paths
-    
+
     def __hash__(self):
         # 确保paths是一个元组，并且每个path都是可哈希的
         path_tuple = tuple(hash(p) if hasattr(p, '__hash__') else hash(str(p)) for p in self.paths)
         return hash((CINTEGRAL, self.var, path_tuple, self.body))
-    
+
     def __eq__(self, other):
         return isinstance(other, CIntegral) and \
                self.var == other.var and \
@@ -2225,7 +2267,7 @@ class CIntegral(Expr):
                 path_strs.append(str(path))
             else:
                 path_strs.append(str(path))
-        
+
         # 根据路径数量决定格式
         if len(path_strs) == 1:
             # 单个路径：CINT z:path. body
@@ -2233,17 +2275,17 @@ class CIntegral(Expr):
         else:
             # 多个路径：CINT z:com(path1,path2,...). body
             return "CINT %s:com(%s). %s" % (self.var, ",".join(path_strs), str(self.body))
-    
+
     def size(self) -> int:
         """计算表达式的大小"""
         path_size = sum(path.size() if hasattr(path, 'size') else 1 for path in self.paths)
         return 1 + path_size + self.body.size()
-    
+
     @classmethod
     def from_contour_names(cls, var: str, contour_names: List[str], body: Expr):
         """从围道名称列表创建围道积分"""
         return cls(var, contour_names, body)
-     
+
     @classmethod
     def from_paths(cls, var: str, paths: List[CINTPath], body: Expr):
         """从CINTPath对象列表创建围道积分"""
@@ -2254,52 +2296,52 @@ def are_equal(expr1: Expr, expr2: Expr) -> bool:
     # 表达式完全相等
     if expr1 == expr2:
         return True
-    
+
     # 常量表达式比较
     if is_const(expr1) and is_const(expr2):
         return expr1.val == expr2.val
-    
+
     # 其他情况返回False
     return False
 
 def compute_residue(f: Expr, pole: Expr, order: int = 1, var: str = "z") -> Expr:
     """计算函数f在极点pole处的留数
-    
+
     使用系统统一的基础设施进行计算：
     1. 对于简单极点（order=1）:
        - 有理函数 p(z)/q(z): 使用 Res(f, pole) = p(pole)/q'(pole)
        - 其他情况: 使用极限定义并尝试化简
     2. 对于高阶极点: 使用导数公式
-    
+
     Args:
         f: 复变函数表达式
         pole: 极点
         order: 极点的阶数，默认为1
         var: 积分变量名，默认为"z"
-    
+
     Returns:
         Expr: 留数表达式
     """
     from integral.poly import normalize
     from integral.context import Context
     from integral import rules
-    
+
     z = Var(var)
     temp_ctx = Context()
-    
+
     if order == 1:  # 简单极点
         # 对于有理函数形式，使用公式 Res(f, pole) = p(pole)/q'(pole)
         if f.is_divides() and len(f.args) == 2:
             numerator, denominator = f.args
-            
+
             try:
                 # 计算分母的导数
                 denom_deriv = rules.deriv(var, denominator, temp_ctx)
-                
+
                 # 代入极点值
                 num_at_pole = normalize(numerator.subst(var, pole), temp_ctx)
                 denom_deriv_at_pole = normalize(denom_deriv.subst(var, pole), temp_ctx)
-                
+
                 # 检查分母导数是否为零（如果为零，说明极点阶数大于1）
                 if denom_deriv_at_pole == Const(0):
                     # 退回到通用方法
@@ -2310,73 +2352,73 @@ def compute_residue(f: Expr, pole: Expr, order: int = 1, var: str = "z") -> Expr
                     return result
             except:
                 pass  # 如果计算失败，使用通用方法
-        
+
         # 通用方法：lim_{z->pole} (z-pole) * f(z)
         # 构造表达式 (z - pole) * f
         pole_diff = normalize(Op("-", z, pole), temp_ctx)
         expr_to_limit = normalize(Op("*", pole_diff, f), temp_ctx)
-        
+
         try:
             # 尝试通过泰勒展开或代数化简计算极限
             # 首先尝试直接代入
             result = expr_to_limit.subst(var, pole)
             result = normalize(result, temp_ctx)
-            
+
             # 检查结果是否有效（不含无穷或未定义形式）
             if not (is_inf(result) or _contains_zero_division(result)):
                 return result
-            
+
             # 无法直接计算，返回极限表达式
             return Limit(var, pole, expr_to_limit)
-            
+
         except Exception:
             # 计算失败，返回极限表达式
             return Limit(var, pole, expr_to_limit)
-    
+
     else:  # 高阶极点
         # 使用公式: Res(f, pole) = 1/(n-1)! * lim_{z->pole} d^(n-1)/dz^(n-1) [(z-pole)^n * f(z)]
-        
+
         try:
             # 构造 (z-pole)^order * f(z)
             pole_diff = Op("-", z, pole)
             pole_power = Op("^", pole_diff, Const(order))
             expr_to_diff = normalize(Op("*", pole_power, f), temp_ctx)
-            
+
             # 对表达式求 (order-1) 阶导数
             result = expr_to_diff
             for _ in range(order - 1):
                 result = rules.deriv(var, result, temp_ctx)
                 result = normalize(result, temp_ctx)
-            
+
             # 代入极点值
             result = result.subst(var, pole)
             result = normalize(result, temp_ctx)
-            
+
             # 除以 (order-1)!
             factorial_val = 1
             for i in range(1, order):
                 factorial_val *= i
-            
+
             result = normalize(Op("/", result, Const(factorial_val)), temp_ctx)
-            
+
             return result
-            
+
         except Exception:
             # 如果计算失败，返回使用极限和导数的表达式
             pole_diff = Op("-", z, pole)
             pole_power = Op("^", pole_diff, Const(order))
             expr_to_diff = Op("*", pole_power, f)
-            
+
             # 创建导数表达式
             deriv_expr = expr_to_diff
             for _ in range(order - 1):
                 deriv_expr = Deriv(var, deriv_expr)
-            
+
             # 计算阶乘
             factorial_val = 1
             for i in range(1, order):
                 factorial_val *= i
-            
+
             return Op("/", Limit(var, pole, deriv_expr), Const(factorial_val))
 
 

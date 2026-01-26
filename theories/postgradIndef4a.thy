@@ -1,3 +1,5 @@
+imports standard
+
 # 4.4 Integration by parts
 # Section A
 
@@ -16,7 +18,7 @@ done
 calculate INT x. arcsin(x) for x > -1, x < 1
     integrate by parts with u=arcsin(x), v=x
     substitute sin(u) for x
-    rewrite -(sin(u)^2)+1 to cos(u)^2
+    rewrite 1 - sin(u)^2 to cos(u)^2
     simplify
     apply integral identity
     replace substitution
@@ -42,8 +44,6 @@ calculate INT x. exp(-x) * cos(x)
     integrate by parts with u = sin(x), v = -exp(-x)
     simplify
     solve integral INT x. exp(-x) * cos(x)
-    apply integral identity
-    simplify
 done
 
 calculate INT x. x*cos(x/2)
@@ -56,7 +56,6 @@ done
 
 calculate INT x. x^2*arctan(x)
     integrate by parts with u=arctan(x), v=x^3/3
-    simplify
     rewrite 3*x^2+3 to 3*(x^2+1)
     substitute tan(u) for x
     rewrite tan(u)^2 + 1 to sec(u)^2
@@ -71,7 +70,7 @@ calculate INT x. x^2*arctan(x)
     simplify
 done
 
-calculate INT x. x*tan(x)^2
+calculate INT x. x*tan(x)^2 for cos(x) != 0
     rewrite tan(x)^2 to sec(x)^2-1
     expand polynomial
     apply integral identity
@@ -107,15 +106,14 @@ calculate INT x. x^2*cos(x/2)^2
     simplify
 done
 
-calculate INT x. x*log(x-1)
+calculate INT x. x*log(x-1) for x > 1
     integrate by parts with u=log(x-1),v=x^2/2
-    simplify
     partial fraction decomposition
     apply integral identity
     simplify
 done
 
-calculate INT x. cos(sqrt(x))^2
+calculate INT x. cos(sqrt(x))^2 for x >= 0
     substitute u for sqrt(x)
     integrate by parts with u=cos(u)^2, v=u^2
     rewrite 2 * u ^ 2 * cos(u) * sin(u) to 2 * u^2 * (cos(u)*sin(u))
@@ -128,7 +126,7 @@ calculate INT x. cos(sqrt(x))^2
     simplify
 done
 
-calculate INT x. log(x+2)/(x+1)^2
+calculate INT x. log(x+2)/(x+1)^2 for x > -2, x != -1
     integrate by parts with u=log(x+2),v=-1/(x+1)
     partial fraction decomposition
     apply integral identity

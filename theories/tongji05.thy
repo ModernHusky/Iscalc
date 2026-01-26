@@ -1,3 +1,5 @@
+imports standard
+
 ## Definite integrals
 
 // Source:
@@ -75,12 +77,13 @@ calculate INT x:[0, pi]. 1 - sin(x) ^ 3
     simplify
     rewrite sin(x) ^ 3 to sin(x) * sin(x) ^ 2
     rewrite sin(x) ^ 2 to 1 - cos(x) ^ 2
-    substitute u for cos(x)
+    substitute u for cos(x) (at 2)
     apply integral identity
     simplify
 done
 
 calculate INT x:[pi/6, pi/2]. cos(x) ^ 2
+    rewrite cos(x) ^ 2 to 1/2 * (1 + cos(2*x))
     apply integral identity
     simplify
 done
@@ -89,6 +92,7 @@ calculate INT x:[0, 1]. (1 - x^2) ^ (1/2)
     substitute sin(u) for x
     rewrite 1 - sin(u) ^ 2 to cos(u) ^ 2
     simplify
+    rewrite cos(u) ^ 2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done
@@ -97,8 +101,9 @@ calculate INT x:[0, sqrt(2)]. sqrt(2 - x^2)
     substitute sqrt(2) * sin(u) for x
     simplify
     rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
-    rewrite -(2 * (1 - cos(u) ^ 2)) + 2 to 2 * cos(u)^2
+    rewrite 2 - 2 * (1 - cos(u) ^ 2) to 2 * cos(u)^2
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done
@@ -107,8 +112,9 @@ calculate INT y:[-sqrt(2), sqrt(2)]. sqrt(8 - 2*y^2)
     substitute 2 * sin(u) for y
     simplify
     rewrite sin(u) ^ 2 to 1 - cos(u) ^ 2
-    rewrite -(8 * (1 - cos(u) ^ 2)) + 8 to 8*cos(u)^2
+    rewrite 8 - 8 * (1 - cos(u) ^ 2) to 8*cos(u)^2
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     expand polynomial
 done
@@ -165,6 +171,10 @@ calculate INT x:[1, exp(2)]. 1 / (x * sqrt(1 + log(x)))
 done
 
 calculate INT x:[-2, 0]. (x + 2) / (x^2 + 2*x + 2)
+subgoal 1: x^2 + 2*x + 2 > 0
+lhs:
+    rewrite x^2 + 2*x + 2 to (x + 1)^2 + 1
+done
     rewrite x^2 + 2*x + 2 to (x + 1) ^ 2 + 1
     substitute u for x + 1
     expand polynomial
@@ -183,6 +193,7 @@ calculate INT x:[-pi/2, pi/2]. cos(x) ^ 4
     expand polynomial
     substitute u for 2 * x
     simplify
+    rewrite cos(u)^2 to 1/2*(1+cos(2*u))
     apply integral identity
     simplify
 done
@@ -259,7 +270,7 @@ calculate INT x:[0,pi]. (x * sin(x)) ^ 2
     rewrite sin(x) ^ 2 to (1 - cos(2*x)) / 2
     expand polynomial
     simplify
-    integrate by parts with u = x^2 / 2, v = sin(2*x)
+    integrate by parts with u = x^2 / 2, v = sin(2*x) (at 2)
     simplify
     integrate by parts with u = x / 2, v = -cos(2*x)
     simplify

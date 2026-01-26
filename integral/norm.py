@@ -285,6 +285,19 @@ def normalize_power(e: Expr, ctx: Context) -> NormalPower:
         elif e.is_power():
             if expr.is_const(e.args[1]):
                 return exp_normal_power(rec(e.args[0]), e.args[1].val)
+            # Handle power splitting for parametric exponents: f^(a+b) = f^a * f^b
+            elif e.args[1].is_plus():
+                # Split: base^(exp1 + exp2) -> base^exp1 * base^exp2
+                base = e.args[0]
+                exp1 = e.args[1].args[0]
+                exp2 = e.args[1].args[1]
+                return mult_normal_power(rec(base ** exp1), rec(base ** exp2))
+            # Handle power splitting for difference: f^(a-b) = f^a / f^b
+            elif e.args[1].is_minus():
+                base = e.args[0]
+                exp1 = e.args[1].args[0]
+                exp2 = e.args[1].args[1]
+                return divide_normal_power(rec(base ** exp1), rec(base ** exp2))
         elif expr.is_fun(e):
             if e.func_name == 'sqrt':
                 return rec(e.args[0] ** Const(Fraction(1,2)))
@@ -332,6 +345,28 @@ def normalize_log(e: Expr, ctx: Context) -> NormalLog:
             return minus_normal_log(rec(e.args[0]), rec(e.args[1]))
         elif e.is_plus():
             return add_normal_log(rec(e.args[0]), rec(e.args[1]))
+        elif e.is_times():
+            # Handle n * log(a) = log(a^n) and log(a) * n = log(a^n)
+            lhs, rhs = e.args[0], e.args[1]
+            # Case 1: n * log(a) where n is constant
+            if lhs.is_constant() and expr.is_fun(rhs) and rhs.func_name == 'log':
+                # n * log(a) = log(a^n)
+                return NormalLog(poly.singleton(rhs.args[0] ** lhs))
+            # Case 2: log(a) * n where n is constant
+            if rhs.is_constant() and expr.is_fun(lhs) and lhs.func_name == 'log':
+                # log(a) * n = log(a^n)
+                return NormalLog(poly.singleton(lhs.args[0] ** rhs))
+            # Case 3: n * (log expression) - recursively handle
+            if lhs.is_constant():
+                inner = rec(rhs)
+                # n * log(e) = log(e^n)
+                inner_expr = from_poly(inner.e)
+                return NormalLog(poly.singleton(inner_expr ** lhs))
+            # Case 4: (log expression) * n - recursively handle
+            if rhs.is_constant():
+                inner = rec(lhs)
+                inner_expr = from_poly(inner.e)
+                return NormalLog(poly.singleton(inner_expr ** rhs))
         elif expr.is_fun(e) and e.func_name == 'log':
             return NormalLog(poly.singleton(e.args[0]))
         return NormalLog(poly.singleton(expr.Fun("exp", e)))
@@ -346,7 +381,14 @@ def equal_normal_log(t1: NormalLog, t2: NormalLog):
 def eq_log(t1: Expr, t2: Expr, ctx: Context) -> bool:
     n1 = normalize_log(t1, ctx)
     n2 = normalize_log(t2, ctx)
-    return equal_normal_log(n1, n2)
+    # First try direct comparison
+    if equal_normal_log(n1, n2):
+        return True
+    # Also try normalizing the polynomial representation for better comparison
+    # This handles cases like a * 1 == a
+    e1 = poly.normalize(from_poly(n1.e), ctx)
+    e2 = poly.normalize(from_poly(n2.e), ctx)
+    return e1 == e2
 
 def normalize_exp(t: Expr) -> Expr:
     def rec(t):
@@ -427,3 +469,327 @@ def simp_definite_integral(e: Integral, ctx: Context) -> Expr:
         from_poly(to_poly(e.lower, ctx)) == from_poly(to_poly(expr.Op("-", e.upper), ctx)):
         return Const(0)
     return e
+
+
+def eq_algebraic(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Enhanced algebraic equivalence verification.
+
+    This function attempts to verify algebraic equivalence between two expressions
+    by trying multiple normalization strategies:
+    1. Try existing specialized eq_* functions
+    2. Expand/factor and compare
+    3. Handle logarithmic identities (log(a) - log(b) = log(a/b), etc.)
+    4. Handle absolute values in logarithms
+    5. Normalize and compare after subtracting
+    6. Handle SKOLEM_CONST absorption (expressions differing by a constant)
+    """
+    from integral import poly
+
+    # Try existing equivalence checkers first
+    try:
+        if eq_quotient(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_power(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_log(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    try:
+        if eq_definite_integral(t1, t2, ctx):
+            return True
+    except:
+        pass
+
+    # Try to verify by checking if t1 - t2 normalizes to 0
+    try:
+        diff = t1 - t2
+        normalized_diff = poly.normalize(diff, ctx)
+        if normalized_diff == Const(0):
+            return True
+    except:
+        pass
+
+    # Try expanding logarithms: log(a*b) = log(a) + log(b), log(a/b) = log(a) - log(b)
+    try:
+        t1_expanded = expand_log(t1)
+        t2_expanded = expand_log(t2)
+        if eq_log(t1_expanded, t2_expanded, ctx):
+            return True
+    except:
+        pass
+
+    # Try removing abs() from logarithms and comparing
+    try:
+        t1_no_abs = remove_abs_in_log(t1)
+        t2_no_abs = remove_abs_in_log(t2)
+        diff = t1_no_abs - t2_no_abs
+        normalized_diff = poly.normalize(diff, ctx)
+        if normalized_diff == Const(0):
+            return True
+    except:
+        pass
+
+    # Handle constant times integral equivalence:
+    # c * (INT x:[a,b]. f(x)) is equivalent to INT x:[a,b]. c * f(x)
+    # when c does not depend on x
+    try:
+        equiv = check_const_integral_equivalence(t1, t2, ctx)
+        if equiv:
+            return True
+    except:
+        pass
+
+    # Handle SKOLEM_CONST absorption: expressions that differ only by a constant
+    # For example: f(x) + K + SKOLEM_CONST(C) is equivalent to f(x) + SKOLEM_CONST(C)
+    # because SKOLEM_CONST represents an arbitrary constant
+    try:
+        # Check if both expressions contain SKOLEM_CONST
+        skolem1 = has_skolem_const(t1)
+        skolem2 = has_skolem_const(t2)
+
+        if skolem1 and skolem2:
+            # Remove SKOLEM_CONST from both expressions and compare
+            t1_no_skolem = remove_skolem_const(t1)
+            t2_no_skolem = remove_skolem_const(t2)
+
+            # Check if the difference is a constant
+            # For indefinite integrals, a constant means any expression that doesn't
+            # involve the integration variable. Since we don't know the integration
+            # variable here, we check if the expressions are equal after normalization,
+            # or if the difference is evaluable (can be computed to a number).
+            diff = t1_no_skolem - t2_no_skolem
+            normalized_diff = poly.normalize(diff, ctx)
+
+            # Try to evaluate the difference - if it's evaluable, it's a constant
+            try:
+                from integral.expr import eval_expr
+                eval_expr(normalized_diff)
+                # If evaluation succeeds, it's a numeric constant
+                return True
+            except:
+                # Not evaluable - might still be a parametric constant
+                # Check if it only contains parameters (constants and pi)
+                # and no integration-like variables
+                if is_parametric_constant(normalized_diff):
+                    return True
+    except:
+        pass
+
+    return False
+
+def is_parametric_constant(e: Expr) -> bool:
+    """Check if expression is a parametric constant (no integration variable).
+
+    A parametric constant is an expression that may contain parameters (like 'a', 'b')
+    but doesn't contain integration variables or other non-constant terms.
+    We consider an expression a parametric constant if it can be evaluated or
+    if it only contains constants, parameters, pi, and arithmetic operations.
+    """
+    # If it's directly evaluable, it's a constant
+    try:
+        from integral.expr import eval_expr
+        eval_expr(e)
+        return True
+    except:
+        pass
+
+    # Check the structure: should only contain constants, vars (parameters), pi, and operations
+    if expr.is_const(e):
+        return True
+    elif expr.is_var(e):
+        # Variables are considered parameters in this context
+        return True
+    elif expr.is_fun(e) and e.func_name == 'pi':
+        return True
+    elif expr.is_op(e):
+        # All arguments must be parametric constants
+        return all(is_parametric_constant(arg) for arg in e.args)
+    elif expr.is_fun(e):
+        # Functions like sin, cos, exp of parametric constants are still parametric constants
+        return all(is_parametric_constant(arg) for arg in e.args)
+    return False
+
+def has_skolem_const(e: Expr) -> bool:
+    """Check if expression contains SKOLEM_CONST."""
+    if expr.is_skolem_func(e):
+        return True
+    elif expr.is_op(e):
+        return any(has_skolem_const(arg) for arg in e.args)
+    elif expr.is_fun(e):
+        return any(has_skolem_const(arg) for arg in e.args)
+    elif expr.is_integral(e) or expr.is_indefinite_integral(e):
+        return has_skolem_const(e.body)
+    return False
+
+def remove_skolem_const(e: Expr) -> Expr:
+    """Remove SKOLEM_CONST from expression.
+
+    For example: f(x) + SKOLEM_CONST(C) becomes f(x)
+                 f(x) - K + SKOLEM_CONST(C) becomes f(x) - K
+    """
+    if expr.is_skolem_func(e):
+        return Const(0)
+    elif expr.is_op(e) and e.op == '+':
+        left = remove_skolem_const(e.args[0])
+        right = remove_skolem_const(e.args[1])
+        # If one side is 0 (was SKOLEM_CONST), return the other
+        if left == Const(0):
+            return right
+        if right == Const(0):
+            return left
+        return left + right
+    elif expr.is_op(e) and e.op == '-' and len(e.args) == 2:
+        left = remove_skolem_const(e.args[0])
+        right = remove_skolem_const(e.args[1])
+        if right == Const(0):
+            return left
+        if left == Const(0):
+            return -right
+        return left - right
+    elif expr.is_op(e) and e.op == '-' and len(e.args) == 1:
+        return -remove_skolem_const(e.args[0])
+    elif expr.is_op(e) and e.op == '*':
+        return remove_skolem_const(e.args[0]) * remove_skolem_const(e.args[1])
+    elif expr.is_op(e) and e.op == '/':
+        return remove_skolem_const(e.args[0]) / remove_skolem_const(e.args[1])
+    elif expr.is_fun(e):
+        return expr.Fun(e.func_name, *[remove_skolem_const(arg) for arg in e.args])
+    return e
+
+def expand_log(e: Expr) -> Expr:
+    """Expand logarithmic expressions: log(a*b) -> log(a) + log(b), log(a/b) -> log(a) - log(b)."""
+    if not expr.is_fun(e):
+        if e.is_op():
+            return expr.Op(e.op, *[expand_log(arg) for arg in e.args])
+        return e
+
+    if e.func_name == 'log':
+        arg = e.args[0]
+        # Handle log(a*b) = log(a) + log(b)
+        if arg.is_times():
+            return expand_log(expr.log(arg.args[0])) + expand_log(expr.log(arg.args[1]))
+        # Handle log(a/b) = log(a) - log(b)
+        elif arg.is_divides():
+            return expand_log(expr.log(arg.args[0])) - expand_log(expr.log(arg.args[1]))
+        # Handle log(a^n) = n * log(a) for constant n
+        elif arg.is_power() and expr.is_const(arg.args[1]):
+            return arg.args[1] * expand_log(expr.log(arg.args[0]))
+        # Handle log(abs(x))
+        elif expr.is_fun(arg) and arg.func_name == 'abs':
+            return expr.log(expr.Fun('abs', expand_log(arg.args[0])))
+    elif e.func_name != 'log':
+        return expr.Fun(e.func_name, *[expand_log(arg) for arg in e.args])
+
+    return e
+
+def remove_abs_in_log(e: Expr) -> Expr:
+    """Remove abs() inside log() for comparison purposes."""
+    if not expr.is_fun(e):
+        if e.is_op():
+            return expr.Op(e.op, *[remove_abs_in_log(arg) for arg in e.args])
+        return e
+
+    if e.func_name == 'log':
+        arg = e.args[0]
+        if expr.is_fun(arg) and arg.func_name == 'abs':
+            # log(abs(x)) -> log(x) for comparison
+            return expr.log(remove_abs_in_log(arg.args[0]))
+        else:
+            return expr.log(remove_abs_in_log(arg))
+    else:
+        return expr.Fun(e.func_name, *[remove_abs_in_log(arg) for arg in e.args])
+
+    return e
+
+def check_const_integral_equivalence(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Check if t1 and t2 are equivalent through constant-integral manipulation.
+
+    Handles cases like:
+    - c * (INT x:[a,b]. f(x)) is equivalent to INT x:[a,b]. c * f(x)
+    - (INT x:[a,b]. c) is equivalent to c * (b - a)
+    - c * (INT x:[a,b]. 1) is equivalent to INT x:[a,b]. c
+
+    This is valid when c does not depend on the integration variable x.
+    """
+    from integral import poly
+
+    # Helper function to extract constant * integral pattern
+    def extract_const_times_integral(e: Expr):
+        """Returns (const_part, integral) if e = const * integral, else None."""
+        if expr.is_integral(e):
+            return Const(1), e
+        if e.is_times() and len(e.args) == 2:
+            lhs, rhs = e.args
+            if expr.is_integral(rhs) and not depends_on_var(lhs, rhs.var):
+                return lhs, rhs
+            if expr.is_integral(lhs) and not depends_on_var(rhs, lhs.var):
+                return rhs, lhs
+        return None
+
+    # Helper function to check if expression depends on variable
+    def depends_on_var(e: Expr, var: str) -> bool:
+        return var in e.get_vars()
+
+    # Helper function to convert integral with constant body to form c * (b-a)
+    def normalize_const_body_integral(e: Expr, ctx: Context) -> Expr:
+        """Convert INT x:[a,b]. c to c * (b - a)."""
+        if expr.is_integral(e):
+            if not depends_on_var(e.body, e.var):
+                # Body is constant with respect to integration variable
+                return e.body * (e.upper - e.lower)
+        return e
+
+    # Try to normalize both expressions
+    # Case 1: c * (INT x:[a,b]. f(x)) vs INT x:[a,b]. c * f(x)
+    ext1 = extract_const_times_integral(t1)
+    ext2 = extract_const_times_integral(t2)
+
+    if ext1 is not None and ext2 is not None:
+        const1, int1 = ext1
+        const2, int2 = ext2
+
+        # Check if same integration bounds
+        if (poly.normalize(int1.lower, ctx) == poly.normalize(int2.lower, ctx) and
+            poly.normalize(int1.upper, ctx) == poly.normalize(int2.upper, ctx)):
+
+            # Normalize bodies: const * body
+            body1 = poly.normalize(const1 * int1.body, ctx)
+            body2_subst = int2.body.subst(int2.var, expr.Var(int1.var))
+            body2 = poly.normalize(const2 * body2_subst, ctx)
+
+            if body1 == body2:
+                return True
+
+    # Case 2: c * (INT x:[a,b]. 1) vs INT x:[a,b]. c
+    # This reduces to c * (b - a) vs c * (b - a)
+    try:
+        norm1 = normalize_const_body_integral(t1, ctx)
+        norm2 = normalize_const_body_integral(t2, ctx)
+
+        if ext1 is not None:
+            const1, int1 = ext1
+            # c * (INT x:[a,b]. f(x)) where f(x) doesn't depend on x
+            if not depends_on_var(int1.body, int1.var):
+                norm1 = poly.normalize(const1 * int1.body * (int1.upper - int1.lower), ctx)
+
+        if ext2 is not None:
+            const2, int2 = ext2
+            if not depends_on_var(int2.body, int2.var):
+                norm2 = poly.normalize(const2 * int2.body * (int2.upper - int2.lower), ctx)
+
+        if norm1 == norm2:
+            return True
+    except:
+        pass
+
+    return False

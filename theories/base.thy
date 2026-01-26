@@ -42,11 +42,11 @@ axiom (INT x. 1 / (b + a * x)) = 1/a * log(b + a * x) + SKOLEM_CONST(C) for a !=
 
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
-axiom (INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C) for n != 1
+axiom (INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C) for x != 0, n != 1
 
-axiom (INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C)
+axiom (INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C) for x >= 0
 
-axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C)
+axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C) for x > 0
 
 axiom (INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)
 
@@ -55,6 +55,8 @@ axiom (INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)
 axiom (INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)
 
 axiom (INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST(C) for sin(x) != 0
 
 axiom (INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)
 
@@ -77,6 +79,10 @@ axiom (INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
 axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
 
 axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
+
+axiom [simp,bidirectional] csc(x) - cot(x) = 1 / (csc(x) + cot(x))
+
+axiom (INT x. 1 / sqrt(1 - x ^ 2)) = arcsin(x) + SKOLEM_CONST(C) for x >= -1, x <= 1
 
 # Common limites
 
@@ -128,6 +134,14 @@ axiom [simp] abs(x / y) = abs(x) / abs(y) for y != 0
 
 axiom [simp] abs(x ^ n) = abs(x) ^ n for n: int
 
+axiom [simp] x / abs(x) = 1 for x > 0
+
+axiom [simp] x / abs(x) = -1 for x < 0
+
+axiom [simp] cos(u) / abs(cos(u)) = 1 for cos(u) > 0
+
+axiom [simp] cos(u) / abs(cos(u)) = -1 for cos(u) < 0
+
 ## Complex numbers
 
 axiom [simp] abs(b * i + a) = sqrt(a^2 + b^2) for a b: real
@@ -176,7 +190,9 @@ axiom [simp] conj(a) = a for a: real
 
 ## Euler's formula
 
-axiom exp(i*x) = cos(x) + i * sin(x) for x: real
+axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom [bidirectional] exp(-(i*x)) = cos(x) - i * sin(x) for x: real
 
 axiom sin(x) = (exp(i*x) - exp(-i * x)) / (2*i)
 
@@ -216,6 +232,14 @@ axiom [simp] (-x) ^ (2 * n) = x ^ (2 * n) for n: int
 
 axiom [bidirectional] a ^ (-x) = (1 / a) ^ x for a != 0
 
+## Square root
+
+axiom [simp] sqrt(a ^ 2 * b ^ 2) = abs(a) * abs(b)
+
+axiom [simp] sqrt(a ^ 2 * b) = abs(a) * sqrt(b) for b >= 0
+
+axiom [simp] sqrt(a * b ^ 2) = sqrt(a) * abs(b) for a >= 0
+
 ## Exponential and Logarithm
 
 axiom [bidirectional] exp(a) ^ b = exp(a * b)
@@ -232,21 +256,162 @@ axiom [simp] exp(log(b)) = b for b > 0
 
 axiom [simp] log(exp(b)) = b
 
-axiom [bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
+axiom [simp] log(sqrt(a)) = 1/2 * log(a) for a > 0
 
-axiom [bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
+axiom [simp, bidirectional] log(1 / x) = -log(x) for x > 0
 
-axiom [simp] log(1 / x) = -log(x) for x > 0
+axiom [simp, bidirectional] log(abs(1 / x)) = -log(abs(x))
+
+axiom [simp, bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
+
+axiom [simp, bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
+
+axiom [simp, bidirectional] log(abs(a * b)) = log(abs(a)) + log(abs(b)) for a != 0, b != 0
+
+axiom [simp, bidirectional] log(abs(a / b)) = log(abs(a)) - log(abs(b)) for a != 0, b != 0
+
+axiom [bidirectional] log(a / b) = -log(b / a) for a > 0, b > 0
+
+axiom [bidirectional] log(abs(a / b)) = -log(abs(b / a)) for a != 0, b != 0
 
 axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
 
+axiom [simp] log(abs(x) ^ a) = a * log(abs(x)) for x != 0, a: real
+
+axiom 2 * log(abs(x)) = log(x ^ 2) for x != 0
+
 ## Trigonometric identities
+
+axiom_define tan(x) for cos(x) != 0
+axiom_define sec(x) for cos(x) != 0
+axiom_define cot(x) for sin(x) != 0
+axiom_define csc(x) for sin(x) != 0
+axiom_define arccos(x) for x >= -1, x <= 1
+axiom_define arcsin(x) for x >= -1, x <= 1
+
+### Function tables
+
+axiom [simp] sin(0) = 0
+axiom [simp] sin(pi/6) = 1/2
+axiom [simp] sin(pi/4) = sqrt(2)/2
+axiom [simp] sin(pi/3) = sqrt(3)/2
+axiom [simp] sin(pi/2) = 1
+axiom [simp] sin(2*pi/3) = sqrt(3)/2
+axiom [simp] sin(3*pi/4) = sqrt(2)/2
+axiom [simp] sin(5*pi/6) = 1/2
+axiom [simp] sin(pi) = 0
+
+axiom [simp] cos(0) = 1
+axiom [simp] cos(pi/6) = sqrt(3)/2
+axiom [simp] cos(pi/4) = sqrt(2)/2
+axiom [simp] cos(pi/3) = 1/2
+axiom [simp] cos(pi/2) = 0
+axiom [simp] cos(2*pi/3) = -1/2
+axiom [simp] cos(3*pi/4) = -(sqrt(2)/2)
+axiom [simp] cos(5*pi/6) = -(sqrt(3)/2)
+axiom [simp] cos(pi) = -1
+
+axiom [simp] tan(0) = 0
+axiom [simp] tan(pi/6) = sqrt(3)/3
+axiom [simp] tan(pi/4) = 1
+axiom [simp] tan(pi/3) = sqrt(3)
+axiom [simp] tan(2*pi/3) = -sqrt(3)
+axiom [simp] tan(3*pi/4) = -1
+axiom [simp] tan(5*pi/6) = -(sqrt(3)/3)
+axiom [simp] tan(pi) = 0
+
+axiom [simp] cot(pi/6) = sqrt(3)
+axiom [simp] cot(pi/4) = 1
+axiom [simp] cot(pi/3) = sqrt(3)/3
+axiom [simp] cot(pi/2) = 0
+axiom [simp] cot(2*pi/3) = -(sqrt(3)/3)
+axiom [simp] cot(3*pi/4) = -1
+axiom [simp] cot(5*pi/6) = -sqrt(3)
+
+axiom [simp] csc(pi/6) = 2
+axiom [simp] csc(pi/4) = sqrt(2)
+axiom [simp] csc(pi/3) = 2*sqrt(3)/3
+axiom [simp] csc(pi/2) = 1
+axiom [simp] csc(2*pi/3) = 2*sqrt(3)/3
+axiom [simp] csc(3*pi/4) = sqrt(2)
+axiom [simp] csc(5*pi/6) = 2
+
+axiom [simp] sec(0) = 1
+axiom [simp] sec(pi/6) = 2*sqrt(3)/3
+axiom [simp] sec(pi/4) = sqrt(2)
+axiom [simp] sec(pi/3) = 2
+axiom [simp] sec(2*pi/3) = -2
+axiom [simp] sec(3*pi/4) = -sqrt(2)
+axiom [simp] sec(5*pi/6) = -(2*sqrt(3)/3)
+axiom [simp] sec(pi) = -1
+
+axiom [simp] arcsin(-(sqrt(3)/2)) = -(pi/3)
+axiom [simp] arcsin(-(sqrt(2)/2)) = -(pi/4)
+axiom [simp] arcsin(-1) = -(pi/2)
+axiom [simp] arcsin(-1/2) = -(pi/6)
+axiom [simp] arcsin(0) = 0
+axiom [simp] arcsin(1/2) = pi/6
+axiom [simp] arcsin(1) = pi/2
+axiom [simp] arcsin(sqrt(2)/2) = pi/4
+axiom [simp] arcsin(sqrt(3)/2) = pi/3
+
+axiom [simp] arccos(-(sqrt(3)/2)) = 5*pi/6
+axiom [simp] arccos(-(sqrt(2)/2)) = 3*pi/4
+axiom [simp] arccos(-1) = pi
+axiom [simp] arccos(-1/2) = 2*pi/3
+axiom [simp] arccos(0) = pi/2
+axiom [simp] arccos(1/2) = pi/3
+axiom [simp] arccos(1) = 0
+axiom [simp] arccos(sqrt(2)/2) = pi/4
+axiom [simp] arccos(sqrt(3)/2) = pi/6
+
+axiom [simp] arctan(-sqrt(3)) = -(pi/3)
+axiom [simp] arctan(-(sqrt(3)/3)) = -(pi/6)
+axiom [simp] arctan(-1) = -(pi/4)
+axiom [simp] arctan(0) = 0
+axiom [simp] arctan(1) = pi/4
+axiom [simp] arctan(sqrt(3)/3) = pi/6
+axiom [simp] arctan(sqrt(3)) = pi/3
+
+axiom [simp] arccot(-sqrt(3)) = 5*pi/6
+axiom [simp] arccot(-1) = 3*pi/4
+axiom [simp] arccot(-(sqrt(3)/3)) = 2*pi/3
+axiom [simp] arccot(0) = pi/2
+axiom [simp] arccot(sqrt(3)/3) = pi/3
+axiom [simp] arccot(1) = pi/4
+axiom [simp] arccot(sqrt(3)) = pi/6
+
+axiom [simp] arccsc(-2) = -(pi/6)
+axiom [simp] arccsc(-sqrt(2)) = -(pi/4)
+axiom [simp] arccsc(-(2*sqrt(3)/3)) = -(pi/3)
+axiom [simp] arccsc(-1) = -(pi/2)
+axiom [simp] arccsc(1) = pi/2
+axiom [simp] arccsc(2*sqrt(3)/3) = pi/3
+axiom [simp] arccsc(sqrt(2)) = pi/4
+axiom [simp] arccsc(2) = pi/6
+
+axiom [simp] arcsec(-2) = 2*pi/3
+axiom [simp] arcsec(-sqrt(2)) = 3*pi/4
+axiom [simp] arcsec(-(2*sqrt(3)/3)) = 5*pi/6
+axiom [simp] arcsec(-1) = pi
+axiom [simp] arcsec(1) = 0
+axiom [simp] arcsec(2*sqrt(3)/3) = pi/6
+axiom [simp] arcsec(sqrt(2)) = pi/4
+axiom [simp] arcsec(2) = pi/3
 
 ### Simple relations between trigonometric functions
 
-axiom sin(-u) = -sin(u)
+axiom [simp] sin(-u) = -sin(u)
 
-axiom cos(-u) = cos(u)
+axiom [simp] cos(-u) = cos(u)
+
+axiom [simp] tan(-u) = -tan(u)
+
+axiom [simp] cot(-u) = -cot(u)
+
+axiom [simp] sec(-u) = sec(u)
+
+axiom [simp] csc(-u) = -csc(u)
 
 axiom [simp] sin(pi / 2 - u) = cos(u)
 
@@ -354,9 +519,25 @@ axiom cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
 
 axiom [simp] arcsin(sin(x)) = x for x >= -pi/2, x <= pi/2
 
+axiom [simp] arccos(sin(x)) = pi/2 - x for x >= -pi/2, x <= pi/2
+
+axiom [simp] arcsin(cos(x)) = pi/2 - x for x >= 0, x <= pi
+
+axiom arcsin(x) + arccos(x) = pi/2 for x >= -1, x <= 1
+
+axiom arctan(x) + arccot(x) = pi/2
+
+axiom [bidirectional] arctan(x) = pi/2 - arccot(x)
+
+axiom [bidirectional] arccot(x) = pi/2 - arctan(x)
+
 axiom [simp] sin(arccos(x)) = sqrt(1-x^2)
 
 axiom [simp] cos(arcsin(x)) = sqrt(1-x^2)
+
+axiom [simp] abs(cos(arcsin(x))) = cos(arcsin(x)) for abs(x) <= 1
+
+axiom [simp] abs(cos(arcsin(x / a))) = cos(arcsin(x / a)) for abs(x / a) <= 1
 
 axiom [simp] tan(arcsec(x)) = sqrt(x ^ 2 - 1)
 
@@ -378,3 +559,90 @@ axiom [simp] csc(arcsin(x)) = 1 / x
 
 axiom [simp] sin(arcsec(x)) = sqrt(x^2 - 1) / x
 
+### Other identities
+
+axiom arctan(a) - arctan(b) = arctan((a - b) / (1 + a * b))
+
+axiom arctan(sqrt((1 - x) / (1 + x))) = arccos(x) / 2
+
+axiom tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))
+
+axiom [simp] cos(2 * arctan(z)) = (1 - z^2) / (1 + z^2)
+
+axiom [simp] sin(2 * arctan(z)) = (2 * z) / (1 + z^2)
+
+axiom arctan(x ^ -1) = pi/2 - arctan(x) for x != 0
+
+axiom [simp] sin(2 * arcsin(x)) = 2 * x * sqrt(1 - x^2)
+
+axiom [simp] sin(4 * arcsin(x)) = 4 * x * sqrt(1 - x^2) * (1 - 2 * x^2)
+
+axiom arctan(-x) = -arctan(x)
+
+axiom [bidirectional] 1 + sin(x) = (sin(x/2) + cos(x/2)) ^ 2
+
+axiom [bidirectional] sin(x) + 1 = (sin(x/2) + cos(x/2)) ^ 2
+
+axiom [bidirectional] sin(x) + cos(x) = sqrt(2) * sin(x+pi/4)
+
+## Euler's Formula and variations
+
+axiom [bidirectional] sin(x) = (exp(i*x) - exp(-i*x)) / (2*i) for x: real
+
+axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom sin(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, (-1)^(n+k-1) * binom(2*n-1, k) * sin((2*n - 2*k - 1) * x))
+
+axiom sin(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, (-1)^(n-k) * 2 * binom(2*n, k) * cos(2*(n-k)*x))
+
+axiom cos(x)^(2*n-1) = 1/(2^(2*n-2)) * SUM(k, 0, n-1, binom(2*n-1, k) * cos((2*n - 2*k - 1) * x))
+
+axiom cos(x)^(2*n) = 1/(2^(2*n)) * binom(2*n, n) + 1/(2^(2*n)) * SUM(k, 0, n-1, 2 * binom(2*n, k) * cos(2*(n-k)*x))
+
+## Factorial and binomial coefficient
+
+axiom_define factorial(n) for n: int, n >= 0
+
+axiom (m + 1) * factorial(m) = factorial(m + 1) for m >= 0
+
+axiom [bidirectional] m * factorial(m - 1) = factorial(m) for m > 0
+
+define binom(n, m) = factorial(n) / (factorial(m) * factorial(n - m)) for m n: int, m >= 0
+
+axiom binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))
+
+axiom binom(m+1, n+1) = (m+1)/(n+1)*binom(m, n)
+
+axiom (x + y) ^ n = SUM(k, 0, n, binom(n, k) * x^k * y^(n-k))
+
+## Discrete functions
+
+axiom [simp] sgn(x) = 1 for x > 0
+
+axiom [simp] sgn(x) = -1 for x < 0
+
+axiom [simp] sgn(0) = 0
+
+axiom [simp] sgn(a) = 0 for a = 0
+
+## Hyperbolic functions
+
+define cosh(x) = (exp(x) + exp(-x)) / 2
+
+define sinh(x) = (exp(x) - exp(-x)) / 2
+
+## Results from contour integration
+
+// Inside interesting Integrals, Section 8.10, C8.2
+
+axiom (INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * m))) / (2 * a ^ 2) for a > 0, m > 0
+
+// Inside interesting Integrals, Section 3.1.7
+
+axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b) for a > 0, b > 0
+
+// Exponential integrals for complex arguments
+
+axiom (INT x:[0, oo]. exp((-y + b * i) * x)) = -1 / (-y + b * i) for y > 0, isReal(b)
+
+axiom (INT x:[0, oo]. exp((-y - b * i) * x)) = -1 / (-y - b * i) for y > 0, isReal(b)

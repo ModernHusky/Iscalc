@@ -1,3 +1,5 @@
+imports standard
+
 ## Examples on exponential functions
 
 // Source:
@@ -11,7 +13,6 @@ done
 
 calculate INT x. 2 - 3 * exp(x)
     apply integral identity
-    simplify
 done
 
 calculate INT x:[0,log(2) / 7]. 14 * exp(7 * x)
