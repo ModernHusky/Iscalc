@@ -1,12 +1,26 @@
 """Module for reasoning about conditions."""
 
 from copy import copy
+from functools import lru_cache
 
 from integral import expr
 from integral.expr import Expr, eval_expr, match, expr_to_pattern, Op, Const, Var, Fun
 from integral.conditions import Conditions
 from integral.context import Context, Identity
 from integral.parser import parse_expr
+
+# 缓存：用于保存条件检查结果，避免重复计算
+# 键为 (表达式字符串, 上下文条件hash)，值为检查结果
+_condition_check_cache: dict[tuple, bool] = {}
+_cache_max_size = 10000
+
+def clear_condition_cache():
+    """清空条件检查缓存。在测试或上下文变化时调用。"""
+    global _condition_check_cache
+    _condition_check_cache = {}
+
+# 预计算的 subject pattern 缓存
+_subject_pattern_cache: dict[int, Expr] = {}
 
 
 def subject_of(cond: Expr) -> Expr:
@@ -335,8 +349,19 @@ def saturate_expr(e: Expr, ineq: Identity, all_conds: dict[Expr, list[Expr]]):
     """Use the rule `ineq` to saturate facts about `e`. New facts are
     added to `all_conds`.
     
+    使用预计算的 subject pattern 来避免重复调用 subject_of。
     """
-    pat = subject_of(ineq.expr)
+    # 使用预计算的 subject pattern（如果可用）或从缓存获取
+    ineq_id = id(ineq)
+    if ineq_id in _subject_pattern_cache:
+        pat = _subject_pattern_cache[ineq_id]
+    elif hasattr(ineq, '_subject_pattern'):
+        pat = ineq._subject_pattern
+        _subject_pattern_cache[ineq_id] = pat
+    else:
+        pat = subject_of(ineq.expr)
+        _subject_pattern_cache[ineq_id] = pat
+    
     inst = match(e, pat)
     if inst is not None:
         # Check conditions of the inequality, instantiating schematic
@@ -810,7 +835,10 @@ def get_standard_inequalities() -> list[Identity]:
     for conds, e in data:
         symb_e = expr_to_pattern(parse_expr(e))
         symb_conds = [expr_to_pattern(parse_expr(cond)) for cond in conds]
-        ineqs.append(Identity(symb_e, conds=Conditions(symb_conds)))
+        identity = Identity(symb_e, conds=Conditions(symb_conds))
+        # 预计算 subject pattern，避免后续重复计算
+        identity._subject_pattern = subject_of(identity.expr)
+        ineqs.append(identity)
     return ineqs
 
 standard_inequalities = get_standard_inequalities()
@@ -823,6 +851,35 @@ def check_condition(e: Expr, ctx: Context, _subst_applied: bool = False) -> bool
         ctx: Context containing conditions and substitutions
         _subst_applied: Internal flag to prevent infinite recursion in substitution
     """
+    global _condition_check_cache
+    
+    # 尝试从缓存获取结果（仅在没有应用替换时使用缓存）
+    cache_key = None
+    if not _subst_applied:
+        try:
+            # 使用表达式的字符串表示和条件的hash作为缓存键
+            conds_hash = hash(tuple(sorted(str(c) for c in ctx.get_conds().data)))
+            cache_key = (str(e), conds_hash)
+            if cache_key in _condition_check_cache:
+                return _condition_check_cache[cache_key]
+        except:
+            # 如果hash失败，跳过缓存
+            cache_key = None
+    
+    # 执行实际的条件检查
+    result = _check_condition_impl(e, ctx, _subst_applied)
+    
+    # 保存结果到缓存
+    if cache_key is not None:
+        # 限制缓存大小
+        if len(_condition_check_cache) > _cache_max_size:
+            _condition_check_cache.clear()
+        _condition_check_cache[cache_key] = result
+    
+    return result
+
+def _check_condition_impl(e: Expr, ctx: Context, _subst_applied: bool = False) -> bool:
+    """实际执行条件检查的内部函数。"""
 
     ### Some special checks ###
 
