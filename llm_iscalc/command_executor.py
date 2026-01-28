@@ -36,6 +36,7 @@ class ExecutionResult:
     error_type: ErrorType = ErrorType.NONE
     changed: bool = False
     raw_expr: Optional[Any] = None
+    intermediate_steps: List[dict] = None  # 中间步骤列表
 
 
 class CommandExecutor:
@@ -111,6 +112,11 @@ class CommandExecutor:
         
         expr_before = self._previous_expr_str or ""
         
+        # 记录执行前的步骤数
+        steps_before_count = 0
+        if hasattr(self.state, 'calc') and hasattr(self.state.calc, 'steps'):
+            steps_before_count = len(self.state.calc.steps)
+        
         try:
             # 解析命令为Action
             action = parser.parse_action(command)
@@ -123,12 +129,32 @@ class CommandExecutor:
             expr_after = str(current_expr) if current_expr else expr_before
             changed = expr_before != expr_after
             
+            # 获取新增的中间步骤
+            intermediate_steps = []
+            if hasattr(self.state, 'calc') and hasattr(self.state.calc, 'steps'):
+                current_steps = self.state.calc.steps
+                if len(current_steps) > steps_before_count:
+                    new_steps = current_steps[steps_before_count:]
+                    for step in new_steps:
+                        # 提取规则名称
+                        rule_str = str(step.rule)
+                        # 尝试更友好的显示
+                        if hasattr(step.rule, 'name'):
+                             rule_str = step.rule.name
+                        
+                        intermediate_steps.append({
+                            'rule': str(step.rule), # 保持完整字符串形式
+                            'res': str(step.res),
+                            'latex': self._expr_to_latex(step.res)
+                        })
+
             self.history.append({
                 "command": command,
                 "expr_before": expr_before,
                 "expr_after": expr_after,
                 "success": True,
-                "changed": changed
+                "changed": changed,
+                "intermediate_steps": intermediate_steps
             })
             
             self._previous_expr_str = expr_after
@@ -138,7 +164,8 @@ class CommandExecutor:
                 result=expr_after,
                 latex_result=self._expr_to_latex(current_expr),
                 changed=changed,
-                raw_expr=current_expr
+                raw_expr=current_expr,
+                intermediate_steps=intermediate_steps
             )
             
         except Exception as e:

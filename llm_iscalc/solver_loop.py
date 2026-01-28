@@ -248,7 +248,10 @@ class SolverLoop:
                         content=exec_result.result or "",
                         latex=exec_result.latex_result,
                         step=iteration,
-                        metadata={"changed": exec_result.changed}
+                        metadata={
+                            "changed": exec_result.changed,
+                            "intermediate_steps": exec_result.intermediate_steps
+                        }
                     ))
             else:
                 error_info = self.error_handler.handle(
