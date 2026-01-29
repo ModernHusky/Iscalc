@@ -38,12 +38,14 @@ done
 prove (INT x:[1,oo]. log(x) / (x+1)^2) = log(2)
 subgoal 1: (INT x:[0,oo]. 1 / (1 + exp(a*x))) = log(2) / a for a: real, a > 0
 lhs:
-    substitute u for exp(a * x)
+    substitute u for exp(a*x)
     simplify
-    rewrite 1 / (u * (u+1)) to 1/u - 1/(u+1)
+    rewrite 1 / (u * (u + 1)) to 1/u - 1/(u + 1)
     simplify
-    substitute y for u + 1
     apply integral identity
+    simplify
+    rewrite log(u) - log(u + 1) to log(u/(u+1))
+    rewrite log(u / (u + 1)) to log(1-1/(u+1))
     simplify
 done
 subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a: real, a > 0
@@ -485,9 +487,6 @@ lhs:
     rewrite 3 * u ^ 2 / 2 + 3/2 to 3/2 * (u ^ 2 + 1)
     simplify
     rewrite 1 / (u ^ 2 + 1) * (3/2 - u * sqrt(3) / 2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
-    apply integral identity
-    simplify
-    substitute t for u ^ 2 + 1
     apply integral identity
     simplify
     expand polynomial

@@ -201,7 +201,7 @@ def asymp_power(a: Asymptote, b: Expr, ctx: Context) -> Asymptote:
         return a
     elif isinstance(a, PolyLog):
         # Multiplies all orders in a by the given constant.
-        return PolyLog(*(normalize(e * b, ctx) for e in a.order))
+        return PolyLog(*[normalize(e * b, ctx) for e in a.order])
     else:
         raise NotImplementedError
 
@@ -650,11 +650,21 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
             expr.is_const(l.e) and l.e.val == 0 and l.side == FROM_BELOW:
             return Limit(None)
         elif expr.is_const(l.e) and l.e.val == 0 and l.side == FROM_ABOVE:
-            return Limit(NEG_INF, asymp = PolyLog(0, *l.asymp.order), side=FROM_ABOVE)
+            if isinstance(l.asymp, PolyLog):
+                return Limit(NEG_INF, asymp = PolyLog(0, *l.asymp.order), side=FROM_ABOVE)
+            elif isinstance(l.asymp, Exp):
+                return Limit(NEG_INF, asymp=l.asymp.order, side=FROM_ABOVE)
+            else:
+                return Limit(NEG_INF, side=FROM_ABOVE)
         elif expr.is_const(l.e) and l.e.val == 1:
             return Limit(Const(0), asymp = l.asymp, side = l.side)
         elif l.e == POS_INF:
-            return Limit(POS_INF, asymp=PolyLog(0, *l.asymp.order), side=FROM_BELOW)
+            if isinstance(l.asymp, PolyLog):
+                return Limit(POS_INF, asymp=PolyLog(0, *l.asymp.order), side=FROM_BELOW)
+            elif isinstance(l.asymp, Exp):
+                return Limit(POS_INF, asymp=l.asymp.order, side=FROM_BELOW)
+            else:
+                return Limit(POS_INF, side=FROM_BELOW)
         else:
             return Limit(expr.Fun('log', l.e))
     elif expr.is_fun(e) and e.func_name == 'sin':

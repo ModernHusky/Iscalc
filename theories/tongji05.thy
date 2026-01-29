@@ -182,8 +182,6 @@ done
     split region at 0
     substitute v for u ^ 2 + 1
     apply integral identity
-    substitute v for u ^ 2 + 1
-    apply integral identity
     simplify
 done
 

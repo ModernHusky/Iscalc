@@ -32,6 +32,11 @@ def collect_pairs(ps, ctx:Context):
     components are either Expr, ConstantPolynomial, or numbers. Pairs
     whose second component equals zero are removed.
 
+    Special handling for infinity:
+    - If infinity terms cancel out (coefficient becomes 0), this indicates
+      an indeterminate form (oo - oo) and an error is raised.
+    - If infinity has a non-zero coefficient, it's normalized to ±1.
+
     e.g.    
 
     - [("x", 1), ("y", 2), ("x", 3)] => [("x", 4), ("y", 2)]
@@ -69,14 +74,43 @@ def collect_pairs(ps, ctx:Context):
             return 0
         else:
             raise NotImplementedError
+    
+    def contains_infinity(v):
+        """Check if v contains infinity as a factor."""
+        if isinstance(v, tuple) and len(v) > 0:
+            for base, power in v:
+                if base == expr.POS_INF or base == expr.NEG_INF:
+                    return True
+        return False
 
     res_list = []
     for k, v in res.items():
-        if v != zero_for(v):
+        # Special handling for infinity terms
+        if contains_infinity(k):
+            if isinstance(v, (int, Fraction)):
+                if v == 0:
+                    # Infinity coefficient is 0, this means oo - oo occurred
+                    raise ValueError(
+                        "Indeterminate form detected: oo - oo = 0. "
+                        "This occurs when infinities cancel out during calculation, "
+                        "which indicates an error in the mathematical expression or limits. "
+                        "Please check integral bounds, limit expressions, or simplification steps."
+                    )
+                elif v > 0:
+                    # Normalize positive coefficient: n * oo = oo
+                    res_list.append((k, 1))
+                else:
+                    # Normalize negative coefficient: -n * oo = -oo
+                    res_list.append((k, -1))
+            else:
+                # Non-numeric coefficient, keep as is
+                res_list.append((k, v))
+        elif v != zero_for(v):
             res_list.append((k, v))
         elif contains_indefinite_integral_factor(k):
             tmp = expr.IndefiniteIntegral('x', expr.Const(0), tuple())
             res_list.append((((tmp, 1),), 1))
+    
     try:
         res = tuple(sorted(res_list))
     except:
@@ -1161,7 +1195,7 @@ def simplify_inf(e: expr.Expr, ctx: Context) -> expr.Expr:
             return e.args[0]
     elif e.is_divides():
         if e.args[0] == expr.POS_INF and e.args[1].is_constant():
-            if expr.eval_expr(e) != 0:
+            if expr.eval_expr(e.args[1]) != 0:
                 return e.args[0]
     return e
 

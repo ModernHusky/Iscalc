@@ -29,8 +29,6 @@ calculate INT x. arctan(exp(x))/exp(x)
     integrate by parts with u=arctan(u), v=-1/u
     partial fraction decomposition
     apply integral identity
-    substitute v for u^2
-    apply integral identity
     replace substitution
     simplify
 done

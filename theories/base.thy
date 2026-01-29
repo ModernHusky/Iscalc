@@ -646,3 +646,5 @@ axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * 
 axiom (INT x:[0, oo]. exp((-y + b * i) * x)) = -1 / (-y + b * i) for y > 0, isReal(b)
 
 axiom (INT x:[0, oo]. exp((-y - b * i) * x)) = -1 / (-y - b * i) for y > 0, isReal(b)
+
+axiom (INT x. x / (x ^ 2 + 1)) = 1/2 * log(x ^ 2 + 1) + SKOLEM_CONST(C) for x > 0   

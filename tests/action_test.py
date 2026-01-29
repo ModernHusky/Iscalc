@@ -18,6 +18,21 @@ os.chdir(PROJECT_ROOT)
 
 
 class ActionTest(unittest.TestCase):
+    def setUp(self):
+        """Clear all global caches before each test to prevent interference"""
+        # Clear normalize cache
+        from integral import poly
+        poly._normalize_cache.clear()
+        
+        # Clear condition check cache
+        from integral import condprover
+        condprover.clear_condition_cache()
+        
+        # Clear poles and winding caches
+        from integral import rules
+        rules._poles_cache.clear()
+        rules._winding_cache.clear()
+    
     def check_file(self, filename: str, *, print_lines=False, print_state=False,
                    write_stats=False):
         with open(f'theories/{filename}.thy', 'r', encoding='utf-8') as f:
