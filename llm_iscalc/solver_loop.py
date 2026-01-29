@@ -65,7 +65,8 @@ class SolverLoop:
         self,
         expression: str,
         callback: Optional[Callable[[SolveEvent], Awaitable[None]]] = None,
-        conditions: Optional[List[str]] = None
+        conditions: Optional[List[str]] = None,
+        user_instruction: Optional[str] = None
     ) -> SolveResult:
         """执行完整的求解循环"""
         
@@ -164,10 +165,15 @@ class SolverLoop:
             try:
                 # 收集流式响应
                 full_response = ""
+                # 获取当前状态名称
+                current_state = self.executor.get_current_state_name()
                 async for chunk in self.llm.generate_command(
                     current_expr or expression,
                     self.executor.get_history(),
-                    last_error
+                    last_error,
+                    current_state,
+                    conditions=conditions,
+                    user_instruction=user_instruction
                 ):
                     full_response += chunk
                     if callback:

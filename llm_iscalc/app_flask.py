@@ -58,6 +58,7 @@ def solve_expression():
     """求解表达式（SSE 流式输出）"""
     expression = request.args.get('expression', '').strip()
     conditions = request.args.get('conditions', '').strip()
+    instruction = request.args.get('instruction', '').strip()
     
     if not expression:
         return jsonify({'error': '表达式不能为空'}), 400
@@ -112,7 +113,9 @@ def solve_expression():
             # 初始化
             init_result = executor.initialize(expression, cond_list)
             if init_result.success:
-                state['results'] = f"(calculate)\n  {init_result.result}\n"
+                # 获取实际状态名称，而不是硬编码
+                current_state = executor.get_current_state_name().lower()
+                state['results'] = f"({current_state})\n  {init_result.result}\n"
             else:
                 state['errors'] = f"初始化失败: {init_result.error}\n"
                 loop.run_until_complete(queue.put(send_update()))
@@ -124,8 +127,15 @@ def solve_expression():
             loop.run_until_complete(queue.put(send_update()))
             
             # 回调函数
-            results_lines = [f"(calculate)", f"  {init_result.result}"]
+            # 获取实际状态名称
+            current_state = executor.get_current_state_name().lower()
+            results_lines = [f"({current_state})", f"  {init_result.result}"]
             last_command = ""
+            
+            # 状态切换命令列表（这些命令应该单独成行显示）
+            state_switch_commands = ['lhs:', 'rhs:', 'arg:', 'base:', 'induct:', 'done',
+                                     'case true:', 'case false:', 'case positive:', 
+                                     'case negative:', 'case zero:']
             
             async def callback(event: SolveEvent):
                 nonlocal last_command
@@ -218,25 +228,44 @@ def solve_expression():
                             await queue.put(send_update())
                     
                     # 处理主结果
-                    if last_command:
+                    # 检查是否是状态切换命令
+                    is_state_switch = False
+                    cmd_lower = last_command.lower().strip() if last_command else ''
+                    for sc in state_switch_commands:
+                        if cmd_lower.startswith(sc.rstrip(':')) or cmd_lower == sc.rstrip(':'):
+                            is_state_switch = True
+                            break
+                    
+                    if is_state_switch:
+                        # 状态切换命令：单独成块显示
+                        results_lines.append(f"({last_command})")
+                        results_lines.append(f"= {event.content}")
+                    elif last_command:
+                        # 普通命令：显示在同一行
                         line = f"= {event.content} ({last_command})"
+                        results_lines.append(line)
                     else:
                         line = f"  {event.content}"
-                    results_lines.append(line)
+                        results_lines.append(line)
                     state['results'] = "\n".join(results_lines) + "\n"
                     
                 elif event.type == EventType.ERROR:
                     state['errors'] += f"[步骤 {event.step}] {event.content}\n"
                     
                 elif event.type == EventType.COMPLETE:
-                    state['results'] += "\n✓ 求解完成\n"
+                    # 只有当真正完成时才显示"求解完成"
+                    if executor.is_finished():
+                        state['results'] += "\n✓ 求解完成\n"
+                    else:
+                        # LLM认为完成但实际未完成
+                        state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
 
                 # 每次状态更新都推送到队列
                 await queue.put(send_update())
             
             # 创建求解任务
             async def solve_task():
-                return await solver.solve(expression, callback, cond_list)
+                return await solver.solve(expression, callback, cond_list, user_instruction=instruction)
             
             task = asyncio.ensure_future(solve_task())
             

@@ -8,6 +8,7 @@ let eventSource = null;
 // DOM 元素
 const expressionInput = document.getElementById('expression-input');
 const conditionsInput = document.getElementById('conditions-input');
+const instructionInput = document.getElementById('instruction-input');
 const solveBtn = document.getElementById('solve-btn');
 const stopBtn = document.getElementById('stop-btn');
 const clearBtn = document.getElementById('clear-btn');
@@ -60,11 +61,35 @@ function saveHistory() {
     }
 }
 
-// 添加历史记录
+// 创建历史记录项 DOM
+function createHistoryItemDOM(item) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    // 设置唯一 ID (用于动画追踪)
+    div.dataset.key = `${item.expression}||${item.conditions || ''}`;
+
+    div.innerHTML = `
+        <div class="history-item-expr" title="${item.expression}">${item.expression}</div>
+        ${item.conditions ? `<div class="history-item-cond" title="${item.conditions}">条件: ${item.conditions}</div>` : ''}
+        <div class="history-item-time">${item.timestamp}</div>
+    `;
+
+    div.addEventListener('click', () => {
+        expressionInput.value = item.expression;
+        conditionsInput.value = item.conditions;
+        expressionInput.focus();
+    });
+
+    return div;
+}
+
+// 添加历史记录 (带动画)
 function addHistory(expression, conditions) {
+    conditions = conditions || '';
+
     const item = {
         expression: expression,
-        conditions: conditions || '',
+        conditions: conditions,
         timestamp: new Date().toLocaleString('zh-CN', {
             month: '2-digit',
             day: '2-digit',
@@ -73,16 +98,109 @@ function addHistory(expression, conditions) {
         })
     };
 
-    // 避免重复添加相同的表达式
-    const isDuplicate = solveHistory.some(h =>
+    // 1. 记录初始位置 (FLIP - First)
+    const firstPositions = new Map();
+    const items = historyList.querySelectorAll('.history-item');
+    items.forEach(el => {
+        if (el.dataset.key) {
+            firstPositions.set(el.dataset.key, el.getBoundingClientRect());
+        }
+    });
+
+    // 2. 更新数据模型
+    const key = `${expression}||${conditions}`;
+    const existingIndex = solveHistory.findIndex(h =>
         h.expression === expression && h.conditions === conditions
     );
 
-    if (!isDuplicate) {
-        solveHistory.push(item);
-        saveHistory();
-        renderHistory();
+    if (existingIndex !== -1) {
+        solveHistory.splice(existingIndex, 1);
     }
+    solveHistory.push(item);
+
+    // 确保不超过限制
+    if (solveHistory.length > 20) {
+        solveHistory.shift(); // 移除最早的 (注意: 渲染是倒序, 所以数据头部是最早的)
+    }
+    saveHistory();
+
+    // 3. 更新 DOM (FLIP - Last)
+    // 移除空状态
+    const emptyState = historyList.querySelector('.text-gray-400');
+    if (emptyState) emptyState.remove();
+
+    // 查找已存在的 DOM 元素
+    let domElement = null;
+    items.forEach(el => {
+        if (el.dataset.key === key) domElement = el;
+    });
+
+    if (domElement) {
+        // 移动现有元素到顶部 (prepend)
+        // 更新时间
+        const timeEl = domElement.querySelector('.history-item-time');
+        if (timeEl) timeEl.textContent = item.timestamp;
+
+        historyList.prepend(domElement);
+    } else {
+        // 创建新元素
+        domElement = createHistoryItemDOM(item);
+        historyList.prepend(domElement);
+    }
+
+    // 移除多余的 DOM 元素
+    while (historyList.children.length > 20) {
+        historyList.lastElementChild.remove();
+    }
+
+    // 4. 执行动画 (FLIP - Invert & Play)
+    requestAnimationFrame(() => {
+        const allItems = historyList.querySelectorAll('.history-item');
+
+        allItems.forEach(el => {
+            const firstRect = firstPositions.get(el.dataset.key);
+            const lastRect = el.getBoundingClientRect();
+
+            if (firstRect) {
+                // 移动的元素
+                const deltaY = firstRect.top - lastRect.top;
+
+                // 只有当位置确实发生改变时才动画
+                if (Math.abs(deltaY) > 0) {
+                    el.style.transition = 'none';
+                    el.style.transform = `translateY(${deltaY}px)`;
+
+                    // Trigger reflow
+                    el.offsetHeight;
+
+                    // Play
+                    el.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+                    el.style.transform = '';
+                }
+            } else {
+                // 新进入的元素 (Fade in + Slide down)
+                el.style.transition = 'none';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-20px)';
+
+                // Trigger reflow
+                el.offsetHeight;
+
+                el.style.transition = 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+                el.style.opacity = '1';
+                el.style.transform = '';
+            }
+
+            // 动画结束后清理 style
+            const onEnd = () => {
+                el.style.transition = '';
+                el.style.transform = '';
+                el.style.opacity = '';
+                el.removeEventListener('transitionend', onEnd);
+            };
+            el.addEventListener('transitionend', onEnd);
+        });
+    });
 }
 
 // 渲染历史记录
@@ -95,22 +213,10 @@ function renderHistory() {
     historyList.innerHTML = '';
 
     // 倒序显示（最新的在上面）
+    // 注意：addHistory 已经改为增量更新 DOM，renderHistory 仅用于初始化加载
     for (let i = solveHistory.length - 1; i >= 0; i--) {
         const item = solveHistory[i];
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `
-            <div class="history-item-expr" title="${item.expression}">${item.expression}</div>
-            ${item.conditions ? `<div class="history-item-cond" title="${item.conditions}">条件: ${item.conditions}</div>` : ''}
-            <div class="history-item-time">${item.timestamp}</div>
-        `;
-
-        div.addEventListener('click', () => {
-            expressionInput.value = item.expression;
-            conditionsInput.value = item.conditions;
-            expressionInput.focus();
-        });
-
+        const div = createHistoryItemDOM(item);
         historyList.appendChild(div);
     }
 }
@@ -127,50 +233,86 @@ clearHistoryBtn.addEventListener('click', () => {
 // 页面加载时加载历史记录
 loadHistory();
 
-// 检测用户是否在底部
-function isScrolledToBottom(element) {
-    const threshold = 50; // 50px 的容差
-    return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+// 智能滚动管理器
+class SmartScrollManager {
+    constructor(element) {
+        this.element = element;
+        this.userIsScrolling = false;
+        this.scrollTimeout = null;
+        this.attachListeners();
+    }
+
+    attachListeners() {
+        this.element.addEventListener('scroll', () => {
+            // 用户手动滚动时，标记为正在滚动
+            this.userIsScrolling = true;
+
+            // 清除之前的超时
+            if (this.scrollTimeout) {
+                clearTimeout(this.scrollTimeout);
+            }
+
+            // 如果用户滚动到底部，恢复自动滚动
+            if (this.isScrolledToBottom()) {
+                this.userIsScrolling = false;
+            } else {
+                // 2秒后如果没有新的滚动事件，恢复自动滚动
+                this.scrollTimeout = setTimeout(() => {
+                    if (this.isScrolledToBottom()) {
+                        this.userIsScrolling = false;
+                    }
+                }, 2000);
+            }
+        });
+    }
+
+    isScrolledToBottom() {
+        const threshold = 5; // 5px 的容差，减少抖动（原为50px）
+        return this.element.scrollHeight - this.element.scrollTop - this.element.clientHeight < threshold;
+    }
+
+    scrollToBottom() {
+        // 只有当用户没有正在滚动时才自动滚动
+        if (!this.userIsScrolling) {
+            this.element.scrollTop = this.element.scrollHeight;
+        }
+    }
+
+    reset() {
+        this.userIsScrolling = false;
+        if (this.scrollTimeout) {
+            clearTimeout(this.scrollTimeout);
+            this.scrollTimeout = null;
+        }
+    }
 }
 
-// 智能滚动：只有用户在底部时才自动滚动
+// 初始化各个区域的滚动管理器
+const scrollManagers = {
+    thinking: new SmartScrollManager(thinkingOutput),
+    result: new SmartScrollManager(resultOutput),
+    command: new SmartScrollManager(commandOutput),
+    error: new SmartScrollManager(errorOutput),
+    stdCommand: new SmartScrollManager(stdCommandList) // 侧边栏也加上
+};
+
+// 统一的智能滚动调用接口
 function smartScroll(element) {
-    if (element === thinkingOutput) {
-        // 对于思考区域，如果用户没有正在手动滚动，则自动滚动到底部
-        // 注意：移除 isScrolledToBottom(element) 检查，因为内容更新后 scrollHeight 增加，
-        // 此时 scrollTop 还没变，会导致该检查失败，从而不滚动。
-        // 我们完全依赖 userIsScrolling 标志来判断用户意图。
-        if (!userIsScrolling) {
-            element.scrollTop = element.scrollHeight;
-        }
+    // 查找对应的管理器
+    let manager = null;
+    if (element === thinkingOutput) manager = scrollManagers.thinking;
+    else if (element === resultOutput) manager = scrollManagers.result;
+    else if (element === commandOutput) manager = scrollManagers.command;
+    else if (element === errorOutput) manager = scrollManagers.error;
+    else if (element === stdCommandList) manager = scrollManagers.stdCommand;
+
+    if (manager) {
+        manager.scrollToBottom();
     } else {
-        // 对于其他输出区域（命令、结果、错误），总是滚动到底部
+        // Fallback
         element.scrollTop = element.scrollHeight;
     }
 }
-
-// 监听思考输出区域的滚动事件
-thinkingOutput.addEventListener('scroll', () => {
-    // 用户手动滚动时，标记为正在滚动
-    userIsScrolling = true;
-
-    // 清除之前的超时
-    if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-    }
-
-    // 如果用户滚动到底部，恢复自动滚动
-    if (isScrolledToBottom(thinkingOutput)) {
-        userIsScrolling = false;
-    } else {
-        // 2秒后如果没有新的滚动事件，恢复自动滚动
-        scrollTimeout = setTimeout(() => {
-            if (isScrolledToBottom(thinkingOutput)) {
-                userIsScrolling = false;
-            }
-        }, 2000);
-    }
-});
 
 let thinkingStepCount = 0;
 let currentCard = null; // 当前正在更新的卡片
@@ -178,8 +320,6 @@ let currentSidebarItem = null; // Track current command item in sidebar
 let currentFields = {}; // 当前卡片的各个字段元素
 let lastThinkingValue = ''; // 记录上一次的 thinking 值
 let hasContent = false; // 标记是否已有内容
-let userIsScrolling = false; // 用户是否正在手动滚动
-let scrollTimeout = null; // 滚动超时计时器
 let lastStep = -1; // 记录上一次的步骤号
 
 // 清空思考历史
@@ -189,8 +329,8 @@ clearThinkingBtn.addEventListener('click', () => {
     currentFields = {};
     lastThinkingValue = '';
     hasContent = false;
-    userIsScrolling = false; // 重置滚动状态
     lastStep = -1; // 重置步骤号
+    scrollManagers.thinking.reset(); // 重置滚动状态
     thinkingOutput.innerHTML = '<div class="text-gray-400 text-center py-8 text-xs">AI 思考过程将在这里显示...</div>';
 });
 
@@ -469,14 +609,18 @@ exampleCards.forEach(card => {
 clearBtn.addEventListener('click', () => {
     expressionInput.value = '';
     conditionsInput.value = '';
+    if (instructionInput) instructionInput.value = '';
     thinkingStepCount = 0;
     currentCard = null;
     currentSidebarItem = null;
     currentFields = {};
     lastThinkingValue = '';
     hasContent = false;
-    userIsScrolling = false; // 重置滚动状态
     lastStep = -1; // 重置步骤号
+
+    // 重置所有滚动状态
+    Object.values(scrollManagers).forEach(manager => manager.reset());
+
     resultOutput.innerHTML = '<div class="text-gray-400 text-center py-8">等待输入表达式...</div>';
     thinkingOutput.innerHTML = '<div class="text-gray-400 text-center py-8 text-xs">AI 思考过程将在这里显示...</div>';
     commandOutput.innerHTML = '<div class="text-gray-400 text-center py-8">执行的命令将在这里显示...</div>';
@@ -507,8 +651,10 @@ solveBtn.addEventListener('click', async () => {
     currentFields = {};
     lastThinkingValue = '';
     hasContent = false;
-    userIsScrolling = false; // 重置滚动状态
     lastStep = -1; // 重置步骤号
+
+    // 重置所有滚动状态
+    Object.values(scrollManagers).forEach(manager => manager.reset());
 
     // 清空输出
     resultOutput.textContent = '';
@@ -518,8 +664,15 @@ solveBtn.addEventListener('click', async () => {
 
     const conditions = conditionsInput.value.trim();
 
-    // Add initial calculate command
-    let initCmd = `calculate ${expression}`;
+    // Intelligent initial command generation
+    let initCmd = expression;
+    const commandKeywords = ['calculate', 'prove', 'subgoal', 'defn', 'derive'];
+    const firstWord = expression.split(' ')[0].toLowerCase();
+
+    if (!commandKeywords.includes(firstWord)) {
+        initCmd = `calculate ${expression}`;
+    }
+
     if (conditions) {
         initCmd += ` for ${conditions}`;
     }
@@ -532,7 +685,8 @@ solveBtn.addEventListener('click', async () => {
         // 使用 EventSource 进行流式输出
         const params = new URLSearchParams({
             expression: expression,
-            conditions: conditions
+            conditions: conditions,
+            instruction: instructionInput ? instructionInput.value.trim() : ''
         });
 
         eventSource = new EventSource(`/api/solve?${params.toString()}`);

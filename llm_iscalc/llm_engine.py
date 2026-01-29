@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from .prompts import SYSTEM_PROMPT, USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEMPLATE
+from .prompts import SYSTEM_PROMPT, USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEMPLATE, build_dynamic_system_prompt
 from .config import LLMConfig
 
 
@@ -48,10 +48,35 @@ class LLMEngine:
         self,
         expression: str,
         history: List[Dict[str, Any]],
-        last_error: Optional[str] = None
+        last_error: Optional[str] = None,
+        use_dynamic_prompt: bool = True,
+        current_state: str = "CALCULATE",
+        conditions: Optional[List[str]] = None,
+        user_instruction: Optional[str] = None
     ) -> List[Dict[str, str]]:
-        """构建消息列表"""
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        """构建消息列表
+        
+        Args:
+            expression: 当前表达式
+            history: 历史记录
+            last_error: 上次错误
+            use_dynamic_prompt: 是否使用渐进式披露的动态提示词
+            current_state: 当前状态名称（如 'CALCULATE', 'PROVE', 'INDUCTION'）
+        """
+        # 根据配置选择提示词构建方式
+        if use_dynamic_prompt:
+            # 渐进式披露：按表达式类型和当前状态动态加载相关命令
+            system_prompt = build_dynamic_system_prompt(
+                expression,
+                include_examples=len(history) < 3,  # 前几步包含示例
+                include_all_commands=False,
+                current_state=current_state
+            )
+        else:
+            # 完整模式：加载所有命令
+            system_prompt = SYSTEM_PROMPT
+        
+        messages = [{"role": "system", "content": system_prompt}]
         
         # 构建历史部分
         history_section = ""
@@ -73,7 +98,11 @@ class LLMEngine:
         
         user_message = USER_MESSAGE_TEMPLATE.format(
             expression=expression,
-            history_section=history_section
+            history_section=history_section,
+            current_state=current_state,
+
+            conditions=", ".join(conditions) if conditions else "无",
+            user_instruction=user_instruction or "无"
         )
         
         messages.append({"role": "user", "content": user_message})
@@ -83,11 +112,21 @@ class LLMEngine:
         self,
         expression: str,
         history: List[Dict[str, Any]],
-        last_error: Optional[str] = None
+        last_error: Optional[str] = None,
+        current_state: str = "CALCULATE",
+        conditions: Optional[List[str]] = None,
+        user_instruction: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
-        """流式生成命令"""
-        messages = self._build_messages(expression, history, last_error)
+        """流式生成命令
         
+        Args:
+            expression: 当前表达式
+            history: 历史记录
+            last_error: 上次错误
+            current_state: 当前状态名称
+        """
+        messages = self._build_messages(expression, history, last_error, current_state=current_state, conditions=conditions, user_instruction=user_instruction)
+                
         for attempt in range(self.config.max_retries):
             try:
                 client = await self._get_client()
@@ -138,11 +177,14 @@ class LLMEngine:
         self,
         expression: str,
         history: List[Dict[str, Any]],
-        last_error: Optional[str] = None
+        last_error: Optional[str] = None,
+        current_state: str = "CALCULATE",
+        conditions: Optional[List[str]] = None,
+        user_instruction: Optional[str] = None
     ) -> LLMResponse:
         """非流式生成命令（收集完整响应）"""
         full_response = ""
-        async for chunk in self.generate_command(expression, history, last_error):
+        async for chunk in self.generate_command(expression, history, last_error, current_state, conditions, user_instruction):
             full_response += chunk
         
         return self.parse_response(full_response)

@@ -59,26 +59,64 @@ class CommandExecutor:
     def initialize(self, expression: str, conditions: Optional[List[str]] = None) -> ExecutionResult:
         """初始化计算会话
         
-        创建CompFile，解析表达式，然后使用CalculateAction进入计算状态。
+        根据输入的命令（prove/calculate）创建对应的状态。
         """
         try:
             # 创建CompFile
             self.comp_file = CompFile(self.base_theory, "llm_session")
             
-            # 解析表达式
-            parsed_expr = parser.parse_expr(expression)
-            
             # 创建InitialState
             initial_state = state_module.InitialState(self.comp_file.ctx)
             
-            # 解析条件
+            # 解析条件 (带智能预处理)
             cond_list = None
             if conditions:
-                cond_list = [parser.parse_expr(c) for c in conditions]
+                raw_conditions = conditions
+                cond_list = []
+                for c in raw_conditions:
+                    c = c.strip()
+                    if not c: continue
+                    
+                    # 处理 "var:type" 语法
+                    if ":" in c:
+                        parts = c.split(":")
+                        if len(parts) == 2:
+                            var_name = parts[0].strip()
+                            type_name = parts[1].strip().lower()
+                            
+                            # 忽略 redundant real declaration
+                            if type_name == "real":
+                                continue
+                            # 转换 int declaration
+                            elif type_name == "int" or type_name == "integer":
+                                c = f"isInt({var_name})"
+                    
+                    # 尝试解析
+                    try:
+                        cond_list.append(parser.parse_expr(c))
+                    except Exception as e:
+                        # 记录错误但不崩溃? 或者抛出更友好的错误
+                        raise type(e)(f"无法解析条件 '{c}': {str(e)}")
+
+            # 判断命令类型并创建对应的Action
+            expr_lower = expression.lstrip().lower()
             
-            # 使用CalculateAction进入计算状态
-            calc_action = CalculateAction(parsed_expr, cond_list)
-            self.state = initial_state.process_action(calc_action)
+            if expr_lower.startswith("prove "):
+                # prove 命令：使用parser.parse_action解析整个命令
+                # 这会创建ProveAction并进入PROVE状态
+                action = parser.parse_action(expression)
+                self.state = initial_state.process_action(action)
+            elif expr_lower.startswith("calculate "):
+                # calculate 命令：去掉前缀，使用CalculateAction
+                clean_expr = expression.lstrip()[len("calculate "):].strip()
+                parsed_expr = parser.parse_expr(clean_expr)
+                calc_action = CalculateAction(parsed_expr, cond_list)
+                self.state = initial_state.process_action(calc_action)
+            else:
+                # 没有前缀：默认为calculate
+                parsed_expr = parser.parse_expr(expression)
+                calc_action = CalculateAction(parsed_expr, cond_list)
+                self.state = initial_state.process_action(calc_action)
             
             self.initial_expression = expression
             current_expr = self._get_current_expr()
@@ -194,7 +232,13 @@ class CommandExecutor:
             )
     
     def _get_current_expr(self) -> Optional[Any]:
-        """获取当前表达式对象"""
+        """获取当前表达式对象
+        
+        适配不同状态：
+        - CalculateState: 有calc属性
+        - ProveState: 返回goal.goal（实际表达式），而不是Goal对象
+        - 其他状态: 尝试访问相关属性
+        """
         if self.state is None:
             return None
         
@@ -204,6 +248,15 @@ class CommandExecutor:
             if calc.steps:
                 return calc.steps[-1].res
             return calc.start
+        
+        # ProveState有goal属性（Goal对象）
+        # 返回goal.goal（实际的Expr）而不是Goal对象
+        # 避免LLM看到"Goal (finished)"这种误导信息
+        if hasattr(self.state, 'goal'):
+            goal_obj = self.state.goal
+            if hasattr(goal_obj, 'goal'):
+                return goal_obj.goal  # 返回实际表达式
+            return goal_obj
         
         return None
     
@@ -218,9 +271,55 @@ class CommandExecutor:
         return self._expr_to_latex(expr) if expr else None
     
     def is_finished(self) -> bool:
-        """检查是否已完成化简"""
+        """检查是否已完成化简
+        
+        系统性修复：原始库的StateItem.is_finished()默认返回True，
+        但Goal类没有覆盖此方法，导致没有proof时也返回True。
+        这里在llm_iscalc层面做正确的判断。
+        """
         if self.state is None:
             return False
+        
+        # 获取状态类型
+        state_type = type(self.state).__name__
+        
+        # ProveState: 检查goal是否真正完成
+        if state_type == "ProveState":
+            goal = getattr(self.state, 'goal', None)
+            if goal is not None:
+                # Goal只有在有proof且proof完成时才算完成
+                proof = getattr(goal, 'proof', None)
+                if proof is None:
+                    return False
+                # 有proof时，再检查proof是否完成
+                return proof.is_finished() if hasattr(proof, 'is_finished') else False
+            return False
+        
+        # CalculateState: 计算状态总是被认为未完成（正在进行中）
+        # 用户必须显式使用done命令退出此状态
+        if state_type == "CalculateState":
+            return False
+            
+        # InitialState: 初始状态被认为是"完成"（即处于空闲/就绪状态）
+        # 当从最顶层状态执行done返回到InitialState时，也表示任务完成
+        if state_type == "InitialState":
+            return True
+        
+        # InductionState: 检查所有分支
+        if state_type == "InductionState":
+            induct_proof = getattr(self.state, 'induct_proof', None)
+            if induct_proof is not None:
+                return induct_proof.is_finished()
+            return False
+        
+        # CaseAnalysisState: 检查所有case
+        if state_type == "CaseAnalysisState":
+            case_proof = getattr(self.state, 'case_proof', None)
+            if case_proof is not None:
+                return case_proof.is_finished()
+            return False
+        
+        # 其他状态：回退到原始逻辑
         return self.state.is_finished()
     
     def get_history(self) -> List[dict]:
@@ -239,6 +338,21 @@ class CommandExecutor:
                 return str(e)
         except Exception:
             return str(e)
+    
+    def get_current_state_name(self) -> str:
+        """获取当前状态名称
+        
+        返回状态的类名简称，用于技能匹配和提示词构建。
+        可能的返回值: 'INITIAL', 'CALCULATE', 'PROVE', 'INDUCTION', 'CASE' 等
+        """
+        if self.state is None:
+            return "INITIAL"
+        
+        state_class = type(self.state).__name__
+        # 标准化状态名称：去掉 'State' 后缀，转大写
+        if state_class.endswith("State"):
+            state_class = state_class[:-5]
+        return state_class.upper()
     
     def reset(self) -> None:
         """重置执行器状态"""
