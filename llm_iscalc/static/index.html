@@ -68,7 +68,7 @@
             font-size: 24px;
         }
 
-        .header-gradient-box > .text-center {
+        .header-gradient-box>.text-center {
             position: relative;
             z-index: 1;
         }
@@ -358,10 +358,61 @@
             color: #9ca3af;
             margin-top: 2px;
         }
+
+        /* Search-o1 风格：技能加载通知 */
+        #skill-notifications {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .skill-load-notification {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideInRight 0.35s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .skill-load-notification .icon {
+            font-size: 16px;
+        }
+
+        .skill-load-notification.fade-out {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
 <body class="min-h-screen">
+    <!-- Search-o1 风格：技能加载通知容器 -->
+    <div id="skill-notifications"></div>
+
     <div class="max-w-[1600px] mx-auto px-6 py-6">
         <!-- 顶部标题区 -->
         <header class="mb-6">
@@ -372,7 +423,7 @@
                 <div class="math-formula-bg formula-3" id="formula-3"></div>
                 <div class="math-formula-bg formula-4" id="formula-4"></div>
                 <div class="math-formula-bg formula-5" id="formula-5"></div>
-                
+
                 <!-- 主要内容 -->
                 <div class="text-center">
                     <h1 class="text-3xl font-bold text-white mb-2">🧮 LLM-Iscalc 数学求解器</h1>
@@ -619,9 +670,9 @@
     <script>
         console.log('HTML 页面已加载');
         console.log('开始加载 app.js...');
-        
+
         // 渲染背景数学公式
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const formulas = [
                 { id: 'formula-1', latex: 'E = mc^2' },
                 { id: 'formula-2', latex: 'e^{i\\theta} = \\cos\\theta + i\\sin\\theta' },
@@ -629,7 +680,7 @@
                 { id: 'formula-4', latex: '\\int_a^b f(x)dx = F(b) - F(a)' },
                 { id: 'formula-5', latex: 'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n' }
             ];
-            
+
             formulas.forEach(item => {
                 const element = document.getElementById(item.id);
                 if (element && window.katex) {

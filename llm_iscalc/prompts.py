@@ -6,6 +6,11 @@
 
 from typing import List, Dict, Any, Optional
 
+# ============ 技能加载特殊标记（Search-o1 风格） ============
+# LLM 可以在 thinking 中使用这些标记来触发技能加载
+SKILL_LOAD_BEGIN = "<|load_skill|>"
+SKILL_LOAD_END = "<|end_load_skill|>"
+
 from .skills import (
     get_all_skill_metadata,
     get_relevant_skills,
@@ -90,91 +95,108 @@ ERROR_RECOVERY_GUIDE = """
 # ============ 技能选择策略指南 ============
 
 SKILL_SELECTION_GUIDE = """
-## 📚 三层技能系统说明
+## 📚 三层技能系统
 
 系统采用按需加载的三层技能架构：
 
-### 第一层：技能目录（启动时已加载）
-你已经知道所有可用技能的**名称和简要描述**。这些信息非常轻量（每个约 20-50 tokens）。
+**第一层：技能目录**（启动时已加载）
+- 你已知道所有可用技能的名称和简要描述
+- 每个技能约 20-50 tokens
 
-### 第二层：核心指令（按需加载）
-当你需要使用某个命令时，可以调用工具读取完整的 SKILL.md 文件，其中包含：
-- 详细使用说明
-- 参数格式
-- 使用示例
-- 注意事项
+**第二层：核心指令**（按需加载）
+- 完整的 SKILL.md 文件内容
+- 包含详细使用说明、参数格式、示例
 
-### 第三层：扩展资源（按需加载）
-某些技能提供额外的参考文档或脚本（放在 `references/` 或 `scripts/` 目录下）。
-当核心指令提到这些资源时，你可以进一步加载它们。
+**第三层：扩展资源**（按需加载）
+- references/ 目录下的参考文档
+- scripts/ 目录下的辅助脚本
 
 ---
 
-## 🛠️ 可用工具
+## � 加载技能的三种方法
 
-你拥有以下工具来实时获取技能信息：
+### 方法 1：特殊标记（核心机制，强烈推荐）
 
-### 1. read_skill(skill_path)
-读取技能的核心指令（第二层）。
+这是本系统最强大的功能：**边思考边查阅**。
+当你发现自己不确定某个命令的用法，或者需要查询特定的数学策略时，**不要瞎猜**，请立即暂停思考，插入加载标记：
 
-**示例**：
-```python
-read_skill("skills/strategies/strategy-integral/SKILL.md")
-```
+<|load_skill|>技能名<|end_load_skill|>
 
-### 2. list_skill_resources(skill_name)
-列出技能的扩展资源（第三层）。
-
-**示例**：
-```python
-list_skill_resources("rewrite")
-# 返回：["ADVANCED.md", "helper.py"]
-```
-
-### 3. read_skill_resource(skill_name, resource_name)
-读取扩展资源的内容。
+系统会：
+1. ⏸️ **暂停**你的生成
+2. 📖 **读取**本地对应的 `SKILL.md`
+3. 💉 **注入**到你的上下文中
+4. ▶️ **唤醒**你继续基于新知识进行推理
 
 **示例**：
-```python
-read_skill_resource("rewrite", "ADVANCED.md")
 ```
+(思考中)...这个积分看起来像是有理函数，我不确定 iscalc 的 partial-fraction 命令具体格式是怎样的...
+<|load_skill|>partial-fraction<|end_load_skill|>
+(系统自动注入技能内容...)
+根据文档，partial-fraction 的正确用法是...
+```
+
+**可用技能名**（支持模糊匹配，只需写核心词）：
+
+
+**可用技能名**：
+- 命令：rewrite, substitute, integrate-by-parts, simplify, partial-fraction, subst-both, split-region, apply-integral-identity
+- 策略：strategy-integral, strategy-limit, complex, merge-evalat
+- 状态：state-calculate, state-prove, state-induction
+
+### 方法 2：工具调用（精确控制）
+
+使用 Function Calling：
+
+```python
+read_skill("skills/commands/rewrite/SKILL.md")
+```
+
+适用于需要完整路径或查看扩展资源的场景。
+
+### 方法 3：自然提及（自动）
+
+直接在 thinking 中提到技能名：
+
+```
+我应该使用 rewrite 命令来变换表达式...
+```
+
+系统会自动检测并加载（可能有延迟）。
 
 ---
 
-## ⚠️ 使用策略
+## 💡 使用指南
 
-### 推荐流程
+**何时加载技能**：
+- ✅ 首次使用某个命令
+- ✅ 不确定命令参数格式
+- ✅ 需要了解整体策略
+- ✅ 遇到复杂情况
 
-1. **思考阶段**：分析表达式，确定需要哪些技能
-2. **调用工具**：使用 `read_skill()` 加载相关技能的详细指令
-3. **执行命令**：根据技能指令生成 iscalc 命令
-4. **深入学习**（可选）：如果需要，使用 `read_skill_resource()` 查看扩展资源
+**无需加载**：
+- ❌ 简单的 simplify 命令
+- ❌ 已经使用过的命令
+- ❌ 明确知道用法的情况
 
-### 何时加载技能
+**技能选择参考**：
 
-- ✅ **主动加载**：当你不确定命令的具体用法时
-- ✅ **首次使用**：第一次使用某个命令时
-- ✅ **复杂情况**：遇到特殊参数或高级用法时
-- ❌ **不必要**：简单的 `simplify` 等基础命令可能不需要加载
-
-### 技能选择参考
-
-| 表达式类型 | 建议加载的技能 |
-|-----------|---------------|
-| 定积分 `INT x:[a,b]. f(x)` | strategy-integral |
-| 极限 `LIM {x->a}. f(x)` | strategy-limit |
-| 复数/因式分解 | complex |
+| 表达式类型 | 加载技能 |
+|-----------|---------|
+| 定积分 INT x:[a,b]. f(x) | strategy-integral |
+| 极限 LIM {x->a}. f(x) | strategy-limit |
+| 三角函数变换 | rewrite |
 | 有理函数积分 | partial-fraction |
 | 分部积分 | integrate-by-parts |
-| 表达式重写 | rewrite |
 
 ---
 
-## 💡 记住
+## ⚠️ 重要规则
 
-- 工具调用是**实时的**，你在思考过程中就可以获取技能内容
-- 加载技能不消耗额外的 iscalc 命令步数
-- 合理使用工具可以提高命令准确性
+1. **标记格式**：请在单独一行使用 `<|load_skill|>技能名<|end_load_skill|>`。不要在标签后添加反斜杠(\)或其他符号。
+2. **技能名称**：使用短名称（如 `rewrite`）或完整路径（如 `skills/commands/rewrite/SKILL.md`）
+3. **加载时机**：可以在思考过程中随时加载，加载后系统会暂停并继续你的生成（支持边思考边查资料）
+4. **避免重复**：同一技能在一次求解中只需加载一次
 """
 
 

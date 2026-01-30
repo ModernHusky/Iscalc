@@ -27,6 +27,7 @@ class EventType(Enum):
     LOOP_DETECTED = "loop_detected"
     LOOP_RETRY = "loop_retry"  # 循环重试事件
     MAX_ITERATIONS = "max_iterations"
+    SKILL_LOAD = "skill_load"  # 技能加载事件（Search-o1 风格）
 
 
 @dataclass
@@ -64,6 +65,161 @@ class SolverLoop:
         self.config = config or SolverConfig()
         self.error_handler = ErrorHandler(self.config.max_consecutive_errors)
         self.logger = get_phase_logger(__name__)
+        
+        # Search-o1 风格：技能加载次数限制
+        self.max_skill_loads_per_solve = 10  # 单次求解最多加载技能数
+    
+    def _detect_and_load_skills(
+        self,
+        text: str,
+        active_skills: List[str],
+        loaded_skill_names: List[str],
+        callback = None
+    ) -> tuple:
+        """
+        Search-o1 风格：检测文本中的技能加载标记并加载技能
+        
+        借鉴 Search-o1 的核心算法：
+        1. 检测 <|load_skill|>技能名<|end_load_skill|> 标记
+        2. 加载技能内容
+        3. 将标记替换为加载确认信息
+        
+        Args:
+            text: 待检测的文本（LLM 的 thinking 输出）
+            active_skills: 当前活跃的技能内容列表
+            loaded_skill_names: 已加载的技能名列表
+            callback: 事件回调函数（可选）
+            
+        Returns:
+            tuple: (处理后的文本, 是否检测到标记, 新加载的技能名列表)
+        """
+        import re
+        from .prompts import SKILL_LOAD_BEGIN, SKILL_LOAD_END
+        from .skills import get_skill_loader
+        
+        # 构建正则匹配模式
+        pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
+        matches = list(re.finditer(pattern, text, re.DOTALL))
+        
+        if not matches:
+            return text, False, []
+        
+        newly_loaded = []
+        result_text = text
+        
+        for match in matches:
+            skill_name = match.group(1).strip()
+            
+            # 检查是否已加载
+            if skill_name in loaded_skill_names or any(skill_name in s for s in loaded_skill_names):
+                # 已加载，替换标记为提示
+                result_text = result_text.replace(
+                    match.group(0),
+                    f"[✓ 技能 {skill_name} 已在上下文中]"
+                )
+                continue
+            
+            # 检查加载次数限制
+            if len(loaded_skill_names) >= self.max_skill_loads_per_solve:
+                result_text = result_text.replace(
+                    match.group(0),
+                    f"[⚠ 已达到单次求解技能加载上限 ({self.max_skill_loads_per_solve})]"
+                )
+                continue
+            
+            # 定位技能文件
+            skill_path = self._resolve_skill_path(skill_name)
+            
+            if skill_path is None:
+                result_text = result_text.replace(
+                    match.group(0),
+                    f"[✗ 未找到技能: {skill_name}]"
+                )
+                continue
+            
+            # 加载技能内容
+            try:
+                with open(skill_path, 'r', encoding='utf-8') as f:
+                    skill_content = f.read()
+                
+                # 添加到活跃技能列表
+                skill_dir = os.path.dirname(skill_path)
+                skill_block = f"\n## 技能文件 (主动加载): {skill_name}\n> Path: {skill_path}\n\n{skill_content}\n\n---\n"
+                active_skills.append(skill_block)
+                loaded_skill_names.append(skill_name)
+                newly_loaded.append(skill_name)
+                
+                # 替换标记为加载确认
+                result_text = result_text.replace(
+                    match.group(0),
+                    f"[✓ 已加载技能: {skill_name}]"
+                )
+                
+                # 打印醒目的日志
+                print("")
+                print_separator("═", 60)
+                self.logger.skill_load("🔖 主动加载技能 (Search-o1 风格): %s", skill_name)
+                print_separator("─", 60)
+                self.logger.info("   📁 路径: %s", skill_path)
+                self.logger.info("   📄 大小: %d 字节", len(skill_content))
+                print_separator("═", 60)
+                print("")
+                
+            except Exception as e:
+                self.logger.warning("技能加载失败: %s - %s", skill_name, str(e))
+                result_text = result_text.replace(
+                    match.group(0),
+                    f"[✗ 加载失败: {skill_name} - {str(e)}]"
+                )
+        
+        return result_text, len(newly_loaded) > 0, newly_loaded
+    
+    def _resolve_skill_path(self, skill_name: str) -> Optional[str]:
+        """
+        解析技能名称到实际文件路径
+        
+        支持多种格式：
+        - 短名称: "rewrite", "strategy-integral"
+        - 完整路径: "skills/commands/rewrite/SKILL.md"
+        """
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # 1. 如果是完整路径
+        if skill_name.endswith('.md') or '/' in skill_name or '\\' in skill_name:
+            full_path = os.path.join(base_dir, skill_name.replace('/', os.sep))
+            if os.path.exists(full_path):
+                return full_path
+        
+        # 2. 搜索技能目录
+        skill_dirs = ['commands', 'strategies', 'states', 'general']
+        for category in skill_dirs:
+            # 尝试直接匹配
+            skill_path = os.path.join(base_dir, 'skills', category, skill_name, 'SKILL.md')
+            if os.path.exists(skill_path):
+                return skill_path
+            
+            # 尝试带 state- 前缀
+            if category == 'states' and not skill_name.startswith('state-'):
+                skill_path = os.path.join(base_dir, 'skills', category, f'state-{skill_name}', 'SKILL.md')
+                if os.path.exists(skill_path):
+                    return skill_path
+        
+        # 3. 使用 SkillLoader 搜索
+        try:
+            from .skills import get_skill_loader
+            loader = get_skill_loader()
+            all_skills = loader.discover_skills()
+            
+            for skill in all_skills:
+                if skill.name.lower() == skill_name.lower():
+                    return skill.path
+                # 模糊匹配
+                if skill_name.lower() in skill.name.lower():
+                    return skill.path
+        except Exception:
+            pass
+        
+        return None
     
     async def solve(
         self,
@@ -206,8 +362,34 @@ class SolverLoop:
                 # 根据配置选择生成模式
                 if self.config.use_tool_calling:
                     # 使用 Function Calling 模式：LLM 可以实时调用工具读取技能
+                    # 先发送初始"正在思考"状态
+                    if callback:
+                        await callback(SolveEvent(
+                            type=EventType.THINKING,
+                            content='{"thinking": "正在分析问题并决定策略...", "command": "", "explanation": "", "is_final": false}',
+                            step=iteration,
+                            metadata={"streaming": True, "tool_calling": True, "phase": "init"}
+                        ))
+                    
+                    # 工具调用回调：发送实时状态更新
+                    async def on_tool_call_async(tool_name, result):
+                        self.logger.info("   工具 %s 返回: %s", tool_name, result[:100] + "..." if len(result) > 100 else result)
+                        # 发送技能加载状态更新
+                        if callback:
+                            skill_name = result.split('\n')[0] if '\n' in result else tool_name
+                            skill_name = skill_name[:50] + "..." if len(skill_name) > 50 else skill_name
+                            await callback(SolveEvent(
+                                type=EventType.THINKING,
+                                content=f'{{"thinking": "正在查阅技能文档: {tool_name}...\\n已加载并学习相关内容。", "command": "", "explanation": "", "is_final": false}}',
+                                step=iteration,
+                                metadata={"streaming": True, "tool_calling": True, "phase": "tool_call", "tool": tool_name}
+                            ))
+                    
+                    # 使用同步回调包装异步回调
+                    tool_call_events = []
                     def on_tool_call(tool_name, result):
                         self.logger.info("   工具 %s 返回: %s", tool_name, result[:100] + "..." if len(result) > 100 else result)
+                        tool_call_events.append((tool_name, result))
                     
                     full_response = await self.llm.generate_with_tools(
                         current_expr or expression,
@@ -220,31 +402,223 @@ class SolverLoop:
                         on_tool_call=on_tool_call
                     )
                     
+                    # 发送工具调用事件（如果有）
+                    for tool_name, result in tool_call_events:
+                        if callback:
+                            await callback(SolveEvent(
+                                type=EventType.THINKING,
+                                content=f'{{"thinking": "已查阅技能: {tool_name}\\n正在根据技能内容决定下一步...", "command": "", "explanation": "", "is_final": false}}',
+                                step=iteration,
+                                metadata={"streaming": True, "tool_calling": True, "phase": "tool_result", "tool": tool_name}
+                            ))
+                    
                     if callback:
                         await callback(SolveEvent(
                             type=EventType.THINKING,
                             content=full_response,
                             step=iteration,
-                            metadata={"streaming": False, "tool_calling": True}
+                            metadata={"streaming": False, "tool_calling": True, "phase": "complete"}
                         ))
+                    
+                    # Search-o1 风格：检测 Function Calling 响应中的技能加载标记
+                    full_response, skills_loaded, loaded_names = self._detect_and_load_skills(
+                        full_response, active_skills, loaded_skill_names, callback
+                    )
+                    if skills_loaded and callback:
+                        for name in loaded_names:
+                            await callback(SolveEvent(
+                                type=EventType.SKILL_LOAD,
+                                content=f"已加载技能: {name}",
+                                step=iteration,
+                                metadata={"skill_name": name, "trigger": "marker"}
+                            ))
                 else:
-                    # 使用流式生成模式
-                    async for chunk in self.llm.generate_command(
+                    # ============ Search-o1 风格：流式生成 + 边思考边查询 ============
+                    from .prompts import SKILL_LOAD_BEGIN, SKILL_LOAD_END
+                    import re
+                    
+                    # 保存原始消息用于继续生成
+                    base_messages = self.llm._build_messages(
                         current_expr or expression,
                         self.executor.get_history(),
                         last_error,
-                        current_state,
+                        current_state=current_state,
                         conditions=conditions,
                         user_instruction=user_instruction,
-                        active_skills=active_skills  # 注入已加载的技能
-                    ):
-                        full_response += chunk
-                        if callback:
-                            await callback(SolveEvent(
-                                type=EventType.THINKING,
-                                content=full_response,
-                                step=iteration,
-                            metadata={"streaming": True}
+                        active_skills=active_skills
+                    )
+                    
+                    max_skill_rounds = 5  # 最多加载5个技能
+                    skill_round = 0
+                    display_text = ""
+                    raw_text = ""  # 维护原始文本用于 LLM 上下文（保留标记）
+                    is_first_generation = True
+                    
+                    while skill_round < max_skill_rounds:
+                        # 开始一轮生成（第一轮或继续生成）
+                        round_text = ""
+                        found_new_skill = False
+                        new_skill_name = None
+                        
+                        if is_first_generation:
+                            # 第一轮：正常流式生成
+                            async for chunk in self.llm.generate_command(
+                                current_expr or expression,
+                                self.executor.get_history(),
+                                last_error,
+                                current_state,
+                                conditions=conditions,
+                                user_instruction=user_instruction,
+                                active_skills=active_skills
+                            ):
+                                round_text += chunk
+                                display_text += chunk
+                                raw_text += chunk
+                                
+                                # 实时发送流式更新
+                                if callback:
+                                    await callback(SolveEvent(
+                                        type=EventType.THINKING,
+                                        content=display_text,
+                                        step=iteration,
+                                        metadata={"streaming": True, "skill_round": skill_round}
+                                    ))
+                                
+                                # 实时检测技能标记 (使用 raw_text 检测更准确，但 display_text 也可以因为此时两者一致)
+                                pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
+                                match = re.search(pattern, raw_text, re.DOTALL)
+                                if match:
+                                    skill_name = match.group(1).strip()
+                                    if skill_name not in loaded_skill_names:
+                                        # 找到新技能，中断生成
+                                        found_new_skill = True
+                                        new_skill_name = skill_name
+                                        break
+                            
+                            is_first_generation = False
+                        
+                        # 检测是否有未加载的技能
+                        if not found_new_skill:
+                            # 检查当前累积文本中是否还有未加载的技能
+                            pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
+                            match = re.search(pattern, raw_text, re.DOTALL)
+                            if match:
+                                skill_name = match.group(1).strip()
+                                if skill_name not in loaded_skill_names:
+                                    found_new_skill = True
+                                    new_skill_name = skill_name
+                        
+                        # 如果没有找到新技能，结束循环
+                        if not found_new_skill:
+                            break
+                        
+                        # 加载技能并继续生成
+                        skill_round += 1
+                        skill_name = new_skill_name
+                        self.logger.info("🔖 Search-o1 第%d轮: 加载技能 %s", skill_round, skill_name)
+                        
+                        skill_path = self._resolve_skill_path(skill_name)
+                        if not skill_path:
+                            self.logger.warning("技能未找到: %s", skill_name)
+                            # 替换标记为错误提示 (UI)
+                            pattern = re.escape(SKILL_LOAD_BEGIN) + re.escape(skill_name) + re.escape(SKILL_LOAD_END)
+                            display_text = re.sub(pattern, f"[技能 {skill_name} 未找到]", display_text)
+                            # raw_text 保持原样或者也替换？为了防止死循环，raw_text 最好也替换，或者加入 loaded_list 避免重复检测
+                            # 这里简单起见，先把 skill 加入 loaded 列表防止死循环
+                            loaded_skill_names.append(skill_name)
+                            continue
+                        
+                        try:
+                            with open(skill_path, 'r', encoding='utf-8') as f:
+                                skill_content = f.read()
+                            
+                            # 添加到已加载列表
+                            loaded_skill_names.append(skill_name)
+                            active_skills.append(f"\n## 技能: {skill_name}\n{skill_content}\n")
+                            
+                            # 发送技能加载通知
+                            if callback:
+                                await callback(SolveEvent(
+                                    type=EventType.SKILL_LOAD,
+                                    content=f"🧠 正在查阅本地技能库: {skill_name}\n   (路径: {skill_path})",
+                                    step=iteration,
+                                    metadata={"skill_name": skill_name, "path": skill_path, "round": skill_round}
+                                ))
+                            
+                            # 打印日志
+                            print("")
+                            print_separator("═", 60)
+                            self.logger.skill_load(f"🔮 Search-o1 第{skill_round}轮: {skill_name}")
+                            self.logger.info("   📁 路径: %s", skill_path)
+                            print_separator("═", 60)
+                            
+                            # 替换标记为简洁提示 (仅在 UI display_text 中替换)
+                            # 清理 display_text 中可能存在的结尾反斜杠（如果是 LLM 把标记转义了）
+                            pattern_marker = re.escape(SKILL_LOAD_BEGIN) + re.escape(skill_name) + re.escape(SKILL_LOAD_END)
+                            # 尝试匹配 optional backslash before marker
+                            pattern_str = r'\\?\s*' + pattern_marker
+                            
+                            display_text = re.sub(pattern_str, f"\n[✓ 已加载: {skill_name}]\n", display_text, count=1)
+                            
+                            # 发送技能加载完成状态 (更新 Thinking 内容)
+                            if callback:
+                                await callback(SolveEvent(
+                                    type=EventType.THINKING,
+                                    content=display_text,
+                                    step=iteration,
+                                    metadata={"streaming": True, "skill_round": skill_round, "skill_loaded": skill_name}
+                                ))
+                            
+                            self.logger.info("   🔄 继续生成...")
+                            
+                            # 继续生成 (使用 raw_text 作为上下文，保留了原始标记，这是 LLM 期望的)
+                            # 注意：我们使用 raw_text 作为 previous_output
+                            async for chunk in self.llm.continue_generation(
+                                base_messages,
+                                raw_text,
+                                skill_content,
+                                skill_name
+                            ):
+                                display_text += chunk
+                                raw_text += chunk
+                                
+                                # 实时发送流式更新
+                                if callback:
+                                    await callback(SolveEvent(
+                                        type=EventType.THINKING,
+                                        content=display_text,
+                                        step=iteration,
+                                        metadata={"streaming": True, "skill_round": skill_round}
+                                    ))
+                                
+                                # 实时检测新的技能标记
+                                pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
+                                match = re.search(pattern, raw_text, re.DOTALL)
+                                if match:
+                                    next_skill = match.group(1).strip()
+                                    if next_skill not in loaded_skill_names:
+                                        # 检测到新技能，中断继续生成，开始新一轮
+                                        self.logger.info("   ⏸ 检测到新技能请求: %s，准备下一轮加载", next_skill)
+                                        break
+                        
+                        except Exception as e:
+                            self.logger.warning("技能加载失败: %s - %s", skill_name, str(e))
+                            display_text += f"\n[技能 {skill_name} 加载失败: {str(e)}]\n"
+                    
+                    # 循环结束：可能是达到最大轮次或没有更多技能
+                    full_response = display_text
+                    
+                    if skill_round >= max_skill_rounds:
+                        self.logger.warning("⚠ 达到最大技能加载轮次 (%d)", max_skill_rounds)
+                        full_response += f"\n\n[系统提示: 已达到最大技能加载轮次 {max_skill_rounds}]"
+                    
+                    # 发送最终响应
+                    if callback:
+                        await callback(SolveEvent(
+                            type=EventType.THINKING,
+                            content=full_response,
+                            step=iteration,
+                            metadata={"streaming": False, "skill_rounds": skill_round}
                         ))
                 
                 llm_response = self.llm.parse_response(full_response)

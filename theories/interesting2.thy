@@ -44,9 +44,6 @@ lhs:
     simplify
     apply integral identity
     simplify
-    rewrite log(u) - log(u + 1) to log(u/(u+1))
-    rewrite log(u / (u + 1)) to log(1-1/(u+1))
-    simplify
 done
 subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a: real, a > 0
 from 1:

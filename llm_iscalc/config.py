@@ -20,7 +20,7 @@ class LLMConfig:
     api_base: str = "https://api.deepseek.com/v1"
     model: str = "deepseek-chat"
     temperature: float = 0.1
-    max_tokens: int = 2000
+    max_tokens: int = 2000 
     timeout: float = 60.0
     max_retries: int = 3
     retry_delay: float = 1.0
@@ -33,7 +33,7 @@ class SolverConfig:
     max_consecutive_errors: int = 3
     timeout_seconds: float = 300.0
     loop_detection_window: int = 5
-    use_tool_calling: bool = True  # 是否使用 Function Calling 让 LLM 实时读取技能
+    use_tool_calling: bool = False  # 改为 False 以启用流式输出（Search-o1 风格标记检测仍然有效）
 
 
 @dataclass

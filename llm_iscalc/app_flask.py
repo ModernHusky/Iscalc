@@ -170,12 +170,39 @@ def solve_expression():
                         if "```" in content:
                            clean_content = re.sub(r'```(?:json)?', '', content).strip()
                         
-                        # 优先尝试正则解析（适合流式传输，能容忍 JSON 未闭合）
-                        thinking_match = re.search(r'"thinking"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)', clean_content, re.DOTALL)
-                        if thinking_match:
-                            val = thinking_match.group(1).replace('\\n', '\n').replace('\\"', '"')
-                            state['thinking']['thinking'] = val
+                        # ============ 流式 thinking 解析优化 ============
+                        # 策略1：尝试从 "thinking": " 之后提取所有内容（包括不完整的）
+                        thinking_start = clean_content.find('"thinking"')
+                        if thinking_start != -1:
+                            # 找到 thinking 字段的值开始位置
+                            colon_pos = clean_content.find(':', thinking_start)
+                            if colon_pos != -1:
+                                # 跳过冒号后的空格和引号
+                                value_start = colon_pos + 1
+                                while value_start < len(clean_content) and clean_content[value_start] in ' \t\n':
+                                    value_start += 1
+                                
+                                if value_start < len(clean_content) and clean_content[value_start] == '"':
+                                    value_start += 1  # 跳过开头的引号
+                                    
+                                    # 查找结束引号（需要处理转义）
+                                    value_end = value_start
+                                    while value_end < len(clean_content):
+                                        char = clean_content[value_end]
+                                        if char == '\\' and value_end + 1 < len(clean_content):
+                                            value_end += 2  # 跳过转义字符
+                                        elif char == '"':
+                                            break  # 找到结束引号
+                                        else:
+                                            value_end += 1
+                                    
+                                    # 提取 thinking 内容（即使不完整）
+                                    thinking_raw = clean_content[value_start:value_end]
+                                    # 处理转义序列
+                                    thinking_value = thinking_raw.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
+                                    state['thinking']['thinking'] = thinking_value
                         
+                        # 策略2：正则解析其他字段
                         command_match = re.search(r'"command"\s*:\s*"([^"]*)(?:"|$)', clean_content)
                         if command_match:
                             state['thinking']['command'] = command_match.group(1)
@@ -189,8 +216,13 @@ def solve_expression():
                         if is_final_match:
                             state['thinking']['is_final'] = is_final_match.group(1) == 'true'
 
-                        if not state['thinking']['thinking'] and '{' not in clean_content:
-                             if not clean_content.startswith('[DEBUG'):
+                        # 策略3：如果thinking字段仍为空，显示原始内容
+                        # 改进：即使内容包含{，只要不是有效的JSON结构就直接显示
+                        if not state['thinking']['thinking']:
+                            # 检查是否看起来像有效的JSON（以{开头并包含"thinking"字段）
+                            is_valid_json_structure = clean_content.strip().startswith('{') and '"thinking"' in clean_content
+                            if not is_valid_json_structure and not clean_content.startswith('[DEBUG'):
+                                # 不是有效JSON结构，直接显示原始内容
                                 state['thinking']['thinking'] = clean_content
 
                     except Exception:
@@ -225,7 +257,7 @@ def solve_expression():
                                 'step': event.step,
                                 'thinking': '',
                                 'command': rule,
-                                'explanation': '自动优化步骤',
+                                'explanation': f'系统自动执行: {rule}',
                                 'is_final': False,
                             }
                             await queue.put(send_update())
@@ -269,6 +301,12 @@ def solve_expression():
                     else:
                         # LLM认为完成但实际未完成 (主要针对证明模式)
                         state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
+
+                elif event.type == EventType.SKILL_LOAD:
+                    # Search-o1 风格：技能加载事件
+                    skill_name = event.metadata.get("skill_name", "unknown")
+                    trigger = event.metadata.get("trigger", "marker")
+                    state['commands'] += f"[技能加载] {skill_name} ({trigger})\n"
 
                 # 每次状态更新都推送到队列
                 await queue.put(send_update())

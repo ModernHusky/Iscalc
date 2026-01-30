@@ -4,6 +4,53 @@ console.log('app.js 已加载');
 // 全局状态
 let isSolving = false;
 let eventSource = null;
+let loadedSkillsThisSession = new Set(); // 记录本次会话已通知的技能
+
+// ============ Search-o1 风格：技能加载通知 ============
+
+/**
+ * 显示技能加载通知（右上角滑入）
+ * @param {string} skillName - 技能名称
+ */
+function showSkillLoadNotification(skillName) {
+    const container = document.getElementById('skill-notifications');
+    if (!container) return;
+
+    // 避免重复通知
+    if (loadedSkillsThisSession.has(skillName)) return;
+    loadedSkillsThisSession.add(skillName);
+
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = 'skill-load-notification';
+    notification.innerHTML = `
+        <span class="icon">🔖</span>
+        <span>已加载技能: <strong>${skillName}</strong></span>
+    `;
+
+    container.appendChild(notification);
+
+    // 3秒后淡出
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
+/**
+ * 从文本中检测技能加载标记
+ * @param {string} text - LLM输出的文本
+ */
+function detectSkillLoading(text) {
+    const loadPattern = /\[✓ 已加载技能: (.+?)\]/g;
+    const matches = [...text.matchAll(loadPattern)];
+    matches.forEach(match => {
+        const skillName = match[1];
+        showSkillLoadNotification(skillName);
+    });
+}
 
 // DOM 元素
 const expressionInput = document.getElementById('expression-input');
@@ -652,6 +699,7 @@ solveBtn.addEventListener('click', async () => {
     lastThinkingValue = '';
     hasContent = false;
     lastStep = -1; // 重置步骤号
+    loadedSkillsThisSession.clear(); // Search-o1 风格：重置技能加载通知记录
 
     // 重置所有滚动状态
     Object.values(scrollManagers).forEach(manager => manager.reset());
@@ -724,6 +772,11 @@ solveBtn.addEventListener('click', async () => {
                 console.log('思考内容:', data.thinking);
                 // 现在thinking是一个对象，包含thinking, command, explanation, is_final
                 updateThinkingFromObject(data.thinking);
+
+                // Search-o1 风格：检测技能加载标记
+                if (data.thinking.thinking) {
+                    detectSkillLoading(data.thinking.thinking);
+                }
             }
         };
 

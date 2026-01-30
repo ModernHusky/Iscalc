@@ -259,6 +259,97 @@ class LLMEngine:
                 else:
                     raise
     
+    async def continue_generation(
+        self,
+        base_messages: List[Dict[str, str]],
+        previous_output: str,
+        skill_result: str,
+        skill_name: str
+    ) -> AsyncGenerator[str, None]:
+        """Search-o1 风格：继续生成
+        
+        当 LLM 输出中包含技能加载标记时，中断生成，加载技能后调用此方法继续。
+        
+        Args:
+            base_messages: 原始的 system + user 消息
+            previous_output: 之前生成的部分输出（到技能标记处）
+            skill_result: 加载的技能内容
+            skill_name: 技能名称
+        
+        Yields:
+            继续生成的文本块
+        """
+        # 构建消息：原始消息 + assistant的部分输出 + 技能注入 + 继续提示
+        messages = base_messages.copy()
+        
+        # 添加之前的输出作为 assistant 消息（表示 LLM 已经输出了这些内容）
+        messages.append({
+            "role": "assistant",
+            "content": previous_output
+        })
+        
+        # 添加技能结果作为 user 消息（模拟系统注入）
+        continue_prompt = f"""[系统消息] 技能文档已加载: {skill_name}
+
+技能内容：
+{skill_result}
+
+现在你已经拥有了这个技能的完整文档。请**立即恢复你的思考**，并结合这些新知识解决问题：
+
+1. **继续分析**：
+   - 既然已经知道了 `{skill_name}` 的具体用法，现在应该怎么做？
+   - 验证之前的假设，并确定具体的参数。
+
+2. **必须输出行动**：
+   - **不要停止！** 请继续输出你的思考过程。
+   - 最终必须以 **JSON 格式命令** 结束本次回答。
+     格式：`{{"thinking": "...", "command": "...", "explanation": "...", "is_final": ...}}`
+
+请紧接着上文继续输出（不要重复上文，直接继续思考）："""
+        
+        messages.append({
+            "role": "user", 
+            "content": continue_prompt
+        })
+        
+        self.logger.info("🔄 继续生成 (技能: %s)", skill_name)
+        
+        # 流式生成続きの部分
+        for attempt in range(self.config.max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    async with client.stream(
+                        "POST",
+                        f"{self.config.api_base}/chat/completions",
+                        headers={"Authorization": f"Bearer {self.config.api_key}"},
+                        json={
+                            "model": self.config.model,
+                            "messages": messages,
+                            "temperature": self.config.temperature,
+                            "stream": True
+                        }
+                    ) as response:
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data = line[6:]
+                                if data == "[DONE]":
+                                    break
+                                try:
+                                    chunk = json.loads(data)
+                                    if chunk["choices"][0]["delta"].get("content"):
+                                        content = chunk["choices"][0]["delta"]["content"]
+                                        yield content
+                                except json.JSONDecodeError:
+                                    continue
+                return
+                
+            except Exception as e:
+                self.logger.warning(f"继续生成失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}")
+                if attempt < self.config.max_retries - 1:
+                    await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+                else:
+                    raise
+    
     async def generate_command_sync(
         self,
         expression: str,
@@ -276,31 +367,15 @@ class LLMEngine:
         return self.parse_response(full_response)
     
     def parse_response(self, response: str) -> LLMResponse:
-        """解析LLM响应
-        
-        支持多种格式：
-        1. 标准 JSON 格式
-        2. Markdown 代码块中的 JSON
-        3. 从文本中提取命令
-        """
+        """解析LLM响应"""
         import re
         
         # 策略1：尝试提取 JSON
         try:
-            # 首先尝试找 ```json 代码块
+            # 优先 1：找 Markdown 代码块
             json_block_match = re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', response, re.DOTALL)
             if json_block_match:
                 json_str = json_block_match.group(1)
-            else:
-                # 直接找 JSON 对象
-                json_start = response.find("{")
-                json_end = response.rfind("}") + 1
-                if json_start != -1 and json_end > json_start:
-                    json_str = response[json_start:json_end]
-                else:
-                    json_str = None
-            
-            if json_str:
                 data = json.loads(json_str)
                 return LLMResponse(
                     thinking=data.get("thinking", ""),
@@ -309,7 +384,42 @@ class LLMEngine:
                     is_final=data.get("is_final", False),
                     raw_response=response
                 )
-        except json.JSONDecodeError:
+            
+            # 优先 2：稳健的 JSON 提取（从后向前搜索）
+            # 因为普通文本中可能包含 '{'（如数学公式），简单 find('{') 容易出错
+            # 我们假设有效的 JSON 响应通常在输出的末尾
+            
+            # 找到最后一个 '}'
+            end_idx = response.rfind("}")
+            if end_idx != -1:
+                # 从这一点向前扫描，寻找匹配的 '{'，使得 parse 成功
+                # 为了效率，我们限制向前扫描的范围（例如最后 4000 个字符）
+                scan_start = max(0, len(response) - 4000)
+                subset = response[scan_start:end_idx+1]
+                
+                # 在 subset 中寻找所有 '{' 的位置
+                start_indices = [m.start() for m in re.finditer(r'\{', subset)]
+                
+                # 从最靠后的 '{' 开始尝试解析
+                for rel_start in reversed(start_indices):
+                    candidate = subset[rel_start:]
+                    try:
+                        data = json.loads(candidate)
+                        # 验证关键字段是否存在，避免解析到无关的 JSON
+                        if "command" in data or "thinking" in data:
+                            return LLMResponse(
+                                thinking=data.get("thinking", ""),
+                                command=data.get("command", ""),
+                                explanation=data.get("explanation", ""),
+                                is_final=data.get("is_final", False),
+                                raw_response=response
+                            )
+                    except json.JSONDecodeError:
+                        continue
+            
+        except Exception as e:
+            self.logger.warning(f"JSON 解析失败: {e}")
+
             pass
         
         # 策略2：从 Markdown 格式中提取（如 ## 命令\n```\nxxx\n```）
