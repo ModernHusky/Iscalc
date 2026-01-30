@@ -291,14 +291,6 @@ class SolverLoop:
                             skill_block = f"\n## 技能文件 (自动加载): {skill_rel_path}\n> Directory: {skill_dir}\n\n{skill_content}\n\n---\n"
                             active_skills.append(skill_block)
                             loaded_skill_names.append(skill_path)
-                            
-                            if callback:
-                                await callback(SolveEvent(
-                                    type=EventType.RESULT,
-                                    content=f"自动加载技能: {skill_name}",
-                                    step=iteration,
-                                    metadata={"auto_loaded": True, "skill_name": skill_name}
-                                ))
                         except Exception as e:
                             self.logger.warning("自动加载技能失败: %s - %s", skill_name, str(e))
                 

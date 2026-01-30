@@ -25,7 +25,7 @@ app = Flask(__name__,
 
 # 全局状态
 _config = create_config()
-_llm_engine = LLMEngine(_config.llm)
+
 _stop_flag = False
 
 
@@ -112,8 +112,9 @@ def solve_expression():
         
         try:
             # 创建 executor 和 solver
+            llm_engine = LLMEngine(_config.llm)
             executor = CommandExecutor(_config.iscalc.base_theory)
-            solver = SolverLoop(_llm_engine, executor, _config.solver)
+            solver = SolverLoop(llm_engine, executor, _config.solver)
             
             # 初始化
             init_result = executor.initialize(expression, cond_list)
@@ -227,9 +228,6 @@ def solve_expression():
                                 'explanation': '自动优化步骤',
                                 'is_final': False,
                             }
-                            # 同时记录到命令日志
-                            state['commands'] += f"[自动] {rule}\n"
-                            
                             await queue.put(send_update())
                     
                     # 处理主结果
@@ -259,10 +257,17 @@ def solve_expression():
                     
                 elif event.type == EventType.COMPLETE:
                     # 只有当真正完成时才显示"求解完成"
-                    if executor.is_finished():
+                    is_really_finished = executor.is_finished()
+                    current_state_name = executor.get_current_state_name()
+                    
+                    if is_really_finished:
                         state['results'] += "\n✓ 求解完成\n"
+                    elif current_state_name == "CALCULATE":
+                         # 计算模式下，用户没输入done，但LLM认为完成了，通常是计算出了结果
+                         # 这种情况下显示完成，而不是告警
+                         state['results'] += "\n✓ 计算完成 (LLM判定)\n"
                     else:
-                        # LLM认为完成但实际未完成
+                        # LLM认为完成但实际未完成 (主要针对证明模式)
                         state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
 
                 # 每次状态更新都推送到队列
