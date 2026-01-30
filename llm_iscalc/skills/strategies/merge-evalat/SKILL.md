@@ -1,12 +1,18 @@
 ---
 name: merge-evalat
-description: 合并和简化积分求值 (EvalAt) 表达式的策略。
+description: 求值项合并策略（EvalAt）。
 match_rules:
-  - regex: ".*\\]_.*\\s*[\\+\\-]\\s*\\[.*\\].*"
-    flags: ["re.DOTALL"]
+- regex: .*\]_.*\s*[\+\-]\s*\[.*\].*
+  flags:
+  - re.DOTALL
 ---
 
-# 合并 EvalAt 表达式
+# merge-evalat
+> 求值项合并策略（EvalAt）。
+## 使用时机
+参考 description 描述。
+## 指令
+### 合并 EvalAt 表达式
 
 当遇到多个共享相同变量和上下限的求值项 (EvalAt) 时，例如：
 
@@ -21,9 +27,12 @@ match_rules:
 
 这种简化可以揭示进一步的消去机会，或者使表达式更易于计算。
 
-## 示例
+### 示例
+
+
 
 ### 示例 1: 有限限
+
 **表达式**: `[log(u)]_u=1,t - [log(u + 1)]_u=1,t`
 **动作**:
 ```json
@@ -36,6 +45,7 @@ match_rules:
 ```
 
 ### 示例 2: 无穷限
+
 **表达式**: `[1/x]_x=1,oo + [1/(x+1)]_x=1,oo`
 **动作**:
 ```json
@@ -47,7 +57,8 @@ match_rules:
 }
 ```
 
-## 策略
+### 策略
+
 1. **识别**: 寻找多个具有相同上下限的 `[...]` 项。
 2. **构建**: 创建一个目标表达式，其中函数体合并在同一个 `[...]` 中。
 3. **执行**: 使用 `rewrite to <target>` 命令。

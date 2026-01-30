@@ -1,35 +1,35 @@
 ---
 name: series-operations
-description: 级数操作 - 级数展开、求和与收敛性证明。
+description: 级数展开、求值与收敛性操作。
 match_rules:
-  - "(?i)sum"
-  - "(?i)series"
-applicable_types:
-  - summation
-  - general
+- (?i)sum
+- (?i)series
 ---
 
-# 何时使用
-
+# series-operations
+> 级数展开、求值与收敛性操作。
+## 使用时机
 处理涉及级数 (`SUM`) 的问题时使用。
+## 指令
+### 常用命令
 
-# 常用命令
 
-## 级数展开
+
+### 级数展开
 
 ```
 apply series expansion on <expr> index <n>
 ```
 将表达式 `expr` 展开为关于索引变量 `n` 的级数。
 
-## 级数求值
+### 级数求值
 
 ```
 apply series evaluation
 ```
 尝试自动计算级数的值。
 
-## 交换积分与求和
+### 交换积分与求和
 
 **参见技能**: `exchange-operators`
 
@@ -42,7 +42,7 @@ arg:
 done
 ```
 
-# 注意事项
+### 注意事项
 
 - 级数索引变量 `n` 默认为整数类型，无需额外声明 `isInt(n)`。
 - 上下界已隐含了 `n` 的取值范围，无需再加 `n >= 0` 等条件。

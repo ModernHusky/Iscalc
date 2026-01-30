@@ -1,17 +1,16 @@
 ---
 name: rule-modifiers
-description: 规则修饰符 - 使用 (at n) 和 (all) 精确控制规则应用位置。
+description: 规则修饰符（at, on, for等）。
 match_rules:
-  - ".*"
-applicable_types:
-  - general
+- .*
 ---
 
-# 何时使用
-
+# rule-modifiers
+> 规则修饰符（at, on, for等）。
+## 使用时机
 当表达式中有多个位置可以应用同一规则时，使用修饰符指定位置。
-
-# `(at n)` 修饰符
+## 指令
+### `(at n)` 修饰符
 
 语法：`<rule> (at n)`，其中 `n` 从 1 开始。
 
@@ -27,7 +26,7 @@ applicable_types:
 - `apply integral identity`: 自动尝试所有积分。
 - `simplify`: 全局应用。
 
-# `(all)` 修饰符
+### `(all)` 修饰符
 
 语法：`<rule> (all)`，将规则应用于所有匹配位置。
 
@@ -36,7 +35,7 @@ applicable_types:
 - `expand definition for f (all)`: 展开所有 f。
 - `apply induction hypothesis (all)`: 应用归纳假设到所有匹配位置。
 
-# 示例
+### 示例
 
 表达式: `sqrt(2) + sqrt(2) * x`
 

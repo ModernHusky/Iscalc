@@ -1,25 +1,19 @@
 ---
 name: substitute
-description: 换元法 - 令 new_var = expr，将复合函数化简为基本形式。当被积函数是复合函数时使用。
-keywords:
-  - 换元
-  - 替换
-  - 令u=
-applicable_types:
-  - definite_integral
-  - indefinite_integral
+description: 积分换元法（令 u=expr 化简复合函数）。
 match_rules:
-  - "(?i)int"
-  - improper_integral
+- (?i)int
+- improper_integral
 ---
 
-# 何时使用
-
+# substitute
+> 积分换元法（令 u=expr 化简复合函数）。
+## 使用时机
 当被积函数是复合函数形式时，用换元法将其化简为基本形式：
 - 含有 `f(g(x))` 形式的复合函数
 - 根式、三角函数、指数函数的复合
-
-# 快速开始
+## 指令
+### 快速开始
 
 ```
 substitute u for <expr>
@@ -27,7 +21,7 @@ substitute u for <expr>
 
 将令 u = expr 进行换元。
 
-# 分步指南
+### 分步指南
 
 1. 识别被积函数中的复合结构 `f(g(x))`
 2. 令 `u = g(x)`，即内层函数
@@ -35,9 +29,12 @@ substitute u for <expr>
 4. 化简后应用积分恒等式
 5. 使用 `replace substitution` 代回原变量
 
-# 示例
+### 示例
 
-## 示例1: 多项式换元
+
+
+### 示例1: 多项式换元
+
 表达式: `INT x:[0,1]. (x+1)^3`
 
 ```
@@ -46,7 +43,8 @@ substitute u for x + 1
 
 结果: `INT u:[1,2]. u^3`
 
-## 示例2: 三角函数换元
+### 示例2: 三角函数换元
+
 表达式: `INT x. sin(x)^2 * cos(x)`
 
 ```
@@ -55,14 +53,15 @@ substitute u for sin(x)
 
 结果: `INT u. u^2`
 
-## 示例3: 指数函数换元
+### 示例3: 指数函数换元
+
 表达式: `INT x. exp(x) / (1 + exp(x))`
 
 ```
 substitute u for exp(x)
 ```
 
-# 常见换元模式
+### 常见换元模式
 
 | 被积函数形式 | 换元建议 |
 |------------|---------|
@@ -72,9 +71,11 @@ substitute u for exp(x)
 | log(x) | u = log(x) |
 | 线性复合 f(ax+b) | u = ax+b |
 
-# 注意事项
+### 注意事项
 
-# 注意事项 (重要提醒)
+
+
+### 注意事项 (重要提醒)
 
 1.  **关于换元与反解**：
     - 当令 `u = g(x)` 时，被积函数最好能写成 `f(g(x)) * g'(x)` 的形式。
@@ -93,9 +94,12 @@ substitute u for exp(x)
     - `incorrect old variable y, should be x`：试图替换非积分变量。
     - 确保新变量 (如 `u`) 在之前的步骤中未被定义或占用。
 
-# 完整示例 (来自 theories/)
+### 完整示例 (来自 theories/)
 
-## 示例1: 链式换元
+
+
+### 示例1: 链式换元
+
 ```
 calculate INT x:[0, 1]. x^3/(1+x^4)^(1/4)
     substitute u for x ^ 4
@@ -106,7 +110,8 @@ calculate INT x:[0, 1]. x^3/(1+x^4)^(1/4)
 done
 ```
 
-## 示例2: 三角函数与反向换元
+### 示例2: 三角函数与反向换元
+
 ```
 prove (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1) for a > -1
 lhs:
@@ -119,7 +124,8 @@ lhs:
 done
 ```
 
-## 示例3: 对数换元
+### 示例3: 对数换元
+
 ```
 calculate INT x:[exp(1), exp(2)]. 3/(x*log(x))
     substitute u for log(x)

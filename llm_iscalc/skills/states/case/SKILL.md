@@ -1,24 +1,27 @@
 ---
 name: state-case
-description: 案例分析状态 - 处理条件分支
+description: 案例分析状态操作指南。
 match_rules:
-  - "case"
-applicable_types:
-  - general
+- case
 ---
 
-# 案例分析状态 (Case State)
+# state-case
+> 案例分析状态操作指南。
+## 使用时机
+参考 description 描述。
+## 指令
+### 案例分析状态 (Case State)
 
 在案例分析状态下，可以执行以下操作：
 
-## 布尔条件分支 (两路)
+### 布尔条件分支 (两路)
 
 当使用 `case analysis on <condition>` 时：
 
 - `case true:` - 进入条件为真的分支
 - `case false:` - 进入条件为假的分支
 
-## 数值表达式分支 (三路)
+### 数值表达式分支 (三路)
 
 当使用 `case analysis on <expression>` 时：
 
@@ -26,15 +29,18 @@ applicable_types:
 - `case zero:` - 进入表达式为零的分支 (expr = 0)
 - `case negative:` - 进入表达式为负的分支 (expr < 0)
 
-## 注意事项
+### 注意事项
 
 - 每个分支进入后会转为 Prove 状态
 - 所有分支都必须完成证明
 - 完成所有分支后使用 `done` 退出
 
-# 完整示例 (来自 theories/interesting2.thy)
+### 完整示例 (来自 theories/interesting2.thy)
 
-## 示例: 布尔条件分支 (x != 0)
+
+
+### 示例: 布尔条件分支 (x != 0)
+
 ```
 subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0
 case analysis on x != 0
@@ -51,7 +57,8 @@ case analysis on x != 0
 done
 ```
 
-## 示例: 数值表达式分支 (cos(a))
+### 示例: 数值表达式分支 (cos(a))
+
 ```
 case analysis on cos(a)
     case negative:

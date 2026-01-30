@@ -1,32 +1,23 @@
 ---
 name: rewrite
-description: 表达式重写 - 将表达式恒等变换为等价形式。用于三角恒等式、对数性质、分数化简等。
-keywords:
-  - 重写
-  - 恒等变换
-  - 化简
-  - 三角恒等式
-applicable_types:
-  - definite_integral
-  - indefinite_integral
-  - limit
-  - general
+description: 表达式代数恒等变换（三角、对数、分式等）。
 match_rules:
-  - "sin|cos|tan"           # 三角函数
-  - "log"                   # 对数
-  - "/\\("                  # 分式 (匹配 /(
-  - "\\^2"                  # 平方项
+- sin|cos|tan
+- log
+- /\(
+- \^2
 ---
 
-# 何时使用
-
+# rewrite
+> 表达式代数恒等变换（三角、对数、分式等）。
+## 使用时机
 需要进行代数恒等变换时：
 - 三角恒等式: `sin^2 + cos^2 = 1`
 - 对数性质: `log(a) - log(b) = log(a/b)`
 - 分数化简: `x/(x+1) = 1 - 1/(x+1)`
 - 处理负号顺序
-
-# 快速开始
+## 指令
+### 快速开始
 
 ```
 rewrite <old_expr> to <new_expr>
@@ -34,9 +25,12 @@ rewrite <old_expr> to <new_expr>
 
 将表达式中的 old_expr 替换为等价的 new_expr。
 
-# 常用变换模式
+### 常用变换模式
 
-## 三角恒等式
+
+
+### 三角恒等式
+
 ```
 rewrite sin(x)^2 to 1 - cos(x)^2
 rewrite sin(x)^2 to (1 - cos(2*x))/2
@@ -44,14 +38,16 @@ rewrite cos(x)^2 to (1 + cos(2*x))/2
 rewrite tan(x) to sin(x)/cos(x)
 ```
 
-## 对数性质
+### 对数性质
+
 ```
 rewrite log(a) - log(b) to log(a/b)
 rewrite log(a) + log(b) to log(a*b)
 rewrite n*log(x) to log(x^n)
 ```
 
-## 极限中的分数变换（重要！）
+### 极限中的分数变换（重要！）
+
 ```
 rewrite x/(x+1) to 1 - 1/(x+1)
 rewrite x/(x-1) to 1 + 1/(x-1)
@@ -59,14 +55,18 @@ rewrite (x+1)/x to 1 + 1/x
 rewrite (x-1)/x to 1 - 1/x
 ```
 
-## 处理负号
+### 处理负号
+
 ```
 rewrite -log(x+1) + log(x) to log(x) - log(x+1)
 ```
 
-# 示例
+### 示例
 
-## 极限计算关键技巧
+
+
+### 极限计算关键技巧
+
 表达式: `LIM {x -> oo}. x/(x+1)`
 
 **先重写分数形式**：
@@ -76,14 +76,15 @@ rewrite x/(x+1) to 1 - 1/(x+1)
 
 然后 `simplify` 得到结果 1。
 
-## 对数合并
+### 对数合并
+
 表达式: `log(x) - log(x+1)`
 
 ```
 rewrite log(x) - log(x+1) to log(x/(x+1))
 ```
 
-# 重要提醒 (注意事项)
+### 重要提醒 (注意事项)
 
 1.  **括号与结合律**：
     - 请注意隐藏的括号，运算通常左结合。
@@ -109,9 +110,12 @@ rewrite log(x) - log(x+1) to log(x/(x+1))
 5.  **极限技巧**：
     - 遇到 `a/(a+b)` 形式的极限，考虑重写为 `1 - b/(a+b)`。
 
-# 完整示例 (来自 theories/)
+### 完整示例 (来自 theories/)
 
-## 示例1: 三角恒等变换链
+
+
+### 示例1: 三角恒等变换链
+
 ```
 prove (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
 lhs:
@@ -123,7 +127,8 @@ lhs:
 done
 ```
 
-## 示例2: 对数合并
+### 示例2: 对数合并
+
 ```
 prove (INT x:[0,pi / 2]. log(a * sin(x))) = pi/2 * log(a/2) for a > 0
 ...
@@ -133,7 +138,8 @@ prove (INT x:[0,pi / 2]. log(a * sin(x))) = pi/2 * log(a/2) for a > 0
 done
 ```
 
-## 示例3: 分数变换与部分分式准备
+### 示例3: 分数变换与部分分式准备
+
 ```
 calculate INT x:[0, 1]. 1 / (exp(x) + 1)
     rewrite 1 / (exp(x) + 1) to exp(x) / (exp(x) * (exp(x) + 1))

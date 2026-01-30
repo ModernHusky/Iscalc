@@ -1,23 +1,23 @@
 ---
 name: differentiate-integrate-sides
-description: 两边求导/积分 - 对等式两边同时进行微分或积分操作。
+description: 对等式两边求导或积分。
 match_rules:
-  - "(?i)deriv"
-  - "(?i)from"
-applicable_types:
-  - proof
-  - general
+- (?i)deriv
+- (?i)from
 ---
 
-# 何时使用
-
+# differentiate-integrate-sides
+> 对等式两边求导或积分。
+## 使用时机
 在处理参数积分或已证明的等式时，有时需要对等式两边同时求导或积分。
 
 **重要前提**：这些规则只能在 `from <name>:` 引入的 CALCULATE 状态下使用（即从一个已证明的 subgoal 开始）。
+## 指令
+### 命令
 
-# 命令
 
-## 两边求导
+
+### 两边求导
 
 ```
 differentiate both sides at <var>
@@ -32,7 +32,7 @@ from 1:
 ```
 结果：`(D a. I(a)) = D a. (pi / (2 * a))`
 
-## 两边积分
+### 两边积分
 
 ```
 integrate both sides
@@ -47,7 +47,7 @@ from 1:
 ```
 结果：`I(x) = INT x. f(x)`
 
-# 注意事项
+### 注意事项
 
 - **必须使用 `from <name>:`**：不能直接在 `lhs:` 或 `rhs:` 块中使用这些规则。
 - **语法陷阱**：`differentiate both sides with respect to a` 是**错误的**，正确写法是 `differentiate both sides at a`。

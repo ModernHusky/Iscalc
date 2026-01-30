@@ -1,20 +1,19 @@
 ---
 name: error-recovery
-description: 错误恢复指南 - 理解和修复常见的解析、状态和规则错误。
+description: 常见错误诊断与修复指南。
 match_rules:
-  - ".*"
-applicable_types:
-  - general
+- .*
 ---
 
-# 何时使用
-
+# error-recovery
+> 常见错误诊断与修复指南。
+## 使用时机
 当 iscalc 系统返回错误时，参考本技能诊断问题：
 - **Parsing Error (解析错误)**：语法问题。
 - **State Error (状态错误)**：状态转换问题（如在错误的状态下使用了某个命令）。
 - **Rule Error (规则错误)**：规则应用失败（如参数不匹配）。
-
-# 常见解析错误 (Parsing Error)
+## 指令
+### 常见解析错误 (Parsing Error)
 
 1.  **条件格式错误**：
     - **错误**: `for x in [0,1]` 或 `for 0 <= x <= 1`
@@ -52,7 +51,7 @@ applicable_types:
     - `apply Weierstrass M-test with M_n=...` 未实现。
     - 通过构造已知收敛级数的形式，让系统通过模式匹配判断收敛性。
 
-# 常见状态错误 (State Error)
+### 常见状态错误 (State Error)
 
 1.  **在 PROVE 状态使用 `calculate`**：
     - 不能在 ProveState 中使用 `calculate`。
@@ -64,20 +63,20 @@ applicable_types:
 3.  **`arg` 嵌套**：
     - 不能在由 `arg:` 展开的证明中再次使用 `arg`。
 
-# 常见规则错误 (Rule Error)
+### 常见规则错误 (Rule Error)
 
 1.  **`u * dv does not equal body`**: 分部积分的 u, v 选择错误。检查参数。
 2.  **`old expression not found`**: `rewrite` 的左侧表达式未精确匹配。检查括号和结合律。
 3.  **`Applying the rule has no effect`**: 规则不适用于当前表达式。尝试先化简或重写。
 
-# 关于 `done` 的使用
+### 关于 `done` 的使用
 
 - 用于结束当前的计算或证明。
 - **计算状态**: 当前表达式为闭合形式时使用。
 - **证明状态**: 两边可通过化简证明相等时使用。
 - **归纳/案例分析**: 所有分支完成后使用。
 
-# CheckFinishedException (未完成异常)
+### CheckFinishedException (未完成异常)
 
 当抛出 `CheckFinishedException` 时，表示证明或计算未完成：
 
@@ -93,7 +92,7 @@ applicable_types:
     - 结果中仍有未处理的积分、极限或级数。
     - 继续使用 `apply integral identity`, `simplify` 等规则直到闭合。
 
-# 调试技巧
+### 调试技巧
 
 1.  **解析错误**：仔细检查语法，参考上述常见解析错误列表。
 2.  **状态错误**：确认当前状态，避免在错误状态下使用命令。

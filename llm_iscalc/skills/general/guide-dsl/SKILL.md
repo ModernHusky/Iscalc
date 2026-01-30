@@ -1,15 +1,20 @@
 ---
 name: guide-dsl
-description: iscalc 系统 DSL 语言和交互协议指南
+description: DSL语言核心概念与协议指南。
 match_rules:
-  - ".*"
+- .*
 ---
 
-# 核心概念
+# guide-dsl
+> DSL语言核心概念与协议指南。
+## 使用时机
+参考 description 描述。
+## 指令
+### 核心概念
 
 你正在使用一种特定领域语言 (DSL) 来表达和检查积分计算。系统的目标是通过多轮交互获得积分的计算结果。
 
-## 证明状态
+### 证明状态
 
 系统有五种状态：
 1. **INITIAL**: 初始状态，无活跃目标。
@@ -18,13 +23,17 @@ match_rules:
 4. **INDUCTION**: 归纳法开始。
 5. **CASE**: 案例分析开始。
 
-## 常用命令速查
+### 常用命令速查
+
+
 
 ### 开始计算/证明
+
 - `calculate <expr>`: 开始计算表达式。
 - `prove <expr>`: 开始证明表达式（通常用于证明相等 `a = b`）。
 
 ### 状态转换
+
 - `lhs:`: 对当前证明目标的左边进行计算 (PROVE -> CALCULATE)。
 - `rhs:`: 对当前证明目标的右边进行计算 (PROVE -> CALCULATE)。
 - `arg:`: 对参数进行计算（用于证明不等式或收敛性）。
@@ -45,7 +54,7 @@ match_rules:
 - **积分**: `integrate by parts ...`, `substitute ...`
 - **展开**: `expand polynomial`, `expand definition`
 
-## 常见错误排查
+### 常见错误排查
 
 1. **Syntax Error**:
    - 确保命令格式正确。

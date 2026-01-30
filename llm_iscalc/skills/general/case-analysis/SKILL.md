@@ -1,22 +1,22 @@
 ---
 name: case-analysis
-description: 案例分析 - 通过分类讨论处理条件分支问题。
+description: 基于条件的案例分析证明。
 match_rules:
-  - "(?i)case"
-  - "(?i)if"
-  - ">\\s*0|<\\s*0|=\\s*0"
-applicable_types:
-  - proof
-  - general
+- (?i)case
+- (?i)if
+- '>\s*0|<\s*0|=\s*0'
 ---
 
-# 何时使用
-
+# case-analysis
+> 基于条件的案例分析证明。
+## 使用时机
 当证明目标依赖于某个条件的真假（如 `x > 0` 或 `x = 0`）时，使用案例分析拆分证明。
+## 指令
+### 快速开始
 
-# 快速开始
 
-## 布尔条件 (两个分支)
+
+### 布尔条件 (两个分支)
 
 ```
 case analysis on <condition>
@@ -31,7 +31,7 @@ case analysis on <condition>
 done
 ```
 
-## 数值条件 (三个分支)
+### 数值条件 (三个分支)
 
 ```
 case analysis on <expression>
@@ -47,7 +47,7 @@ case analysis on <expression>
 done
 ```
 
-# 示例
+### 示例
 
 证明 `x^4 + 2*x^2*cos(2*a) + 1 != 0`:
 
@@ -67,7 +67,7 @@ case analysis on x != 0
 done
 ```
 
-# 注意事项
+### 注意事项
 
 - 每个分支必须以 `done` 结束。
 - 外层的 `done` 用于结束整个案例分析。

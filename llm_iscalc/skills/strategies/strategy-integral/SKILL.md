@@ -1,11 +1,17 @@
 ---
 name: strategy-integral
-description: 定积分求解策略指南
+description: 定积分求解通用策略。
 match_rules:
-  - "(?i)int"
+- (?i)int
 ---
 
-## 定积分求解策略
+# strategy-integral
+> 定积分求解通用策略。
+## 使用时机
+参考 description 描述。
+## 指令
+### 定积分求解策略
+
 1. 观察被积函数的形式
 2. 如果是复合函数，考虑换元
 3. 如果是乘积形式，考虑分部积分
@@ -14,6 +20,7 @@ match_rules:
 6. 简化结果
 
 ### 常见换元技巧
+
 - 根式: 令 u = sqrt(expr)
 - 三角函数: 令 u = sin(x) 或 u = tan(x/2)
 - 指数函数: 令 u = exp(x)
