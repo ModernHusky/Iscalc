@@ -1,6 +1,7 @@
 """LLM 提示词定义
 
 采用Agent Skills渐进式披露理念，模块化提示词构建。
+优化技能选择策略，引导 LLM 主动加载所需技能。
 """
 
 from typing import List, Dict, Any, Optional
@@ -10,6 +11,8 @@ from .skills import (
     get_relevant_skills,
     get_skill_details,
     get_state_skills,
+    get_skills_xml,
+    get_skills_categorized_xml,
     COMMAND_SKILLS,
 )
 
@@ -84,6 +87,98 @@ ERROR_RECOVERY_GUIDE = """
 """
 
 
+# ============ 技能选择策略指南 ============
+
+SKILL_SELECTION_GUIDE = """
+## 📚 三层技能系统说明
+
+系统采用按需加载的三层技能架构：
+
+### 第一层：技能目录（启动时已加载）
+你已经知道所有可用技能的**名称和简要描述**。这些信息非常轻量（每个约 20-50 tokens）。
+
+### 第二层：核心指令（按需加载）
+当你需要使用某个命令时，可以调用工具读取完整的 SKILL.md 文件，其中包含：
+- 详细使用说明
+- 参数格式
+- 使用示例
+- 注意事项
+
+### 第三层：扩展资源（按需加载）
+某些技能提供额外的参考文档或脚本（放在 `references/` 或 `scripts/` 目录下）。
+当核心指令提到这些资源时，你可以进一步加载它们。
+
+---
+
+## 🛠️ 可用工具
+
+你拥有以下工具来实时获取技能信息：
+
+### 1. read_skill(skill_path)
+读取技能的核心指令（第二层）。
+
+**示例**：
+```python
+read_skill("skills/strategies/strategy-integral/SKILL.md")
+```
+
+### 2. list_skill_resources(skill_name)
+列出技能的扩展资源（第三层）。
+
+**示例**：
+```python
+list_skill_resources("rewrite")
+# 返回：["ADVANCED.md", "helper.py"]
+```
+
+### 3. read_skill_resource(skill_name, resource_name)
+读取扩展资源的内容。
+
+**示例**：
+```python
+read_skill_resource("rewrite", "ADVANCED.md")
+```
+
+---
+
+## ⚠️ 使用策略
+
+### 推荐流程
+
+1. **思考阶段**：分析表达式，确定需要哪些技能
+2. **调用工具**：使用 `read_skill()` 加载相关技能的详细指令
+3. **执行命令**：根据技能指令生成 iscalc 命令
+4. **深入学习**（可选）：如果需要，使用 `read_skill_resource()` 查看扩展资源
+
+### 何时加载技能
+
+- ✅ **主动加载**：当你不确定命令的具体用法时
+- ✅ **首次使用**：第一次使用某个命令时
+- ✅ **复杂情况**：遇到特殊参数或高级用法时
+- ❌ **不必要**：简单的 `simplify` 等基础命令可能不需要加载
+
+### 技能选择参考
+
+| 表达式类型 | 建议加载的技能 |
+|-----------|---------------|
+| 定积分 `INT x:[a,b]. f(x)` | strategy-integral |
+| 极限 `LIM {x->a}. f(x)` | strategy-limit |
+| 复数/因式分解 | complex |
+| 有理函数积分 | partial-fraction |
+| 分部积分 | integrate-by-parts |
+| 表达式重写 | rewrite |
+
+---
+
+## 💡 记住
+
+- 工具调用是**实时的**，你在思考过程中就可以获取技能内容
+- 加载技能不消耗额外的 iscalc 命令步数
+- 合理使用工具可以提高命令准确性
+"""
+
+
+
 # ============ 动态提示词构建 ============
 
 def build_dynamic_system_prompt(
@@ -112,36 +207,28 @@ def build_dynamic_system_prompt(
     """
     parts = [BASE_PROMPT]
     
-    # 1. 第一层：所有技能摘要
-    parts.append(get_all_skill_metadata())
+    # 0. 技能选择策略指南 (最重要，放在最前面)
+    parts.append(SKILL_SELECTION_GUIDE)
     
-    # 2. 第二层：相关技能详情（含策略）
-    if include_all_commands:
-        # Fallback模式：加载所有命令
-        # 注意：这里我们只加载 COMMAND_SKILLS 中的技能（兼容性）或者全部发现的技能
-        from .skills import get_skill_loader
-        all_skills = get_skill_loader().discover_skills()
-        parts.append(get_skill_details(all_skills, include_examples=include_examples))
-    else:
-        # 渐进式披露：基于表达式匹配
-        relevant_skills = get_relevant_skills(expression, user_instruction)
-        if relevant_skills:
-            parts.append(get_skill_details(relevant_skills, include_examples=include_examples))
+    # 1. 第一层：按类别分组的技能列表 (XML格式)
+    parts.append("## 可用技能库 (Available Skills)")
+    parts.append("以下是所有可用技能的分类清单。这是第一层信息：你只知道它们的名字和简要描述。")
+    parts.append("> **需要详细指令时**：使用 `read_skill()` 工具加载完整的 SKILL.md 文件。")
+    parts.append("")
+    parts.append(get_skills_categorized_xml())
     
-    # 2.5. 状态相关技能（始终加载）
-    state_skills = get_state_skills(current_state)
-    if state_skills:
-        parts.append("\n## 当前状态相关指南\n")
-        parts.append(get_skill_details(state_skills, include_examples=include_examples))
+    # 2. 当前状态提示（引导 LLM 使用工具加载状态相关技能）
+    state_skill_path = f"skills/states/{current_state.lower()}/SKILL.md"
+    parts.append(f"""
+## 当前求解状态
 
-    # 3. 示例 (按需加载 strategy-examples 技能)
-    if include_examples:
-        from .skills import get_skill_loader
-        example_skill = get_skill_loader().load_skill_content("strategy-examples")
-        if example_skill:
-            parts.append(example_skill.full_content)
+当前状态: **{current_state}**
+
+> 建议: 如果你不熟悉 {current_state} 状态下的可用操作，可以使用工具加载:
+> `read_skill("{state_skill_path}")`
+""")
     
-    # 错误恢复指南始终包含（或者也可以做成技能）
+    # 错误恢复指南
     parts.append(ERROR_RECOVERY_GUIDE)
     
     return "\n".join(parts)

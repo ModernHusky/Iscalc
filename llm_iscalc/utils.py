@@ -119,3 +119,28 @@ def format_solution_markdown(steps: list, initial_expr: str, final_expr: str) ->
     ])
     
     return "\n".join(lines)
+
+
+def setup_logging(level=None):
+    """配置日志系统
+    
+    Args:
+        level: 日志级别 (默认 INFO)
+    """
+    import logging
+    
+    if level is None:
+        level = logging.INFO
+        
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    
+    # 调整第三方库的日志级别
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    
+    return logging.getLogger("llm_iscalc")
+

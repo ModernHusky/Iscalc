@@ -4,6 +4,8 @@
 采用两阶段加载：
 1. 启动阶段：只读取SKILL.md的YAML Frontmatter（元数据）
 2. 执行阶段：按需读取完整SKILL.md内容
+
+支持详细的日志调试输出。
 """
 
 import os
@@ -13,23 +15,48 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
+from .logger_config import get_phase_logger
+
 
 @dataclass
 class SkillMetadata:
-    """技能元数据（第一层 - 始终加载）"""
+    """技能元数据（第一层 - 始终加载）
+    
+    仅包含技能的基本信息，用于快速匹配和展示。
+    Token 开销约 20-50。
+    """
     name: str
     description: str
     keywords: List[str] = field(default_factory=list)
     applicable_types: List[str] = field(default_factory=list)
     match_rules: List[str] = field(default_factory=list)  # 正则表达式匹配规则
-    path: str = ""  # SKILL.md文件路径
+    path: str = ""  # SKILL.md 文件路径
+    skill_dir: str = ""  # 技能目录路径（用于定位第三层资源）
 
 
 @dataclass
 class SkillContent:
-    """技能完整内容（第二层 - 按需加载）"""
+    """技能完整内容（第二层 - 按需加载）
+    
+    包含 SKILL.md 的完整正文，提供详细指令和示例。
+    Token 开销约 200-1000。
+    """
     metadata: SkillMetadata
-    full_content: str  # SKILL.md的Markdown正文
+    full_content: str  # SKILL.md 的 Markdown 正文
+
+
+@dataclass
+class SkillExtendedResource:
+    """扩展资源（第三层 - 按需加载）
+    
+    包含 references/ 或 scripts/ 目录下的额外文件。
+    只在核心指令引用时加载。
+    """
+    name: str  # 资源名称（如 "ADVANCED.md"）
+    resource_type: str  # "reference" | "script"
+    path: str  # 完整路径
+    content: Optional[str] = None  # 只在加载后填充
+
 
 
 class SkillLoader:
@@ -46,6 +73,7 @@ class SkillLoader:
         Args:
             custom_skills_dir: 可选的自定义技能目录（用于测试或特定用途）
         """
+        self.logger = get_phase_logger(__name__)
         self.skill_paths = self._determine_skill_paths(custom_skills_dir)
         self._skill_cache: Dict[str, SkillMetadata] = {}
         self._content_cache: Dict[str, SkillContent] = {}
@@ -151,25 +179,60 @@ class SkillLoader:
                     scan_directory(item_path, depth + 1)
         
         # 按照 paths 列表顺序扫描（Bundled -> Personal -> Project）
-        for skills_dir in self.skill_paths:
+        self.logger.discovery("开始扫描技能目录...")
+        
+        path_labels = ["Bundled", "Personal", "Project", "Custom"]
+        for i, skills_dir in enumerate(self.skill_paths):
+            label = path_labels[i] if i < len(path_labels) else f"Path-{i}"
+            self.logger.info("   └── [%s] %s", label, skills_dir)
             scan_directory(skills_dir)
         
-        return list(self._skill_cache.values())
+        skills = list(self._skill_cache.values())
+        self.logger.discovery("发现 %d 个技能", len(skills))
+        
+        # 按类别分组输出
+        if skills:
+            categories = {}
+            for s in skills:
+                # 从路径提取类别
+                parts = s.path.replace("\\", "/").split("/")
+                if "commands" in parts:
+                    cat = "commands"
+                elif "states" in parts:
+                    cat = "states"
+                elif "strategies" in parts:
+                    cat = "strategies"
+                elif "general" in parts:
+                    cat = "general"
+                else:
+                    cat = "other"
+                categories.setdefault(cat, []).append(s.name)
+            
+            for cat, names in categories.items():
+                self.logger.info("   └── [%s]: %s", cat, ", ".join(names[:5]) + ("..." if len(names) > 5 else ""))
+        
+        return skills
     
     def _parse_frontmatter(self, skill_file: str) -> Optional[SkillMetadata]:
-        """解析SKILL.md的YAML Frontmatter"""
+        """解析SKILL.md的YAML Frontmatter (高效读取)"""
         try:
+            yaml_lines = []
             with open(skill_file, 'r', encoding='utf-8-sig') as f:
-                content = f.read()
-            # 规范化行尾 (CRLF -> LF)
-            content = content.replace('\r\n', '\n').replace('\r', '\n')
+                # 检查第一行是否是 ---
+                first_line = f.readline()
+                if not first_line.strip() == '---':
+                    return None
+                
+                # 读取直到下一个 ---
+                for line in f:
+                    if line.strip() == '---':
+                        break
+                    yaml_lines.append(line)
             
-            # 提取YAML Frontmatter
-            match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
-            if not match:
+            if not yaml_lines:
                 return None
-            
-            yaml_content = match.group(1)
+                
+            yaml_content = ''.join(yaml_lines)
             data = yaml.safe_load(yaml_content)
             
             return SkillMetadata(
@@ -177,10 +240,11 @@ class SkillLoader:
                 description=data.get('description', ''),
                 keywords=data.get('keywords', []),
                 applicable_types=data.get('applicable_types', []),
-                match_rules=data.get('match_rules', [])
+                match_rules=data.get('match_rules', []),
+                skill_dir=os.path.dirname(skill_file)  # 设置技能目录用于定位第三层资源
             )
         except Exception as e:
-            print(f"Warning: Failed to parse {skill_file}: {e}")
+            self.logger.warning("解析技能文件失败: %s - %s", skill_file, str(e))
             return None
     
     def load_skill_content(self, skill_name: str) -> Optional[SkillContent]:
@@ -196,27 +260,119 @@ class SkillLoader:
         
         metadata = self._skill_cache.get(skill_name)
         if not metadata or not metadata.path:
+            self.logger.warning(f"⚠️ Load Content: Skill '{skill_name}' not found or no path.")
             return None
         
         try:
+            # 技能内容加载日志
+            self.logger.loading("加载技能内容: %s", skill_name)
+            self.logger.info("   路径: %s", metadata.path)
+            
+            content_lines = []
             with open(metadata.path, 'r', encoding='utf-8-sig') as f:
-                content = f.read()
-            # 规范化行尾 (CRLF -> LF)
-            content = content.replace('\r\n', '\n').replace('\r', '\n')
-            
-            # 提取Markdown正文（去除Frontmatter）
-            match = re.match(r'^---\s*\n.*?\n---\s*\n(.*)$', content, re.DOTALL)
-            body = match.group(1) if match else content
-            
-            # 去除首尾空白
-            body = body.strip()
+                # 跳过 Frontmatter
+                first_line = f.readline()
+                if first_line.strip() == '---':
+                    for line in f:
+                        if line.strip() == '---':
+                            break
+                
+                # 读取剩余内容
+                content_lines = f.readlines()
+                
+            body = "".join(content_lines).strip()
             
             skill_content = SkillContent(metadata=metadata, full_content=body)
             self._content_cache[skill_name] = skill_content
+            self.logger.skill_load("技能内容已加载: %s (%d 字节)", skill_name, len(body))
             return skill_content
         except Exception as e:
-            print(f"Warning: Failed to load {skill_name}: {e}")
+            self.logger.error_phase("加载技能内容失败: %s - %s", skill_name, str(e))
             return None
+    
+    # ============ 第三层：扩展资源 ============
+    
+    def list_skill_resources(self, skill_name: str) -> List[SkillExtendedResource]:
+        """列出技能的扩展资源（第三层）
+        
+        扫描技能目录下的 references/ 和 scripts/ 子目录，
+        返回可用资源的列表（不读取内容）。
+        
+        Args:
+            skill_name: 技能名称
+            
+        Returns:
+            扩展资源列表
+        """
+        if skill_name not in self._skill_cache:
+            self.discover_skills()
+        
+        metadata = self._skill_cache.get(skill_name)
+        if not metadata or not metadata.skill_dir:
+            return []
+        
+        resources = []
+        skill_dir = metadata.skill_dir
+        
+        # 扫描 references/ 目录
+        references_dir = os.path.join(skill_dir, "references")
+        if os.path.exists(references_dir):
+            for filename in os.listdir(references_dir):
+                filepath = os.path.join(references_dir, filename)
+                if os.path.isfile(filepath):
+                    resources.append(SkillExtendedResource(
+                        name=filename,
+                        resource_type="reference",
+                        path=filepath
+                    ))
+        
+        # 扫描 scripts/ 目录
+        scripts_dir = os.path.join(skill_dir, "scripts")
+        if os.path.exists(scripts_dir):
+            for filename in os.listdir(scripts_dir):
+                filepath = os.path.join(scripts_dir, filename)
+                if os.path.isfile(filepath):
+                    resources.append(SkillExtendedResource(
+                        name=filename,
+                        resource_type="script",
+                        path=filepath
+                    ))
+        
+        if resources:
+            self.logger.info("   技能 %s 有 %d 个扩展资源", skill_name, len(resources))
+        
+        return resources
+    
+    def load_skill_resource(self, skill_name: str, resource_name: str) -> Optional[SkillExtendedResource]:
+        """加载技能的扩展资源内容（第三层）
+        
+        按需读取 references/ 或 scripts/ 下的文件内容。
+        
+        Args:
+            skill_name: 技能名称
+            resource_name: 资源文件名（如 "ADVANCED.md" 或 "helper.py"）
+            
+        Returns:
+            填充了 content 的 SkillExtendedResource，或 None
+        """
+        resources = self.list_skill_resources(skill_name)
+        
+        for resource in resources:
+            if resource.name == resource_name:
+                try:
+                    with open(resource.path, 'r', encoding='utf-8-sig') as f:
+                        resource.content = f.read()
+                    
+                    self.logger.skill_load("加载扩展资源: %s/%s (%d 字节)", 
+                                          skill_name, resource_name, len(resource.content))
+                    return resource
+                except Exception as e:
+                    self.logger.error_phase("加载扩展资源失败: %s/%s - %s", 
+                                           skill_name, resource_name, str(e))
+                    return None
+        
+        self.logger.warning("扩展资源不存在: %s/%s", skill_name, resource_name)
+        return None
     
     def get_skills_summary(self) -> str:
         """获取所有技能的摘要（第一层）
@@ -280,23 +436,55 @@ class SkillLoader:
         
         return relevant
     
+    
     def get_skill_instructions(self, skill_names: List[str]) -> str:
         """获取指定技能的完整指令
         
         按需加载第二层内容。
+        并注入第三层所需的环境信息（如技能根目录 path）。
         """
         lines = []
         for name in skill_names:
             content = self.load_skill_content(name)
             if content:
-                # 区分是普通技能还是策略指南
-                # 策略指南通常不需要 "## 技能: name" 这样的标题，直接嵌入内容可能更自然
-                # 但为了统一，我们保留简单的标题
+                skill_dir = os.path.dirname(content.metadata.path)
                 lines.append(f"\n## 技能: {name}\n")
+                lines.append(f"> Skill Directory: {skill_dir}\n")  # Enable access to Level 3 resources
                 lines.append(content.full_content)
                 lines.append("\n---\n")
         
         return "\n".join(lines)
+    
+    def get_skills_xml(self) -> str:
+        """获取所有技能的XML格式元数据（第一层）"""
+        skills = self.discover_skills()
+        if not skills:
+            return "<skill_list></skill_list>"
+        
+        # Calculate base directory for relative paths
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        xml_lines = ["<skill_list>"]
+        for skill in skills:
+            # XML Escape for description
+            desc = skill.description.replace("<", "&lt;").replace(">", "&gt;")
+            # Calculate relative path
+            try:
+                rel_path = os.path.relpath(skill.path, base_dir).replace("\\", "/")
+            except ValueError:
+                rel_path = skill.path # Fallback to absolute if on different drive
+                
+            xml_lines.append(f'    <skill name="{skill.name}" path="{rel_path}">{desc}</skill>')
+        xml_lines.append("</skill_list>")
+        return "\n".join(xml_lines)
+    
+    def get_skill_path(self, skill_name: str) -> Optional[str]:
+        """获取技能文件的绝对路径"""
+        if skill_name not in self._skill_cache:
+            self.discover_skills()
+        
+        meta = self._skill_cache.get(skill_name)
+        return meta.path if meta else None
 
 
 # 全局技能加载器实例
@@ -312,8 +500,79 @@ def get_skill_loader() -> SkillLoader:
 
 
 def get_all_skill_metadata() -> str:
-    """获取所有技能的元数据摘要"""
+    """获取所有技能的元数据摘要（已废弃，建议使用 get_skills_xml）"""
     return get_skill_loader().get_skills_summary()
+
+
+def get_skills_xml() -> str:
+    """获取所有技能的XML元数据"""
+    return get_skill_loader().get_skills_xml()
+
+
+def get_skills_categorized_xml() -> str:
+    """获取按类别分组的技能列表（增强版）
+    
+    返回更易于 LLM 理解的分类格式。
+    """
+    loader = get_skill_loader()
+    skills = loader.discover_skills()
+    if not skills:
+        return "<skill_categories></skill_categories>"
+    
+    # Calculate base directory for relative paths
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 按类别分组
+    categories = {
+        "strategies": {"name": "策略技能", "desc": "处理特定类型问题的整体策略，建议首先阅读", "skills": []},
+        "commands": {"name": "命令技能", "desc": "具体的 iscalc 命令用法", "skills": []},
+        "states": {"name": "状态技能", "desc": "不同求解状态下的操作指南", "skills": []},
+        "general": {"name": "通用技能", "desc": "通用工具和示例", "skills": []},
+    }
+    
+    for skill in skills:
+        # 从路径提取类别
+        parts = skill.path.replace("\\", "/").split("/")
+        if "strategies" in parts:
+            cat = "strategies"
+        elif "commands" in parts:
+            cat = "commands"
+        elif "states" in parts:
+            cat = "states"
+        elif "general" in parts:
+            cat = "general"
+        else:
+            cat = "general"
+        
+        # Calculate relative path
+        try:
+            rel_path = os.path.relpath(skill.path, base_dir).replace("\\", "/")
+        except ValueError:
+            rel_path = skill.path
+        
+        # XML Escape
+        desc = skill.description.replace("<", "&lt;").replace(">", "&gt;")
+        
+        categories[cat]["skills"].append({
+            "name": skill.name,
+            "path": rel_path,
+            "desc": desc
+        })
+    
+    # 生成 XML
+    xml_lines = ["<skill_categories>"]
+    
+    # 按优先级顺序输出：策略 > 命令 > 状态 > 通用
+    for cat_key in ["strategies", "commands", "states", "general"]:
+        cat = categories[cat_key]
+        if cat["skills"]:
+            xml_lines.append(f'  <category name="{cat["name"]}" description="{cat["desc"]}">')
+            for s in cat["skills"]:
+                xml_lines.append(f'    <skill name="{s["name"]}" path="{s["path"]}">{s["desc"]}</skill>')
+            xml_lines.append("  </category>")
+    
+    xml_lines.append("</skill_categories>")
+    return "\n".join(xml_lines)
 
 
 def get_relevant_skills(expression: str, user_instruction: Optional[str] = None) -> List[SkillMetadata]:
@@ -326,6 +585,7 @@ def get_skill_details(skills: List[SkillMetadata], include_examples: bool = Fals
     loader = get_skill_loader()
     skill_names = [s.name for s in skills]
     return loader.get_skill_instructions(skill_names)
+
 
 
 def get_state_skills(state_name: str) -> List[SkillMetadata]:
@@ -417,3 +677,67 @@ def _ensure_skills_loaded():
 
 # 在模块导入时自动加载
 _ensure_skills_loaded()
+
+
+def detect_skill_mentions(text: str, loaded_skills: List[str] = None) -> List[Dict[str, str]]:
+    """从文本中检测提到的技能名称
+    
+    扫描 LLM 的 thinking 内容，检测是否提到了某个技能名称。
+    如果提到了，返回该技能的相关信息以便自动加载。
+    
+    Args:
+        text: LLM 的 thinking 或其他文本内容
+        loaded_skills: 已加载的技能路径列表，用于避免重复加载
+        
+    Returns:
+        包含检测到的技能信息的列表 [{"name": "xxx", "path": "...", "full_path": "..."}]
+    """
+    if not text:
+        return []
+    
+    loaded_skills = loaded_skills or []
+    detected = []
+    
+    loader = get_skill_loader()
+    all_skills = loader.discover_skills()
+    
+    # 构建技能名称到元数据的映射
+    skill_map = {}
+    for skill in all_skills:
+        # 使用多种可能的匹配模式
+        # 1. 技能名称本身 (如 "merge-evalat")
+        skill_map[skill.name.lower()] = skill
+        # 2. 文件路径的变体 (如 "skills/merge-evalat")
+        rel_path = os.path.relpath(skill.path, os.path.dirname(os.path.dirname(skill.path)))
+        skill_map[rel_path.replace("\\", "/").lower()] = skill
+        # 3. 简短变体 (如 "merge evalat", "mergeevalat")
+        skill_map[skill.name.replace("-", " ").lower()] = skill
+        skill_map[skill.name.replace("-", "").lower()] = skill
+    
+    text_lower = text.lower()
+    
+    # 检测匹配
+    for pattern, skill in skill_map.items():
+        if pattern in text_lower:
+            # 检查是否已加载
+            if skill.path in loaded_skills:
+                continue
+            
+            # 检查是否已在检测结果中
+            if any(d["path"] == skill.path for d in detected):
+                continue
+            
+            # 计算相对路径（相对于 llm_iscalc 目录）
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            try:
+                rel_path = os.path.relpath(skill.path, base_dir).replace("\\", "/")
+            except ValueError:
+                rel_path = skill.path
+            
+            detected.append({
+                "name": skill.name,
+                "path": rel_path,  # 相对路径，用于 cat 命令
+                "full_path": skill.path  # 绝对路径，用于实际加载
+            })
+    
+    return detected

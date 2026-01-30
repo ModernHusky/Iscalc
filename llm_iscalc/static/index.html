@@ -19,6 +19,60 @@
             background: #F9FAFB;
         }
 
+        /* 紫色标题框的数学公式装饰 */
+        .header-gradient-box {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .math-formula-bg {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+            z-index: 0;
+            font-size: 28px;
+        }
+
+        .math-formula-bg.formula-1 {
+            top: 15%;
+            left: 3%;
+            transform: rotate(-15deg);
+            font-size: 24px;
+        }
+
+        .math-formula-bg.formula-2 {
+            top: 8%;
+            left: 22%;
+            transform: rotate(-12deg);
+            font-size: 20px;
+        }
+
+        .math-formula-bg.formula-3 {
+            bottom: 15%;
+            left: 8%;
+            transform: rotate(-15deg);
+            font-size: 22px;
+        }
+
+        .math-formula-bg.formula-4 {
+            top: 12%;
+            right: 18%;
+            transform: rotate(-12deg);
+            font-size: 20px;
+        }
+
+        .math-formula-bg.formula-5 {
+            bottom: 18%;
+            right: 5%;
+            transform: rotate(-15deg);
+            font-size: 24px;
+        }
+
+        .header-gradient-box > .text-center {
+            position: relative;
+            z-index: 1;
+        }
+
         /* 渐变标题 */
         .gradient-text {
             background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
@@ -311,12 +365,22 @@
     <div class="max-w-[1600px] mx-auto px-6 py-6">
         <!-- 顶部标题区 -->
         <header class="mb-6">
-            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-center shadow-lg">
-                <h1 class="text-3xl font-bold text-white mb-2">🧮 LLM-Iscalc 数学求解器</h1>
-                <p class="text-indigo-100 text-sm font-medium mb-3">AI 驱动 · 符号计算 · 逐步推导</p>
-                <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span class="text-xs text-white/80">当前模型:</span>
-                    <span id="current-model" class="text-sm font-semibold text-white">deepseek-chat</span>
+            <div class="header-gradient-box bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 shadow-lg">
+                <!-- 数学公式背景装饰 -->
+                <div class="math-formula-bg formula-1" id="formula-1"></div>
+                <div class="math-formula-bg formula-2" id="formula-2"></div>
+                <div class="math-formula-bg formula-3" id="formula-3"></div>
+                <div class="math-formula-bg formula-4" id="formula-4"></div>
+                <div class="math-formula-bg formula-5" id="formula-5"></div>
+                
+                <!-- 主要内容 -->
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-white mb-2">🧮 LLM-Iscalc 数学求解器</h1>
+                    <p class="text-indigo-100 text-sm font-medium mb-3">AI 驱动 · 符号计算 · 逐步推导</p>
+                    <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                        <span class="text-xs text-white/80">当前模型:</span>
+                        <span id="current-model" class="text-sm font-semibold text-white">deepseek-chat</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -555,6 +619,31 @@
     <script>
         console.log('HTML 页面已加载');
         console.log('开始加载 app.js...');
+        
+        // 渲染背景数学公式
+        document.addEventListener('DOMContentLoaded', function() {
+            const formulas = [
+                { id: 'formula-1', latex: 'E = mc^2' },
+                { id: 'formula-2', latex: 'e^{i\\theta} = \\cos\\theta + i\\sin\\theta' },
+                { id: 'formula-3', latex: '\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}' },
+                { id: 'formula-4', latex: '\\int_a^b f(x)dx = F(b) - F(a)' },
+                { id: 'formula-5', latex: 'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n' }
+            ];
+            
+            formulas.forEach(item => {
+                const element = document.getElementById(item.id);
+                if (element && window.katex) {
+                    try {
+                        katex.render(item.latex, element, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } catch (e) {
+                        console.error('KaTeX render error:', e);
+                    }
+                }
+            });
+        });
     </script>
     <script src="/static/app.js"></script>
     <script>

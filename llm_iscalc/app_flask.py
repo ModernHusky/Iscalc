@@ -9,6 +9,11 @@ from .config import create_config
 from .llm_engine import LLMEngine
 from .command_executor import CommandExecutor
 from .solver_loop import SolverLoop, SolveEvent, EventType
+from .logger_config import configure_logging, get_phase_logger
+
+# 配置日志
+configure_logging()
+logger = get_phase_logger(__name__)
 
 # 获取当前文件所在目录
 _current_dir = Path(__file__).parent

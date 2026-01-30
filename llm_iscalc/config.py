@@ -11,7 +11,11 @@ from typing import Optional
 @dataclass
 class LLMConfig:
     """LLM配置"""
-    # DeepSeek API 配置
+    # # 智谱 GLM API 配置
+    # api_key: str = "a4810096a77743b3883be03959158863.oLZbloLwun4SRHO2"
+    # api_base: str = "https://open.bigmodel.cn/api/paas/v4/"  # 注意：只需要 base URL，不包括具体 endpoint
+    # model: str = "GLM-4.7"  # 使用 Plus 版本以获得更强的数学推理能力
+    # DeepSeek API 配置（备用）
     api_key: str = "sk-58fe61d83d944b91ba997b3d397289fd"
     api_base: str = "https://api.deepseek.com/v1"
     model: str = "deepseek-chat"
@@ -29,6 +33,7 @@ class SolverConfig:
     max_consecutive_errors: int = 3
     timeout_seconds: float = 300.0
     loop_detection_window: int = 5
+    use_tool_calling: bool = True  # 是否使用 Function Calling 让 LLM 实时读取技能
 
 
 @dataclass
