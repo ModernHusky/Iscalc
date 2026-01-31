@@ -14,6 +14,10 @@ match_rules:
 
 语法：`<rule> (at n)`，其中 `n` 从 1 开始。
 
+**⚠️ 格式要求**：
+- 必须使用**括号**：`(at n)` 而不是 `at n`
+- 括号与规则之间有**空格**
+
 **支持的规则**：
 - `rewrite A to B (at n)`: 应用于第 n 次出现的 A。
 - `substitute u for expr (at n)`: 应用于第 n 个积分。
@@ -25,6 +29,14 @@ match_rules:
 **不支持 `(at n)`**：
 - `apply integral identity`: 自动尝试所有积分。
 - `simplify`: 全局应用。
+
+**错误示例对比**：
+
+| ❌ 错误（导致解析失败） | ✅ 正确 |
+|---------------------|--------|
+| `substitute u for -x at 2` | `substitute u for -x (at 2)` |
+| `rewrite A to B at 1` | `rewrite A to B (at 1)` |
+| `substitute u for x(at 2)` | `substitute u for x (at 2)` |
 
 ### `(all)` 修饰符
 

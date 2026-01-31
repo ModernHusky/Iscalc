@@ -65,17 +65,41 @@ BASE_PROMPT = """
 ### 求值
 - 代入求值: [f(x)]_x=a,b  表示 f(b) - f(a)
 
-## 输出格式
+## ⚠️ 输出格式（必须严格遵守）
 
-你必须以JSON格式输出，包含以下字段:
+**你必须以JSON格式输出**，不能输出纯文本解释或自然语言描述！
+
+### 必需格式
+
+```json
 {
-    "thinking": "你的分析和推理过程。必须明确说明使用了哪个技能文件中的命令或策略（例如：'参考 skills/states/prove/SKILL.md' 或 '使用 rewrite-goal-proof 技能'）。这有助于用户进行调试。",
+    "thinking": "你的分析和推理过程。必须明确说明使用了哪个技能文件中的命令或策略（例如：'参考 skills/commands/substitute/SKILL.md'）。这有助于用户进行调试。",
     "command": "要执行的Iscalc命令",
     "explanation": "这个命令会做什么",
     "is_final": false
 }
+```
 
-当你认为表达式已经是最简形式时，设置 is_final 为 true，此时 command 可以为空字符串。
+### 示例对比
+
+❌ **错误** - 输出纯文本解释：
+```
+我们可以使用换元法，令 u = sqrt(a) * x，将被积函数转换为...
+```
+
+✅ **正确** - JSON格式：
+```json
+{
+    "thinking": "参考 skills/commands/substitute/SKILL.md，使用缩放换元将 exp(-(a*x^2)) 转换为标准形式",
+    "command": "substitute u for sqrt(a) * x",
+    "explanation": "将积分转换为标准高斯积分形式",
+    "is_final": false
+}
+```
+
+### 特殊情况
+
+当你认为表达式已经是最简形式时，设置 `is_final` 为 `true`，此时 `command` 可以为空字符串。
 """
 
 
@@ -193,10 +217,11 @@ read_skill("skills/commands/rewrite/SKILL.md")
 
 ## ⚠️ 重要规则
 
-1. **标记格式**：请在单独一行使用 `<|load_skill|>技能名<|end_load_skill|>`。不要在标签后添加反斜杠(\)或其他符号。
-2. **技能名称**：使用短名称（如 `rewrite`）或完整路径（如 `skills/commands/rewrite/SKILL.md`）
-3. **加载时机**：可以在思考过程中随时加载，加载后系统会暂停并继续你的生成（支持边思考边查资料）
-4. **避免重复**：同一技能在一次求解中只需加载一次
+1. **输出格式**：**必须**以JSON格式输出，绝对不能输出纯文本解释！这是最常见的错误。
+2. **标记格式**：请在单独一行使用 `<|load_skill|>技能名<|end_load_skill|>`。不要在标签后添加反斜杠(\)或其他符号。
+3. **技能名称**：使用短名称（如 `rewrite`）或完整路径（如 `skills/commands/rewrite/SKILL.md`）
+4. **加载时机**：可以在思考过程中随时加载，加载后系统会暂停并继续你的生成（支持边思考边查资料）
+5. **避免重复**：同一技能在一次求解中只需加载一次
 """
 
 

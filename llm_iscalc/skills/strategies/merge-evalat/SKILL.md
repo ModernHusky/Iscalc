@@ -27,48 +27,19 @@ match_rules:
 
 这种简化可以揭示进一步的消去机会，或者使表达式更易于计算。
 
-### 示例
-
-
-
-### 示例 1： 子表达式求值
+### 示例： 子表达式求值
 ```json
 {
-  "thinking": "两个子求值表达式项共享相同的上下限，例如 [1, t]。合并它们可能有帮助。参考 skills/strategies/merge-evalat/SKILL.md",
-    "command": "rewrite ([log(x)]_x=1,t) - ([log(x ^ 2 + 1) / 2]_x=1,t) to ([log(x) - log(x ^ 2 + 1) / 2]_x=1,t)",
+  "thinking": "两个子求值表达式项共享相同的上下限，例如 [a, b]。合并它们可能有帮助。参考 skills/strategies/merge-evalat/SKILL.md",
+    "command": "rewrite ([log(x)]_x=a,b) - ([log(x ^ 2 + 1) / 2]_x=a,b) to ([log(x) - log(x ^ 2 + 1) / 2]_x=a,b)",
     "explanation": "将各项合并到同一个求值符号下。",
     "is_final": false
 }
 ```
 
-### 示例 2: 有限限
-
-**表达式**: `[log(u)]_u=1,t + [log(u + 1)]_u=1,t`
-**动作**:
-```json
-{
-    "thinking": "两项都是从 u=1 到 t 的求值。利用求值的线性性质，我可以将它们合并。参考 skills/strategies/merge-evalat/SKILL.md",
-    "command": "rewrite to ([log(u) + log(u + 1)]_u=1,t)",
-    "explanation": "将两个求值项合并为一个。",
-    "is_final": false
-}
-```
-
-### 示例 3: 无穷限
-
-**表达式**: `[1/x]_x=1,oo + [1/(x+1)]_x=1,oo`
-**动作**:
-```json
-{
-    "thinking": "两个求值项共享相同的上下限，例如 [1, oo]。合并它们可能有帮助。参考 skills/strategies/merge-evalat/SKILL.md",
-    "command": "rewrite to ([1/x + 1/(x+1)]_x=1,oo)",
-    "explanation": "将各项合并到同一个求值符号下。",
-    "is_final": false
-}
-```
 
 ### 策略
 
 1. **识别**: 寻找多个具有相同上下限的 `[...]` 项。
 2. **构建**: 创建一个目标表达式，其中函数体合并在同一个 `[...]` 中。
-3. **执行**: 使用 `rewrite to <target>` 命令。
+3. **执行**: 使用 `rewrite <expr> to <target>` 命令。

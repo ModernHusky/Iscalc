@@ -28,6 +28,8 @@ class EventType(Enum):
     LOOP_RETRY = "loop_retry"  # 循环重试事件
     MAX_ITERATIONS = "max_iterations"
     SKILL_LOAD = "skill_load"  # 技能加载事件（Search-o1 风格）
+    COMMAND_SUCCESS = "command_success"  # 命令执行成功（2026-02-01 架构重构）
+    COMMAND_FAILURE = "command_failure"  # 命令执行失败（2026-02-01 架构重构）
 
 
 @dataclass
@@ -484,29 +486,33 @@ class SolverLoop:
                                         metadata={"streaming": True, "skill_round": skill_round}
                                     ))
                                 
-                                # 实时检测技能标记 (使用 raw_text 检测更准确，但 display_text 也可以因为此时两者一致)
+                                # 实时检测技能标记 (使用 raw_text 检测更准确)
                                 pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
-                                match = re.search(pattern, raw_text, re.DOTALL)
-                                if match:
+                                # 使用 finditer 查找所有匹配项，而不仅是第一个
+                                matches = re.finditer(pattern, raw_text, re.DOTALL)
+                                for match in matches:
                                     skill_name = match.group(1).strip()
                                     if skill_name not in loaded_skill_names:
                                         # 找到新技能，中断生成
                                         found_new_skill = True
                                         new_skill_name = skill_name
                                         break
+                                if found_new_skill:
+                                    break
                             
                             is_first_generation = False
                         
                         # 检测是否有未加载的技能
                         if not found_new_skill:
-                            # 检查当前累积文本中是否还有未加载的技能
+                            # 检查当前累积文本中是否还有未加载的技能 (Check ALL matches)
                             pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
-                            match = re.search(pattern, raw_text, re.DOTALL)
-                            if match:
+                            matches = re.finditer(pattern, raw_text, re.DOTALL)
+                            for match in matches:
                                 skill_name = match.group(1).strip()
                                 if skill_name not in loaded_skill_names:
                                     found_new_skill = True
                                     new_skill_name = skill_name
+                                    break
                         
                         # 如果没有找到新技能，结束循环
                         if not found_new_skill:
@@ -593,13 +599,17 @@ class SolverLoop:
                                 
                                 # 实时检测新的技能标记
                                 pattern = re.escape(SKILL_LOAD_BEGIN) + r'(.+?)' + re.escape(SKILL_LOAD_END)
-                                match = re.search(pattern, raw_text, re.DOTALL)
-                                if match:
+                                matches = re.finditer(pattern, raw_text, re.DOTALL)
+                                for match in matches:
                                     next_skill = match.group(1).strip()
                                     if next_skill not in loaded_skill_names:
                                         # 检测到新技能，中断继续生成，开始新一轮
                                         self.logger.info("   ⏸ 检测到新技能请求: %s，准备下一轮加载", next_skill)
+                                        # Set flag to ensure outer loop knows
+                                        found_new_skill = True 
                                         break
+                                if found_new_skill:
+                                    break
                         
                         except Exception as e:
                             self.logger.warning("技能加载失败: %s - %s", skill_name, str(e))
@@ -665,6 +675,17 @@ class SolverLoop:
                             skill_block = f"\n## 技能文件 (自动加载): {skill_rel_path}\n> Directory: {skill_dir}\n\n{skill_content}\n\n---\n"
                             active_skills.append(skill_block)
                             loaded_skill_names.append(skill_path)
+                            
+                            # CRITICAL FIX: If no command was generated, but we auto-loaded a skill, 
+                            # we should treat this as a successful "read_skill" command to update history.
+                            # This prevents the "Empty command" error and the infinite loop.
+                            if not llm_response.command.strip():
+                                self.logger.info("   🔄 Auto-converting skill load of '%s' to explicit command step", skill_name)
+                                llm_response.command = f"read_skill {skill_rel_path}"
+                                llm_response.explanation = f"系统自动检测并加载技能: {skill_name}"
+                                # We only do this for the first valid skill to avoid multi-command complexity
+                                break 
+                                
                         except Exception as e:
                             self.logger.warning("自动加载技能失败: %s - %s", skill_name, str(e))
                 
@@ -752,12 +773,24 @@ class SolverLoop:
                         skill_dir = os.path.dirname(abs_path)
                         
                         # Add to active_skills if not present
-                        # Use a hash or just text check to avoid duplicates?
                         # Simplest: Check if path is in loaded_skill_names (we can store path there now)
-                        if abs_path in loaded_skill_names:
+                        
+                        # Note: Auto-detection might have already added it.
+                        already_loaded = abs_path in loaded_skill_names
+                        
+                        if already_loaded:
                              self.logger.info("   技能已加载过: %s", abs_path)
-                             last_error = f"File '{target}' 已经加载过了。"
+                             # Treat as SUCCESS if it was just auto-loaded in this same step (identified by command match)
+                             # However, since we auto-converted empty command to 'read_skill path', 
+                             # we effectively want to record the success.
+                             
+                             # If we assume 'already loaded' means it's available, let's just record success and move on.
+                             # This prevents the "Error: Already loaded" loop.
+                             self.logger.info("   (Treating as success since it is available)")
+                             # last_error = f"File '{target}' 已经加载过了。" # OLD BEHAVIOR
+                             last_error = None # Fix: No error
                         else:
+                             # ... (normal load logic if not loaded) ...
                              # 计算文件大小
                              file_size = len(file_content)
                              
@@ -777,12 +810,14 @@ class SolverLoop:
                              active_skills.append(skill_block)
                              loaded_skill_names.append(abs_path)
                              
-                             if callback:
-                                await callback(SolveEvent(
-                                    type=EventType.RESULT,
-                                    content=f"已加载技能文件: {target}",
-                                    step=iteration
-                                ))
+                             # User requested to hide loading info from Result/Sidebar, keep only in Explanation in 2026-02-01 update
+                             # So we suppress the RESULT event for skill loading.
+                             # if callback:
+                             #    await callback(SolveEvent(
+                             #        type=EventType.RESULT,
+                             #        content=f"已加载技能文件: {target}",
+                             #        step=iteration
+                             #    ))
                              
                              # Success record
                              steps.append({
@@ -951,6 +986,17 @@ class SolverLoop:
                 expression_history.append(exec_result.result)
                 
                 if callback:
+                    # 2026-02-01 架构重构：明确告诉前端命令执行成功
+                    await callback(SolveEvent(
+                        type=EventType.COMMAND_SUCCESS,
+                        content=command,
+                        step=iteration,
+                        metadata={
+                            "explanation": llm_response.explanation,
+                            "changed": exec_result.changed
+                        }
+                    ))
+                    # 继续发送 RESULT 事件（包含结果数据）
                     await callback(SolveEvent(
                         type=EventType.RESULT,
                         content=exec_result.result or "",
@@ -970,6 +1016,17 @@ class SolverLoop:
                 last_error = self.error_handler.format_for_llm(error_info)
                 
                 if callback:
+                    # 2026-02-01 架构重构：明确告诉前端命令执行失败
+                    await callback(SolveEvent(
+                        type=EventType.COMMAND_FAILURE,
+                        content=command,
+                        step=iteration,
+                        metadata={
+                            "error": exec_result.error,
+                            "explanation": llm_response.explanation
+                        }
+                    ))
+                    # 继续发送 ERROR 事件（包含错误详情）
                     await callback(SolveEvent(
                         type=EventType.ERROR,
                         content=exec_result.error or "执行失败",

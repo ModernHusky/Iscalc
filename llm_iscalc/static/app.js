@@ -646,6 +646,120 @@ function smartScroll(element) {
     }
 }
 
+// 侧边栏同步状态
+let lastSyncedResultLineCount = 0; // Track how many lines we've processed
+let lastSyncedCommandCount = 0; // Track how many commands we've synced
+
+/**
+ * Sync sidebar commands with lines in the result output
+ * Parses lines like: "= ... (command)" and adds them to sidebar if missing
+ * @param {string} resultText - Full text of the result output
+ */
+function syncSidebarWithResults(resultText) {
+    if (!resultText) return;
+
+    // 2026-02-01 再次优化：改进正则以处理跨行和复杂命令格式
+    // 策略：分两步
+    // 1. 先找出所有以 = 开头的块（可能跨多行）
+    // 2. 从每个块中提取最后一个括号内的内容
+
+    // 按行分割，然后找出所有以 = 开头的行
+    const lines = resultText.split('\n');
+    const commandsFound = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // 只处理以 = 开头的行
+        if (line.startsWith('=')) {
+            // 提取这一行中所有的 (xxx) 内容
+            // 使用更智能的括号匹配：找到最后一个完整的括号对
+            const bracketMatches = [];
+            let depth = 0;
+            let start = -1;
+
+            for (let j = 0; j < line.length; j++) {
+                if (line[j] === '(') {
+                    if (depth === 0) start = j;
+                    depth++;
+                } else if (line[j] === ')') {
+                    depth--;
+                    if (depth === 0 && start !== -1) {
+                        // 找到一个完整的括号对
+                        const content = line.substring(start + 1, j).trim();
+                        bracketMatches.push(content);
+                        start = -1;
+                    }
+                }
+            }
+
+            // 取最后一个括号内容作为命令
+            if (bracketMatches.length > 0) {
+                const lastCommand = bracketMatches[bracketMatches.length - 1];
+                // 清理命令：去掉可能的前缀标记（如 "? "）
+                const cleanedCommand = lastCommand.replace(/^\?\s*/, '').trim();
+                if (cleanedCommand) {
+                    commandsFound.push(cleanedCommand);
+                }
+            }
+        }
+    }
+
+    // 过滤掉无效命令和提示性内容
+    // 用户可根据需要调整此列表
+    const invalidCommands = [
+        'calculate',     // 初始命令已在顶部显示
+        'LLM判定',       // 提示性内容，非实际命令
+        'LLM判断',       // 同上
+        '计算',          // 同上
+        '{calculate}',   // 格式化标记
+        'simplify'       // 用户要求：不显示最后的 simplify（2026-02-01）
+    ];
+    commandsFound = commandsFound.filter(cmd => !invalidCommands.includes(cmd));
+
+    // Iterate through new commands we haven't processed yet
+    // We assume resultText is strictly append-only so we can skip the first N commands we already synced
+    // However, to be safe against overlaps (if thinking added one), we check the last item.
+
+    // Strategy:
+    // We want the sidebar to reflect 'commandsFound'.
+    // 'commandsFound' starts with the first step.
+    // The sidebar has [Initial Command, Step 1, Step 2...]
+    // We skip 'lastSyncedCommandCount' items from 'commandsFound' to only process new ones.
+
+    const newCommands = commandsFound.slice(lastSyncedCommandCount);
+
+    newCommands.forEach(cmd => {
+        // Check if this command was just added by the "Thinking" stream
+        // Get last item in sidebar
+        const lastSidebarItem = stdCommandList.lastElementChild;
+        let lastSidebarText = '';
+        if (lastSidebarItem) {
+            const code = lastSidebarItem.querySelector('code');
+            if (code) lastSidebarText = code.innerText.trim();
+        }
+
+        // Deduplicate: If the last sidebar item is identical to this result command, assume it's the same step
+        if (lastSidebarText === cmd) {
+            // Already there (likely from thinking stream), just mark as synced
+            console.log('Sidebar sync: Skipping duplicate', cmd);
+        }
+        // Also check if lastSidebarText is "simplify" and cmd is "simplify" (common case)
+        else {
+            // Not in sidebar (or different), so add it
+            // This catches hidden intermediate steps like "partial-fraction"
+            addCommandToSidebar(cmd);
+            console.log('Sidebar sync: Added missing command', cmd);
+
+            // If we added it, it becomes the new "currentSidebarItem" context potentially, 
+            // but usually we don't need to link it to currentCard unless we want to update it later.
+            // For now, standalone addition is fine.
+        }
+    });
+
+    // Update counter
+    lastSyncedCommandCount = commandsFound.length;
+}
+
 let thinkingStepCount = 0;
 let currentCard = null; // 当前正在更新的卡片
 let currentSidebarItem = null; // Track current command item in sidebar
@@ -697,6 +811,60 @@ function createNewCard() {
 
     // 注意：不再预先创建所有字段。字段将在 updateField 中按需创建。
     return card;
+}
+
+// 添加命令到侧边栏
+function addCommandToSidebar(command, isThinking = false, step = 0) {
+    if (!command) return;
+
+    // Filter out "read_skill" commands from the sidebar as requested
+    if (command.trim().startsWith('read_skill')) {
+        return;
+    }
+
+    // 检查是否重复（最后一条如果一样就不加）
+    const lastSidebarItem = stdCommandList.lastElementChild;
+    let lastSidebarText = '';
+    if (lastSidebarItem) {
+        const code = lastSidebarItem.querySelector('code');
+        if (code) lastSidebarText = code.innerText.trim();
+    }
+
+    // Skip duplicates unless it's a new step (to avoid merging different steps)
+    // But mostly we want to avoid duplicates regardless
+    if (lastSidebarText === command.trim()) {
+        console.log('Sidebar: Skipping duplicate command:', command);
+        return lastSidebarItem; // 返回已存在的元素
+    }
+
+    const commandItem = document.createElement('div');
+    commandItem.className = `sidebar-command-item ${isThinking ? 'thinking-command' : ''}`;
+    // Assign data-step attribute if step is valid
+    if (step > 0) {
+        commandItem.dataset.step = step;
+    }
+    commandItem.innerHTML = `<code>${command}</code>`;
+    stdCommandList.appendChild(commandItem);
+    smartScroll(stdCommandList); // 滚动侧边栏到底部
+    return commandItem;
+}
+
+// 更新侧边栏命令项
+function updateCommandSidebarItem(item, newCommand) {
+    if (!item || !newCommand) return;
+
+    // Filter out "read_skill" commands from the sidebar as requested
+    if (newCommand.trim().startsWith('read_skill')) {
+        // If the item was previously a valid command and now it's read_skill,
+        // we might want to remove it or just not update it.
+        // For now, let's just not update it.
+        return;
+    }
+
+    const code = item.querySelector('code');
+    if (code) {
+        code.innerText = newCommand;
+    }
 }
 
 // 添加或更新字段
@@ -793,17 +961,22 @@ function updateThinkingFromObject(thinkingObj) {
             updateField('command', command);
 
             // Sync to sidebar
-            // 所有命令都添加到sidebar,包括中间步骤
+            // 2026-02-01 重大修改：完全禁用从 thinking 向 sidebar 添加命令的逻辑
+            // 原因：用户明确要求"命令框中的命令和结果框中的结果括号中的命令对应起来"
+            // 解决方案：让 syncSidebarWithResults 成为 sidebar 的唯一数据源
+            // 这样可以保证左右两边 100% 一致，不再出现乱序或不匹配的情况
+            /*
             // Filter out "None" or empty commands
             if (command && command !== "None" && command.trim() !== "") {
                 // 注意:不再区分用户命令和中间步骤,所有命令都添加
                 // 因为中间步骤现在会通过独立的COMMAND事件发送
                 if (!currentSidebarItem) {
-                    currentSidebarItem = addCommandToSidebar(command);
+                    currentSidebarItem = addCommandToSidebar(command, true, step); // Pass step!
                 } else {
                     updateCommandSidebarItem(currentSidebarItem, command);
                 }
             }
+            */
 
             hasContent = true;
         }
@@ -816,10 +989,11 @@ function updateThinkingFromObject(thinkingObj) {
             updateField('is_final', String(isFinal));
             hasContent = true;
 
+            // 2026-02-01: 禁用此逻辑，避免与 syncSidebarWithResults 冲突
             // If final and no command yet for this step, add 'simplify' to complete the script
-            if ((isFinal === true || String(isFinal) === 'true') && !currentSidebarItem) {
-                currentSidebarItem = addCommandToSidebar('simplify');
-            }
+            // if ((isFinal === true || String(isFinal) === 'true') && !currentSidebarItem) {
+            //     currentSidebarItem = addCommandToSidebar('simplify');
+            // }
         }
     }
 
@@ -989,6 +1163,10 @@ solveBtn.addEventListener('click', async () => {
     // 重置所有滚动状态
     Object.values(scrollManagers).forEach(manager => manager.reset());
 
+    // Reset sync state
+    lastSyncedResultLineCount = 0;
+    lastSyncedCommandCount = 0;
+
     // 清空输出
     resultOutput.textContent = '';
     thinkingOutput.innerHTML = '';
@@ -1037,17 +1215,54 @@ solveBtn.addEventListener('click', async () => {
             if (data.results !== undefined) {
                 resultOutput.textContent = data.results || '计算中...';
                 smartScroll(resultOutput);
+
+                // 2026-02-01 架构重构：移除正则匹配逻辑
+                // 不再从results解析命令，直接监听 COMMAND_SUCCESS 事件
+                // syncSidebarWithResults(data.results);  // 已删除
             }
+
+            // 2026-02-01 架构重构：监听命令执行成功事件
+            if (data.command_success) {
+                const cmd = data.command_success;
+                const step = cmd.step || 0;
+                const commandText = cmd.content || '';
+
+                // 过滤不需要显示的命令
+                // 过滤不需要显示的命令
+                const excludeCommands = ['read_skill'];
+                // const excludeCommands = ['read_skill', 'simplify']; // 2026-02-01: 恢复 simplify 显示，否则中间步骤也不显示了
+                const shouldAdd = !excludeCommands.some(exc => commandText.trim().startsWith(exc));
+
+                if (shouldAdd && commandText) {
+                    addCommandToSidebar(commandText, false, step);
+                    console.log('✅ 命令执行成功，已添加:', commandText);
+                }
+            }
+
+            // 2026-02-01 架构重构：监听命令执行失败事件
+            if (data.command_failure) {
+                const cmd = data.command_failure;
+                const step = cmd.step || 0;
+                const commandText = cmd.content || '';
+
+                // 命令失败，不添加到 sidebar
+                console.log('❌ 命令执行失败，不添加:', commandText);
+
+                // 如果该命令已经被添加（例如在 thinking 阶段），删除它
+                const existingItem = stdCommandList.querySelector(`.sidebar-command-item[data-step="${step}"]`);
+                if (existingItem) {
+                    existingItem.remove();
+                    console.log('❌ 已删除失败命令:', commandText);
+                }
+            }
+
             if (data.errors !== undefined) {
                 if (data.errors && data.errors.trim().length > 0) {
                     errorOutput.textContent = data.errors;
 
-                    // Remove current command if error occurs
-                    if (currentSidebarItem) {
-                        currentSidebarItem.remove();
-                        currentSidebarItem = null;
-                        console.log('Removed invalid command due to error');
-                    }
+                    // 2026-02-01 架构重构：移除复杂的错误匹配删除逻辑
+                    // 命令的添加/删除现在完全由 COMMAND_SUCCESS/COMMAND_FAILURE 事件控制
+                    // 不再需要解析错误信息中的步骤号
                 } else {
                     errorOutput.textContent = '暂无错误';
                 }

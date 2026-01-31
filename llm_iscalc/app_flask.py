@@ -101,6 +101,13 @@ def solve_expression():
                 'errors': state['errors'],
                 'thinking': state['thinking']
             }
+            # 2026-02-01 架构重构：添加命令执行状态事件
+            if 'command_success' in state:
+                data['command_success'] = state['command_success']
+                del state['command_success']  # 发送后清除，避免重复发送
+            if 'command_failure' in state:
+                data['command_failure'] = state['command_failure']
+                del state['command_failure']  # 发送后清除，避免重复发送
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
         
         # 创建事件循环
@@ -307,6 +314,26 @@ def solve_expression():
                     skill_name = event.metadata.get("skill_name", "unknown")
                     trigger = event.metadata.get("trigger", "marker")
                     state['commands'] += f"[技能加载] {skill_name} ({trigger})\n"
+
+                elif event.type == EventType.COMMAND_SUCCESS:
+                    # 2026-02-01 架构重构：命令执行成功事件
+                    # 将成功信息发送给前端，前端负责添加到 sidebar
+                    state['command_success'] = {
+                        'content': event.content,
+                        'step': event.step,
+                        'changed': event.metadata.get("changed", False),
+                        'explanation': event.metadata.get("explanation", "")
+                    }
+                
+                elif event.type == EventType.COMMAND_FAILURE:
+                    # 2026-02-01 架构重构：命令执行失败事件
+                    # 将失败信息发送给前端，前端负责不添加/删除
+                    state['command_failure'] = {
+                        'content': event.content,
+                        'step': event.step,
+                        'error': event.metadata.get("error", ""),
+                        'explanation': event.metadata.get("explanation", "")
+                    }
 
                 # 每次状态更新都推送到队列
                 await queue.put(send_update())
