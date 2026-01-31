@@ -322,6 +322,7 @@
             padding: 6px 8px;
             margin-bottom: 6px;
             cursor: pointer;
+            position: relative;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -357,6 +358,33 @@
             font-size: 9px;
             color: #9ca3af;
             margin-top: 2px;
+        }
+
+        .history-delete-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: #9ca3af;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .history-item:hover .history-delete-btn {
+            opacity: 1;
+        }
+
+        .history-delete-btn:hover {
+            background: #fee2e2;
+            color: #ef4444;
         }
 
         /* Search-o1 风格：技能加载通知 */
@@ -406,10 +434,69 @@
                 opacity: 1;
             }
         }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Maximized state for AI Thinking Process and others */
+        .thinking-section,
+        .std-command-section,
+        .result-section,
+        .command-section,
+        .error-section {
+            /* Legacy transitions removed to prevent JS conflict */
+            /* transition: transform 0.4s ..., width 0.4s ..., height 0.4s ...; */
+            z-index: 40;
+            /* Lower than notification but higher than standard content */
+            transform-origin: top left;
+            /* Default origin, JS will adjust */
+        }
+
+        .thinking-section.maximized,
+        .std-command-section.maximized,
+        .result-section.maximized,
+        .command-section.maximized,
+        .error-section.maximized {
+            /* Layout controlled by JS Portal Logic now */
+            /* z-index: 100; Handle by JS */
+            /* width: auto !important; Removed to prevent jump */
+            /* height: auto !important; Removed to prevent jump */
+            /* margin: 0; Handle by JS */
+            display: flex;
+            flex-direction: column;
+
+        }
+
+        /* Ensure content fills height when maximized */
+        .thinking-section.maximized #thinking-output,
+        .std-command-section.maximized #std-command-list,
+        .result-section.maximized #result-output,
+        .command-section.maximized #command-output,
+        .error-section.maximized #error-output {
+            /* Use auto height to allow Vertical Centering for short content */
+            height: auto !important;
+            /* Cap at 100% to ensure scrolling for long content */
+            max-height: 100% !important;
+            /* Prevent overflow off screen, enforce internal scroll */
+            flex: 1;
+        }
     </style>
 </head>
 
 <body class="min-h-screen">
+    <!-- Maximize Backdrop -->
+    <div id="maximize-backdrop"
+        class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[90] opacity-0 pointer-events-none transition-opacity duration-300">
+    </div>
     <!-- Search-o1 风格：技能加载通知容器 -->
     <div id="skill-notifications"></div>
 
@@ -471,9 +558,20 @@
 
                     <!-- 下部分：标准命令 (60%高度) -->
                     <div
-                        class="bg-white border-2 border-indigo-100 rounded-lg p-3 shadow-sm flex flex-col flex-[3] min-h-0">
+                        class="std-command-section bg-white border-2 border-indigo-100 rounded-lg p-3 shadow-sm flex flex-col flex-[3] min-h-0">
                         <div class="flex items-center justify-between mb-2 px-1 border-b border-gray-100 pb-2">
-                            <label class="block text-xs font-bold text-gray-700">🛠️ 标准命令</label>
+                            <div class="flex items-center">
+                                <label class="block text-xs font-bold text-gray-700">🛠️ 标准命令</label>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-indigo-600 ml-2 p-1.5 rounded hover:bg-indigo-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
+                            </div>
                             <button id="copy-all-btn"
                                 class="text-[10px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded transition-colors"
                                 onclick="copyAllCommands()">
@@ -536,13 +634,28 @@
                 </section>
 
                 <!-- AI 思考过程 -->
-                <section class="bg-white border-2 border-indigo-200 rounded-lg p-3 shadow-sm">
+                <section id="thinking-section"
+                    class="thinking-section bg-white border-2 border-indigo-200 rounded-lg p-3 shadow-sm origin-top-left">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-indigo-700">🤔 AI思考过程</span>
-                        <button id="clear-thinking-btn"
-                            class="text-xs text-gray-500 hover:text-indigo-600 transition-colors">清空历史</button>
+                        <div class="flex items-center">
+                            <span class="text-xs font-semibold text-indigo-700">🤔 AI思考过程</span>
+                            <button
+                                class="maximize-btn text-gray-400 hover:text-indigo-600 ml-2 p-1.5 rounded hover:bg-indigo-50"
+                                title="最大化/还原">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <!-- Old toggle button removed from here -->
+                            <button id="clear-thinking-btn"
+                                class="text-xs text-gray-500 hover:text-indigo-600 transition-colors">清空历史</button>
+                        </div>
                     </div>
-                    <div class="relative">
+                    <div class="relative flex-1 min-h-0 flex flex-col">
                         <div id="thinking-output" class="custom-scrollbar h-80 overflow-y-auto space-y-2 pb-6">
                             <div class="text-gray-400 text-center py-8 text-xs">AI 思考过程将在这里显示...</div>
                         </div>
@@ -561,13 +674,25 @@
                 <!-- 结果展示区 - 紧凑并列布局 -->
                 <section class="space-y-3">
                     <!-- 求解结果 -->
-                    <div class="bg-white border-2 border-green-200 rounded-lg p-3 shadow-sm">
+                    <div class="result-section bg-white border-2 border-green-200 rounded-lg p-3 shadow-sm">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-xs font-semibold text-green-700">✅ 结果</span>
+                            <button
+                                class="maximize-btn text-gray-400 hover:text-green-600 ml-1 p-1.5 rounded hover:bg-green-50"
+                                title="最大化/还原">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                </svg>
+                            </button>
                         </div>
-                        <div class="relative">
+                        <div class="relative flex-1 min-h-0 flex flex-col">
+                            <!-- Background Layer -->
+                            <div class="absolute inset-0 bg-green-50 rounded z-0"></div>
+                            <!-- Content Layer -->
                             <div id="result-output"
-                                class="output-box custom-scrollbar max-h-56 overflow-y-auto text-gray-700 p-3 bg-green-50 rounded text-xs leading-relaxed pb-8">
+                                class="output-box relative z-10 custom-scrollbar max-h-56 overflow-y-auto text-gray-700 p-3 rounded text-xs leading-relaxed pb-8 text-left">
                                 <div class="text-gray-400 text-center py-8">等待输入表达式...</div>
                             </div>
                             <!-- 顶部渐隐遮罩 -->
@@ -584,13 +709,24 @@
                     <!-- 命令和错误并列 -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         <!-- 命令 -->
-                        <div class="bg-white border-2 border-blue-200 rounded-lg p-3 shadow-sm">
+                        <div class="command-section bg-white border-2 border-blue-200 rounded-lg p-3 shadow-sm">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-xs font-semibold text-blue-700">📋 命令解释</span>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-blue-600 ml-1 p-1.5 rounded hover:bg-blue-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
                             </div>
-                            <div class="relative">
+                            <div class="relative flex-1 min-h-0 flex flex-col">
+                                <!-- Background Layer -->
+                                <div class="absolute inset-0 bg-blue-50 rounded z-0"></div>
                                 <div id="command-output"
-                                    class="output-box custom-scrollbar max-h-40 overflow-y-auto text-gray-700 p-3 bg-blue-50 rounded text-xs leading-relaxed">
+                                    class="output-box relative z-10 custom-scrollbar max-h-40 overflow-y-auto text-gray-700 p-3 rounded text-xs leading-relaxed text-left">
                                     <div class="text-gray-400 text-center py-8">执行的命令将在这里显示...</div>
                                 </div>
                                 <!-- 顶部渐隐遮罩 -->
@@ -605,13 +741,24 @@
                         </div>
 
                         <!-- 错误 -->
-                        <div class="bg-white border-2 border-red-200 rounded-lg p-3 shadow-sm">
+                        <div class="error-section bg-white border-2 border-red-200 rounded-lg p-3 shadow-sm">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-xs font-semibold text-red-700">❌ 错误</span>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-red-600 ml-1 p-1.5 rounded hover:bg-red-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
                             </div>
-                            <div class="relative">
+                            <div class="relative flex-1 min-h-0 flex flex-col">
+                                <!-- Background Layer -->
+                                <div class="absolute inset-0 bg-red-50 rounded z-0"></div>
                                 <div id="error-output"
-                                    class="output-box custom-scrollbar max-h-40 overflow-y-auto text-red-600 p-3 bg-red-50 rounded text-xs leading-relaxed">
+                                    class="output-box relative z-10 custom-scrollbar max-h-40 overflow-y-auto text-red-600 p-3 rounded text-xs leading-relaxed text-left">
                                     <div class="text-gray-400 text-center py-8">错误信息将在这里显示...</div>
                                 </div>
                                 <!-- 顶部渐隐遮罩 -->

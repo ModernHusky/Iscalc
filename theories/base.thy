@@ -648,3 +648,7 @@ axiom (INT x:[0, oo]. exp((-y + b * i) * x)) = -1 / (-y + b * i) for y > 0, isRe
 axiom (INT x:[0, oo]. exp((-y - b * i) * x)) = -1 / (-y - b * i) for y > 0, isReal(b)
 
 axiom (INT x. x / (x ^ 2 + 1)) = 1/2 * log(x ^ 2 + 1) + SKOLEM_CONST(C) for x > 0   
+
+// gauss integral
+
+axiom (INT u:[0,oo]. exp(-(u ^ 2))) = sqrt(pi)/2

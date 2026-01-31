@@ -76,8 +76,12 @@ const commandOutput = document.getElementById('command-output');
 const errorOutput = document.getElementById('error-output');
 const stdCommandList = document.getElementById('std-command-list');
 const clearThinkingBtn = document.getElementById('clear-thinking-btn');
+// const toggleMaximizeBtn = document.getElementById('toggle-maximize-btn'); // Removed specific ID
+const thinkingSection = document.getElementById('thinking-section');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
+const maximizeBackdrop = document.getElementById('maximize-backdrop');
+let currentMaximizedSection = null;
 
 // 历史记录管理
 let solveHistory = [];
@@ -108,7 +112,6 @@ function saveHistory() {
     }
 }
 
-// 创建历史记录项 DOM
 function createHistoryItemDOM(item) {
     const div = document.createElement('div');
     div.className = 'history-item';
@@ -119,6 +122,7 @@ function createHistoryItemDOM(item) {
         <div class="history-item-expr" title="${item.expression}">${item.expression}</div>
         ${item.conditions ? `<div class="history-item-cond" title="${item.conditions}">条件: ${item.conditions}</div>` : ''}
         <div class="history-item-time">${item.timestamp}</div>
+        <button class="history-delete-btn" title="删除">🗑️</button>
     `;
 
     div.addEventListener('click', () => {
@@ -127,7 +131,56 @@ function createHistoryItemDOM(item) {
         expressionInput.focus();
     });
 
+    const deleteBtn = div.querySelector('.history-delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteHistoryItem(item);
+        });
+    }
+
     return div;
+}
+
+// 删除历史记录项
+function deleteHistoryItem(itemToDelete) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+
+    // Update data model
+    const index = solveHistory.findIndex(h =>
+        h.expression === itemToDelete.expression &&
+        h.conditions === itemToDelete.conditions &&
+        h.timestamp === itemToDelete.timestamp
+    );
+
+    if (index !== -1) {
+        solveHistory.splice(index, 1);
+        saveHistory();
+
+        // Update DOM
+        const key = `${itemToDelete.expression}||${itemToDelete.conditions || ''}`;
+
+        const items = historyList.querySelectorAll('.history-item');
+        let el = null;
+        items.forEach(item => {
+            if (item.dataset.key === key) el = item;
+        });
+
+        if (el) {
+            // Animation for removal
+            el.style.transform = 'translateX(100px)';
+            el.style.opacity = '0';
+            setTimeout(() => {
+                if (solveHistory.length === 0) {
+                    renderHistory(); // Show empty message
+                } else {
+                    el.remove();
+                }
+            }, 300);
+        } else {
+            renderHistory(); // Fallback
+        }
+    }
 }
 
 // 添加历史记录 (带动画)
@@ -248,6 +301,44 @@ function addHistory(expression, conditions) {
             el.addEventListener('transitionend', onEnd);
         });
     });
+
+    /**
+     * Setup maximize functionality with FLIP animation
+     * @param {HTMLElement} btn - The toggle button
+     * @param {HTMLElement} section - The section to maximize
+     */
+    function setupMaximize(btn, section) {
+        btn.addEventListener('click', () => {
+            // 1. First: Record start state
+            const firstRect = section.getBoundingClientRect();
+            const isMaximized = section.classList.contains('maximized');
+
+            // 2. Last: Apply class to change layout
+            section.classList.toggle('maximized');
+
+            // 3. Invert: Measure new position and calculate delta
+            const lastRect = section.getBoundingClientRect();
+            const deltaX = firstRect.left - lastRect.left;
+            const deltaY = firstRect.top - lastRect.top;
+            const deltaW = firstRect.width / lastRect.width;
+            const deltaH = firstRect.height / lastRect.height;
+
+            // Apply transform to make it look like it's still at the start position
+            section.style.transformOrigin = 'top left';
+            section.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${deltaW}, ${deltaH})`;
+            section.style.transition = 'none'; // Disable transition for instant setup
+
+            // Trigger reflow
+            section.offsetHeight;
+
+            // 4. Play: Enable transition and remove transform to animate to end state
+            section.style.transition = ''; // Restore CSS transition
+            section.style.transform = '';
+
+            // Update button icon
+            btn.textContent = isMaximized ? '⤢' : '⤡';
+        });
+    }
 }
 
 // 渲染历史记录
@@ -276,6 +367,200 @@ clearHistoryBtn.addEventListener('click', () => {
         renderHistory();
     }
 });
+
+
+// SVG Icons
+const ICON_MAXIMIZE = `
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+</svg>`;
+
+const ICON_RESTORE = `
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
+</svg>`;
+
+// Initialize generic maximize buttons
+document.querySelectorAll('.maximize-btn').forEach(btn => {
+    // Find target section: parent with class ending in '-section'
+    const section = btn.closest('.thinking-section, .std-command-section, .result-section, .command-section, .error-section');
+    if (section) {
+        setupMaximize(btn, section);
+    }
+});
+
+/**
+ * Setup maximize functionality with Portal Strategy and Layout Animation (No Distortion)
+ * Moves the section to body when maximized and animates width/height/top/left
+ * @param {HTMLElement} btn - The toggle button
+ * @param {HTMLElement} section - The section to maximize
+ */
+function setupMaximize(btn, section) {
+    // Store placeholder reference on the section to retrieve it later
+    section._placeholder = null;
+
+    btn.addEventListener('click', () => {
+        const isMaximized = section.classList.contains('maximized');
+
+        if (!isMaximized) {
+            // === MAXIMIZE ACTION ===
+
+            // 1. Record start state (block layout)
+            const firstRect = section.getBoundingClientRect();
+
+            // 2. Create Placeholder
+            const placeholder = document.createElement('div');
+            placeholder.style.width = firstRect.width + 'px';
+            placeholder.style.height = firstRect.height + 'px';
+            placeholder.style.flexGrow = window.getComputedStyle(section).flexGrow;
+            placeholder.style.flexShrink = window.getComputedStyle(section).flexShrink;
+            placeholder.className = section.className.replace('maximized', '');
+            placeholder.style.visibility = 'hidden';
+            placeholder.id = 'placeholder-' + Math.random().toString(36).substr(2, 9);
+
+            // 3. Portal Move
+            section.parentNode.insertBefore(placeholder, section);
+            section._placeholder = placeholder;
+            document.body.appendChild(section);
+
+            // 4. Set Start State (Fixed at original position)
+            section.classList.add('maximized'); // Add class for base styles (e.g. z-index if needed, though we set manually)
+            section.style.position = 'fixed';
+            section.style.top = firstRect.top + 'px';
+            section.style.left = firstRect.left + 'px';
+            section.style.width = firstRect.width + 'px';
+            section.style.height = firstRect.height + 'px';
+            section.style.margin = '0';
+            section.style.zIndex = '1000';
+            section.style.transform = '';
+            section.style.transition = 'none'; // Instant placement
+
+            // Lock Content Width to prevent reflow
+            // Only lock for .output-box (Result/Command/Error) to prevent text reflow.
+            // Thinking Section (#thinking-output) is Intentionally Excluded so it expands to full width.
+            const content = section.querySelector('.output-box');
+            if (content) {
+                // Lock to current offsetWidth to maintain text wrap state
+                content.style.width = content.offsetWidth + 'px';
+                // Also ensure flex-grow doesn't stretch it immediately if we change container
+                content.style.flex = 'none';
+                // Align to Top-Left (User Request)
+                content.style.margin = '0';
+            }
+
+            // Force Reflow
+            section.offsetHeight;
+
+            // 5. Animate to End State (Fullscreen-ish)
+            // Use Layout Animation instead of Transform to avoid text distortion
+            section.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            section.style.top = '20px';
+            section.style.left = '20px';
+            section.style.width = 'calc(100vw - 40px)';
+            section.style.height = 'calc(100vh - 40px)';
+
+            // Update UI
+            btn.innerHTML = ICON_RESTORE;
+            maximizeBackdrop.classList.remove('pointer-events-none', 'opacity-0');
+            maximizeBackdrop.classList.add('pointer-events-auto', 'opacity-100');
+            currentMaximizedSection = { btn, section };
+            toggleScrollLock(true);
+
+        } else {
+            // === RESTORE ACTION ===
+
+            const placeholder = section._placeholder;
+            if (!placeholder) return;
+
+            // 1. Get current Fixed state
+            const rect = section.getBoundingClientRect();
+            // 2. Get target state (Placeholder)
+            const targetRect = placeholder.getBoundingClientRect();
+
+            // 3. Set Start positions explicitly (to ensure transition starts from current)
+            section.style.top = rect.top + 'px';
+            section.style.left = rect.left + 'px';
+            section.style.width = rect.width + 'px';
+            section.style.height = rect.height + 'px';
+            // Ensure transition is active
+            section.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+
+            section.offsetHeight; // Force reflow
+
+            // 4. Animate to Target
+            section.style.top = targetRect.top + 'px';
+            section.style.left = targetRect.left + 'px';
+            section.style.width = targetRect.width + 'px';
+            section.style.height = targetRect.height + 'px';
+
+            // UI Updates
+            btn.innerHTML = ICON_MAXIMIZE;
+            maximizeBackdrop.classList.add('pointer-events-none', 'opacity-0');
+            maximizeBackdrop.classList.remove('pointer-events-auto', 'opacity-100');
+            currentMaximizedSection = null;
+            toggleScrollLock(false);
+
+            // 5. Cleanup logic
+            const onTransitionEnd = () => {
+                if (section.style.width !== targetRect.width + 'px') {
+                    // Safety check: ensure we don't trigger if interrupted (though unlikely with this logic)
+                }
+
+                section.classList.remove('maximized');
+                section.style.cssText = ''; // Clear all inline styles
+
+                // Unlock Content Width
+                const content = section.querySelector('.output-box');
+                if (content) {
+                    content.style.width = '';
+                    content.style.flex = '';
+                    content.style.margin = '';
+                }
+
+                // Portal Back
+                if (placeholder.parentNode) {
+                    placeholder.parentNode.insertBefore(section, placeholder);
+                    placeholder.remove();
+                }
+                section._placeholder = null;
+
+                // Clean up listener
+                section.removeEventListener('transitionend', onTransitionEnd);
+            };
+            section.addEventListener('transitionend', onTransitionEnd); // Only trigger once
+        }
+    }); // End click listener
+}
+
+/**
+ * Toggle scroll lock on body to prevent background scrolling when modal/maximized view is active
+ * Handles scrollbar width compensation to prevent layout shift
+ * @param {boolean} enable - true to lock, false to unlock
+ */
+function toggleScrollLock(enable) {
+    const body = document.body;
+    if (enable) {
+        // Calculate scrollbar width
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        // Add padding to prevent layout shift
+        body.style.paddingRight = `${scrollbarWidth}px`;
+        body.style.overflow = 'hidden';
+    } else {
+        body.style.paddingRight = '';
+        body.style.overflow = '';
+    }
+}
+
+// Backdrop click to minimize
+if (maximizeBackdrop) {
+    maximizeBackdrop.addEventListener('click', () => {
+        if (currentMaximizedSection) {
+            // Simulate click on the toggle button of the currently maximized section
+            currentMaximizedSection.btn.click();
+        }
+    });
+}
+
 
 // 页面加载时加载历史记录
 loadHistory();
