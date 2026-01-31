@@ -361,40 +361,17 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
                 return Limit(POS_INF,asymp=b.asymp)
         return Limit(None)
     elif a.e == POS_INF and b.e == POS_INF:
+        # oo + oo is indeterminate without knowing the order
+        # Only allow if we can determine the dominant term
         return Limit(POS_INF, asymp=asymp_add(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF and b.e == NEG_INF:
-        cmp = asymp_compare(a.asymp, b.asymp, ctx)
-        if cmp == UNKNOWN:
-            return Limit(None)
-        elif cmp == LESS:
-            return Limit(NEG_INF, asymp=b.asymp)
-        elif cmp == GREATER:
-            return Limit(POS_INF, asymp=a.asymp)
-        else:  # EQUAL case: oo - oo with same order, check coefficients
-            # a is +oo with coeff_a, b is -oo with coeff_b
-            # Result is (coeff_a - coeff_b) * (asymptotic order)
-            coeff_a = a.asymp.get_coeff() if hasattr(a.asymp, 'get_coeff') else Const(1)
-            coeff_b = b.asymp.get_coeff() if hasattr(b.asymp, 'get_coeff') else Const(1)
-            coeff_diff = normalize(coeff_a - coeff_b, ctx)
-            if coeff_diff == Const(0):
-                return Limit(Const(0), side=AT_CONST)
-            elif ctx.is_positive(coeff_diff):
-                # Result is positive infinity
-                if isinstance(a.asymp, PolyLog):
-                    return Limit(POS_INF, asymp=PolyLog(*a.asymp.order, coeff=coeff_diff))
-                else:
-                    return Limit(POS_INF, asymp=a.asymp)
-            elif ctx.is_negative(coeff_diff):
-                # Result is negative infinity
-                if isinstance(b.asymp, PolyLog):
-                    return Limit(NEG_INF, asymp=PolyLog(*b.asymp.order, coeff=normalize(-(coeff_diff), ctx)))
-                else:
-                    return Limit(NEG_INF, asymp=b.asymp)
-            else:
-                return Limit(None)
+        # oo - oo is always indeterminate form
+        return Limit(None)
     elif a.e == NEG_INF and b.e == POS_INF:
-        return limit_add(b, a, ctx)
+        # -oo + oo is always indeterminate form
+        return Limit(None)
     elif a.e == NEG_INF and b.e == NEG_INF:
+        # -oo + (-oo) = -oo
         return Limit(NEG_INF, asymp=asymp_add(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF:
         return Limit(POS_INF, asymp=a.asymp)
@@ -850,51 +827,20 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
             return Limit(expr.Integral(e.var, lower.e, upper.e, body.e))
     elif expr.is_evalat(e):
         # EvalAt: [F(x)]_x=a,b = F(b) - F(a)
-        # We need to compute limit of F(b) - F(a) as var_name -> oo
-        lower_lim = limit_of_expr(e.lower, var_name, ctx)
-        upper_lim = limit_of_expr(e.upper, var_name, ctx)
-        
-        if lower_lim.e is None or upper_lim.e is None:
-            return Limit(None)
-        
-        # Evaluate F at the limits
-        # F(upper_lim) - but upper_lim might be infinity
-        if expr.is_inf(upper_lim.e):
-            # Need to compute limit of F(x) as x -> upper_lim.e
-            # We use limit_of_expr on F(x), but need to handle direction
-            if upper_lim.e == POS_INF:
-                upper_val = limit_of_expr(e.body, e.var, ctx)
-            else:
-                # NEG_INF case - not commonly handled
-                upper_val = Limit(None)
+        # If upper or lower contains the limit variable, expand first
+        if e.upper.contains_var(var_name) or e.lower.contains_var(var_name):
+            # Expand: [F(x)]_x=a,b = F(b) - F(a)
+            f_at_upper = e.body.subst(e.var, e.upper)
+            f_at_lower = e.body.subst(e.var, e.lower)
+            expanded = f_at_upper - f_at_lower
+            # Recursively compute limit of the expanded expression
+            return limit_of_expr(expanded, var_name, ctx)
         else:
-            # Substitute the limit value into the body
-            upper_body = e.body.subst(e.var, upper_lim.e)
-            upper_val = limit_of_expr(upper_body, var_name, ctx)
-            if upper_val.e is None:
-                # Try to normalize directly
-                upper_val = Limit(normalize(upper_body, ctx), side=AT_CONST)
-        
-        if upper_val.e is None:
-            return Limit(None)
-        
-        # F(lower_lim)
-        if expr.is_inf(lower_lim.e):
-            if lower_lim.e == POS_INF:
-                lower_val = limit_of_expr(e.body, e.var, ctx)
-            else:
-                lower_val = Limit(None)
-        else:
-            lower_body = e.body.subst(e.var, lower_lim.e)
-            lower_val = limit_of_expr(lower_body, var_name, ctx)
-            if lower_val.e is None:
-                lower_val = Limit(normalize(lower_body, ctx), side=AT_CONST)
-        
-        if lower_val.e is None:
-            return Limit(None)
-        
-        # Return F(upper) - F(lower)
-        return limit_add(upper_val, limit_uminus(lower_val, ctx), ctx)
+            # EvalAt doesn't contain the limit variable, it's a constant
+            f_at_upper = e.body.subst(e.var, e.upper)
+            f_at_lower = e.body.subst(e.var, e.lower)
+            result = normalize(f_at_upper - f_at_lower, ctx)
+            return Limit(result, side=AT_CONST)
     else:
         # TODO: add support for other functions
         return Limit(None)

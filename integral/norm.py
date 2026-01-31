@@ -450,9 +450,75 @@ def normalize_definite_integral(e: Expr, ctx: Context):
     return rec(e)
 
 def eq_definite_integral(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Check if two definite integrals are equivalent.
+    
+    This function handles:
+    1. Direct equality
+    2. Interval reversal: INT x:[a,b]. f(x) = -INT x:[b,a]. f(x)
+    3. Negation: INT x:[a,b]. -f(x) = -INT x:[a,b]. f(x)
+    4. Combined: INT x:[a,b]. -f(x) = INT x:[b,a]. f(x)
+    5. Substitution u = -x: INT x:[-a,0]. f(x^2) = INT x:[0,a]. f(x^2)
+    """
     n1 = normalize_definite_integral(t1, ctx)
     n2 = normalize_definite_integral(t2, ctx)
-    return equal_normal_definite_integral(n1, n2)
+    
+    # Direct equality
+    if equal_normal_definite_integral(n1, n2):
+        return True
+    
+    # Check if both are integrals (not constants)
+    if not (expr.is_integral(t1) and expr.is_integral(t2)):
+        return False
+    
+    # Extract components
+    var1, lower1, upper1, body1 = t1.var, t1.lower, t1.upper, t1.body
+    var2, lower2, upper2, body2 = t2.var, t2.lower, t2.upper, t2.body
+    
+    # Normalize bodies and bounds for comparison
+    from integral import poly
+    body1_norm = poly.normalize(body1, ctx)
+    body2_norm = poly.normalize(body2, ctx)
+    lower1_norm = poly.normalize(lower1, ctx)
+    upper1_norm = poly.normalize(upper1, ctx)
+    lower2_norm = poly.normalize(lower2, ctx)
+    upper2_norm = poly.normalize(upper2, ctx)
+    
+    # Case 1: Interval reversal with negation
+    # INT x:[a,b]. f(x) = -INT x:[b,a]. f(x)
+    # So INT x:[a,b]. -f(x) = INT x:[b,a]. f(x)
+    if (lower1_norm == upper2_norm and upper1_norm == lower2_norm):
+        # Intervals are reversed, check if bodies have opposite signs
+        # body1 should equal -body2 (after variable renaming)
+        body2_renamed = body2_norm.subst(var2, expr.Var(var1))
+        if poly.normalize(body1_norm + body2_renamed, ctx) == Const(0):
+            return True
+    
+    # Case 2: Substitution u = -x for even functions
+    # INT x:[-a,0]. f(x^2) = INT x:[0,a]. f(x^2)
+    # Check if lower1 = -upper2 and upper1 = 0 (or vice versa)
+    if poly.normalize(lower1_norm + upper2_norm, ctx) == Const(0) and upper1_norm == Const(0):
+        # lower1 = -upper2, upper1 = 0
+        # Check if lower2 = 0
+        if lower2_norm == Const(0):
+            # Check if body is even in the variable (only depends on x^2)
+            # Try substituting x -> -x in body1 and see if it equals body1
+            body1_neg_x = body1_norm.subst(var1, -expr.Var(var1))
+            if poly.normalize(body1_neg_x, ctx) == body1_norm:
+                # body1 is even, check if body2 is the same
+                body2_renamed = body2_norm.subst(var2, expr.Var(var1))
+                if poly.normalize(body1_norm - body2_renamed, ctx) == Const(0):
+                    return True
+    
+    # Symmetric case: lower2 = -upper1, upper2 = 0, lower1 = 0
+    if poly.normalize(lower2_norm + upper1_norm, ctx) == Const(0) and upper2_norm == Const(0):
+        if lower1_norm == Const(0):
+            body2_neg_x = body2_norm.subst(var2, -expr.Var(var2))
+            if poly.normalize(body2_neg_x, ctx) == body2_norm:
+                body1_renamed = body1_norm.subst(var1, expr.Var(var2))
+                if poly.normalize(body2_norm - body1_renamed, ctx) == Const(0):
+                    return True
+    
+    return False
 
 def is_odd(e, var, conds) -> bool:
     from integral import poly
