@@ -62,3 +62,15 @@ match_rules:
 - 三角函数: 令 u = sin(x) -> `substitute sin(x) for u`
 - 指数函数: 令 u = exp(x) -> `substitute exp(x) for u`
 - 对数函数: 令 u = log(x) -> `substitute log(x) for u`
+
+## 相关技能
+
+> 💡 `<|load_skill|>substitute<|end_load_skill|>` — 换元积分详细语法和示例
+
+> 💡 `<|load_skill|>integrate-by-parts<|end_load_skill|>` — 分部积分详细语法
+
+> 💡 `<|load_skill|>improper-integral<|end_load_skill|>` — 广义积分转极限
+
+> 💡 `<|load_skill|>rewrite<|end_load_skill|>` — 代数变换技巧
+
+> 💡 `<|load_skill|>partial-fraction<|end_load_skill|>` — 部分分式分解策略

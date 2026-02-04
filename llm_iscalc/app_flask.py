@@ -101,7 +101,6 @@ def solve_expression():
                 'errors': state['errors'],
                 'thinking': state['thinking']
             }
-            # 2026-02-01 架构重构：添加命令执行状态事件
             if 'command_success' in state:
                 data['command_success'] = state['command_success']
                 del state['command_success']  # 发送后清除，避免重复发送
@@ -179,8 +178,18 @@ def solve_expression():
                         
                         # ============ 流式 thinking 解析优化 ============
                         # 策略1：尝试从 "thinking": " 之后提取所有内容（包括不完整的）
+                        # 关键改进：同时保留 JSON 之前的原始文本（如技能加载前的思考）
                         thinking_start = clean_content.find('"thinking"')
+                        prefix_text = ""  # JSON 之前的原始文本
                         if thinking_start != -1:
+                            # 提取 JSON 之前的文本作为前缀
+                            # 这包括技能加载前的思考和技能加载确认标记
+                            json_start = clean_content.rfind('{', 0, thinking_start)
+                            if json_start > 0:
+                                prefix_text = clean_content[:json_start].strip()
+                                # 注意：保留技能加载确认标记在 thinking 区显示
+                                # 过滤已在 llm_engine.py 的 parse_response 中处理（针对命令解析）
+                            
                             # 找到 thinking 字段的值开始位置
                             colon_pos = clean_content.find(':', thinking_start)
                             if colon_pos != -1:
@@ -207,12 +216,20 @@ def solve_expression():
                                     thinking_raw = clean_content[value_start:value_end]
                                     # 处理转义序列
                                     thinking_value = thinking_raw.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
-                                    state['thinking']['thinking'] = thinking_value
+                                    
+                                    # 🔧 关键修复：合并前缀文本和 JSON thinking 字段
+                                    if prefix_text:
+                                        state['thinking']['thinking'] = prefix_text + "\n\n" + thinking_value
+                                    else:
+                                        state['thinking']['thinking'] = thinking_value
                         
                         # 策略2：正则解析其他字段
                         command_match = re.search(r'"command"\s*:\s*"([^"]*)(?:"|$)', clean_content)
                         if command_match:
-                            state['thinking']['command'] = command_match.group(1)
+                            cmd_value = command_match.group(1)
+                            # 过滤技能加载标记和 read_skill 命令（这些不应显示在"命令"字段）
+                            if not cmd_value.startswith('<|load_skill|>') and not cmd_value.startswith('read_skill'):
+                                state['thinking']['command'] = cmd_value
                             
                         explanation_match = re.search(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)', clean_content, re.DOTALL)
                         if explanation_match:
@@ -228,8 +245,22 @@ def solve_expression():
                         if not state['thinking']['thinking']:
                             # 检查是否看起来像有效的JSON（以{开头并包含"thinking"字段）
                             is_valid_json_structure = clean_content.strip().startswith('{') and '"thinking"' in clean_content
-                            if not is_valid_json_structure and not clean_content.startswith('[DEBUG'):
-                                # 不是有效JSON结构，直接显示原始内容
+                            
+                            # 🔧 过滤不完整的 JSON 碎片
+                            # 这些碎片通常是 Beta API 续写返回的极少量内容，如 "对于\n{" 
+                            is_incomplete_json_fragment = False
+                            stripped = clean_content.strip()
+                            # 如果内容很短且以 { 结尾或只包含 {，可能是不完整的 JSON
+                            if len(stripped) < 50:
+                                # 检查是否只是几个字符后跟 {
+                                if stripped.endswith('{') or stripped == '{':
+                                    is_incomplete_json_fragment = True
+                                # 检查是否只有技能加载确认 + 极少量文字
+                                elif re.search(r'\[✓\s*已加载(?:技能)?:\s*[^\]]+\]\s*.{0,20}$', stripped):
+                                    is_incomplete_json_fragment = True
+                            
+                            if not is_valid_json_structure and not clean_content.startswith('[DEBUG') and not is_incomplete_json_fragment:
+                                # 不是有效JSON结构，也不是碎片，直接显示原始内容
                                 state['thinking']['thinking'] = clean_content
 
                     except Exception:
@@ -310,10 +341,9 @@ def solve_expression():
                         state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
 
                 elif event.type == EventType.SKILL_LOAD:
-                    # Search-o1 风格：技能加载事件
-                    skill_name = event.metadata.get("skill_name", "unknown")
-                    trigger = event.metadata.get("trigger", "marker")
-                    state['commands'] += f"[技能加载] {skill_name} ({trigger})\n"
+                    # 技能加载信息不再写入 commands 字段，仅通过前端右上角通知展示
+                    # 保留事件处理以便日后扩展（如记录日志或发送专门的 skill_load 字段）
+                    pass
 
                 elif event.type == EventType.COMMAND_SUCCESS:
                     # 2026-02-01 架构重构：命令执行成功事件

@@ -29,27 +29,28 @@ class LLMConfig:
 @dataclass
 class SolverConfig:
     """求解器配置"""
-    max_iterations: int = 50
-    max_consecutive_errors: int = 3
-    timeout_seconds: float = 300.0
-    loop_detection_window: int = 5
-    use_tool_calling: bool = False  # 改为 False 以启用流式输出（Search-o1 风格标记检测仍然有效）
+    max_iterations: int = 50    # 最大迭代次数
+    max_consecutive_errors: int = 3    # 最大连续错误次数
+    timeout_seconds: float = 300.0    # 超时时间（秒）
+    loop_detection_window: int = 5    # 循环检测窗口大小
+    use_tool_calling: bool = False  # Search-o1 风格：流式生成 + 动态技能加载
+    auto_load_mentioned_skills: bool = False  # 默认关闭：只在显式 <|load_skill|> / read_skill 时加载
 
 
 @dataclass
 class IscalcConfig:
     """Iscalc配置"""
-    base_theory: str = "standard"
+    base_theory: str = "base"
     default_conditions: list = field(default_factory=list)
 
 
 @dataclass
 class Config:
     """系统总配置"""
-    llm: LLMConfig = field(default_factory=LLMConfig)
-    solver: SolverConfig = field(default_factory=SolverConfig)
-    iscalc: IscalcConfig = field(default_factory=IscalcConfig)
-    debug: bool = False
+    llm: LLMConfig = field(default_factory=LLMConfig)  # LLM 引擎配置（API、模型等）
+    solver: SolverConfig = field(default_factory=SolverConfig)  # 求解器配置（迭代、超时等）
+    iscalc: IscalcConfig = field(default_factory=IscalcConfig)  # IsCalc 系统配置（理论文件等）
+    debug: bool = False  # 调试模式开关
 
 
 default_config = Config()
@@ -65,12 +66,15 @@ def create_config(
     """创建配置实例"""
     config = Config(debug=debug)
     
+    # 更新 LLM 配置
     if api_key:
         config.llm.api_key = api_key
     if api_base:
         config.llm.api_base = api_base
     if model:
         config.llm.model = model
+    
+    # 更新求解器配置
     if max_iterations:
         config.solver.max_iterations = max_iterations
     

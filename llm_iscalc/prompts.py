@@ -11,15 +11,7 @@ from typing import List, Dict, Any, Optional
 SKILL_LOAD_BEGIN = "<|load_skill|>"
 SKILL_LOAD_END = "<|end_load_skill|>"
 
-from .skills import (
-    get_all_skill_metadata,
-    get_relevant_skills,
-    get_skill_details,
-    get_state_skills,
-    get_skills_xml,
-    get_skills_categorized_xml,
-    COMMAND_SKILLS,
-)
+from .skills import get_skills_categorized_xml
 
 
 # ============ 基础提示词（始终加载） ============
@@ -65,47 +57,22 @@ BASE_PROMPT = """
 ### 求值
 - 代入求值: [f(x)]_x=a,b  表示 f(b) - f(a)
 
-## ⚠️ 输出格式（必须严格遵守）
+## 输出格式
 
-**你必须以JSON格式输出**，不能输出纯文本解释或自然语言描述！
-
-### 必需格式
-
-```json
+你必须以JSON格式输出，包含以下字段:
 {
-    "thinking": "你的分析和推理过程。必须明确说明使用了哪个技能文件中的命令或策略（例如：'参考 skills/commands/substitute/SKILL.md'）。这有助于用户进行调试。",
-    "command": "要执行的Iscalc命令",
+    "thinking": "你的分析和推理过程。必须明确说明使用了哪个技能文件中的命令或策略（例如：'参考 skills/states/prove/SKILL.md' 或 '使用 rewrite-goal-proof 技能'）。这有助于用户进行调试。",
+    "command": "要执行的Iscalc命令，必须严格遵守skills中的命令书写格式",
     "explanation": "这个命令会做什么",
     "is_final": false
 }
-```
 
-### 示例对比
-
-❌ **错误** - 输出纯文本解释：
-```
-我们可以使用换元法，令 u = sqrt(a) * x，将被积函数转换为...
-```
-
-✅ **正确** - JSON格式：
-```json
-{
-    "thinking": "参考 skills/commands/substitute/SKILL.md，使用缩放换元将 exp(-(a*x^2)) 转换为标准形式",
-    "command": "substitute u for sqrt(a) * x",
-    "explanation": "将积分转换为标准高斯积分形式",
-    "is_final": false
-}
-```
-
-### 特殊情况
-
-当你认为表达式已经是最简形式时，设置 `is_final` 为 `true`，此时 `command` 可以为空字符串。
+当你认为表达式已经是最简形式时，设置 is_final 为 true，此时 command 可以为空字符串。
 """
 
 
 # ============ 策略指南（已迁移至 Skills） ============
 
-# ERROR_RECOVERY_GUIDE 保留在 Python 代码中，因为它不是基于表达式的技能，而是通用错误处理
 ERROR_RECOVERY_GUIDE = """
 ## 错误恢复策略
 如果命令执行失败:
@@ -119,110 +86,54 @@ ERROR_RECOVERY_GUIDE = """
 # ============ 技能选择策略指南 ============
 
 SKILL_SELECTION_GUIDE = """
-## 📚 三层技能系统
+## 🧠 技能系统（单轮次边思考边加载模式）
 
-系统采用按需加载的三层技能架构：
+**核心机制**：你可以在**同一个思考过程中**加载技能并继续推理，无需等待下一轮。
 
-**第一层：技能目录**（启动时已加载）
-- 你已知道所有可用技能的名称和简要描述
-- 每个技能约 20-50 tokens
+### 工作流程（单轮次完成）
 
-**第二层：核心指令**（按需加载）
-- 完整的 SKILL.md 文件内容
-- 包含详细使用说明、参数格式、示例
+1. **分析问题**：识别当前表达式的类型和需要的操作
+2. **加载技能**：输出 `<|load_skill|>技能名<|end_load_skill|>` 
+3. **立即参考**：技能加载后**立即**查阅技能内容继续思考
+4. **输出命令**：根据技能文档给出 JSON 格式命令
 
-**第三层：扩展资源**（按需加载）
-- references/ 目录下的参考文档
-- scripts/ 目录下的辅助脚本
+### ⭐ 关键示例（边思考边加载）
 
----
-
-## � 加载技能的三种方法
-
-### 方法 1：特殊标记（核心机制，强烈推荐）
-
-这是本系统最强大的功能：**边思考边查阅**。
-当你发现自己不确定某个命令的用法，或者需要查询特定的数学策略时，**不要瞎猜**，请立即暂停思考，插入加载标记：
-
-<|load_skill|>技能名<|end_load_skill|>
-
-系统会：
-1. ⏸️ **暂停**你的生成
-2. 📖 **读取**本地对应的 `SKILL.md`
-3. 💉 **注入**到你的上下文中
-4. ▶️ **唤醒**你继续基于新知识进行推理
-
-**示例**：
+**正确示范**：
 ```
-(思考中)...这个积分看起来像是有理函数，我不确定 iscalc 的 partial-fraction 命令具体格式是怎样的...
-<|load_skill|>partial-fraction<|end_load_skill|>
-(系统自动注入技能内容...)
-根据文档，partial-fraction 的正确用法是...
+分析当前表达式：这是一个广义积分 INT x:[0,oo]. 1/(1+exp(a*x))，包含无穷上限，
+我需要了解如何处理这类积分。让我查阅积分策略技能：
+
+<|load_skill|>strategy-integral<|end_load_skill|>
+[✓strategy-integral技能已加载]
+
+参考加载的技能文档，对于广义积分（improper integral），需要先将无穷替换为变量 t，
+然后取极限。技能文档中的命令是：`improper integral to limit creating t`
+
+{"thinking": "这是广义积分，需要先替换无穷为变量 t，再取极限", 
+ "command": "improper integral to limit creating t", 
+ "explanation": "将积分上限的无穷替换为变量 t，转化为极限形式", 
+ "is_final": false}
 ```
 
-**可用技能名**（支持模糊匹配，只需写核心词）：
+### 必须遵守的规则
 
+- ✅ **在同一思考过程中完成**：加载技能后立即参考并输出命令
+- ✅ **技能已加载标记后继续思考**：看到 `[✓xxx技能已加载]` 后，立即参考技能内容
+- ✅ **严格按技能文档格式**：命令格式必须与技能示例完全一致
+- ❌ **禁止中途停止**：加载技能后必须继续推理直到输出 JSON 命令
+- ❌ **禁止猜测命令**：不确定语法时必须先加载对应技能
 
-**可用技能名**：
-- 命令：rewrite, substitute, integrate-by-parts, simplify, partial-fraction, subst-both, split-region, apply-integral-identity
-- 策略：strategy-integral, strategy-limit, complex, merge-evalat
-- 状态：state-calculate, state-prove, state-induction
+### 常用技能对照
 
-### 方法 2：工具调用（精确控制）
-
-使用 Function Calling：
-
-```python
-read_skill("skills/commands/rewrite/SKILL.md")
-```
-
-适用于需要完整路径或查看扩展资源的场景。
-
-### 方法 3：自然提及（自动）
-
-直接在 thinking 中提到技能名：
-
-```
-我应该使用 rewrite 命令来变换表达式...
-```
-
-系统会自动检测并加载（可能有延迟）。
-
----
-
-## 💡 使用指南
-
-**何时加载技能**：
-- ✅ 首次使用某个命令
-- ✅ 不确定命令参数格式
-- ✅ 需要了解整体策略
-- ✅ 遇到复杂情况
-
-**无需加载**：
-- ❌ 简单的 simplify 命令
-- ❌ 已经使用过的命令
-- ❌ 明确知道用法的情况
-
-**技能选择参考**：
-
-| 表达式类型 | 加载技能 |
-|-----------|---------|
-| 定积分 INT x:[a,b]. f(x) | strategy-integral |
-| 极限 LIM {x->a}. f(x) | strategy-limit |
-| 三角函数变换 | rewrite |
-| 有理函数积分 | partial-fraction |
-| 分部积分 | integrate-by-parts |
-
----
-
-## ⚠️ 重要规则
-
-1. **输出格式**：**必须**以JSON格式输出，绝对不能输出纯文本解释！这是最常见的错误。
-2. **标记格式**：请在单独一行使用 `<|load_skill|>技能名<|end_load_skill|>`。不要在标签后添加反斜杠(\)或其他符号。
-3. **技能名称**：使用短名称（如 `rewrite`）或完整路径（如 `skills/commands/rewrite/SKILL.md`）
-4. **加载时机**：可以在思考过程中随时加载，加载后系统会暂停并继续你的生成（支持边思考边查资料）
-5. **避免重复**：同一技能在一次求解中只需加载一次
+| 问题类型 | 推荐技能 | 关键命令示例 |
+|---------|---------|-------------|
+| 广义积分 | `strategy-integral` | `improper integral to limit creating t` |
+| 分部积分 | `integrate-by-parts` | `integrate by parts, u = ..., v = ...` |
+| 换元积分 | `substitute` | `substitute u=..., u_range=...` |
+| 极限问题 | `strategy-limit` | `rewrite to limit at ...` |
 """
+
 
 
 
@@ -240,8 +151,7 @@ def build_dynamic_system_prompt(
     
     基于渐进式披露原则：
     - 第一层：基础提示词 + 所有命令摘要（始终加载）
-    - 第二层：相关命令详情 + 策略（通过match_rules正则自动加载）
-    - 第三层：状态相关技能（根据current_state加载）
+    - 第二层：相关命令详情 + 策略等（通过match_rules正则自动加载）
     
     Args:
         expression: 当前表达式
@@ -259,20 +169,19 @@ def build_dynamic_system_prompt(
     
     # 1. 第一层：按类别分组的技能列表 (XML格式)
     parts.append("## 可用技能库 (Available Skills)")
-    parts.append("以下是所有可用技能的分类清单。这是第一层信息：你只知道它们的名字和简要描述。")
-    parts.append("> **需要详细指令时**：使用 `read_skill()` 工具加载完整的 SKILL.md 文件。")
+    parts.append("以下是所有可用技能的分类清单。技能内容**默认不加载**，你只能看到名称和描述。")
+    parts.append("> **需要详细指令时**：输出 `<|load_skill|>技能名<|end_load_skill|>` 加载完整内容。")
     parts.append("")
     parts.append(get_skills_categorized_xml())
     
-    # 2. 当前状态提示（引导 LLM 使用工具加载状态相关技能）
-    state_skill_path = f"skills/states/{current_state.lower()}/SKILL.md"
+    # 2. 当前状态提示
     parts.append(f"""
 ## 当前求解状态
 
 当前状态: **{current_state}**
 
-> 建议: 如果你不熟悉 {current_state} 状态下的可用操作，可以使用工具加载:
-> `read_skill("{state_skill_path}")`
+> 建议: 如果你不熟悉 {current_state} 状态下的可用操作，请加载状态技能:
+> `<|load_skill|>state-{current_state.lower()}<|end_load_skill|>`
 """)
     
     # 错误恢复指南
@@ -283,8 +192,17 @@ def build_dynamic_system_prompt(
 
 # ============ 保留原有模板的兼容性 ============
 
-# 为了向后兼容，保留原有的SYSTEM_PROMPT（完整版）
-SYSTEM_PROMPT = build_dynamic_system_prompt("", include_all_commands=True)
+# 为了向后兼容，保留原有的 SYSTEM_PROMPT 访问方式，但避免在 import 阶段触发技能扫描。
+_SYSTEM_PROMPT_CACHE: Optional[str] = None
+
+def get_system_prompt() -> str:
+    global _SYSTEM_PROMPT_CACHE
+    if _SYSTEM_PROMPT_CACHE is None:
+        _SYSTEM_PROMPT_CACHE = build_dynamic_system_prompt("", include_all_commands=True)
+    return _SYSTEM_PROMPT_CACHE
+
+# 兼容旧代码：不要在 import 时构建完整提示词
+SYSTEM_PROMPT = ""  # Deprecated: use get_system_prompt()
 
 USER_MESSAGE_TEMPLATE = """
 当前状态: {current_state}

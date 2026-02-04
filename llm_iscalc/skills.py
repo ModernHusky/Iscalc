@@ -12,7 +12,7 @@ import os
 import re
 import yaml
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from pathlib import Path
 
 from .logger_config import get_phase_logger
@@ -75,8 +75,20 @@ class SkillLoader:
         """
         self.logger = get_phase_logger(__name__)
         self.skill_paths = self._determine_skill_paths(custom_skills_dir)
+
+        # Skill caches
         self._skill_cache: Dict[str, SkillMetadata] = {}
         self._content_cache: Dict[str, SkillContent] = {}
+
+        # Discovery cache (avoid expensive re-scan on every prompt build)
+        self._discovery_done: bool = False
+        self._last_discover_monotonic: float = 0.0
+        # TTL is a pragmatic trade-off: avoids repeated filesystem walks while still allowing edits to take effect.
+        self.discover_ttl_seconds: float = 30.0
+
+        # Render caches (derived from metadata)
+        self._skills_xml_cache: Optional[str] = None
+        self._skills_categorized_xml_cache: Optional[str] = None
 
     def _determine_skill_paths(self, custom_dir: Optional[str]) -> List[str]:
         """确定技能扫描路径，按优先级从低到高排列（后加载覆盖先加载）
@@ -143,7 +155,7 @@ class SkillLoader:
             
         return None
     
-    def discover_skills(self) -> List[SkillMetadata]:
+    def discover_skills(self, force: bool = False) -> List[SkillMetadata]:
         """发现所有技能（只读取元数据）
         
         扫描所有配置的路径，支持嵌套目录结构：
@@ -151,9 +163,22 @@ class SkillLoader:
         - skills/commands/rewrite/SKILL.md  (新格式)
         
         如果同名技能出现在多个路径中，后扫描的（优先级高的）将覆盖先扫描的。
+        
+        Notes:
+            此操作会进行文件系统遍历与 YAML frontmatter 解析，比较昂贵。
+            默认启用 TTL 缓存，避免在每次 LLM prompt build 时都重复扫描。
         """
-        # 清空缓存以重新发现
+        import time
+
+        now = time.monotonic()
+        if not force and self._discovery_done and (now - self._last_discover_monotonic) < self.discover_ttl_seconds:
+            return list(self._skill_cache.values())
+
+        # Rescan: clear caches
         self._skill_cache = {}
+        self._content_cache = {}
+        self._skills_xml_cache = None
+        self._skills_categorized_xml_cache = None
         
         def scan_directory(base_dir: str, depth: int = 0):
             """递归扫描目录，最多两层嵌套"""
@@ -210,7 +235,11 @@ class SkillLoader:
             
             for cat, names in categories.items():
                 self.logger.info("   └── [%s]: %s", cat, ", ".join(names[:5]) + ("..." if len(names) > 5 else ""))
-        
+
+        # Mark discovery as fresh
+        self._discovery_done = True
+        self._last_discover_monotonic = now
+
         return skills
     
     def _parse_frontmatter(self, skill_file: str) -> Optional[SkillMetadata]:
@@ -411,7 +440,6 @@ class SkillLoader:
                 for rule_config in skill.match_rules:
                     try:
                         pattern = rule_config
-                        flags = 0
                         # 如果配置是字典形式（新格式），提取 regex 和 flags
                         if isinstance(rule_config, dict):
                             pattern = rule_config.get('regex', '')
@@ -436,6 +464,74 @@ class SkillLoader:
         
         return relevant
     
+    def search_skills(self, query: str, limit: int = 5) -> List[SkillMetadata]:
+        """在技能元数据上做轻量关键词/模糊搜索（不加载全文）。
+
+        用途：Search-o1 风格的 `<|load_skill|>...<|end_load_skill|>` 标记允许写“关键词”，
+        系统可据此选择最相关的技能文件。
+        """
+        import re
+
+        q = (query or "").strip()
+        if not q:
+            return []
+
+        # Strip common prefixes (model may output `search: xxx`)
+        q_lower = q.lower()
+        for prefix in ("search:", "query:", "kw:", "skill:", "关键词:", "关键字:"):
+            if q_lower.startswith(prefix):
+                q = q[len(prefix):].strip()
+                q_lower = q.lower()
+                break
+
+        skills = self.discover_skills()
+
+        # Tokenize conservatively (keep hyphenated words meaningful)
+        tokens = [t for t in re.split(r"[\s_/]+|:+", q_lower) if t]
+        if not tokens:
+            tokens = [q_lower]
+
+        scored: List[Tuple[float, SkillMetadata]] = []
+        for s in skills:
+            name = (s.name or "").lower()
+            desc = (s.description or "").lower()
+            kws = [k.lower() for k in (s.keywords or []) if isinstance(k, str)]
+
+            score = 0.0
+
+            # Strong signals
+            if name == q_lower:
+                score += 100.0
+            if q_lower.replace(" ", "-") == name:
+                score += 80.0
+            if q_lower in name:
+                score += 30.0
+
+            # Token matches
+            for t in tokens:
+                if t in name:
+                    score += 10.0
+                if t in desc:
+                    score += 2.0
+                if any(t in kw for kw in kws):
+                    score += 6.0
+
+            # Bonus: regex match_rules can hint intent (best-effort)
+            for rule_config in (s.match_rules or []):
+                try:
+                    pattern = rule_config.get('regex', '') if isinstance(rule_config, dict) else rule_config
+                    if isinstance(pattern, str) and pattern and re.search(pattern, query, re.IGNORECASE):
+                        score += 1.0
+                        break
+                except Exception:
+                    continue
+
+            if score > 0.0:
+                scored.append((score, s))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [s for _, s in scored[:limit]]
+    
     
     def get_skill_instructions(self, skill_names: List[str]) -> str:
         """获取指定技能的完整指令
@@ -458,8 +554,12 @@ class SkillLoader:
     def get_skills_xml(self) -> str:
         """获取所有技能的XML格式元数据（第一层）"""
         skills = self.discover_skills()
+        if self._skills_xml_cache is not None:
+            return self._skills_xml_cache
+
         if not skills:
-            return "<skill_list></skill_list>"
+            self._skills_xml_cache = "<skill_list></skill_list>"
+            return self._skills_xml_cache
         
         # Calculate base directory for relative paths
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -476,7 +576,8 @@ class SkillLoader:
                 
             xml_lines.append(f'    <skill name="{skill.name}" path="{rel_path}">{desc}</skill>')
         xml_lines.append("</skill_list>")
-        return "\n".join(xml_lines)
+        self._skills_xml_cache = "\n".join(xml_lines)
+        return self._skills_xml_cache
     
     def get_skill_path(self, skill_name: str) -> Optional[str]:
         """获取技能文件的绝对路径"""
@@ -499,6 +600,56 @@ def get_skill_loader() -> SkillLoader:
     return _skill_loader
 
 
+def predict_skills_for_expression(expression: str, state: str = "CALCULATE") -> List[str]:
+    """根据表达式特征和状态预测需要的技能
+    
+    Args:
+        expression: 数学表达式
+        state: 当前状态 (CALCULATE, PROVE, INDUCTION 等)
+    
+    Returns:
+        建议预加载的技能名称列表
+    """
+    skills = []
+    expr_lower = expression.lower()
+    
+    # 状态相关技能
+    state_skill_map = {
+        "PROVE": ["state-prove"],
+        "INDUCTION": ["state-induction"],
+        "CALCULATE": ["state-calculate"]
+    }
+    if state in state_skill_map:
+        skills.extend(state_skill_map[state])
+    
+    # 表达式模式匹配
+    if "int " in expr_lower or "∫" in expression:
+        skills.append("strategy-integral")
+        if any(x in expr_lower for x in ["sin", "cos", "tan"]):
+            skills.append("integrate-by-parts")
+        if "/" in expression or "1/(" in expr_lower:
+            skills.append("partial-fraction")
+    
+    if "lim" in expr_lower or "→" in expression:
+        skills.append("strategy-limit")
+    
+    if any(x in expr_lower for x in ["sin", "cos", "tan", "arcsin", "arccos"]):
+        skills.append("rewrite")
+    
+    if "sum(" in expr_lower or "∑" in expression:
+        skills.append("strategy-summation")
+    
+    # 去重并限制数量
+    seen = set()
+    unique_skills = []
+    for s in skills:
+        if s not in seen:
+            seen.add(s)
+            unique_skills.append(s)
+    
+    return unique_skills[:3]  # 最多预加载3个技能
+
+
 def get_all_skill_metadata() -> str:
     """获取所有技能的元数据摘要（已废弃，建议使用 get_skills_xml）"""
     return get_skill_loader().get_skills_summary()
@@ -516,8 +667,13 @@ def get_skills_categorized_xml() -> str:
     """
     loader = get_skill_loader()
     skills = loader.discover_skills()
+
+    if getattr(loader, "_skills_categorized_xml_cache", None) is not None:
+        return loader._skills_categorized_xml_cache  # type: ignore[attr-defined]
+
     if not skills:
-        return "<skill_categories></skill_categories>"
+        loader._skills_categorized_xml_cache = "<skill_categories></skill_categories>"  # type: ignore[attr-defined]
+        return loader._skills_categorized_xml_cache  # type: ignore[attr-defined]
     
     # Calculate base directory for relative paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -572,7 +728,8 @@ def get_skills_categorized_xml() -> str:
             xml_lines.append("  </category>")
     
     xml_lines.append("</skill_categories>")
-    return "\n".join(xml_lines)
+    loader._skills_categorized_xml_cache = "\n".join(xml_lines)  # type: ignore[attr-defined]
+    return loader._skills_categorized_xml_cache  # type: ignore[attr-defined]
 
 
 def get_relevant_skills(expression: str, user_instruction: Optional[str] = None) -> List[SkillMetadata]:
@@ -675,8 +832,8 @@ def _ensure_skills_loaded():
         COMMAND_SKILLS = _load_command_skills()
 
 
-# 在模块导入时自动加载
-_ensure_skills_loaded()
+# 注意：不要在模块导入时自动扫描技能目录。
+# 如需旧接口，请显式调用 _ensure_skills_loaded()。
 
 
 def detect_skill_mentions(text: str, loaded_skills: List[str] = None) -> List[Dict[str, str]]:

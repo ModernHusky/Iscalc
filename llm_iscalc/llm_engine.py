@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import httpx
 
 from .logger_config import get_phase_logger, print_separator
-from .prompts import SYSTEM_PROMPT, USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEMPLATE, build_dynamic_system_prompt
+from .prompts import USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEMPLATE, build_dynamic_system_prompt, get_system_prompt
 from .config import LLMConfig
 
 
@@ -117,7 +117,7 @@ class LLMEngine:
         current_state: str = "CALCULATE",
         conditions: Optional[List[str]] = None,
         user_instruction: Optional[str] = None,
-        active_skills: Optional[List[str]] = None  # New: Loaded skills content (Layer 2)
+        active_skills: Optional[List[str]] = None  # Loaded skills content (Layer 2)
     ) -> List[Dict[str, str]]:
         """构建消息列表
         
@@ -147,8 +147,8 @@ class LLMEngine:
             system_prompt = base_system_prompt + skill_section
             
         else:
-            # 完整模式：加载所有命令
-            system_prompt = SYSTEM_PROMPT
+            # 完整模式：加载所有命令（懒加载，避免 import 时扫描 skills）
+            system_prompt = get_system_prompt()
         
         messages = [{"role": "system", "content": system_prompt}]
         
@@ -263,88 +263,313 @@ class LLMEngine:
         self,
         base_messages: List[Dict[str, str]],
         previous_output: str,
-        skill_result: str,
+        skill_result: Optional[str],
         skill_name: str
     ) -> AsyncGenerator[str, None]:
         """Search-o1 风格：继续生成
         
         当 LLM 输出中包含技能加载标记时，中断生成，加载技能后调用此方法继续。
         
+        核心策略：使用 prefix-based continuation，让 LLM 认为它正在继续之前的输出。
+        
         Args:
             base_messages: 原始的 system + user 消息
             previous_output: 之前生成的部分输出（到技能标记处）
-            skill_result: 加载的技能内容
+            skill_result: 加载的技能内容（可选；如果已注入 system prompt，可传 None 以避免重复 tokens）
             skill_name: 技能名称
         
         Yields:
             继续生成的文本块
         """
-        # 构建消息：原始消息 + assistant的部分输出 + 技能注入 + 继续提示
+        # 方案：将技能内容作为“系统插入”的一部分，继续让 LLM 在同一个 assistant 轮次内继续输出
+        
         messages = base_messages.copy()
         
-        # 添加之前的输出作为 assistant 消息（表示 LLM 已经输出了这些内容）
-        messages.append({
-            "role": "assistant",
-            "content": previous_output
-        })
+        # 不使用多轮对话，而是将之前的输出 + 技能内容 + 继续指令融合到一个 assistant 消息中
+        # 然后使用 stop sequence 或其他机制让 LLM “继续”
         
-        # 添加技能结果作为 user 消息（模拟系统注入）
-        continue_prompt = f"""[系统消息] 技能文档已加载: {skill_name}
+        # 构建一个特殊的 user 消息，告诉 LLM 它之前已经输出了什么，现在要继续
+        skill_info = ""
+        if skill_result:
+            # 截取技能内容的关键部分（避免太长）
+            skill_preview = skill_result[:2000] + "..." if len(skill_result) > 2000 else skill_result
+            skill_info = f"\n\n[系统已加载技能 {skill_name}]\n{skill_preview}\n\n"
+        else:
+            skill_info = f"\n\n[系统已加载技能 {skill_name} 到上下文]\n\n"
 
-技能内容：
-{skill_result}
+        # 这里我们不再使用 assistant + user 的往复，而是使用简化的续写方式
+        # 方案 A：Prefix continuation - 让 LLM 从特定前缀开始生成
+        continuation_prompt = f"""[系统消息] 你之前的输出被暂停了，因为你请求加载技能。
 
-现在你已经拥有了这个技能的完整文档。请**立即恢复你的思考**，并结合这些新知识解决问题：
+你之前已经输出:
+---
+{previous_output}
+---
+{skill_info}现在技能已加载，请从你之前停止的地方继续输出。
 
-1. **继续分析**：
-   - 既然已经知道了 `{skill_name}` 的具体用法，现在应该怎么做？
-   - 验证之前的假设，并确定具体的参数。
+重要：
+1. **不要重复**之前已输出的内容
+2. **直接继续**思考，并给出具体iscalc命令
+3. **必须以 JSON 格式结束**: 
+```json
+{{
+  "thinking": "参考加载的技能文档，根据当前表达式选择合适的命令...",
+  "command": "严格按照技能文档中给出的命令格式给出命令",
+  "explanation": "解释命令的作用",
+  "is_final": false
+}}
+```
+请继续:"""
 
-2. **必须输出行动**：
-   - **不要停止！** 请继续输出你的思考过程。
-   - 最终必须以 **JSON 格式命令** 结束本次回答。
-     格式：`{{"thinking": "...", "command": "...", "explanation": "...", "is_final": ...}}`
-
-请紧接着上文继续输出（不要重复上文，直接继续思考）："""
-        
         messages.append({
             "role": "user", 
-            "content": continue_prompt
+            "content": continuation_prompt
         })
         
-        self.logger.info("🔄 继续生成 (技能: %s)", skill_name)
+        self.logger.info("🔄 继续生成 (技能: %s, 已输出: %d 字符)", skill_name, len(previous_output))
         
-        # 流式生成続きの部分
         for attempt in range(self.config.max_retries):
             try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    async with client.stream(
-                        "POST",
-                        f"{self.config.api_base}/chat/completions",
-                        headers={"Authorization": f"Bearer {self.config.api_key}"},
-                        json={
-                            "model": self.config.model,
-                            "messages": messages,
-                            "temperature": self.config.temperature,
-                            "stream": True
-                        }
-                    ) as response:
-                        async for line in response.aiter_lines():
-                            if line.startswith("data: "):
-                                data = line[6:]
-                                if data == "[DONE]":
-                                    break
-                                try:
-                                    chunk = json.loads(data)
-                                    if chunk["choices"][0]["delta"].get("content"):
-                                        content = chunk["choices"][0]["delta"]["content"]
+                client = await self._get_client()
+
+                async with client.stream(
+                    "POST",
+                    f"{self.config.api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.config.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.config.model,
+                        "messages": messages,
+                        "temperature": self.config.temperature,
+                        "max_tokens": self.config.max_tokens,
+                        "stream": True,
+                    },
+                ) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        raise Exception(f"API错误 {response.status_code}: {error_text.decode()}")
+
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if chunk["choices"][0]["delta"].get("content"):
+                                    content = chunk["choices"][0]["delta"]["content"]
+                                    yield content
+                            except json.JSONDecodeError:
+                                continue
+                return
+
+            except Exception as e:
+                self.logger.warning(f"继续生成失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}")
+                if attempt < self.config.max_retries - 1:
+                    await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+                else:
+                    raise
+    
+    async def continue_generation_v2(
+        self,
+        base_messages: List[Dict[str, str]],
+        previous_output: str,
+        skill_name: str
+    ) -> AsyncGenerator[str, None]:
+        """Search-o1 风格：使用 Assistant Prefill 实现真正的连续生成
+        
+        核心机制：利用消息列表以 assistant 角色结尾的特性实现无缝续写。
+        当 messages 的最后一条是 assistant 消息时，支持 Prefill 的模型
+        （如 DeepSeek、Claude 等）会将其视为"助手已经说完的话"，
+        并从该点继续生成，而不是重新开始。
+        
+        技术细节：
+        - 技能内容已注入到 base_messages 的 system prompt 中
+        - previous_output 作为 assistant 消息的 content
+        - 不需要特殊的 API 参数（如 "prefix": True）或 beta 端点
+        - LLM 从 assistant 消息末尾继续生成，实现无缝续写
+        
+        Args:
+            base_messages: 已更新的消息列表（包含新加载的技能）
+            previous_output: 之前生成的部分输出（到技能标记处，包含标记替换后的文本）
+            skill_name: 刚加载的技能名称（用于日志）
+        
+        Yields:
+            继续生成的文本块（不包含 previous_output，只有新增部分）
+        """
+        messages = base_messages.copy()
+        
+        # 核心：添加 assistant 消息作为 prefix
+        # 重要：assistant 消息必须是最后一条消息，不能在它后面添加其他消息
+        
+        # 这样 LLM 看到的输出是连续的，包含技能加载确认
+        prefix_content = previous_output
+        
+        # 如果 previous_output 还没有技能加载确认，添加它
+        skill_loaded_marker = f"[✓{skill_name}技能已加载]"
+        if skill_loaded_marker not in prefix_content:
+            # 添加技能加载确认和继续思考的提示
+            prefix_content = prefix_content.rstrip() + f"\n\n{skill_loaded_marker}\n\n参考加载的技能文档，"
+
+        messages.append({
+            "role": "assistant",
+            "content": prefix_content
+        })
+        
+        self.logger.info("🔄 继续生成 (Prefill 模式, 技能: %s, 已输出: %d 字符)", 
+                        skill_name, len(previous_output))
+        
+        # 使用标准配置的 API Base
+        target_api_base = self.config.api_base
+        
+        for attempt in range(self.config.max_retries):
+            try:
+                client = await self._get_client()
+                
+                request_body = {
+                    "model": self.config.model,
+                    "messages": messages,
+                    "temperature": self.config.temperature,
+                    "max_tokens": self.config.max_tokens,
+                    "stream": True,
+                }
+                
+                # 构建 URL (确保不重复添加 /chat/completions)
+                url = target_api_base.rstrip("/") + "/chat/completions"
+                # 如果 config.api_base 已经包含了 /chat/completions (用户配置错误的情况)，处理一下
+                if "/chat/completions/chat/completions" in url:
+                     url = url.replace("/chat/completions/chat/completions", "/chat/completions")
+                
+                async with client.stream(
+                    "POST",
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {self.config.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=request_body,
+                ) as response:
+                    # 关键查错：如果 API 不支持 assistant 结尾 (通常返回 400)，立即回退
+                    if response.status_code == 400:
+                        error_text = await response.aread()
+                        self.logger.warning("API 返回 400 (可能不支持 Prefill)，切换回退模式: %s", error_text.decode())
+                        async for chunk in self._continue_fallback(messages, skill_name):
+                            yield chunk
+                        return
+                    
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        raise Exception(f"API错误 {response.status_code}: {error_text.decode()}")
+                    
+                    self.logger.info("📥 API 响应状态: %d", response.status_code)
+                    
+                    # 处理流式响应
+                    has_content = False
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if "choices" in chunk and chunk["choices"]:
+                                    delta = chunk["choices"][0].get("delta", {})
+                                    if delta.get("content"):
+                                        content = delta["content"]
+                                        has_content = True
                                         yield content
-                                except json.JSONDecodeError:
-                                    continue
+                            except json.JSONDecodeError:
+                                continue
+                    
+                    self.logger.info("📊 API 返回了有效内容: %s", has_content)
+                    
+                    # 如果返回空内容，可能是模型认为 content 已经完整（例如 prefix 已经是完整回复）
+                    # 或者 API 兼容性问题，安全起见尝试回退
+                    if not has_content:
+                        self.logger.warning("⚠ API 返回空内容，尝试回退模式...")
+                        async for chunk in self._continue_fallback(messages, skill_name):
+                            yield chunk
+                        return
+                return
+                    
                 return
                 
             except Exception as e:
                 self.logger.warning(f"继续生成失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}")
+                if attempt < self.config.max_retries - 1:
+                    await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+                else:
+                    raise
+    
+    async def _continue_fallback(
+        self,
+        messages: List[Dict[str, str]],
+        skill_name: str
+    ) -> AsyncGenerator[str, None]:
+        """回退模式：当 prefix 参数不被支持时使用普通续写"""
+        self.logger.info("🔄 使用回退模式继续生成...")
+        
+        # 关键：添加 user 消息引导模型立即输出 JSON 命令
+        # 这确保模型在技能加载后继续思考并给出命令
+        continuation_messages = messages.copy()
+        continuation_messages.append({
+            "role": "user",
+            "content": f"""技能 `{skill_name}` 已加载到上下文中。
+
+**请立即**根据技能文档给出 JSON 格式命令。你的回复必须**只包含 JSON 对象**，格式如下：
+
+```json
+{{
+  "thinking": "参考加载的技能文档，根据当前表达式选择合适的命令...",
+  "command": "严格按照技能文档中给出的命令格式给出命令",
+  "explanation": "解释命令的作用",
+  "is_final": false
+}}
+```
+
+**禁止**输出其他内容。立即输出 JSON 命令。"""
+        })
+        
+        for attempt in range(self.config.max_retries):
+            try:
+                client = await self._get_client()
+                
+                async with client.stream(
+                    "POST",
+                    f"{self.config.api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.config.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.config.model,
+                        "messages": continuation_messages,
+                        "temperature": self.config.temperature,
+                        "max_tokens": self.config.max_tokens,
+                        "stream": True,
+                    },
+                ) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        raise Exception(f"API错误 {response.status_code}: {error_text.decode()}")
+                    
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if chunk["choices"][0]["delta"].get("content"):
+                                    yield chunk["choices"][0]["delta"]["content"]
+                            except json.JSONDecodeError:
+                                continue
+                return
+                
+            except Exception as e:
+                self.logger.warning(f"回退续写失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}")
                 if attempt < self.config.max_retries - 1:
                     await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
                 else:
@@ -370,10 +595,18 @@ class LLMEngine:
         """解析LLM响应"""
         import re
         
+        # 🔧 预处理：过滤掉技能加载相关标记，防止干扰命令解析
+        # 这些标记是系统内部使用的，不应该被当作命令内容
+        response_clean = re.sub(r'\[✓\s*已加载(?:技能)?:\s*[^\]]+\]', '', response)
+        response_clean = re.sub(r'\[✓\s*\w+技能已加载\]', '', response_clean)  # 另一种格式
+        # 过滤原始的 <load_skill>...</load_skill> 标记
+        response_clean = re.sub(r'<<\s*[a-zA-Z_-]+\s*>>', '', response_clean)  # <<skill-name>>
+        response_clean = re.sub(r'<load_skill>[^<]*</load_skill>', '', response_clean)  # <load_skill>xxx</load_skill>
+        
         # 策略1：尝试提取 JSON
         try:
             # 优先 1：找 Markdown 代码块
-            json_block_match = re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', response, re.DOTALL)
+            json_block_match = re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', response_clean, re.DOTALL)
             if json_block_match:
                 json_str = json_block_match.group(1)
                 data = json.loads(json_str)
@@ -390,12 +623,12 @@ class LLMEngine:
             # 我们假设有效的 JSON 响应通常在输出的末尾
             
             # 找到最后一个 '}'
-            end_idx = response.rfind("}")
+            end_idx = response_clean.rfind("}")
             if end_idx != -1:
                 # 从这一点向前扫描，寻找匹配的 '{'，使得 parse 成功
                 # 为了效率，我们限制向前扫描的范围（例如最后 4000 个字符）
-                scan_start = max(0, len(response) - 4000)
-                subset = response[scan_start:end_idx+1]
+                scan_start = max(0, len(response_clean) - 4000)
+                subset = response_clean[scan_start:end_idx+1]
                 
                 # 在 subset 中寻找所有 '{' 的位置
                 start_indices = [m.start() for m in re.finditer(r'\{', subset)]
@@ -423,11 +656,11 @@ class LLMEngine:
             pass
         
         # 策略2：从 Markdown 格式中提取（如 ## 命令\n```\nxxx\n```）
-        command_block = re.search(r'(?:命令|command)[：:]\s*[`"]?([^\n`"]+)[`"]?', response, re.IGNORECASE)
+        command_block = re.search(r'(?:命令|command)[：:]\s*[`"]?([^\n`"]+)[`"]?', response_clean, re.IGNORECASE)
         if command_block:
             cmd = command_block.group(1).strip()
-            thinking_match = re.search(r'(?:思考|thinking)[：:]\s*(.+?)(?=(?:命令|command|解释|explanation|$))', response, re.IGNORECASE | re.DOTALL)
-            explanation_match = re.search(r'(?:解释|explanation)[：:]\s*(.+?)(?=$|\n\n)', response, re.IGNORECASE | re.DOTALL)
+            thinking_match = re.search(r'(?:思考|thinking)[：:]\s*(.+?)(?=(?:命令|command|解释|explanation|$))', response_clean, re.IGNORECASE | re.DOTALL)
+            explanation_match = re.search(r'(?:解释|explanation)[：:]\s*(.+?)(?=$|\n\n)', response_clean, re.IGNORECASE | re.DOTALL)
             
             return LLMResponse(
                 thinking=thinking_match.group(1).strip() if thinking_match else "",
@@ -449,12 +682,12 @@ class LLMEngine:
         ]
         
         for pattern in common_commands:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = re.search(pattern, response_clean, re.IGNORECASE)
             if match:
                 cmd = match.group(1).strip()
                 self.logger.warning("从文本中提取命令: %s", cmd[:50])
                 return LLMResponse(
-                    thinking=response[:200] if len(response) > 200 else response,
+                    thinking=response_clean[:200] if len(response_clean) > 200 else response_clean,
                     command=cmd,
                     explanation="命令从响应文本中提取",
                     is_final=False,
@@ -462,9 +695,9 @@ class LLMEngine:
                 )
         
         # 所有策略都失败
-        self.logger.warning("无法从响应中解析命令，原始响应: %s", response[:300])
+        self.logger.warning("无法从响应中解析命令，原始响应: %s", response_clean[:300])
         return LLMResponse(
-            thinking=response,
+            thinking=response_clean,
             command="",
             explanation="无法解析响应",
             is_final=False,

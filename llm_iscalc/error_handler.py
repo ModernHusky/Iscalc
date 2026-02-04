@@ -52,7 +52,7 @@ class ErrorHandler:
     }
     
     RECOVERY_SUGGESTIONS = {
-        ErrorCategory.SYNTAX: "请检查命令语法是否正确。确保命令格式符合Iscalc规范。",
+        ErrorCategory.SYNTAX: "命令语法错误。不要猜测命令格式：请先用 <|load_skill|>search: 关键词<|end_load_skill|> 加载对应技能（或 read_skill 加载具体 SKILL.md），再严格按技能文档给出正确的Iscalc可执行命令。",
         ErrorCategory.RULE: "该规则无法应用于当前表达式。请尝试其他化简方法。",
         ErrorCategory.API: "API调用失败。系统将自动重试。",
         ErrorCategory.TIMEOUT: "操作超时。请尝试简化表达式或分步执行。",

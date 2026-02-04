@@ -459,6 +459,16 @@ function setupMaximize(btn, section) {
             section.style.width = 'calc(100vw - 40px)';
             section.style.height = 'calc(100vh - 40px)';
 
+            // Unlock Content Width after animation to fill space
+            const onMaximizeEnd = () => {
+                if (content) {
+                    content.style.width = '';
+                    content.style.flex = ''; // Revert to stylesheet default (flex: 1)
+                }
+                section.removeEventListener('transitionend', onMaximizeEnd);
+            };
+            section.addEventListener('transitionend', onMaximizeEnd);
+
             // Update UI
             btn.innerHTML = ICON_RESTORE;
             maximizeBackdrop.classList.remove('pointer-events-none', 'opacity-0');
@@ -1291,22 +1301,18 @@ solveBtn.addEventListener('click', async () => {
             }
         };
 
+        // Backend signals completion explicitly via SSE event: "complete"
+        // Keep this handler minimal: close stream + unlock UI.
         eventSource.addEventListener('complete', () => {
-            // 求解结束时，强制确标最后一步显示“证明结束”
-            if (currentCard) {
-                updateField('is_final', 'true');
-
-                // Ensure script ends with a command (if last step didn't have one)
-                if (!currentSidebarItem) {
-                    addCommandToSidebar('simplify');
-                }
+            try {
+                eventSource.close();
+            } catch (e) {
+                // ignore
             }
-
-            eventSource.close();
+            eventSource = null;
             isSolving = false;
             updateSolveButton(false);
         });
-
     } catch (error) {
         console.error('Solve error:', error);
         errorOutput.textContent = `错误: ${error.message}`;
