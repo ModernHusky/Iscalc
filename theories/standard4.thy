@@ -149,8 +149,6 @@ lhs:
     rewrite 1 / (x * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x * sqrt(a ^ 2 - x ^ 2))
     simplify
     apply integral identity
-    simplify
-    rewrite -(1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / x)) to -1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
 done
 
 // 3
@@ -332,8 +330,6 @@ lhs:
     rewrite 1 / (x * sqrt((a ^ 2 - x ^ 2) / a ^ 2)) to a / (x * sqrt(a ^ 2 - x ^ 2))
     simplify
     apply integral identity
-    simplify
-    rewrite 1 / a * log((sqrt(a ^ 2 - x ^ 2) + a) / x) to 1 / a * log(abs((a + sqrt(a ^ 2 - x ^ 2)) / x))
 done
 
 // 3

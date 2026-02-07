@@ -1,72 +1,127 @@
 """Functions for solving equations"""
 
-from typing import Optional, Tuple
-
+from typing import Optional, Tuple, List
 from integral import expr
-from integral.expr import Expr, POS_INF, NEG_INF, Const, Var
+from integral.expr import Expr, POS_INF, NEG_INF, Const, Var, Op, Fun
 from integral.poly import normalize
 from integral.context import Context
 
-
-def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
-    """Solve the equation f(x) = a for the variable x.
+def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> List[Expr]:
+    """Solve the equation f(x) = a for variable x, returning ALL solutions.
     
-    First, try to isolate x on the left side by moving expressions
-    independent of x to the right side.
-
-    Next, several other heuristics are tried, such as using linearity.
-
-    Note: for trigonometric or other special functions, may only produce
-    one of the solutions.
-
+    Breaking change: Returns List[Expr] instead of Optional[Expr].
+    
+    Returns:
+        [] - no solution found
+        [sol1, sol2, ...] - all candidate solutions
+    
+    Examples:
+        solve_equation(x, 5, 'x', ctx) => [5]
+        solve_equation(x^2 + 1, 0, 'x', ctx) => [i, -i]
+        solve_equation((x-1)*(x-2), 0, 'x', ctx) => [1, 2]
     """
+    # Backward compatibility: handle Var object as x parameter
+    if isinstance(x, Var):
+        x = x.name
+    elif isinstance(x, Expr) and expr.is_var(x):
+        x = x.name
+    
+    # Note: We don't normalize f here as it might change structure (e.g., division to multiplication)
+    # We only normalize a (the right-hand side) to simplify constants
+    a = normalize(a, ctx)
+    
+    # ========== Base case: variable ==========
     if expr.is_var(f):
         if f.name == x:
-            return a
+            return [a]
+        else:
+            return []  # Unrelated variable
+    
+    # ========== Product equals zero: (u*v*w = 0) ==========
+    if a == Const(0) and f.is_times():
+        solutions = []
+        for factor in f.args:
+            if factor.contains_var(x):
+                factor_sols = solve_equation(factor, Const(0), x, ctx)
+                for sol in factor_sols:
+                    # Avoid duplicates
+                    if not any(_are_equal(sol, s, ctx) for s in solutions):
+                        solutions.append(sol)
+        return solutions
+    
+    # ========== Addition: u + v = a ==========
     if expr.is_plus(f):
         u, v = f.args
         if not u.contains_var(x):
-            # u + v = a  ==>  v = a - u
-            return solve_equation(v, a - u, x, ctx)
+            # u + v = a  =>  v = a - u
+            return solve_equation(v, normalize(a - u, ctx), x, ctx)
         if not v.contains_var(x):
-            # u + v = a  ==>  u = a - v
-            return solve_equation(u, a - v, x, ctx)
+            # u + v = a  =>  u = a - v
+            return solve_equation(u, normalize(a - v, ctx), x, ctx)
+    
+    # ========== Unary minus: -u = a ==========
     if expr.is_uminus(f):
-        # -u = a  ==>  u = -a
         u, = f.args
-        return solve_equation(u, -a, x, ctx)
-    if expr.is_minus(f):
+        return solve_equation(u, normalize(-a, ctx), x, ctx)
+    
+    # ========== Subtraction: u - v = a ==========
+    if f.is_minus():
         u, v = f.args
         if not u.contains_var(x):
-            # u - v = a  ==>  v = u - a
-            return solve_equation(v, u - a, x, ctx)
+            # u - v = a  =>  v = u - a
+            return solve_equation(v, normalize(u - a, ctx), x, ctx)
         if not v.contains_var(x):
-            # u - v = a  ==>  u = v + a
-            return solve_equation(u, v + a, x, ctx)
-    if expr.is_times(f):
+            # u - v = a  =>  u = v + a
+            return solve_equation(u, normalize(v + a, ctx), x, ctx)
+    
+    # ========== Multiplication: u * v = a ==========
+    if f.is_times():
         u, v = f.args
         if not u.contains_var(x) and ctx.is_nonzero(u):
-            # u * v = a  ==>  v = a / u
-            return solve_equation(v, a / u, x, ctx)
+            # u * v = a  =>  v = a / u
+            return solve_equation(v, normalize(a / u, ctx), x, ctx)
         if not v.contains_var(x) and ctx.is_nonzero(v):
-            # u * v = a  ==>  u = a / v
-            return solve_equation(u, a / v, x, ctx)
-    if expr.is_divides(f):
+            # u * v = a  =>  u = a / v
+            return solve_equation(u, normalize(a / v, ctx), x, ctx)
+        # If neither is constant, can't solve directly
+        return []
+    
+    # ========== Division: u / v = a ==========
+    if f.is_divides():
         u, v = f.args
         if not u.contains_var(x):
-            # u / v = a  ==>  v = a / u
+            # u / v = a  =>  v = u / a
+            if a == Const(0):
+                return []  # Division by zero
             rhs = u / a
             if u.is_constant() and a in (POS_INF, NEG_INF):
                 rhs = Const(0)
-            return solve_equation(v, rhs, x, ctx)
+            return solve_equation(v, normalize(rhs, ctx), x, ctx)
         if not v.contains_var(x):
-            # u / v = a  ==>  u = v * a
-            return solve_equation(u, v * a, x, ctx)
-    if expr.is_power(f):
+            # u / v = a  =>  u = v * a
+            return solve_equation(u, normalize(v * a, ctx), x, ctx)
+    
+    # ========== Power: u^n = a ==========
+    if f.is_power():
         u, v = f.args
         if not v.contains_var(x):
-            # u ^ v = a  ==>  u = a ^ (1/v)
-            return solve_equation(u, a ^ (1/v), x, ctx)
+            # u^v = a  =>  u = a^(1/v)
+            # Special handling for even powers: return both ±solutions
+            if expr.is_const(v) and v.val % 2 == 0 and v.val > 0:
+                # Even power: get one solution and add its negative
+                one_sol_list = solve_equation(u, normalize(a ^ (Const(1) / v), ctx), x, ctx)
+                if len(one_sol_list) == 1:
+                    sol = one_sol_list[0]
+                    neg_sol = _create_negative(sol, ctx)
+                    # Check if they're different
+                    if not _are_equal(sol, neg_sol, ctx):
+                        return [sol, neg_sol]
+                return one_sol_list
+            else:
+                # Odd power or non-integer: only one solution
+                return solve_equation(u, normalize(a ^ (Const(1) / v), ctx), x, ctx)
+    
+    # ========== Functions ==========
     if expr.is_fun(f):
         if f.func_name == "log":
             return solve_equation(f.args[0], expr.exp(a), x, ctx)
@@ -97,22 +152,34 @@ def solve_equation(f: Expr, a: Expr, x: str, ctx: Context) -> Optional[Expr]:
         elif f.func_name == "arccsc":
             return solve_equation(f.args[0], expr.csc(a), x, ctx)
         elif f.func_name == "sqrt":
-            return solve_equation(f.args[0], a ^ 2, x, ctx)
-
-    # Try linearity
+            return solve_equation(f.args[0], normalize(a ^ Const(2), ctx), x, ctx)
+    
+    # ========== Linear extraction: b*x + c = a ==========
     extract_res = extract_linear(f, x)
     if extract_res:
-        # b * x + c = a  ==>  x = (a - c) / b
         b, c = extract_res
+        b = normalize(b, ctx)
+        c = normalize(c, ctx)
         if ctx.is_nonzero(b):
-            return normalize((a - c) / b, ctx)
+            return [normalize((a - c) / b, ctx)]
+        else:
+            # b = 0: equation becomes c = a
+            if _are_equal(c, a, ctx):
+                # Identity: infinite solutions (can't represent, return empty)
+                return []
+            else:
+                # Contradiction: no solution
+                return []
+    
+    # ========== Default: unable to solve ==========
+    return []
+
 
 def extract_linear(e: Expr, x: str) -> Optional[Tuple[Expr, Expr]]:
     """Attempt to write e in the form a * x + b.
     
     If this is possible, return the pair (a, b). Otherwise return None.
     The results should be normalized before use.
-    
     """
     if not e.contains_var(x):
         return Const(0), e
@@ -169,15 +236,46 @@ def solve_for_term(eq: Expr, t: Expr, ctx: Context) -> Optional[Expr]:
 
     # Now consider some simple cases
     if not eq.rhs.contains_var(var_name):
-        return solve_equation(eq.lhs, eq.rhs, var_name, ctx)
+        solutions = solve_equation(eq.lhs, eq.rhs, var_name, ctx)
+        return solutions[0] if solutions else None
     
     if not eq.lhs.contains_var(var_name):
-        return solve_equation(eq.rhs, eq.lhs, var_name, ctx)
+        solutions = solve_equation(eq.rhs, eq.lhs, var_name, ctx)
+        return solutions[0] if solutions else None
     
     # Finally, try transforming the equation to f = 0
-    res = solve_equation(eq.lhs - eq.rhs, Const(0), var_name, ctx)
-    if res:
+    solutions = solve_equation(eq.lhs - eq.rhs, Const(0), var_name, ctx)
+    if solutions:
+        res = solutions[0]
         if res.contains_var(var_name):
             raise AssertionError("solve_equation returns %s" % res)
         else:
             return res
+
+
+def _create_negative(e: Expr, ctx: Context) -> Expr:
+    """Create negative of an expression with special handling for complex numbers.
+    
+    For b*i, creates (-b)*i instead of -(b*i) to maintain canonical form.
+    """
+    # Special case: b*i => (-b)*i
+    if isinstance(e, Op) and e.op == "*" and len(e.args) == 2:
+        if isinstance(e.args[1], Fun) and e.args[1].func_name == "i":
+            b = e.args[0]
+            if isinstance(b, Const):
+                return Op("*", Const(-b.val), Fun("i"))
+            else:
+                return Op("*", Op("-", b), Fun("i"))
+    
+    # General case: -e
+    return normalize(Op("-", e), ctx)
+
+
+def _are_equal(e1: Expr, e2: Expr, ctx: Context) -> bool:
+    """Check if two expressions are equal after normalization."""
+    try:
+        n1 = normalize(e1, ctx)
+        n2 = normalize(e2, ctx)
+        return n1 == n2
+    except:
+        return False

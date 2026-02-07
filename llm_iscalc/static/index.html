@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 LLM-Iscalc 数学求解器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <style>
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #F9FAFB;
+        }
+
+        /* 紫色标题框的数学公式装饰 */
+        .header-gradient-box {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .math-formula-bg {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+            z-index: 0;
+            font-size: 28px;
+        }
+
+        .math-formula-bg.formula-1 {
+            top: 15%;
+            left: 3%;
+            transform: rotate(-15deg);
+            font-size: 24px;
+        }
+
+        .math-formula-bg.formula-2 {
+            top: 8%;
+            left: 22%;
+            transform: rotate(-12deg);
+            font-size: 20px;
+        }
+
+        .math-formula-bg.formula-3 {
+            bottom: 15%;
+            left: 8%;
+            transform: rotate(-15deg);
+            font-size: 22px;
+        }
+
+        .math-formula-bg.formula-4 {
+            top: 12%;
+            right: 18%;
+            transform: rotate(-12deg);
+            font-size: 20px;
+        }
+
+        .math-formula-bg.formula-5 {
+            bottom: 18%;
+            right: 5%;
+            transform: rotate(-15deg);
+            font-size: 24px;
+        }
+
+        .header-gradient-box>.text-center {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 渐变标题 */
+        .gradient-text {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 输入框聚焦效果 */
+        .input-focus {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-focus:focus {
+            outline: none;
+            border-color: #6366F1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            transform: scale(1.005);
+        }
+
+        /* 按钮交互 */
+        .btn-primary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            background: #5558E3;
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-secondary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: #E5E7EB;
+        }
+
+        .btn-secondary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        /* Tab 切换动画 */
+        .tab-item {
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-item:hover {
+            color: #6366F1;
+        }
+
+        .tab-item.active {
+            color: #6366F1;
+            font-weight: 600;
+        }
+
+        .tab-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #6366F1;
+            border-radius: 2px;
+            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: scaleX(0);
+            }
+
+            to {
+                transform: scaleX(1);
+            }
+        }
+
+        /* 示例卡片 */
+        .example-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .example-card:hover {
+            transform: translateY(-2px);
+            border-color: #6366F1;
+            background: #F5F3FF;
+        }
+
+        .example-card:active {
+            transform: scale(0.98);
+        }
+
+        /* 输出区域 */
+        .output-box {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Loading 动画 */
+        .spinner {
+            border: 2px solid #E5E7EB;
+            border-top-color: #6366F1;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #F3F4F6;
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+
+        /* 隐藏类 */
+        .hidden {
+            display: none;
+        }
+
+        /* 思考步骤卡片 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .thinking-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .thinking-card-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        /* 强制字段显示顺序 */
+        .thinking-field.thinking {
+            order: 1;
+        }
+
+        .thinking-field.command {
+            order: 2;
+        }
+
+        .thinking-field.explanation {
+            order: 3;
+        }
+
+        .thinking-field.is_final {
+            order: 4;
+        }
+
+        .thinking-field {
+            background: #f9fafb;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .thinking-field-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #6b7280;
+        }
+
+        .thinking-field-content {
+            font-size: 11px;
+            line-height: 1.5;
+            color: #374151;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .thinking-field.thinking {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+        }
+
+        .thinking-field.command {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .thinking-field.explanation {
+            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+        }
+
+        .thinking-field.is_final {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .thinking-field.is_final.is-true {
+            border: 2px solid #10b981;
+        }
+
+        /* 历史记录项 */
+        .history-item {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .history-item:hover {
+            background: #f3f4f6;
+            border-color: #6366f1;
+            transform: translateX(2px);
+        }
+
+        .history-item:active {
+            transform: scale(0.98);
+        }
+
+        .history-item-expr {
+            font-size: 11px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-cond {
+            font-size: 10px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-time {
+            font-size: 9px;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+
+        .history-delete-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: #9ca3af;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .history-item:hover .history-delete-btn {
+            opacity: 1;
+        }
+
+        .history-delete-btn:hover {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        /* Search-o1 风格：技能加载通知 */
+        #skill-notifications {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .skill-load-notification {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideInRight 0.35s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .skill-load-notification .icon {
+            font-size: 16px;
+        }
+
+        .skill-load-notification.fade-out {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Maximized state for AI Thinking Process and others */
+        .thinking-section,
+        .std-command-section,
+        .result-section,
+        .command-section,
+        .error-section {
+            /* Legacy transitions removed to prevent JS conflict */
+            /* transition: transform 0.4s ..., width 0.4s ..., height 0.4s ...; */
+            z-index: 40;
+            /* Lower than notification but higher than standard content */
+            transform-origin: top left;
+            /* Default origin, JS will adjust */
+        }
+
+        .thinking-section.maximized,
+        .std-command-section.maximized,
+        .result-section.maximized,
+        .command-section.maximized,
+        .error-section.maximized {
+            /* Layout controlled by JS Portal Logic now */
+            /* z-index: 100; Handle by JS */
+            /* width: auto !important; Removed to prevent jump */
+            /* height: auto !important; Removed to prevent jump */
+            /* margin: 0; Handle by JS */
+            display: flex;
+            flex-direction: column;
+
+        }
+
+        /* Ensure content fills height when maximized */
+        .thinking-section.maximized #thinking-output,
+        .std-command-section.maximized #std-command-list,
+        .result-section.maximized #result-output,
+        .command-section.maximized #command-output,
+        .error-section.maximized #error-output {
+            /* Use auto height to allow Vertical Centering for short content */
+            height: auto !important;
+            /* Cap at 100% to ensure scrolling for long content */
+            max-height: 100% !important;
+            /* Prevent overflow off screen, enforce internal scroll */
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <!-- Maximize Backdrop -->
+    <div id="maximize-backdrop"
+        class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[90] opacity-0 pointer-events-none transition-opacity duration-300">
+    </div>
+    <!-- Search-o1 风格：技能加载通知容器 -->
+    <div id="skill-notifications"></div>
+
+    <div class="max-w-[1600px] mx-auto px-6 py-6">
+        <!-- 顶部标题区 -->
+        <header class="mb-6">
+            <div class="header-gradient-box bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 shadow-lg">
+                <!-- 数学公式背景装饰 -->
+                <div class="math-formula-bg formula-1" id="formula-1"></div>
+                <div class="math-formula-bg formula-2" id="formula-2"></div>
+                <div class="math-formula-bg formula-3" id="formula-3"></div>
+                <div class="math-formula-bg formula-4" id="formula-4"></div>
+                <div class="math-formula-bg formula-5" id="formula-5"></div>
+
+                <!-- 主要内容 -->
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-white mb-2">🧮 LLM-Iscalc 数学求解器</h1>
+                    <p class="text-indigo-100 text-sm font-medium mb-3">AI 驱动 · 符号计算 · 逐步推导</p>
+                    <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                        <span class="text-xs text-white/80">当前模型:</span>
+                        <span id="current-model" class="text-sm font-semibold text-white">deepseek-chat</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-6 items-start">
+
+            <!-- 左侧边栏：历史记录 -->
+            <aside class="w-full lg:w-72 flex-shrink-0 sticky top-6">
+                <!-- 侧边栏容器：上下两部分 -->
+                <div class="flex flex-col gap-4 h-[calc(100vh-48px)]">
+
+                    <!-- 上部分：历史记录 (40%高度) -->
+                    <div
+                        class="bg-white border-2 border-indigo-100 rounded-lg p-3 shadow-sm flex flex-col flex-[2] min-h-0">
+                        <div class="flex items-center justify-between mb-3 px-1">
+                            <label class="block text-xs font-bold text-gray-700">📜 历史记录</label>
+                            <button id="clear-history-btn"
+                                class="text-xs text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
+                                title="清空所有历史">
+                                🗑️ 清空
+                            </button>
+                        </div>
+                        <div class="relative flex-1 min-h-0">
+                            <div id="history-list" class="custom-scrollbar h-full overflow-y-auto space-y-2 pr-1 pb-6">
+                                <div class="text-gray-400 text-center text-xs py-8">暂无历史记录</div>
+                            </div>
+                            <!-- 顶部渐隐遮罩 -->
+                            <div class="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-white to-transparent pointer-events-none z-10"
+                                style="-webkit-mask-image: linear-gradient(to bottom, black, transparent); mask-image: linear-gradient(to bottom, black, transparent);">
+                            </div>
+                            <!-- 底部渐隐遮罩 -->
+                            <div class="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b z-10"
+                                style="-webkit-mask-image: linear-gradient(to top, black, transparent); mask-image: linear-gradient(to top, black, transparent);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 下部分：标准命令 (60%高度) -->
+                    <div
+                        class="std-command-section bg-white border-2 border-indigo-100 rounded-lg p-3 shadow-sm flex flex-col flex-[3] min-h-0">
+                        <div class="flex items-center justify-between mb-2 px-1 border-b border-gray-100 pb-2">
+                            <div class="flex items-center">
+                                <label class="block text-xs font-bold text-gray-700">🛠️ 标准命令</label>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-indigo-600 ml-2 p-1.5 rounded hover:bg-indigo-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <button id="copy-all-btn"
+                                class="text-[10px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded transition-colors"
+                                onclick="copyAllCommands()">
+                                📋 复制全部
+                            </button>
+                        </div>
+                        <div id="std-command-list"
+                            class="custom-scrollbar flex-1 overflow-y-auto pr-1 text-xs space-y-2 text-gray-600">
+                            <div class="text-gray-400 text-center py-8">求解命令将在此生成...</div>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+
+            <!-- 右侧主内容区 -->
+            <main class="flex-1 min-w-0 space-y-4">
+
+                <!-- 核心输入区 -->
+                <section class="bg-white border-2 border-gray-100 rounded-lg p-4 shadow-sm">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+                        <!-- 表达式输入 -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">📝 数学表达式</label>
+                            <textarea id="expression-input"
+                                class="input-focus w-full px-3 py-2 border-2 border-gray-300 rounded-lg resize-none bg-white text-xs"
+                                rows="2" placeholder="例如: INT x:[0,1]. x^2  或  LIM {x -> 0}. sin(x)/x"></textarea>
+                        </div>
+
+                        <!-- 条件输入 -->
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">📋 附加条件（可选）</label>
+                            <textarea id="conditions-input"
+                                class="input-focus w-full px-3 py-2 border-2 border-gray-300 rounded-lg resize-none bg-white text-xs"
+                                rows="2" placeholder="例如: x > 0, n >= 0"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 按钮组 -->
+                    <div class="flex gap-2 flex-wrap items-center">
+                        <button id="solve-btn"
+                            class="btn-primary px-6 py-2 bg-indigo-500 text-white rounded-lg font-semibold flex items-center justify-center gap-2 text-xs shadow-md">
+                            <span id="solve-btn-text">🚀 开始求解</span>
+                            <div id="solve-spinner" class="spinner hidden"></div>
+                        </button>
+                        <button id="stop-btn"
+                            class="btn-secondary px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                            disabled>
+                            ⏹️ 终止
+                        </button>
+                        <button id="clear-btn"
+                            class="btn-secondary px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold text-xs">
+                            🗑️ 清空
+                        </button>
+                        <!-- 用户指导输入框 -->
+                        <input id="instruction-input" type="text"
+                            class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-xs input-focus min-w-[200px]"
+                            placeholder="💡 给AI的指导 (可选，例如: 使用复数方法, 尝试分部积分...)">
+                    </div>
+                </section>
+
+                <!-- AI 思考过程 -->
+                <section id="thinking-section"
+                    class="thinking-section bg-white border-2 border-indigo-200 rounded-lg p-3 shadow-sm origin-top-left">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <span class="text-xs font-semibold text-indigo-700">🤔 AI思考过程</span>
+                            <button
+                                class="maximize-btn text-gray-400 hover:text-indigo-600 ml-2 p-1.5 rounded hover:bg-indigo-50"
+                                title="最大化/还原">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <!-- Old toggle button removed from here -->
+                            <button id="clear-thinking-btn"
+                                class="text-xs text-gray-500 hover:text-indigo-600 transition-colors">清空历史</button>
+                        </div>
+                    </div>
+                    <div class="relative flex-1 min-h-0 flex flex-col">
+                        <div id="thinking-output" class="custom-scrollbar h-80 overflow-y-auto space-y-2 pb-6">
+                            <div class="text-gray-400 text-center py-8 text-xs">AI 思考过程将在这里显示...</div>
+                        </div>
+                        <!-- 顶部渐隐遮罩 -->
+                        <div class="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-white to-transparent pointer-events-none z-10"
+                            style="-webkit-mask-image: linear-gradient(to bottom, black, transparent); mask-image: linear-gradient(to bottom, black, transparent);">
+                        </div>
+                        <!-- 底部渐隐遮罩 -->
+                        <div class="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white to-transparent pointer-events-none z-10"
+                            style="-webkit-mask-image: linear-gradient(to top, black, transparent); mask-image: linear-gradient(to top, black, transparent);">
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- 结果展示区 - 紧凑并列布局 -->
+                <section class="space-y-3">
+                    <!-- 求解结果 -->
+                    <div class="result-section bg-white border-2 border-green-200 rounded-lg p-3 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-semibold text-green-700">✅ 结果</span>
+                            <button
+                                class="maximize-btn text-gray-400 hover:text-green-600 ml-1 p-1.5 rounded hover:bg-green-50"
+                                title="最大化/还原">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="relative flex-1 min-h-0 flex flex-col">
+                            <!-- Background Layer -->
+                            <div class="absolute inset-0 bg-green-50 rounded z-0"></div>
+                            <!-- Content Layer -->
+                            <div id="result-output"
+                                class="output-box relative z-10 custom-scrollbar max-h-56 overflow-y-auto text-gray-700 p-3 rounded text-xs leading-relaxed pb-8 text-left">
+                                <div class="text-gray-400 text-center py-8">等待输入表达式...</div>
+                            </div>
+                            <!-- 顶部渐隐遮罩 -->
+                            <div class="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-green-50 to-transparent pointer-events-none z-10 rounded-t"
+                                style="-webkit-mask-image: linear-gradient(to bottom, black, transparent); mask-image: linear-gradient(to bottom, black, transparent);">
+                            </div>
+                            <!-- 底部渐隐遮罩 -->
+                            <div class="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-green-50 to-transparent pointer-events-none z-10 rounded-b"
+                                style="-webkit-mask-image: linear-gradient(to top, black, transparent); mask-image: linear-gradient(to top, black, transparent);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 命令和错误并列 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <!-- 命令 -->
+                        <div class="command-section bg-white border-2 border-blue-200 rounded-lg p-3 shadow-sm">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-semibold text-blue-700">📋 命令解释</span>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-blue-600 ml-1 p-1.5 rounded hover:bg-blue-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="relative flex-1 min-h-0 flex flex-col">
+                                <!-- Background Layer -->
+                                <div class="absolute inset-0 bg-blue-50 rounded z-0"></div>
+                                <div id="command-output"
+                                    class="output-box relative z-10 custom-scrollbar max-h-40 overflow-y-auto text-gray-700 p-3 rounded text-xs leading-relaxed text-left">
+                                    <div class="text-gray-400 text-center py-8">执行的命令将在这里显示...</div>
+                                </div>
+                                <!-- 顶部渐隐遮罩 -->
+                                <div class="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none z-10 rounded-t"
+                                    style="-webkit-mask-image: linear-gradient(to bottom, black, transparent); mask-image: linear-gradient(to bottom, black, transparent);">
+                                </div>
+                                <!-- 底部渐隐遮罩 -->
+                                <div class="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-blue-50 to-transparent pointer-events-none z-10 rounded-b"
+                                    style="-webkit-mask-image: linear-gradient(to top, black, transparent); mask-image: linear-gradient(to top, black, transparent);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 错误 -->
+                        <div class="error-section bg-white border-2 border-red-200 rounded-lg p-3 shadow-sm">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-semibold text-red-700">❌ 错误</span>
+                                <button
+                                    class="maximize-btn text-gray-400 hover:text-red-600 ml-1 p-1.5 rounded hover:bg-red-50"
+                                    title="最大化/还原">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="relative flex-1 min-h-0 flex flex-col">
+                                <!-- Background Layer -->
+                                <div class="absolute inset-0 bg-red-50 rounded z-0"></div>
+                                <div id="error-output"
+                                    class="output-box relative z-10 custom-scrollbar max-h-40 overflow-y-auto text-red-600 p-3 rounded text-xs leading-relaxed text-left">
+                                    <div class="text-gray-400 text-center py-8">错误信息将在这里显示...</div>
+                                </div>
+                                <!-- 顶部渐隐遮罩 -->
+                                <div class="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-red-50 to-transparent pointer-events-none z-10 rounded-t"
+                                    style="-webkit-mask-image: linear-gradient(to bottom, black, transparent); mask-image: linear-gradient(to bottom, black, transparent);">
+                                </div>
+                                <!-- 底部渐隐遮罩 -->
+                                <div class="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-red-50 to-transparent pointer-events-none z-10 rounded-b"
+                                    style="-webkit-mask-image: linear-gradient(to top, black, transparent); mask-image: linear-gradient(to top, black, transparent);">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 示例区域 -->
+                <section>
+                    <h3 class="text-xs font-semibold text-gray-800 mb-2">📚 示例表达式</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="INT x:[0,1]. x^2" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">定积分 - 多项式</div>
+                            <code class="text-xs text-gray-600">INT x:[0,1]. x^2</code>
+                        </div>
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="INT x:[0,pi]. sin(x)" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">定积分 - 三角函数</div>
+                            <code class="text-xs text-gray-600">INT x:[0,pi]. sin(x)</code>
+                        </div>
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="INT x:[0,1]. x * exp(x)" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">定积分 - 指数函数</div>
+                            <code class="text-xs text-gray-600">INT x:[0,1]. x * exp(x)</code>
+                        </div>
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="INT x:[0,1]. 1/(1+x^2)" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">定积分 - 有理函数</div>
+                            <code class="text-xs text-gray-600">INT x:[0,1]. 1/(1+x^2)</code>
+                        </div>
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="LIM {x -> 0}. sin(x)/x" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">极限计算</div>
+                            <code class="text-xs text-gray-600">LIM {x -> 0}. sin(x)/x</code>
+                        </div>
+                        <div class="example-card border-2 border-gray-200 rounded-lg p-2 bg-white shadow-sm"
+                            data-expr="D x. x^3 + 2*x" data-cond="">
+                            <div class="text-xs font-medium text-gray-800 mb-1">求导运算</div>
+                            <code class="text-xs text-gray-600">D x. x^3 + 2*x</code>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        console.log('HTML 页面已加载');
+        console.log('开始加载 app.js...');
+
+        // 渲染背景数学公式
+        document.addEventListener('DOMContentLoaded', function () {
+            const formulas = [
+                { id: 'formula-1', latex: 'E = mc^2' },
+                { id: 'formula-2', latex: 'e^{i\\theta} = \\cos\\theta + i\\sin\\theta' },
+                { id: 'formula-3', latex: '\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}' },
+                { id: 'formula-4', latex: '\\int_a^b f(x)dx = F(b) - F(a)' },
+                { id: 'formula-5', latex: 'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n' }
+            ];
+
+            formulas.forEach(item => {
+                const element = document.getElementById(item.id);
+                if (element && window.katex) {
+                    try {
+                        katex.render(item.latex, element, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } catch (e) {
+                        console.error('KaTeX render error:', e);
+                    }
+                }
+            });
+        });
+    </script>
+    <script src="/static/app.js"></script>
+    <script>
+        console.log('app.js 加载完成');
+    </script>
+    <script>
+        function copyCommand(element, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const hint = element.querySelector('.copy-hint');
+                const originalText = "点击复制"; // Hardcoded or save dataset? Simple revert is fine.
+
+                hint.innerText = '✅ 已复制';
+                hint.style.opacity = '1';
+                hint.classList.remove('text-gray-400');
+                hint.classList.add('text-green-600', 'font-bold');
+
+                setTimeout(() => {
+                    hint.innerText = originalText;
+                    hint.style.opacity = '';
+                    hint.classList.add('text-gray-400');
+                    hint.classList.remove('text-green-600', 'font-bold');
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    </script>
+</body>
+
+</html>

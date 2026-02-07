@@ -384,14 +384,14 @@ lhs:
     replace substitution
 done
 
-prove (INT x. csc(-x)) = log(abs(-cot(x)-csc(x))) + SKOLEM_CONST(C) for sin(x) != 0
+prove (INT x. csc(-x)) = -log(abs(cot(x) - csc(x))) + SKOLEM_CONST(C) for sin(x) != 0
 subgoal 1: sin(-x) != 0
 lhs:
     simplify
 done
-subgoal 2: -cot(x) - csc(x) != 0
+subgoal 2: cot(x) - csc(x) != 0
 lhs:
-    rewrite to (-cos(x) - 1) / sin(x)
+    rewrite to (cos(x) - 1) / sin(x)
 done
 lhs:
     substitute y for -x

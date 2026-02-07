@@ -165,6 +165,11 @@ class ProveState(State):
             self.goal.add_definition(action.expr, action.conditions)
             return self
 
+        # Make definition
+        elif isinstance(action, DefineAction):
+            self.goal.add_definition(action.expr, action.conditions)
+            return self
+
         # Abandon the current calculation or proof
         elif isinstance(action, SorryAction):
             if isinstance(self.past, InitialState):
@@ -212,6 +217,16 @@ class CalculateState(State):
                         f"lhs {action.rule.lhs} must appear as one of the steps")
             self.calc.perform_rule(action.rule)
             return self
+        
+        # Handle rewrite goal action
+        elif isinstance(action, RewriteGoalAction):
+            if isinstance(self.past, ProveState):
+                proof = self.past.goal.proof_by_rewrite_goal(begin=action.name)
+                return CalculateState(self, proof.begin)
+            else:
+                raise StateException(
+                    "Calculate",
+                    "RewriteGoalAction can only be performed when past state is ProveState")
         
         # Done with current calculation or proof
         elif isinstance(action, DoneAction):

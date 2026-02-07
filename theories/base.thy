@@ -4,7 +4,41 @@ axiom (INT x. c) = c * x + SKOLEM_CONST(C)
 
 axiom (INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)
 
-axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C) for x != 0
+axiom (INT x. -x) = -x ^ 2 / 2 + SKOLEM_CONST(C)
+
+axiom (INT x. a * x) = x ^ 2 / a + SKOLEM_CONST(C) for a != 0
+
+axiom (INT x. a*x + b) = x ^ 2 / a + b * x + SKOLEM_CONST(C) for a != 0
+
+axiom (INT x. a*x - b) = x ^ 2 / a - b * x + SKOLEM_CONST(C) for a != 0
+
+axiom (INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / (-x)) = -log(abs(x)) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / (x - a)) = log(abs(x - a)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (-a + x)) = log(abs(-a + x)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (a + x)) = log(abs(a + x)) + SKOLEM_CONST(C) for isReal(a)
+
+axiom (INT x. 1 / (a * x + b)) = 1/a * log(abs(a * x + b)) + SKOLEM_CONST(C) for a != 0, isReal(a), isReal(b)
+
+axiom (INT x. 1 / (b + a * x)) = 1/a * log(abs(b + a * x)) + SKOLEM_CONST(C) for a != 0, isReal(a), isReal(b)
+
+axiom (INT x. 1 / (x - a)) = log(x - a) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (-a + x)) = log(-a + x) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (x + a)) = log(x + a) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (a + x)) = log(a + x) + SKOLEM_CONST(C) for notReal(a)
+
+axiom (INT x. 1 / (a * x + b)) = 1/a * log(a * x + b) + SKOLEM_CONST(C) for a != 0, notReal(b)
+
+axiom (INT x. 1 / (b + a * x)) = 1/a * log(b + a * x) + SKOLEM_CONST(C) for a != 0, notReal(b)
 
 axiom (INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C) for n != -1
 
@@ -16,6 +50,8 @@ axiom (INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C) for x > 0
 
 axiom (INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)
 
+axiom (INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)
+
 axiom (INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)
 
 axiom (INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)
@@ -24,7 +60,33 @@ axiom (INT x. 1 / sin(x)) = -1/2 * log((1 + cos(x))/(1 - cos(x))) + SKOLEM_CONST
 
 axiom (INT x. 1 / (x^2 + 1)) = arctan(x) + SKOLEM_CONST(C)
 
+axiom (INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / cos(x)^2) = tan(x) + SKOLEM_CONST(C)
+
+axiom (INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / sin(x)^2) = -cot(x) + SKOLEM_CONST(C)
+
+axiom (INT x. cot(x) * csc(x)) = -csc(x) + SKOLEM_CONST(C)
+
+axiom (INT x. sec(x) * tan(x)) = sec(x) + SKOLEM_CONST(C)
+
+axiom (INT x. sec(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / cos(x)) = log(abs(sec(x) + tan(x))) + SKOLEM_CONST(C)
+
+axiom (INT x. csc(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
+
+axiom (INT x. 1 / sin(x)) = log(abs(csc(x) - cot(x))) + SKOLEM_CONST(C)
+
+axiom [simp,bidirectional] csc(x) - cot(x) = 1 / (csc(x) + cot(x))
+
 axiom (INT x. 1 / sqrt(1 - x ^ 2)) = arcsin(x) + SKOLEM_CONST(C) for x >= -1, x <= 1
+
+# Common limites
+
+axiom (LIM {x -> oo}. log(x / sqrt(x ^ 2 + 1))) = log(1)
 
 # Common series expansion
 
@@ -62,9 +124,9 @@ axiom SUM(n, 0, oo, x^n/factorial(n)) = exp(x)
 
 ## Absolute value
 
-axiom [simp] abs(x) = x for x >= 0
+axiom [simp] abs(x) = x for x: real, x >= 0
 
-axiom [simp] abs(x) = -x for x <= 0
+axiom [simp] abs(x) = -x for x: real, x <= 0
 
 axiom [simp] abs(x * y) = abs(x) * abs(y)
 
@@ -128,7 +190,9 @@ axiom [simp] conj(a) = a for a: real
 
 ## Euler's formula
 
-axiom exp(i*x) = cos(x) + i * sin(x) for x: real
+axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom [bidirectional] exp(-(i*x)) = cos(x) - i * sin(x) for x: real
 
 axiom sin(x) = (exp(i*x) - exp(-i * x)) / (2*i)
 
@@ -192,17 +256,23 @@ axiom [simp] exp(log(b)) = b for b > 0
 
 axiom [simp] log(exp(b)) = b
 
-axiom [bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
+axiom [simp] log(sqrt(a)) = 1/2 * log(a) for a > 0
 
-axiom [bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
+axiom [simp, bidirectional] log(1 / x) = -log(x) for x > 0
 
-axiom [bidirectional] log(abs(a / b)) = log(abs(a)) - log(abs(b)) for a != 0, b != 0
+axiom [simp, bidirectional] log(abs(1 / x)) = -log(abs(x))
+
+axiom [simp, bidirectional] log(a * b) = log(a) + log(b) for a > 0, b > 0
+
+axiom [simp, bidirectional] log(a / b) = log(a) - log(b) for a > 0, b > 0
+
+axiom [simp, bidirectional] log(abs(a * b)) = log(abs(a)) + log(abs(b)) for a != 0, b != 0
+
+axiom [simp, bidirectional] log(abs(a / b)) = log(abs(a)) - log(abs(b)) for a != 0, b != 0
 
 axiom [bidirectional] log(a / b) = -log(b / a) for a > 0, b > 0
 
 axiom [bidirectional] log(abs(a / b)) = -log(abs(b / a)) for a != 0, b != 0
-
-axiom [simp] log(1 / x) = -log(x) for x > 0
 
 axiom [simp] log(x ^ a) = a * log(x) for x > 0, a: real
 
@@ -572,3 +642,15 @@ axiom (INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * 
 // Inside interesting Integrals, Section 3.1.7
 
 axiom (INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b) for a > 0, b > 0
+
+// Exponential integrals for complex arguments
+
+axiom (INT x:[0, oo]. exp((-y + b * i) * x)) = -1 / (-y + b * i) for y > 0, isReal(b)
+
+axiom (INT x:[0, oo]. exp((-y - b * i) * x)) = -1 / (-y - b * i) for y > 0, isReal(b)
+
+axiom (INT x. x / (x ^ 2 + 1)) = 1/2 * log(x ^ 2 + 1) + SKOLEM_CONST(C) for x > 0   
+
+// gauss integral
+
+axiom (INT u:[0,oo]. exp(-(u ^ 2))) = sqrt(pi)/2

@@ -29,8 +29,6 @@ calculate INT x. arctan(exp(x))/exp(x)
     integrate by parts with u=arctan(u), v=-1/u
     partial fraction decomposition
     apply integral identity
-    substitute v for u^2
-    apply integral identity
     replace substitution
     simplify
 done
@@ -446,7 +444,6 @@ calculate INT x. 1/sin(x)^3 for x>0, x<pi
     expand polynomial
     apply integral identity
     solve integral INT x. csc(x)^3
-    expand polynomial
 done
 
 calculate INT x. arcsin(x)^3 for x>-1, x<1

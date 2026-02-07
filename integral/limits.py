@@ -7,6 +7,7 @@ from integral import expr
 from integral.expr import NEG_INF, POS_INF, Const, Expr
 from integral.poly import normalize
 from integral.context import Context
+from integral import condprover
 
 
 """Return value of comparison."""
@@ -38,8 +39,11 @@ class PolyLog(Asymptote):
     order: List[Union[int, Fraction, Expr]] - exponent of x, log(x),
     log(log(x)), etc, each order is an expression independent of x.
     
+    coeff: Expr - the leading coefficient (default 1).
+    For example, 2*x^3 is represented as PolyLog(3, coeff=Const(2)).
+    
     """
-    def __init__(self, *order):
+    def __init__(self, *order, coeff=None):
         self.order = []
         for n in order:
             if isinstance(n, (int, Fraction)):
@@ -48,21 +52,33 @@ class PolyLog(Asymptote):
                 self.order.append(n)
             else:
                 raise AssertionError("PolyLog")
+        # Default coeff is 1 for backward compatibility
+        self.coeff = coeff if coeff is not None else Const(1)
 
     def __str__(self):
-        return "PolyLog(%s)" % (','.join(str(n) for n in self.order))
+        if self.coeff == Const(1):
+            return "PolyLog(%s)" % (','.join(str(n) for n in self.order))
+        else:
+            return "PolyLog(%s, coeff=%s)" % (','.join(str(n) for n in self.order), self.coeff)
 
     def __repr__(self):
         return str(self)
 
     def __eq__(self, other):
-        return isinstance(other, PolyLog) and self.order == other.order
+        # For backward compatibility, ignore coeff in equality check if both are 1
+        if isinstance(other, PolyLog) and self.order == other.order:
+            return True
+        return False
 
     def get_order(self, i: int) -> Expr:
         if i < len(self.order):
             return self.order[i]
         else:
             return Const(0)
+    
+    def get_coeff(self) -> Expr:
+        """Get the coefficient, defaulting to 1."""
+        return self.coeff if self.coeff is not None else Const(1)
 
 
 class Exp(Asymptote):
@@ -71,18 +87,31 @@ class Exp(Asymptote):
     order: Asymptote - exponent of the exponential, where base is
     assumed to be e.
     
+    coeff: Expr - the leading coefficient (default 1).
+    
     """
-    def __init__(self, order: Asymptote):
+    def __init__(self, order: Asymptote, coeff=None):
         self.order = order
+        self.coeff = coeff if coeff is not None else Const(1)
 
     def __str__(self):
-        return "Exp(%s)" % self.order
+        if self.coeff == Const(1):
+            return "Exp(%s)" % self.order
+        else:
+            return "Exp(%s, coeff=%s)" % (self.order, self.coeff)
 
     def __repr__(self):
         return str(self)
 
     def __eq__(self, other):
-        return isinstance(other, Exp) and self.order == other.order
+        # For backward compatibility, ignore coeff in equality check
+        if isinstance(other, Exp) and self.order == other.order:
+            return True
+        return False
+    
+    def get_coeff(self) -> Expr:
+        """Get the coefficient, defaulting to 1."""
+        return self.coeff if self.coeff is not None else Const(1)
 
 
 def asymp_compare(a: Asymptote, b: Asymptote, ctx:Context) -> int:
@@ -118,33 +147,63 @@ def asymp_compare(a: Asymptote, b: Asymptote, ctx:Context) -> int:
         raise NotImplementedError
     
 def asymp_add(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
-    """Return the sum of two asymptotes."""
+    """Return the sum of two asymptotes.
+    
+    When adding, the larger asymptote dominates. If they are equal order,
+    we add the coefficients.
+    """
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
 
     cmp = asymp_compare(a, b, ctx)
     if cmp == LESS:
         return b
-    elif cmp == GREATER or cmp == EQUAL:
+    elif cmp == GREATER:
         return a
+    elif cmp == EQUAL:
+        # Same order, add coefficients
+        if isinstance(a, PolyLog) and isinstance(b, PolyLog):
+            new_coeff = normalize(a.get_coeff() + b.get_coeff(), ctx)
+            return PolyLog(*a.order, coeff=new_coeff)
+        elif isinstance(a, Exp) and isinstance(b, Exp):
+            new_coeff = normalize(a.get_coeff() + b.get_coeff(), ctx)
+            return Exp(a.order, coeff=new_coeff)
+        else:
+            return a
     else:
         return Unknown()
 
 def asymp_add_inv(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
-    """Return the sum of two decaying asumptotes."""
+    """Return the sum of two decaying asymptotes.
+    
+    For decaying asymptotes, the slower decay dominates.
+    """
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
 
     cmp = asymp_compare(a, b, ctx)
     if cmp == GREATER:
         return b
-    elif cmp == LESS or cmp == EQUAL:
+    elif cmp == LESS:
         return a
+    elif cmp == EQUAL:
+        # Same order, add coefficients
+        if isinstance(a, PolyLog) and isinstance(b, PolyLog):
+            new_coeff = normalize(a.get_coeff() + b.get_coeff(), ctx)
+            return PolyLog(*a.order, coeff=new_coeff)
+        elif isinstance(a, Exp) and isinstance(b, Exp):
+            new_coeff = normalize(a.get_coeff() + b.get_coeff(), ctx)
+            return Exp(a.order, coeff=new_coeff)
+        else:
+            return a
     else:
         return Unknown()    
 
 def asymp_mult(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
-    """Return the product of two asymptotes."""
+    """Return the product of two asymptotes.
+    
+    Coefficients are multiplied together.
+    """
     if isinstance(a, Unknown) or isinstance(b, Unknown):
         return Unknown()
     elif isinstance(a, Exp) and isinstance(b, Exp):
@@ -152,18 +211,23 @@ def asymp_mult(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
         if isinstance(s, Unknown):
             return Unknown()
         else:
-            return Exp(s)
+            new_coeff = normalize(a.get_coeff() * b.get_coeff(), ctx)
+            return Exp(s, coeff=new_coeff)
     elif isinstance(a, Exp) and isinstance(b, PolyLog):
-        return a
+        # Exp dominates, but multiply coefficients
+        new_coeff = normalize(a.get_coeff() * b.get_coeff(), ctx)
+        return Exp(a.order, coeff=new_coeff)
     elif isinstance(a, PolyLog) and isinstance(b, Exp):
-        return b
+        new_coeff = normalize(a.get_coeff() * b.get_coeff(), ctx)
+        return Exp(b.order, coeff=new_coeff)
     elif isinstance(a, PolyLog) and isinstance(b, PolyLog):
         l = max(len(a.order), len(b.order))
         s_order = []
         for i in range(l):
             ai, bi = a.get_order(i), b.get_order(i)
             s_order.append(normalize(ai + bi, ctx))
-        return PolyLog(*s_order)
+        new_coeff = normalize(a.get_coeff() * b.get_coeff(), ctx)
+        return PolyLog(*s_order, coeff=new_coeff)
     else:
         raise NotImplementedError
 
@@ -171,36 +235,44 @@ def asymp_div(a: Asymptote, b: Asymptote, ctx: Context) -> Asymptote:
     """Return the quotient of two asymptotes.
     
     Assume a > b according to asymp_compare. Otherwise throw Exception.
-    
+    Coefficients are divided.
     """
     if asymp_compare(a, b, ctx) != GREATER:
         raise AssertionError("asymp_div")
 
     if isinstance(a, Exp) and isinstance(b, Exp):
-        return Exp(asymp_div(a.order, b.order, ctx))
+        new_coeff = normalize(a.get_coeff() / b.get_coeff(), ctx)
+        return Exp(asymp_div(a.order, b.order, ctx), coeff=new_coeff)
     elif isinstance(a, Exp) and isinstance(b, PolyLog):
-        return a
+        new_coeff = normalize(a.get_coeff() / b.get_coeff(), ctx)
+        return Exp(a.order, coeff=new_coeff)
     elif isinstance(a, PolyLog) and isinstance(b, PolyLog):
         l = max(len(a.order), len(b.order))
         s_order = []
         for i in range(l):
             ai, bi = a.get_order(i), b.get_order(i)
             s_order.append(normalize(ai - bi, ctx))
-        return PolyLog(*s_order)
+        new_coeff = normalize(a.get_coeff() / b.get_coeff(), ctx)
+        return PolyLog(*s_order, coeff=new_coeff)
     else:
         raise NotImplementedError
 
 def asymp_power(a: Asymptote, b: Expr, ctx: Context) -> Asymptote:
-    """Raise an asymptotic limit to a constant power."""
+    """Raise an asymptotic limit to a constant power.
+    
+    coeff^b is also computed.
+    """
     if isinstance(a, Unknown):
         return Unknown()
     elif isinstance(a, Exp):
         # This just multiplies an exponent by a constant, which is not
         # kept track of in this framework.
-        return a
+        new_coeff = normalize(a.get_coeff() ^ b, ctx)
+        return Exp(a.order, coeff=new_coeff)
     elif isinstance(a, PolyLog):
         # Multiplies all orders in a by the given constant.
-        return PolyLog(*(normalize(e * b, ctx) for e in a.order))
+        new_coeff = normalize(a.get_coeff() ^ b, ctx)
+        return PolyLog(*[normalize(e * b, ctx) for e in a.order], coeff=new_coeff)
     else:
         raise NotImplementedError
 
@@ -210,6 +282,19 @@ def exp_asymp(a: Asymptote) -> Asymptote:
         return Unknown()
     else:
         return Exp(a)
+
+def asymp_scale(a: Asymptote, c: Expr, ctx: Context) -> Asymptote:
+    """Scale an asymptote's coefficient by a constant factor."""
+    if isinstance(a, Unknown):
+        return Unknown()
+    elif isinstance(a, PolyLog):
+        new_coeff = normalize(a.get_coeff() * c, ctx)
+        return PolyLog(*a.order, coeff=new_coeff)
+    elif isinstance(a, Exp):
+        new_coeff = normalize(a.get_coeff() * c, ctx)
+        return Exp(a.order, coeff=new_coeff)
+    else:
+        raise NotImplementedError
 
 
 """Side of approaching the limit."""
@@ -276,21 +361,18 @@ def limit_add(a: Limit, b: Limit, ctx: Context) -> Limit:
                 return Limit(POS_INF,asymp=b.asymp)
         return Limit(None)
     elif a.e == POS_INF and b.e == POS_INF:
+        # oo + oo is indeterminate without knowing the order
+        # Only allow if we can determine the dominant term
         return Limit(POS_INF, asymp=asymp_add(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF and b.e == NEG_INF:
-        cmp = asymp_compare(a.asymp, b.asymp, ctx)
-        if cmp == UNKNOWN:
-            return Limit(None)
-        elif cmp == LESS:
-            return Limit(NEG_INF, asymp=b.asymp)
-        elif cmp == GREATER:
-            return Limit(POS_INF, asymp=a.asymp)
-        else:  # EQUAL case, oo - oo = unknown
-            return Limit(None)
+        # oo - oo is always indeterminate form
+        return Limit(None)
     elif a.e == NEG_INF and b.e == POS_INF:
-        return limit_add(b, a, ctx)
+        # -oo + oo is always indeterminate form
+        return Limit(None)
     elif a.e == NEG_INF and b.e == NEG_INF:
-        return Limit(NEG_INF, asymp=asymp_add(a.asymp, b.asymp))
+        # -oo + (-oo) = -oo
+        return Limit(NEG_INF, asymp=asymp_add(a.asymp, b.asymp, ctx))
     elif a.e == POS_INF:
         return Limit(POS_INF, asymp=a.asymp)
     elif b.e == POS_INF:
@@ -376,9 +458,11 @@ def limit_mult(a: Limit, b: Limit, ctx: Context) -> Limit:
             else:
                 return Limit(None)
         elif ctx.is_positive(b.e):
-            return Limit(POS_INF, asymp=a.asymp)
+            # Scale asymptote coefficient by the positive constant
+            return Limit(POS_INF, asymp=asymp_scale(a.asymp, b.e, ctx))
         elif ctx.is_negative(b.e):
-            return Limit(NEG_INF, asymp=a.asymp)
+            # Scale asymptote coefficient by absolute value of negative constant
+            return Limit(NEG_INF, asymp=asymp_scale(a.asymp, normalize(-(b.e), ctx), ctx))
         elif b.e == Const(0):
             if b.side == AT_CONST:
                 return Limit(Const(0), side=AT_CONST)
@@ -389,8 +473,9 @@ def limit_mult(a: Limit, b: Limit, ctx: Context) -> Limit:
                 return Limit(Const(0), asymp=asymp_div(b.asymp, a.asymp, ctx), side=b.side)
             elif cmp == GREATER:
                 return Limit(POS_INF, asymp=asymp_div(a.asymp, b.asymp, ctx))
-            else:  # EQUAL case
-                return Limit(None)
+            else:  # EQUAL case - same asymptotic order, return ratio of coefficients
+                coeff_ratio = normalize(a.asymp.get_coeff() / b.asymp.get_coeff(), ctx)
+                return Limit(coeff_ratio, side=AT_CONST)
         else:
             return Limit(None)
     elif b.e == POS_INF:
@@ -445,6 +530,21 @@ def limit_inverse(a: Limit, ctx: Context) -> Limit:
         else:
             raise NotImplementedError
     else:
+        # Check if a.e evaluates to 0 to avoid ZeroDivisionError
+        if a.e.is_evaluable():
+            val = expr.eval_expr(a.e)
+            if val == 0:
+                # Treat as approaching 0
+                if a.side == TWO_SIDED or a.side == AT_CONST:
+                    return Limit(None)
+                elif a.side == FROM_ABOVE:
+                    return Limit(POS_INF, asymp=a.asymp)
+                elif a.side == FROM_BELOW:
+                    return Limit(NEG_INF, asymp=a.asymp)
+                else:
+                    return Limit(None)
+        
+        # Safe to normalize now
         res_e = normalize(Const(1) / a.e, ctx)
         if a.side == TWO_SIDED:
             return Limit(res_e, asymp=a.asymp, side=TWO_SIDED)
@@ -634,11 +734,29 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
             expr.is_const(l.e) and l.e.val == 0 and l.side == FROM_BELOW:
             return Limit(None)
         elif expr.is_const(l.e) and l.e.val == 0 and l.side == FROM_ABOVE:
-            return Limit(NEG_INF, asymp = PolyLog(0, *l.asymp.order), side=FROM_ABOVE)
+            if isinstance(l.asymp, PolyLog):
+                # If argument approaches 0 like x^(-a), then log approaches -a*log(x) -> -oo
+                # The asymptote order is the same as for the positive case
+                a = l.asymp.get_order(0)  # The power of x (negative for decay)
+                # For decay, a < 0, so |a|*log(x) is the rate of decay
+                return Limit(NEG_INF, asymp=PolyLog(Const(0), Const(1), coeff=normalize(-(a), ctx)), side=FROM_ABOVE)
+            elif isinstance(l.asymp, Exp):
+                return Limit(NEG_INF, asymp=l.asymp.order, side=FROM_ABOVE)
+            else:
+                return Limit(NEG_INF, side=FROM_ABOVE)
         elif expr.is_const(l.e) and l.e.val == 1:
             return Limit(Const(0), asymp = l.asymp, side = l.side)
         elif l.e == POS_INF:
-            return Limit(POS_INF, asymp=PolyLog(0, *l.asymp.order), side=FROM_BELOW)
+            if isinstance(l.asymp, PolyLog):
+                # log(coeff * x^a * log(x)^b * ...) = log(coeff) + a*log(x) + b*log(log(x)) + ...
+                # The dominant term as x->oo is a*log(x), where a is the first (x-power) order
+                # So the asymptote is PolyLog(0, 1) with coefficient = a (the x-power)
+                a = l.asymp.get_order(0)  # The power of x
+                return Limit(POS_INF, asymp=PolyLog(Const(0), Const(1), coeff=a), side=FROM_BELOW)
+            elif isinstance(l.asymp, Exp):
+                return Limit(POS_INF, asymp=l.asymp.order, side=FROM_BELOW)
+            else:
+                return Limit(POS_INF, side=FROM_BELOW)
         else:
             return Limit(expr.Fun('log', l.e))
     elif expr.is_fun(e) and e.func_name == 'sin':
@@ -707,6 +825,22 @@ def limit_of_expr(e: Expr, var_name: str, ctx: Context) -> Limit:
             return Limit(None)
         else:
             return Limit(expr.Integral(e.var, lower.e, upper.e, body.e))
+    elif expr.is_evalat(e):
+        # EvalAt: [F(x)]_x=a,b = F(b) - F(a)
+        # If upper or lower contains the limit variable, expand first
+        if e.upper.contains_var(var_name) or e.lower.contains_var(var_name):
+            # Expand: [F(x)]_x=a,b = F(b) - F(a)
+            f_at_upper = e.body.subst(e.var, e.upper)
+            f_at_lower = e.body.subst(e.var, e.lower)
+            expanded = f_at_upper - f_at_lower
+            # Recursively compute limit of the expanded expression
+            return limit_of_expr(expanded, var_name, ctx)
+        else:
+            # EvalAt doesn't contain the limit variable, it's a constant
+            f_at_upper = e.body.subst(e.var, e.upper)
+            f_at_lower = e.body.subst(e.var, e.lower)
+            result = normalize(f_at_upper - f_at_lower, ctx)
+            return Limit(result, side=AT_CONST)
     else:
         # TODO: add support for other functions
         return Limit(None)
@@ -718,7 +852,12 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
     the expression LIM {x->oo}. e.
 
     """
-    l = limit_of_expr(e, var_name, ctx)
+    # Create proper limit context with isReal(var) and var > 0
+    limit_ctx = Context(ctx)
+    limit_ctx.add_condition(expr.isReal(expr.Var(var_name)))
+    limit_ctx.add_condition(expr.Op(">", expr.Var(var_name), expr.Const(0)))
+    
+    l = limit_of_expr(e, var_name, limit_ctx)
     if l.e is not None:
         return l.e
     elif expr.is_fun(e) and e.func_name == 'exp':
@@ -733,7 +872,7 @@ def reduce_inf_limit(e: Expr, var_name: str, ctx: Context) -> Expr:
                     return Const(0)  
         elif expr.is_plus(arg) or expr.is_minus(arg):
             for term in arg.args:
-                if not term.contains_i() and term.contains_var(var_name):
+                if not limit_ctx.check_condition(expr.Fun("notReal", term)) and term.contains_var(var_name):
                     real_part = term
                     break
             if real_part is not None:

@@ -1,17 +1,19 @@
 """Context of integral calculations"""
 
-from typing import Iterable, Optional, Callable
+from typing import Iterable, Optional, List, Dict, Union, Callable
 import os
+import json
 
 from integral import expr
-from integral.expr import Expr, Eq, Op, Const, expr_to_pattern
+from integral.expr import Expr, Eq, Op, Const, expr_to_pattern, Fun, Var, CINTPath
+from integral import parser
 from integral.conditions import Conditions
 from integral import action
 
 
 class Definition:
     """Introduce a new function definition.
-    
+
     Attributes
     ----------
     symbol: str
@@ -45,7 +47,7 @@ class Definition:
         if self.conds:
             res += " for " + str(self.conds)
         return res
-    
+
     def __repr__(self):
         return f"Definition({repr(self.symbol)}, {repr(self.args)}, [{str(self.conds)}], {str(self.define_eq)})"
 
@@ -56,7 +58,7 @@ class Definition:
 
 class Identity:
     """Introduces a theorem.
-    
+
     Attributes
     ----------
     expr: Expr
@@ -213,7 +215,7 @@ class Context:
         return res
 
     def get_definitions(self) -> dict[str, Definition]:
-        """Obtain all definitions in the context."""        
+        """Obtain all definitions in the context."""
         res = self.parent.get_definitions() if self.parent is not None else dict()
         for name, definition in self.definitions.items():
             res[name] = definition
@@ -399,7 +401,7 @@ class Context:
 
         self.inequalities.append(symb_identity(e, conds))
 
-    def add_split_identities(self, e: Expr, conds: Conditions):            
+    def add_split_identities(self, e: Expr, conds: Conditions):
         assert isinstance(conds, Conditions)
         self.split_identities.append(symb_identity(e, conds))
 
@@ -421,7 +423,7 @@ class Context:
         for cond in conds.data:
             self.add_condition(cond)
 
-    def add_subst(self, var: str, expr: Expr, old_var:str):
+    def add_subst(self, var: str, expr: Expr, old_var: str = ""):
         self.substs.append((var, expr, old_var))
 
     def add_subgoal(self, name: str, identity: Identity):
@@ -553,6 +555,17 @@ def body_conds(e: Expr, ctx: Context) -> Context:
             ctx2.add_condition(expr.Op("<=", expr.Var(e.index_var), e.upper))
             ctx2.add_condition(expr.Op(">=", e.upper - expr.Var(e.index_var), Const(0)))
         ctx2.add_condition(expr.Fun("isInt", expr.Var(e.index_var)))
+    elif expr.is_evalat(e):
+        ctx2.add_condition(expr.isReal(expr.Var(e.var)))
+        if e.lower != expr.NEG_INF:
+            ctx2.add_condition(Op(">", expr.Var(e.var), e.lower))
+        if e.upper != expr.POS_INF:
+            ctx2.add_condition(Op("<", expr.Var(e.var), e.upper))
+    elif expr.is_cintegral(e):
+        for path in e.paths:
+            ctx2.add_condition(expr.Fun("isReal", expr.Var(path.var)))
+            ctx2.add_condition(Op(">", expr.Var(path.var), path.start_expr))
+            ctx2.add_condition(Op("<", expr.Var(path.var), path.end_expr))
     else:
         raise TypeError
     return ctx2
@@ -594,6 +607,10 @@ def apply_subterm(e: Expr, f: Callable[[Expr, Context], Expr], ctx: Context) -> 
             upper = rec(e.upper, ctx)
             body = rec(e.body, body_conds(e, ctx))
             return f(expr.Product(e.index_var, lower, upper, body), ctx)
+        elif expr.is_cintegral(e):
+            paths = tuple(p for p in e.paths)  # 将路径列表转换为元组
+            body = rec(e.body, ctx)
+            return f(expr.CIntegral(e.var, paths, body), ctx)
         elif expr.is_symbol(e):
             return e
         else:

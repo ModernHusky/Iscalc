@@ -97,7 +97,6 @@ subgoal 5: g(t) = -(2 * (INT y:[0,1]. 1 / (y ^ 2 + 1) * exp(t ^ 2 * (-(y ^ 2) - 
 lhs:
     apply 3 on g(t)
     apply 4 on SKOLEM_CONST(C)
-    simplify
 done
 lhs:
     apply 1 on INT x:[-oo,oo]. exp(-(x ^ 2) / 2)

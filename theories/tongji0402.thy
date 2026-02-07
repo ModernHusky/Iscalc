@@ -265,6 +265,7 @@ done
 calculate INT x. 1 / ((x + 1) * (x - 2)) for x != -1, x != 2
     partial fraction decomposition
     apply integral identity
+    simplify
 done
 
 calculate INT x. x / (x^2 - x - 2) for x != -1, x != 2
@@ -341,10 +342,10 @@ calculate INT x. 1 / (1 + sqrt(1 - x^2)) for x >= -1, x <= 1, x != 0
     apply integral identity
     replace substitution
     simplify
-	substitute u for t/2
-	apply integral identity
-	replace substitution
-	simplify
+    substitute u for t/2
+    apply integral identity
+    replace substitution
+    simplify
 done
 
 calculate INT x. 1 / (x + sqrt(1 - x^2)) for x > -1, x < 1, x + sqrt(1 - x^2) != 0, cos(arcsin(x)) + sin(arcsin(x)) != 0

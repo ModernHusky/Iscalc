@@ -169,6 +169,7 @@ lhs:
     simplify
     apply integral identity
     simplify
+    rewrite (log(cos(w) + 1) - log(1 - cos(w))) to log((cos(w) + 1) / (1 - cos(w)))
     rewrite log((cos(w) + 1) / (1 - cos(w))) to log((cos(w) + 1) ^ 2 / ((cos(w) + 1) * (1 - cos(w))))
     rewrite (cos(w) + 1) * (1 - cos(w)) to 1 - cos(w) ^ 2
     rewrite 1 - cos(w) ^ 2 to sin(w) ^ 2
@@ -176,9 +177,11 @@ lhs:
     simplify
     rewrite 1 - x ^ 2 / a ^ 2 to (a ^ 2 - x ^ 2) / a ^ 2
     rewrite sqrt((a ^ 2 - x ^ 2) / a ^ 2) to sqrt(a ^ 2 - x ^ 2) / a
+    rewrite 2 * log(sqrt(a ^ 2 - x ^ 2) / a + 1) to log((sqrt(a ^ 2 - x ^ 2) / a + 1) ^ 2)
     rewrite (sqrt(a ^ 2 - x ^ 2) / a + 1) ^ 2 to (1 + sqrt(a ^ 2 - x ^ 2) / a) ^ 2
     rewrite (1 + sqrt(a ^ 2 - x ^ 2) / a) ^ 2 to ((a + sqrt(a ^ 2 - x ^ 2)) / a) ^ 2
-    rewrite a ^ 2 / x ^ 2 * ((a + sqrt(a ^ 2 - x ^ 2)) / a) ^ 2 to ((a + sqrt(a ^ 2 - x ^ 2)) / x) ^ 2
+    simplify
+    rewrite 2 * log(sqrt(a ^ 2 - x ^ 2) + a) - 2 * log(x) to 2 * log((sqrt(a ^ 2 - x ^ 2) + a)/x)
     simplify
 rhs:
     rewrite -1 / a * log((a + sqrt(a ^ 2 - x ^ 2)) / x) + SKOLEM_CONST(C) to SKOLEM_CONST(C) - 1 / a * log((a + sqrt(a ^ 2 - x ^ 2)) / x)

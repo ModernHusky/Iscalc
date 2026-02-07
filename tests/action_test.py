@@ -4,14 +4,35 @@ import unittest
 import sys
 import cProfile
 import pstats
+import os
+from pathlib import Path
 
 from integral import compstate
 from integral import state
 from integral import parser
 from integral import context
 
+# 获取项目根目录（tests 目录的父目录）
+PROJECT_ROOT = Path(__file__).parent.parent
+os.chdir(PROJECT_ROOT)
+
 
 class ActionTest(unittest.TestCase):
+    def setUp(self):
+        """Clear all global caches before each test to prevent interference"""
+        # Clear normalize cache
+        from integral import poly
+        poly._normalize_cache.clear()
+        
+        # Clear condition check cache
+        from integral import condprover
+        condprover.clear_condition_cache()
+        
+        # Clear poles and winding caches
+        from integral import rules
+        rules._poles_cache.clear()
+        rules._winding_cache.clear()
+    
     def check_file(self, filename: str, *, print_lines=False, print_state=False,
                    write_stats=False):
         with open(f'theories/{filename}.thy', 'r', encoding='utf-8') as f:
@@ -316,8 +337,6 @@ class ActionTest(unittest.TestCase):
                 rewrite -(b * x * i) - x * y to (-y - b*i) * x
                 rewrite b * x * i - x * y to (-y + b*i) * x
                 apply integral identity
-                rewrite x * (-(b*i) - y) to  -x * (b*i) - x * y
-                rewrite x * (b * i - y) to x * b * i - x * y
                 simplify
                 rewrite to b / (y^2 + b^2)
             done

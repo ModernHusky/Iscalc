@@ -139,9 +139,6 @@ calculate INT x:[1, 2]. (3 - x) / (x * (x ^2 + 1))
     rewrite (3 * x + 1) / (x ^ 2 + 1) to 3 * x / (x ^ 2 + 1) + 1 / (x ^ 2 + 1)
     apply integral identity
     simplify
-    substitute u for x ^ 2 + 1
-    apply integral identity
-    simplify
 done
 
 calculate INT x:[1, 2]. (3 * x + 1) / (x ^ 2 * (x ^ 2 + 25))

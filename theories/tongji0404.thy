@@ -156,7 +156,7 @@ done
 
 calculate INT x. (-x^2 - 2) / (x^2 + x + 1)^2
     partial fraction decomposition
-    sorry
+sorry
 
 calculate INT x. 1 / (3 + sin(x)^2)
     rewrite 1 / (3 + sin(x)^2) to 1 / (3*sec(x)^2 + tan(x)^2) * (1 / cos(x)^2)
@@ -219,7 +219,7 @@ calculate INT x. 1 / (1 + (x + 1)^(1/3)) for (x+1)^(1/3) + 1 != 0
 done
 
 calculate INT x. (x^(2/3) - 1) / (sqrt(x) + 1) for x > 0
-    sorry
+sorry
 
 calculate INT x. (sqrt(x + 1) - 1) / (sqrt(x + 1) + 1) for x >= -1
     substitute t for sqrt(x + 1)
@@ -239,7 +239,7 @@ calculate INT x. 1 / (sqrt(x) + x^(1/4)) for x > 0
 done
 
 calculate INT x. sqrt((1-x)/(1+x)) / x
-    sorry
+sorry
 
 calculate INT x. 1 / ((x+1)^2*(x-1)^4) ^ (1/3)
-    sorry
+sorry

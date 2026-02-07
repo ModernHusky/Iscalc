@@ -333,12 +333,40 @@ def minus_normal_log(a: NormalLog, b: NormalLog) -> NormalLog:
 def add_normal_log(a: NormalLog, b: NormalLog) -> NormalLog:
     return NormalLog(a.e * b.e)
 
+def uminus_normal_log(a: NormalLog) -> NormalLog:
+    """Handle unary minus: -log(x) = log(1/x)"""
+    return NormalLog(poly.singleton(expr.Const(1)) / a.e)
+
 def normalize_log(e: Expr, ctx: Context) -> NormalLog:
     def rec(e: Expr) -> NormalLog:
-        if e.is_minus():
+        if expr.is_uminus(e):
+            return uminus_normal_log(rec(e.args[0]))
+        elif e.is_minus():
             return minus_normal_log(rec(e.args[0]), rec(e.args[1]))
         elif e.is_plus():
             return add_normal_log(rec(e.args[0]), rec(e.args[1]))
+        elif e.is_times():
+            # Handle n * log(a) = log(a^n) and log(a) * n = log(a^n)
+            lhs, rhs = e.args[0], e.args[1]
+            # Case 1: n * log(a) where n is constant
+            if lhs.is_constant() and expr.is_fun(rhs) and rhs.func_name == 'log':
+                # n * log(a) = log(a^n)
+                return NormalLog(poly.singleton(rhs.args[0] ** lhs))
+            # Case 2: log(a) * n where n is constant
+            if rhs.is_constant() and expr.is_fun(lhs) and lhs.func_name == 'log':
+                # log(a) * n = log(a^n)
+                return NormalLog(poly.singleton(lhs.args[0] ** rhs))
+            # Case 3: n * (log expression) - recursively handle
+            if lhs.is_constant():
+                inner = rec(rhs)
+                # n * log(e) = log(e^n)
+                inner_expr = from_poly(inner.e)
+                return NormalLog(poly.singleton(inner_expr ** lhs))
+            # Case 4: (log expression) * n - recursively handle
+            if rhs.is_constant():
+                inner = rec(lhs)
+                inner_expr = from_poly(inner.e)
+                return NormalLog(poly.singleton(inner_expr ** rhs))
         elif expr.is_fun(e) and e.func_name == 'log':
             return NormalLog(poly.singleton(e.args[0]))
         return NormalLog(poly.singleton(expr.Fun("exp", e)))
@@ -353,7 +381,14 @@ def equal_normal_log(t1: NormalLog, t2: NormalLog):
 def eq_log(t1: Expr, t2: Expr, ctx: Context) -> bool:
     n1 = normalize_log(t1, ctx)
     n2 = normalize_log(t2, ctx)
-    return equal_normal_log(n1, n2)
+    # First try direct comparison
+    if equal_normal_log(n1, n2):
+        return True
+    # Also try normalizing the polynomial representation for better comparison
+    # This handles cases like a * 1 == a
+    e1 = poly.normalize(from_poly(n1.e), ctx)
+    e2 = poly.normalize(from_poly(n2.e), ctx)
+    return e1 == e2
 
 def normalize_exp(t: Expr) -> Expr:
     def rec(t):
@@ -415,9 +450,75 @@ def normalize_definite_integral(e: Expr, ctx: Context):
     return rec(e)
 
 def eq_definite_integral(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Check if two definite integrals are equivalent.
+    
+    This function handles:
+    1. Direct equality
+    2. Interval reversal: INT x:[a,b]. f(x) = -INT x:[b,a]. f(x)
+    3. Negation: INT x:[a,b]. -f(x) = -INT x:[a,b]. f(x)
+    4. Combined: INT x:[a,b]. -f(x) = INT x:[b,a]. f(x)
+    5. Substitution u = -x: INT x:[-a,0]. f(x^2) = INT x:[0,a]. f(x^2)
+    """
     n1 = normalize_definite_integral(t1, ctx)
     n2 = normalize_definite_integral(t2, ctx)
-    return equal_normal_definite_integral(n1, n2)
+    
+    # Direct equality
+    if equal_normal_definite_integral(n1, n2):
+        return True
+    
+    # Check if both are integrals (not constants)
+    if not (expr.is_integral(t1) and expr.is_integral(t2)):
+        return False
+    
+    # Extract components
+    var1, lower1, upper1, body1 = t1.var, t1.lower, t1.upper, t1.body
+    var2, lower2, upper2, body2 = t2.var, t2.lower, t2.upper, t2.body
+    
+    # Normalize bodies and bounds for comparison
+    from integral import poly
+    body1_norm = poly.normalize(body1, ctx)
+    body2_norm = poly.normalize(body2, ctx)
+    lower1_norm = poly.normalize(lower1, ctx)
+    upper1_norm = poly.normalize(upper1, ctx)
+    lower2_norm = poly.normalize(lower2, ctx)
+    upper2_norm = poly.normalize(upper2, ctx)
+    
+    # Case 1: Interval reversal with negation
+    # INT x:[a,b]. f(x) = -INT x:[b,a]. f(x)
+    # So INT x:[a,b]. -f(x) = INT x:[b,a]. f(x)
+    if (lower1_norm == upper2_norm and upper1_norm == lower2_norm):
+        # Intervals are reversed, check if bodies have opposite signs
+        # body1 should equal -body2 (after variable renaming)
+        body2_renamed = body2_norm.subst(var2, expr.Var(var1))
+        if poly.normalize(body1_norm + body2_renamed, ctx) == Const(0):
+            return True
+    
+    # Case 2: Substitution u = -x for even functions
+    # INT x:[-a,0]. f(x^2) = INT x:[0,a]. f(x^2)
+    # Check if lower1 = -upper2 and upper1 = 0 (or vice versa)
+    if poly.normalize(lower1_norm + upper2_norm, ctx) == Const(0) and upper1_norm == Const(0):
+        # lower1 = -upper2, upper1 = 0
+        # Check if lower2 = 0
+        if lower2_norm == Const(0):
+            # Check if body is even in the variable (only depends on x^2)
+            # Try substituting x -> -x in body1 and see if it equals body1
+            body1_neg_x = body1_norm.subst(var1, -expr.Var(var1))
+            if poly.normalize(body1_neg_x, ctx) == body1_norm:
+                # body1 is even, check if body2 is the same
+                body2_renamed = body2_norm.subst(var2, expr.Var(var1))
+                if poly.normalize(body1_norm - body2_renamed, ctx) == Const(0):
+                    return True
+    
+    # Symmetric case: lower2 = -upper1, upper2 = 0, lower1 = 0
+    if poly.normalize(lower2_norm + upper1_norm, ctx) == Const(0) and upper2_norm == Const(0):
+        if lower1_norm == Const(0):
+            body2_neg_x = body2_norm.subst(var2, -expr.Var(var2))
+            if poly.normalize(body2_neg_x, ctx) == body2_norm:
+                body1_renamed = body1_norm.subst(var1, expr.Var(var2))
+                if poly.normalize(body2_norm - body1_renamed, ctx) == Const(0):
+                    return True
+    
+    return False
 
 def is_odd(e, var, conds) -> bool:
     from integral import poly
@@ -500,6 +601,16 @@ def eq_algebraic(t1: Expr, t2: Expr, ctx: Context) -> bool:
         diff = t1_no_abs - t2_no_abs
         normalized_diff = poly.normalize(diff, ctx)
         if normalized_diff == Const(0):
+            return True
+    except:
+        pass
+
+    # Handle constant times integral equivalence:
+    # c * (INT x:[a,b]. f(x)) is equivalent to INT x:[a,b]. c * f(x)
+    # when c does not depend on x
+    try:
+        equiv = check_const_integral_equivalence(t1, t2, ctx)
+        if equiv:
             return True
     except:
         pass
@@ -665,3 +776,86 @@ def remove_abs_in_log(e: Expr) -> Expr:
         return expr.Fun(e.func_name, *[remove_abs_in_log(arg) for arg in e.args])
 
     return e
+
+def check_const_integral_equivalence(t1: Expr, t2: Expr, ctx: Context) -> bool:
+    """Check if t1 and t2 are equivalent through constant-integral manipulation.
+
+    Handles cases like:
+    - c * (INT x:[a,b]. f(x)) is equivalent to INT x:[a,b]. c * f(x)
+    - (INT x:[a,b]. c) is equivalent to c * (b - a)
+    - c * (INT x:[a,b]. 1) is equivalent to INT x:[a,b]. c
+
+    This is valid when c does not depend on the integration variable x.
+    """
+    from integral import poly
+
+    # Helper function to extract constant * integral pattern
+    def extract_const_times_integral(e: Expr):
+        """Returns (const_part, integral) if e = const * integral, else None."""
+        if expr.is_integral(e):
+            return Const(1), e
+        if e.is_times() and len(e.args) == 2:
+            lhs, rhs = e.args
+            if expr.is_integral(rhs) and not depends_on_var(lhs, rhs.var):
+                return lhs, rhs
+            if expr.is_integral(lhs) and not depends_on_var(rhs, lhs.var):
+                return rhs, lhs
+        return None
+
+    # Helper function to check if expression depends on variable
+    def depends_on_var(e: Expr, var: str) -> bool:
+        return var in e.get_vars()
+
+    # Helper function to convert integral with constant body to form c * (b-a)
+    def normalize_const_body_integral(e: Expr, ctx: Context) -> Expr:
+        """Convert INT x:[a,b]. c to c * (b - a)."""
+        if expr.is_integral(e):
+            if not depends_on_var(e.body, e.var):
+                # Body is constant with respect to integration variable
+                return e.body * (e.upper - e.lower)
+        return e
+
+    # Try to normalize both expressions
+    # Case 1: c * (INT x:[a,b]. f(x)) vs INT x:[a,b]. c * f(x)
+    ext1 = extract_const_times_integral(t1)
+    ext2 = extract_const_times_integral(t2)
+
+    if ext1 is not None and ext2 is not None:
+        const1, int1 = ext1
+        const2, int2 = ext2
+
+        # Check if same integration bounds
+        if (poly.normalize(int1.lower, ctx) == poly.normalize(int2.lower, ctx) and
+            poly.normalize(int1.upper, ctx) == poly.normalize(int2.upper, ctx)):
+
+            # Normalize bodies: const * body
+            body1 = poly.normalize(const1 * int1.body, ctx)
+            body2_subst = int2.body.subst(int2.var, expr.Var(int1.var))
+            body2 = poly.normalize(const2 * body2_subst, ctx)
+
+            if body1 == body2:
+                return True
+
+    # Case 2: c * (INT x:[a,b]. 1) vs INT x:[a,b]. c
+    # This reduces to c * (b - a) vs c * (b - a)
+    try:
+        norm1 = normalize_const_body_integral(t1, ctx)
+        norm2 = normalize_const_body_integral(t2, ctx)
+
+        if ext1 is not None:
+            const1, int1 = ext1
+            # c * (INT x:[a,b]. f(x)) where f(x) doesn't depend on x
+            if not depends_on_var(int1.body, int1.var):
+                norm1 = poly.normalize(const1 * int1.body * (int1.upper - int1.lower), ctx)
+
+        if ext2 is not None:
+            const2, int2 = ext2
+            if not depends_on_var(int2.body, int2.var):
+                norm2 = poly.normalize(const2 * int2.body * (int2.upper - int2.lower), ctx)
+
+        if norm1 == norm2:
+            return True
+    except:
+        pass
+
+    return False

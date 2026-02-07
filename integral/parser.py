@@ -7,7 +7,6 @@ from fractions import Fraction
 
 from integral import expr
 from integral.expr import Expr
-from integral import rules
 from integral import action
 
 grammar = r"""
@@ -21,7 +20,7 @@ grammar = r"""
         | "G" -> g_expr
         | "int" -> int_type
         | "real" -> real_type
-        | "complex" -> complex_type
+        | "notreal" -> notreal_type
         | "inf" -> pos_inf_expr
         | "oo" -> pos_inf_expr
         | "-inf" -> neg_inf_expr
@@ -36,6 +35,9 @@ grammar = r"""
         | "LIM" "{" CNAME "->" expr "}" "." expr -> limit_inf_expr
         | "LIM" "{" CNAME "->" expr "-}" "."  expr -> limit_l_expr
         | "LIM" "{" CNAME "->" expr "+}" "."  expr -> limit_r_expr
+        | "CINT" CNAME ":" "com" "(" expr ("," expr)* ")" "." expr -> com_contour_expr
+        | "CINT" CNAME ":" expr "." expr -> single_contour_expr
+        | "(" expr ")" "_" "(" CNAME ":" "[" expr "," expr "]" ")" -> contour_path_expr
 
     ?uminus: "-" uminus -> uminus_expr | atom  // priority 80
 
@@ -123,6 +125,7 @@ grammar = r"""
         | "substitute" expr "for" CNAME -> inverse_substitute_rule
         | "apply" "linearity" -> linearity_rule
         | "apply" "integral" "identity" attributes -> integral_identity_rule
+        | "apply" "cintegral" "identity" -> cintegral_identity_rule
         | "integrate" "by" "parts" "with" "u" "=" expr "," "v" "=" expr -> integrate_by_parts_rule
         | "split" "region" "at" expr -> split_region_rule
         | "split" "sum" "region" "at" expr -> split_sum_region_rule
@@ -146,6 +149,7 @@ grammar = r"""
         | "apply" "series" "evaluation" -> apply_series_evaluation_rule
         | "exchange" "integral" "and" "sum" -> exchange_integral_sum_rule
         | "exchange" "integral" "and" "integral" -> exchange_integral_rule
+        | "apply" "residue" "theorem" -> residue_theorem_rule
         | "apply" "induction" "hypothesis" -> apply_induction_hypothesis_rule
         | "improper" "integral" "to" "limit" "creating" CNAME -> elim_improper_integral_rule
         | "replace" "substitution" -> replace_substitution_rule
@@ -188,14 +192,27 @@ grammar = r"""
 
 @v_args(inline=True)
 class ExprTransformer(Transformer):
+    # 类级别的缓存，避免重复创建
+    _symbol_cache = {}
+    _var_cache = {}
+
     def __init__(self):
+        # 添加__slots__以减少内存占用
         pass
 
     def var_expr(self, s):
-        return expr.Var(str(s))
+        # 缓存Var对象，避免重复创建
+        s_str = str(s)
+        if s_str not in self._var_cache:
+            self._var_cache[s_str] = expr.Var(s_str)
+        return self._var_cache[s_str]
 
     def symbol_expr(self, s):
-        return expr.Symbol(str(s), [expr.VAR, expr.CONST, expr.OP, expr.FUN])
+        # 缓存Symbol对象
+        s_str = str(s)
+        if s_str not in self._symbol_cache:
+            self._symbol_cache[s_str] = expr.Symbol(s_str, [expr.VAR, expr.CONST, expr.OP, expr.FUN])
+        return self._symbol_cache[s_str]
 
     def int_expr(self, n):
         return expr.Const(int(n))
@@ -269,8 +286,8 @@ class ExprTransformer(Transformer):
     def real_type(self):
         return expr.real_type
     
-    def complex_type(self):
-        return expr.complex_type
+    def notreal_type(self):
+        return expr.notreal_type
 
     def pos_inf_expr(self):
         return expr.Inf(Decimal("inf"))
@@ -329,8 +346,12 @@ class ExprTransformer(Transformer):
 
     def limit_r_expr(self, var, lim, body):
         return expr.Limit(str(var), lim, body, "+")
-        
-    def member_condition(self, *args: Expr) -> Expr:
+    
+    def expr_condition(self, cond: Expr) -> tuple[Expr]:
+        return (cond,)
+    
+    def member_condition(self, *args: Expr) -> tuple[Expr]:
+        # last argument is the set
         assert len(args) >= 2
         mem_exprs, set_expr = args[:-1], args[-1]
         res: list[Expr] = []
@@ -339,15 +360,15 @@ class ExprTransformer(Transformer):
                 res.append(expr.Fun("isInt", mem_expr))
             elif set_expr == expr.real_type:
                 res.append(expr.Fun("isReal", mem_expr))
-            elif set_expr == expr.complex_type:
-                res.append(expr.Fun("isComplex", mem_expr))
+            elif set_expr == expr.notreal_type:
+                res.append(expr.Fun("notReal", mem_expr))
             else:
                 raise NotImplementedError(f"set_expr = {set_expr}")
         if len(res) == 1:
             return res[0]
         else:
             return expr.Op("&&", *res)
-    
+
     def and_condition(self, *args: Expr) -> Expr:
         assert len(args) >= 2
         return expr.Op("&&", *args)
@@ -398,7 +419,7 @@ class ExprTransformer(Transformer):
 
     def axiom_define_action(self, expr: Expr):
         return action.AxiomDefineAction(expr)
-    
+
     def axiom_define_with_condition_action(self, expr: Expr, conditions: tuple[Expr]):
         return action.AxiomDefineAction(expr, conditions)
 
@@ -463,118 +484,203 @@ class ExprTransformer(Transformer):
         return action.CaseAction("positive")
 
     def substitute_rule(self, var_name: Token, expr: Expr):
+        from integral import rules
         return rules.Substitution(str(var_name), expr)
 
     def inverse_substitute_rule(self, expr: Expr, old_var: Token):
+        from integral import rules
         return rules.SubstitutionInverse(str(old_var), expr)
 
     def integral_identity_rule(self, attrs: tuple[str]):
+        from integral import rules
         return rules.IntegralIdentity(attrs)
     
+    def cintegral_identity_rule(self):
+        from integral import rules
+        return rules.CIntegralIdentity()
+
     def integrate_by_parts_rule(self, u_expr: Expr, v_expr: Expr):
+        from integral import rules
         return rules.IntegrationByParts(u_expr, v_expr)
 
     def split_region_rule(self, expr: Expr):
+        from integral import rules
         return rules.SplitRegion(expr)
 
     def split_sum_region_rule(self, e: Expr):
+        from integral import rules
         return rules.SplitSummationRegion(e)
 
     def change_sum_lower_rule(self, e:Expr):
+        from integral import rules
         return rules.ChangeSummationIndex(e)
 
     def equation_rule(self, old_expr: Expr, new_expr: Expr):
+        from integral import rules
         return rules.Rewriting(old_expr, new_expr)
 
     def equation_none_rule(self, new_expr: Expr):
+        from integral import rules
         return rules.Rewriting(old_expr=None, new_expr=new_expr)
 
     def expand_polynomial_rule(self):
+        from integral import rules
         return rules.ExpandPolynomial()
     
     def partial_fraction_decomposition_rule(self):
+        from integral import rules
         return rules.PartialFractionDecomposition()
 
     def apply_identity_rule(self, old_expr: Expr, new_expr: Expr):
+        from integral import rules
         return rules.ApplyIdentity(old_expr, new_expr)
     
     def solve_integral_rule(self, expr: Expr):
+        from integral import rules
         return rules.IntegrateByEquation(expr)
 
     def solve_equation_rule(self, expr: Expr):
+        from integral import rules
         return rules.SolveEquation(expr)
 
     def deriv_equation_rule(self, var: Token):
+        from integral import rules
         return rules.DerivEquation(str(var))
     
     def integral_equation_rule(self):
+        from integral import rules
         return rules.IntegralEquation()
     
     def apply_equation_rule(self, name: Token, source: Expr):
+        from integral import rules
         return rules.ApplyEquation(str(name), source)
     
     def apply_equation_expr_rule(self, eq: Expr, source: Expr):
+        from integral import rules
         return rules.ApplyEquation(eq, source)
 
     def apply_limit_rule(self, var_name: Token, limit: Expr):
+        from integral import rules
         return rules.LimitEquation(str(var_name), limit)
 
     def expand_definition_rule(self, func_name: Token):
+        from integral import rules
         return rules.ExpandDefinition(str(func_name))
 
     def fold_definition_rule(self, func_name):
+        from integral import rules
         return rules.FoldDefinition(str(func_name))
 
     def exchange_deriv_int_rule(self):
+        from integral import rules
         return rules.DerivIntExchange()
     
     def inst_equation(self, var_name: Token, expr: Expr):
         return {'var': str(var_name), 'expr': expr}
     
     def inst_equation_rule(self, *insts):
+        from integral import rules
         return rules.VarSubsOfEquation(list(insts))
 
     def apply_series_expansion_rule(self, old_expr: Expr, index_var: Token):
+        from integral import rules
         return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=str(index_var))
 
     def apply_series_evaluation_rule(self):
+        from integral import rules
         return rules.SeriesEvaluationIdentity()
 
     def exchange_integral_sum_rule(self):
+        from integral import rules
         return rules.IntSumExchange()
 
     def exchange_integral_rule(self):
+        from integral import rules
         return rules.IntExchange()
 
     def apply_induction_hypothesis_rule(self):
+        from integral import rules
         return rules.ApplyInductHyp()
 
     def elim_improper_integral_rule(self, var_name: Token):
+        from integral import rules
         return rules.ElimInfInterval(new_var=str(var_name))
 
     def replace_substitution_rule(self):
+        from integral import rules
         return rules.ReplaceSubstitution()
 
     def full_simplify_rule(self):
+        from integral import rules
         return rules.Simplify()
     
     def lhopitals_rule(self):
+        from integral import rules
         return rules.LHopital()
 
     def on_count_rule(self, rule, n: Token):
+        from integral import rules
         return rules.OnCount(rule, int(str(n)))
     
     def on_subterms_rule(self, rule):
+        from integral import rules
         return rules.OnSubterm(rule)
 
     def rule_action(self, rule):
         from integral import action
         return action.RuleAction(rule)
 
+    def com_contour_expr(self, var, *path_exprs_and_body):
+        """Transform compound contour integral."""
+        body = path_exprs_and_body[-1]
+        # 路径表达式列表（除了最后一个是body）
+        path_exprs = path_exprs_and_body[:-1]
+
+        # 将路径表达式转换为路径对象
+        paths = []
+        for path_expr in path_exprs:
+            if isinstance(path_expr, expr.CINTPath):
+                # 如果已经是CINTPath对象，直接使用
+                paths.append(path_expr)
+            elif hasattr(path_expr, 'func_name'):
+                # 如果是函数调用形式，转换为字符串表示
+                paths.append(str(path_expr))
+            else:
+                # 其他情况，转换为字符串
+                paths.append(str(path_expr))
+
+        return expr.CIntegral(str(var), paths, body)
+
+    def single_contour_expr(self, var, path_expr, body):
+        """Transform single contour integral like CINT z:C(t). 1/(z^2+1)."""
+        # 处理单个路径表达式
+        if isinstance(path_expr, expr.CINTPath):
+            paths = [path_expr]
+        elif hasattr(path_expr, 'func_name'):
+            # 如果是函数调用形式，转换为字符串表示
+            paths = [str(path_expr)]
+        else:
+            # 其他情况，转换为字符串
+            paths = [str(path_expr)]
+
+        return expr.CIntegral(str(var), paths, body)
+
+    def contour_path_expr(self, path_expr: Expr, var: Token, start_expr: Expr, end_expr: Expr):
+        """Transform contour path expression like (r*exp(i*pi*t))_(t:[0,1])."""
+        return expr.CINTPath(str(var), path_expr, start_expr, end_expr)
+
+    def residue_theorem_rule(self):
+        """Transform residue theorem rule."""
+        from integral import rules
+        return rules.ResidueTheorem()
+
+# 创建单例transformer和解析器，避免重复创建，提高性能
 transformer = ExprTransformer()
-expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer)
+
+# 使用cache=True启用Lark的解析缓存
+expr_parser = Lark(grammar, start="expr", parser="lalr", transformer=transformer, cache=True)
 condition_parser = Lark(grammar, start="or_condition", parser="lalr", transformer=transformer)
-action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer)
+action_parser = Lark(grammar, start="action", parser="lalr", transformer=transformer, cache=True)
 
 
 class ParseException(expr.IscalcException):

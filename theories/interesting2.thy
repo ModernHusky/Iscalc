@@ -38,12 +38,13 @@ done
 prove (INT x:[1,oo]. log(x) / (x+1)^2) = log(2)
 subgoal 1: (INT x:[0,oo]. 1 / (1 + exp(a*x))) = log(2) / a for a: real, a > 0
 lhs:
-    substitute u for exp(a * x)
+    substitute u for exp(a*x)
     simplify
-    rewrite 1 / (u * (u+1)) to 1/u - 1/(u+1)
+    rewrite 1 / (u * (u + 1)) to 1/u - 1/(u + 1)
     simplify
-    substitute y for u + 1
     apply integral identity
+    simplify
+    rewrite log(u) - log(u + 1) to log(u / (u + 1))
     simplify
 done
 subgoal 2: (INT x:[1,oo]. log(x) / (a ^ 2 * (x + 1) ^ 2)) = log(2) / a^2 for a: real, a > 0
@@ -179,9 +180,11 @@ lhs:
     rewrite 1 / (t ^ 2 / a ^ 2 + 1) * log(t / a + 1) to log(t / a + 1) * a ^ 2 / (t ^ 2 + a ^ 2)
     rewrite t / a + 1 to (t + a) / a
     simplify
-    rewrite log((a + t) / a) to log(a + t) - log(a)
-    rewrite 1 / (a ^ 2 + t ^ 2) * (log(a + t) - log(a)) to log(a + t) / (a ^ 2 + t ^ 2) - log(a) / (a ^ 2 + t ^ 2)
+    expand polynomial
     simplify
+    rewrite 1 / (a ^ 2 + t ^ 2) to 1/a^2*1/(1+(t/a)^2)
+    simplify
+    substitute  u for t/a (at 2)
     apply integral identity
     simplify
     expand polynomial
@@ -372,6 +375,10 @@ lhs:
     substitute x for t (at 1)
     substitute x for u (at 2)
     simplify
+    substitute t for 2*x (at 2)
+    simplify
+    rewrite log(a) * (INT x:[0,pi / 2]. 1) to INT x:[0,pi / 2]. log(a)
+    rewrite to (INT x:[0,pi / 2]. log(a*sin(x)))
 done
 subgoal 3: 2*cos(x)*sin(x) = sin(2*x)
 rhs:
@@ -394,6 +401,8 @@ lhs:
     rewrite log(a * sin(2 * x) * a) to log(a * sin(2 * x))+log(a)
     apply integral identity
     simplify
+    rewrite 1/2 * (INT x:[0,pi / 2]. log(sin(2 * x))) + 1/2 * (INT x:[0,pi / 2]. log(a)) to 1/2 * (INT x:[0,pi / 2]. log(sin(2 * x)) + log(a))
+    rewrite log(sin(2 * x)) + log(a) to log(a*sin(2*x))
     apply 2 on (INT x:[0,pi / 2]. log(a * sin(2 * x)))
 done
 subgoal 5: (INT x:[0,pi / 2]. log(a * sin(x))) = pi * log(a) / 2 - pi * log(2) / 2 
@@ -479,9 +488,6 @@ lhs:
     rewrite 1 / (u ^ 2 + 1) * (3/2 - u * sqrt(3) / 2) to -sqrt(3) / 2 * (u / (u ^ 2 + 1)) + 3/2 * (1 / (u ^ 2 + 1))
     apply integral identity
     simplify
-    substitute t for u ^ 2 + 1
-    apply integral identity
-    simplify
     expand polynomial
 done
 
@@ -518,7 +524,6 @@ lhs:
 done
 lhs:
     substitute y for x / 4
-    rewrite log(4 * y) to log(4) + log(y)
     rewrite sqrt(16 * y - 16 * y ^ 2) to 4 * sqrt(y - y ^ 2)
     rewrite sqrt(y - y ^ 2) to sqrt(y) * sqrt(1 - y)
     expand polynomial
