@@ -73,6 +73,9 @@ class SolverLoop:
         
         # Search-o1 风格：技能加载次数限制
         self.max_skill_loads_per_solve = 10  # 单次求解最多加载技能数
+        
+        # 记忆机制：累积每轮迭代的经验教训
+        self.memory = ""  # 记忆内容，会在每轮迭代后更新
     
     def _detect_and_load_skills(
         self,
@@ -461,6 +464,9 @@ class SolverLoop:
         total_token_usage = TokenUsage()
         round_logs: List[RoundLog] = []
         
+        # 重置记忆（每次新的求解任务开始时清空）
+        self.memory = ""
+        
         # 动态技能状态
         active_skills: List[str] = []
         loaded_skill_names: Set[str] = set()
@@ -589,10 +595,16 @@ class SolverLoop:
                         self.logger.info("   工具 %s 返回: %s", tool_name, result[:100] + "..." if len(result) > 100 else result)
                         tool_call_events.append((tool_name, result))
                     
+                    # 将记忆附加到 last_error 中
+                    error_with_memory = last_error
+                    if self.memory:
+                        memory_section = f"\n\n## 历史经验教训\n\n{self.memory}"
+                        error_with_memory = (last_error or "") + memory_section
+                    
                     full_response = await self.llm.generate_with_tools(
                         current_expr or expression,
                         self.executor.get_history(),
-                        last_error,
+                        error_with_memory,
                         current_state,
                         conditions=conditions,
                         user_instruction=user_instruction,
@@ -661,10 +673,16 @@ class SolverLoop:
                         
                         if is_first_generation:
                             # 第一轮：正常流式生成
+                            # 将记忆附加到 last_error 中
+                            error_with_memory = last_error
+                            if self.memory:
+                                memory_section = f"\n\n## 历史经验教训\n\n{self.memory}"
+                                error_with_memory = (last_error or "") + memory_section
+                            
                             async for chunk in self.llm.generate_command(
                                 current_expr or expression,
                                 self.executor.get_history(),
-                                last_error,
+                                error_with_memory,
                                 current_state,
                                 conditions=conditions,
                                 user_instruction=user_instruction,
@@ -1365,6 +1383,19 @@ class SolverLoop:
             }
             steps.append(step_record)
             
+            # 生成本轮记忆
+            try:
+                memory_entry = await self._generate_memory(
+                    response=full_response,
+                    result=exec_result.result if exec_result.success else "",
+                    error=exec_result.error if not exec_result.success else None
+                )
+                if memory_entry:
+                    self.memory += f"\n### Round {iteration}\n\n{memory_entry}\n"
+                    self.logger.info(f"记忆已更新: {memory_entry[:50]}...")
+            except Exception as e:
+                self.logger.warning(f"生成记忆失败: {e}")
+            
             if exec_result.success:
                 self.logger.result("成功 | 变更=%s", exec_result.changed)
                 if exec_result.changed:
@@ -1480,6 +1511,84 @@ class SolverLoop:
             if recent.count(expr) >= 2:
                 return expr
         return None
+    
+    async def _generate_memory(self, response: str, result: str, error: Optional[str] = None) -> str:
+        """生成本轮迭代的记忆摘要
+        
+        Args:
+            response: LLM 的原始响应
+            result: 执行结果
+            error: 错误信息（如果有）
+            
+        Returns:
+            记忆摘要字符串
+        """
+        # 构建记忆生成的提示词
+        memory_prompt = f"""## 记忆更新指令
+
+在这一步，我们需要为当前轮次的交互生成一个简洁的记忆摘要。
+
+## 本轮交互信息
+
+### LLM 的响应
+{response}
+
+### 执行结果
+{result}
+
+### 错误信息（如果有）
+{error or '无'}
+
+## 记忆生成要求
+
+请生成一个简洁的记忆摘要（不超过100个token），包含以下内容：
+
+1. **本轮尝试的方法**：简要描述使用了什么策略或命令
+2. **执行结果**：成功还是失败
+3. **失败原因**（如果失败）：记录错误信息和可能的原因
+4. **经验教训**：避免在后续轮次中重复相同的错误
+5. **替代方案**（如果有）：如果当前方法不可行，记录其他可能的方法
+
+**注意**：
+- 保持简洁，不超过100个token
+- 重点记录**失败的尝试**，避免重复错误
+- 不要使用 Markdown 标题（如 `## Updated Memory`）
+- 直接输出记忆内容，不需要额外的格式
+"""
+        
+        try:
+            # 调用 API 生成记忆
+            client = await self.llm._get_client()
+            response_api = await client.post(
+                f"{self.llm.config.api_base}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.llm.config.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.llm.config.model,
+                    "messages": [
+                        {"role": "user", "content": memory_prompt}
+                    ],
+                    "max_tokens": 150,
+                    "temperature": 0.7
+                },
+                timeout=30.0
+            )
+            
+            if response_api.status_code != 200:
+                raise Exception(f"API错误 {response_api.status_code}: {response_api.text}")
+            
+            response_data = response_api.json()
+            memory_text = response_data["choices"][0]["message"]["content"]
+            return memory_text.strip()
+        except Exception as e:
+            self.logger.warning(f"生成记忆失败: {e}")
+            # 如果生成失败，返回简单的默认记忆
+            if error:
+                return f"本轮尝试失败，错误：{error[:50]}"
+            else:
+                return f"本轮执行成功，结果：{result[:50]}"
     
     def _format_solution_path(self, steps: List[Dict[str, Any]]) -> str:
         """格式化完整求解路径为LaTeX"""

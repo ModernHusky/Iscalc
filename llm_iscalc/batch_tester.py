@@ -48,7 +48,7 @@ class BatchTester:
     使用 SolverLoop 进行批量测试，支持并发和实时事件推送。
     """
     
-    def __init__(self, theories: List[str], max_workers: int = 5, max_step: int = 10):
+    def __init__(self, theories: List[str], max_workers: int = 5, max_step: int = 25):
         """初始化批量测试器
         
         Args:
