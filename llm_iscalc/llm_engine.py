@@ -18,6 +18,34 @@ from .prompts import USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEM
 from .config import LLMConfig
 from .models import TokenUsage, PromptComponent
 
+# DeepSeek Tokenizer for accurate token counting
+try:
+    from deepseek_tokenizer import ds_token
+    TOKENIZER_AVAILABLE = True
+except ImportError:
+    TOKENIZER_AVAILABLE = False
+    print("Warning: deepseek-tokenizer not installed, using fallback estimation")
+
+
+def count_tokens(text: str) -> int:
+    """准确计算 token 数量
+    
+    使用 DeepSeek 官方 tokenizer，如果不可用则使用改进的估算公式。
+    """
+    if TOKENIZER_AVAILABLE:
+        try:
+            return len(ds_token.encode(text))
+        except Exception as e:
+            # 如果 tokenizer 失败，回退到估算
+            pass
+    
+    # 回退方案：根据 DeepSeek 官方比例估算
+    # 1 中文字符 ≈ 0.6 token
+    # 1 英文字符 ≈ 0.3 token
+    chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    english_chars = len(text) - chinese_chars
+    return int(chinese_chars * 0.6 + english_chars * 0.3)
+
 
 # ============ Function Calling 工具定义 ============
 
@@ -181,7 +209,7 @@ class LLMEngine:
         # 记录系统提示词成分
         self.last_prompt_components.append(PromptComponent(
             name="system_prompt",
-            token_count=len(system_prompt) // 4  # 简单估算: 1 token ≈ 4 字符
+            token_count=count_tokens(system_prompt)
         ))
         
         # 记录技能成分
@@ -196,7 +224,7 @@ class LLMEngine:
                         pass
                 self.last_prompt_components.append(PromptComponent(
                     name=skill_name,
-                    token_count=len(skill_content) // 4
+                    token_count=count_tokens(skill_content)
                 ))
         
         messages = [{"role": "system", "content": system_prompt}]
@@ -230,21 +258,21 @@ class LLMEngine:
         # 记录用户消息成分
         self.last_prompt_components.append(PromptComponent(
             name="user_message",
-            token_count=len(user_message) // 4
+            token_count=count_tokens(user_message)
         ))
         
         # 记录历史成分
         if history:
             self.last_prompt_components.append(PromptComponent(
                 name="history",
-                token_count=len(history_section) // 4
+                token_count=count_tokens(history_section)
             ))
         
         # 记录错误成分
         if last_error:
             self.last_prompt_components.append(PromptComponent(
                 name="error_feedback",
-                token_count=len(last_error) // 4
+                token_count=count_tokens(last_error)
             ))
         
         # 保存完整的 prompt 文本
