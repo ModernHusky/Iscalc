@@ -466,7 +466,7 @@ function simulateTest() {
 // ==================== SSE 连接 ====================
 function connectSSE() {
     const theories = testState.selectedTheories.join(',');
-    const url = `/api/test/run?theories=${encodeURIComponent(theories)}&max_workers=5&max_step=10`;
+    const url = `/api/test/run?theories=${encodeURIComponent(theories)}&max_workers=5&max_step=25`;
     
     testState.eventSource = new EventSource(url);
     

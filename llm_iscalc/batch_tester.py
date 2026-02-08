@@ -10,7 +10,6 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from datetime import datetime
 from collections import defaultdict
@@ -38,7 +37,7 @@ class BatchTester:
     使用 SolverLoop 进行批量测试，支持并发和实时事件推送。
     """
     
-    def __init__(self, theories: List[str], max_workers: int = 5, max_step: int = 10):
+    def __init__(self, theories: List[str], max_workers: int = 5, max_step: int = 25):
         """初始化批量测试器
         
         Args:
@@ -281,6 +280,11 @@ class BatchTester:
             }
         })
         
+        # 检查是否已经停止
+        if self.stop_flag:
+            self.logger.info(f"测试 {problem_id} 已被停止")
+            return
+        
         # 初始化求解器组件（每个问题独立的实例）
         llm_engine = LLMEngine(default_config.llm)
         executor = CommandExecutor(base_theory=default_config.iscalc.base_theory)
@@ -296,6 +300,10 @@ class BatchTester:
         # 定义回调函数
         async def callback(event: SolveEvent):
             nonlocal current_round
+            
+            # 检查停止标志
+            if self.stop_flag:
+                raise asyncio.CancelledError("测试已被用户停止")
             
             # 将 SolveEvent 转换为我们的事件格式
             if event.type == EventType.THINKING:
@@ -355,11 +363,25 @@ class BatchTester:
             num_rounds = result.iterations
             error_message = result.error if not result.success else None
             
+        except asyncio.CancelledError:
+            # 用户主动停止
+            self.logger.info(f"测试 {problem_id} 被用户停止")
+            status = "stopped"
+            num_rounds = current_round
+            error_message = "用户停止"
+            steps = []
+            
         except Exception as e:
-            self.logger.error(f"测试 {problem_id} 时发生异常: {e}")
+            import traceback
+            tb_str = traceback.format_exc()
+            self.logger.error(f"测试 {problem_id} 时发生异常: {e}\n{tb_str}")
             status = "error"
             num_rounds = current_round
-            error_message = str(e)
+            error_message = f"{type(e).__name__}: {str(e)}"
+            # 保存详细错误
+            self._save_error(problem_id, problem.problem, 
+                             f"{error_message}\n\n```\n{tb_str}\n```", 
+                             result if 'result' in locals() else None)
             steps = []
         
         finally:
@@ -389,17 +411,12 @@ class BatchTester:
             }
         })
     
-    def _run_async_test(self, problem: ProblemInfo):
-        """在新的事件循环中运行异步测试（用于线程池）"""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self._test_single_problem(problem))
-        finally:
-            loop.close()
-    
-    def run_tests(self):
-        """运行批量测试（在独立线程中执行）"""
+    async def run_tests_async(self):
+        """运行批量测试（异步并发）
+        
+        使用 asyncio.Semaphore 控制并发度，在单一事件循环中运行所有测试，
+        避免多线程+多事件循环导致的资源冲突。
+        """
         try:
             # 获取所有问题
             all_problems = self._get_all_problems()
@@ -418,23 +435,25 @@ class BatchTester:
                 "data": {"total_problems": total}
             })
             
-            # 使用线程池并发测试
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = []
-                for problem in all_problems:
+            # 使用信号量控制并发度
+            semaphore = asyncio.Semaphore(self.max_workers)
+            
+            async def bounded_test(problem: ProblemInfo):
+                """带并发限制的测试执行"""
+                async with semaphore:
                     if self.stop_flag:
-                        break
-                    future = executor.submit(self._run_async_test, problem)
-                    futures.append(future)
-                
-                # 等待所有任务完成
-                for future in futures:
-                    if self.stop_flag:
-                        break
+                        return
                     try:
-                        future.result()
+                        await self._test_single_problem(problem)
                     except Exception as e:
-                        self.logger.error(f"任务执行异常: {e}")
+                        import traceback
+                        self.logger.error(f"任务执行异常: {e}\n{traceback.format_exc()}")
+            
+            # 创建所有任务
+            tasks = [bounded_test(p) for p in all_problems]
+            
+            # 并发执行所有测试，return_exceptions=True 确保单个失败不影响其他
+            await asyncio.gather(*tasks, return_exceptions=True)
             
             # 发送测试完成事件
             if not self.stop_flag:
@@ -447,10 +466,11 @@ class BatchTester:
                 })
         
         except Exception as e:
-            self.logger.error(f"批量测试异常: {e}")
+            import traceback
+            self.logger.error(f"批量测试异常: {e}\n{traceback.format_exc()}")
             self.event_queue.put({
                 "type": "error",
-                "data": {"message": str(e)}
+                "data": {"message": f"{type(e).__name__}: {str(e)}"}
             })
     
     def _generate_final_report(self):

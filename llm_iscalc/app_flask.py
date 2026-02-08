@@ -99,8 +99,16 @@ def run_batch_test():
         # 创建批量测试器
         _batch_tester = BatchTester(theory_list, max_workers=max_workers, max_step=max_step)
         
-        # 在独立线程中运行测试
-        test_thread = threading.Thread(target=_batch_tester.run_tests)
+        # 在独立线程中运行异步事件循环
+        def run_in_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_batch_tester.run_tests_async())
+            finally:
+                loop.close()
+        
+        test_thread = threading.Thread(target=run_in_thread)
         test_thread.start()
         
         # 从事件队列中读取事件并发送

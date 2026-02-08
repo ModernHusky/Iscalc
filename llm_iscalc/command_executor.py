@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__))))
 from integral import parser
 from integral.compstate import CompFile, Calculation
 from integral import state as state_module
-from integral.action import CalculateAction
+from integral.action import CalculateAction, ProveAction
 
 
 class ErrorType(Enum):
@@ -113,10 +113,18 @@ class CommandExecutor:
                 calc_action = CalculateAction(parsed_expr, cond_list)
                 self.state = initial_state.process_action(calc_action)
             else:
-                # 没有前缀：默认为calculate
+                # 没有前缀：根据表达式类型自动判断
                 parsed_expr = parser.parse_expr(expression)
-                calc_action = CalculateAction(parsed_expr, cond_list)
-                self.state = initial_state.process_action(calc_action)
+                
+                # 检查是否为等式（Op类型且name为'='）
+                if self._is_equality(parsed_expr):
+                    # 等式 -> prove
+                    prove_action = ProveAction(parsed_expr, cond_list)
+                    self.state = initial_state.process_action(prove_action)
+                else:
+                    # 非等式 -> calculate
+                    calc_action = CalculateAction(parsed_expr, cond_list)
+                    self.state = initial_state.process_action(calc_action)
             
             self.initial_expression = expression
             current_expr = self._get_current_expr()
@@ -361,3 +369,18 @@ class CommandExecutor:
         self.history = []
         self.initial_expression = None
         self._previous_expr_str = None
+    
+    def _is_equality(self, expr) -> bool:
+        """检查表达式是否为等式
+        
+        Args:
+            expr: 解析后的表达式对象
+            
+        Returns:
+            如果表达式是等式（操作符为'='）返回True，否则False
+        """
+        # 检查是否为Op类型且操作符为'='
+        if hasattr(expr, 'ty') and expr.ty == 'op':
+            return getattr(expr, 'name', '') == '='
+        return False
+
