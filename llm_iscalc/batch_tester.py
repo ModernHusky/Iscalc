@@ -22,6 +22,13 @@ from .config import default_config
 from .logger_config import get_phase_logger
 from .models import TokenUsage, PromptComponent, RoundLog
 
+# 添加 integral 模块导入以支持完整的上下文解析
+import sys
+from pathlib import Path as PathLib
+sys.path.insert(0, str(PathLib(__file__).parent.parent))
+from integral.context import Context
+from integral import parser, action, expr
+
 
 @dataclass
 class ProblemInfo:
@@ -29,7 +36,10 @@ class ProblemInfo:
     filename: str
     index: int
     problem: str
-    context: str = ""
+    context: Any = None  # Context 对象
+    correct_answer: List[str] = None  # 正确答案步骤
+    pre_problems_str: str = ""  # 前置问题
+    pre_definitions_str: str = ""  # 前置定义
 
 
 class BatchTester:
@@ -53,6 +63,7 @@ class BatchTester:
         self.stop_flag = False
         self.logger = get_phase_logger(__name__)
         self._lock = Lock()
+        self._futures = []  # 保存所有 futures 以便取消
         
         # 日志目录和统计
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -61,6 +72,8 @@ class BatchTester:
         
     def _parse_theory_file(self, theory_name: str) -> List[ProblemInfo]:
         """解析理论文件，提取所有问题
+        
+        参考旧版本 process_file() 的完整解析逻辑
         
         Args:
             theory_name: 理论文件名（不含 .thy 扩展名）
@@ -74,38 +87,96 @@ class BatchTester:
             self.logger.warning(f"理论文件不存在: {theory_file}")
             return []
         
-        problems = []
-        content = theory_file.read_text(encoding='utf-8')
+        result = []
+        problem_pattern = r"(prove|calculate) (\[.*\] )?(.+)"
         
-        # 匹配 prove 和 calculate 语句（只匹配第一行）
-        # 示例: prove (INT x:[0,1]. x^2) = 1/3
-        # 示例: calculate INT x:[0,pi]. sin(x)
+        with open(theory_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            lines = [s for s in content.split('\n') if s.strip()]
         
-        prove_pattern = r'^prove\s+(.+?)$'
-        calculate_pattern = r'^calculate\s+(.+?)$'
+        cur_goal = None
+        steps = []
+        i = 0
+        ctx = Context()
+        ctx.load_book("base")
+        pre_problems, pre_definitions = [], []
         
-        # 查找所有 prove 语句
-        for idx, match in enumerate(re.finditer(prove_pattern, content, re.MULTILINE), 1):
-            problem_text = match.group(1).strip()
-            problems.append(ProblemInfo(
+        # 使用 for 循环遍历，确保有明确的终止条件
+        for line in lines:
+            line = line.strip()
+            if line.startswith('#') or line.startswith('//'):
+                # title or comment
+                continue
+            
+            a = parser.parse_action(line)
+            
+            # 处理 imports
+            if isinstance(a, action.ImportsAction):
+                for theory in a.theories:
+                    if theory != 'base':
+                        ctx.load_book(theory)
+            
+            # 处理 prove/calculate
+            if isinstance(a, (action.ProveAction, action.CalculateAction)):
+                if cur_goal:
+                    # 创建问题信息（不包含当前目标）
+                    result.append(ProblemInfo(
+                        filename=theory_name,
+                        index=i,
+                        problem=problem,
+                        context=Context(ctx),  # 复制上下文
+                        correct_answer=steps[:],  # 复制步骤
+                        pre_problems_str="\n".join(pre_problems),
+                        pre_definitions_str="\n".join(pre_definitions)
+                    ))
+                    
+                    # 更新 pre_problems
+                    match = re.search(problem_pattern, problem)
+                    if match:
+                        pre_problems.append(match.group(3).strip())
+                    
+                    # 创建新的上下文（继承当前上下文）
+                    ctx = Context(ctx)
+                    
+                    # 将当前目标添加到上下文
+                    if isinstance(cur_goal, action.ProveAction):
+                        if cur_goal.expr.is_equals() and expr.is_indefinite_integral(cur_goal.expr.lhs):
+                            ctx.add_indefinite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        elif cur_goal.expr.is_equals() and expr.is_integral(cur_goal.expr.lhs):
+                            ctx.add_definite_integral(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                        else:
+                            ctx.add_other_identities(cur_goal.expr, cur_goal.conditions, cur_goal.attrs)
+                
+                cur_goal = a
+                problem = line
+                steps = []
+                i += 1
+            
+            elif line and line != 'done':
+                steps.append(line)
+            
+            # 处理 define
+            if isinstance(a, action.DefineAction):
+                ctx.add_definition(a.expr, a.conditions)
+                s = str(a.expr)
+                if a.conditions:
+                    s = s + " for " + str(a.conditions)
+                pre_definitions.append(s)
+        
+        # 添加最后一个问题
+        if cur_goal:
+            result.append(ProblemInfo(
                 filename=theory_name,
-                index=idx,
-                problem=f"prove {problem_text}",
-                context=""
+                index=i,
+                problem=problem,
+                context=ctx,
+                correct_answer=steps,
+                pre_problems_str="\n".join(pre_problems),
+                pre_definitions_str="\n".join(pre_definitions)
             ))
         
-        # 查找所有 calculate 语句
-        for idx, match in enumerate(re.finditer(calculate_pattern, content, re.MULTILINE), 1):
-            problem_text = match.group(1).strip()
-            problems.append(ProblemInfo(
-                filename=theory_name,
-                index=len(problems) + 1,  # 继续编号
-                problem=f"calculate {problem_text}",
-                context=""
-            ))
-        
-        self.logger.info(f"从 {theory_name}.thy 中解析出 {len(problems)} 个问题")
-        return problems
+        self.logger.info(f"从 {theory_name}.thy 中解析出 {len(result)} 个问题")
+        return result
     
     def _get_all_problems(self) -> List[ProblemInfo]:
         """获取所有理论文件的问题列表"""
@@ -269,6 +340,11 @@ class BatchTester:
         Args:
             problem: 问题信息
         """
+        # 检查是否已停止
+        if self.stop_flag:
+            self.logger.info(f"检测到停止信号，跳过问题 {problem.filename}_{problem.index}")
+            return
+        
         problem_id = f"{problem.filename}_{problem.index}"
         start_time = time.time()
         
@@ -283,7 +359,11 @@ class BatchTester:
         
         # 初始化求解器组件（每个问题独立的实例）
         llm_engine = LLMEngine(default_config.llm)
-        executor = CommandExecutor(base_theory=default_config.iscalc.base_theory)
+        # 传入问题的完整上下文
+        if problem.context is not None:
+            executor = CommandExecutor(context=problem.context)
+        else:
+            executor = CommandExecutor(base_theory=default_config.iscalc.base_theory)
         solver = SolverLoop(llm_engine, executor, default_config.solver)
         
         # 覆盖最大迭代次数
@@ -296,6 +376,10 @@ class BatchTester:
         # 定义回调函数
         async def callback(event: SolveEvent):
             nonlocal current_round
+            
+            # 检查停止标志
+            if self.stop_flag:
+                raise Exception("用户停止测试")
             
             # 将 SolveEvent 转换为我们的事件格式
             if event.type == EventType.THINKING:
@@ -420,15 +504,15 @@ class BatchTester:
             
             # 使用线程池并发测试
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = []
+                self._futures = []  # 重置 futures 列表
                 for problem in all_problems:
                     if self.stop_flag:
                         break
                     future = executor.submit(self._run_async_test, problem)
-                    futures.append(future)
+                    self._futures.append(future)
                 
                 # 等待所有任务完成
-                for future in futures:
+                for future in self._futures:
                     if self.stop_flag:
                         break
                     try:
@@ -499,3 +583,10 @@ class BatchTester:
         """停止测试"""
         self.stop_flag = True
         self.logger.info("收到停止信号")
+        
+        # 尝试取消所有未完成的任务
+        if hasattr(self, '_futures'):
+            for future in self._futures:
+                if not future.done():
+                    future.cancel()
+                    self.logger.info(f"已取消一个未完成的任务")

@@ -48,8 +48,15 @@ class CommandExecutor:
     2. execute() - 在CalculateState中执行RuleAction
     """
     
-    def __init__(self, base_theory: str = "base"):
+    def __init__(self, base_theory: str = "base", context = None):
+        """初始化命令执行器
+        
+        Args:
+            base_theory: 基础理论名称（字符串）
+            context: Context 对象，如果提供则使用它而不是 base_theory
+        """
         self.base_theory = base_theory
+        self.context = context  # 保存 Context 对象
         self.comp_file: Optional[CompFile] = None
         self.state: Optional[Any] = None
         self.history: List[dict] = []
@@ -62,8 +69,11 @@ class CommandExecutor:
         根据输入的命令（prove/calculate）创建对应的状态。
         """
         try:
-            # 创建CompFile
-            self.comp_file = CompFile(self.base_theory, "llm_session")
+            # 创建CompFile，优先使用传入的 Context 对象
+            if self.context is not None:
+                self.comp_file = CompFile(self.context, "llm_session")
+            else:
+                self.comp_file = CompFile(self.base_theory, "llm_session")
             
             # 创建InitialState
             initial_state = state_module.InitialState(self.comp_file.ctx)
