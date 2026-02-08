@@ -230,15 +230,15 @@ class BatchTester:
 
 ### Prompt
 
-```
+
 {round_log.prompt_text}
-```
+
 
 ### Response
 
-```
+
 {round_log.response_text}
-```
+
 
 ---
 
