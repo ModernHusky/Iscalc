@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 LLM-Iscalc 批量测试平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <style>
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #F9FAFB;
+        }
+
+        /* 渐变标题 */
+        .gradient-text {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 按钮交互 */
+        .btn-primary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-secondary:hover {
+            background: #E5E7EB;
+        }
+
+        /* 复选框样式 */
+        .theory-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #6366F1;
+        }
+
+        /* 滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #F3F4F6;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+
+        /* 进度条动画 */
+        .progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+
+        /* 状态图标 */
+        .status-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <!-- 标题栏 -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl font-bold text-center">🧪 LLM-Iscalc 批量测试平台</h1>
+            <p class="text-center text-indigo-100 mt-2">自动化测试理论文件，统计成功率与性能指标</p>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex gap-6 h-[calc(100vh-180px)]">
+            <!-- 左侧：理论列表 -->
+            <div class="w-1/4 bg-white rounded-lg shadow-md p-4 flex flex-col">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800">📚 理论列表</h2>
+                
+                <!-- 理论列表 -->
+                <div id="theoryList" class="flex-1 overflow-y-auto custom-scrollbar mb-4 space-y-2">
+                    <!-- 动态加载 -->
+                    <div class="text-center text-gray-400 py-8">加载中...</div>
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="space-y-2 border-t pt-4">
+                    <button id="selectAllBtn" class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg btn-secondary font-medium">
+                        全选
+                    </button>
+                    <button id="clearSelectionBtn" class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg btn-secondary font-medium">
+                        清空选择
+                    </button>
+                    <button id="startTestBtn" class="w-full px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg btn-primary font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                        开始测试
+                    </button>
+                    <button id="stopTestBtn" class="w-full px-4 py-2 bg-red-500 text-white rounded-lg btn-primary font-medium hidden">
+                        停止测试
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧：测试结果面板 -->
+            <div class="flex-1 flex flex-col gap-4">
+                <!-- 测试统计 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">📊 测试统计</h2>
+                        <button id="exportReportBtn" class="px-4 py-2 bg-indigo-500 text-white rounded-lg btn-primary text-sm font-medium hidden">
+                            📝 导出测试报告
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-800" id="totalCount">0</div>
+                            <div class="text-sm text-gray-500">总题目数</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-green-600" id="successCount">0</div>
+                            <div class="text-sm text-gray-500">成功</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-600" id="failedCount">0</div>
+                            <div class="text-sm text-gray-500">失败</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-indigo-600" id="avgRounds">0</div>
+                            <div class="text-sm text-gray-500">平均轮数</div>
+                        </div>
+                    </div>
+                    <!-- 进度条 -->
+                    <div class="mt-4">
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>进度</span>
+                            <span id="progressText">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="progressBar" class="progress-bar bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Token & Cost 统计 -->
+                    <div class="mt-4 p-4 bg-purple-50 rounded-lg">
+                        <h4 class="font-semibold text-purple-900 mb-2">💰 Token & Cost</h4>
+                        <p class="text-sm text-gray-700">总成本: ￥<span id="totalCost" class="font-mono">0.000000</span></p>
+                        <p class="text-sm text-gray-700">总 Tokens: <span id="totalTokens" class="font-mono">0</span></p>
+                    </div>
+                </div>
+
+                <!-- 当前测试进度 - 已禁用以避免卡死 -->
+                <!-- <div id="currentTestPanel" class="bg-white rounded-lg shadow-md p-6 hidden">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">🔄 当前测试进度</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-600">正在测试:</span>
+                            <span id="currentProblemId" class="font-mono font-semibold text-indigo-600">-</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-600">轮次:</span>
+                            <span id="currentRound" class="font-semibold text-gray-800">0/10</span>
+                        </div>
+                        <div class="mt-4">
+                            <div class="text-sm text-gray-600 mb-2">🤔 AI思考过程:</div>
+                            <div id="currentThinking" class="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto custom-scrollbar text-sm text-gray-700 font-mono whitespace-pre-wrap">
+                                等待开始...
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
+
+                <!-- 题目详情 -->
+                <div class="flex-1 bg-white rounded-lg shadow-md p-6 flex flex-col">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">📝 题目详情</h2>
+                    <div id="problemList" class="flex-1 overflow-y-auto custom-scrollbar">
+                        <div class="text-center text-gray-400 py-8">暂无测试数据</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/test.js"></script>
+</body>
+
+</html>

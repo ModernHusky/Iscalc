@@ -16,6 +16,7 @@ import httpx
 from .logger_config import get_phase_logger, print_separator
 from .prompts import USER_MESSAGE_TEMPLATE, HISTORY_TEMPLATE, ERROR_FEEDBACK_TEMPLATE, build_dynamic_system_prompt, get_system_prompt
 from .config import LLMConfig
+from .models import TokenUsage, PromptComponent
 
 
 # ============ Function Calling 工具定义 ============
@@ -96,12 +97,36 @@ class LLMEngine:
         self.config = config
         self.logger = get_phase_logger(__name__)
         self._client: Optional[httpx.AsyncClient] = None
+        
+        # 用于记录最后一次调用的信息
+        self.last_token_usage: Optional[TokenUsage] = None
+        self.last_prompt_components: List[PromptComponent] = []
+        self.last_prompt_text: str = ""
     
     async def _get_client(self) -> httpx.AsyncClient:
         """获取HTTP客户端"""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=self.config.timeout)
         return self._client
+    
+    def _calculate_cost(self, usage: TokenUsage) -> float:
+        """计算成本（元）
+        
+        DeepSeek 价格：
+        - 缓存命中: ￥0.2/百万 tokens
+        - 缓存未命中: ￥2.0/百万 tokens
+        - 输出: ￥3.0/百万 tokens
+        """
+        PRICE_CACHE_HIT = 0.2 / 1_000_000
+        PRICE_CACHE_MISS = 2.0 / 1_000_000
+        PRICE_OUTPUT = 3.0 / 1_000_000
+        
+        cost = (
+            usage.prompt_cache_hit_tokens * PRICE_CACHE_HIT +
+            usage.prompt_cache_miss_tokens * PRICE_CACHE_MISS +
+            usage.completion_tokens * PRICE_OUTPUT
+        )
+        return cost
     
     async def close(self):
         """关闭客户端"""
@@ -129,6 +154,9 @@ class LLMEngine:
             current_state: 当前状态名称（如 'CALCULATE', 'PROVE', 'INDUCTION'）
             active_skills: 已加载的技能内容列表
         """
+        # 清空上一次的记录
+        self.last_prompt_components = []
+        
         # 根据配置选择提示词构建方式
         if use_dynamic_prompt:
             # 基础提示词构建
@@ -149,6 +177,27 @@ class LLMEngine:
         else:
             # 完整模式：加载所有命令（懒加载，避免 import 时扫描 skills）
             system_prompt = get_system_prompt()
+        
+        # 记录系统提示词成分
+        self.last_prompt_components.append(PromptComponent(
+            name="system_prompt",
+            token_count=len(system_prompt) // 4  # 简单估算: 1 token ≈ 4 字符
+        ))
+        
+        # 记录技能成分
+        if active_skills:
+            for skill_content in active_skills:
+                # 从技能内容中提取技能名称（简化处理）
+                skill_name = "skill_unknown"
+                if "# Skill:" in skill_content:
+                    try:
+                        skill_name = "skill_" + skill_content.split("# Skill:")[1].split("\n")[0].strip().replace(" ", "_").lower()
+                    except:
+                        pass
+                self.last_prompt_components.append(PromptComponent(
+                    name=skill_name,
+                    token_count=len(skill_content) // 4
+                ))
         
         messages = [{"role": "system", "content": system_prompt}]
         
@@ -174,10 +223,32 @@ class LLMEngine:
             expression=expression,
             history_section=history_section,
             current_state=current_state,
-
             conditions=", ".join(conditions) if conditions else "无",
             user_instruction=user_instruction or "无"
         )
+        
+        # 记录用户消息成分
+        self.last_prompt_components.append(PromptComponent(
+            name="user_message",
+            token_count=len(user_message) // 4
+        ))
+        
+        # 记录历史成分
+        if history:
+            self.last_prompt_components.append(PromptComponent(
+                name="history",
+                token_count=len(history_section) // 4
+            ))
+        
+        # 记录错误成分
+        if last_error:
+            self.last_prompt_components.append(PromptComponent(
+                name="error_feedback",
+                token_count=len(last_error) // 4
+            ))
+        
+        # 保存完整的 prompt 文本
+        self.last_prompt_text = f"SYSTEM:\n{system_prompt}\n\nUSER:\n{user_message}"
         
         messages.append({"role": "user", "content": user_message})
         return messages
@@ -202,6 +273,9 @@ class LLMEngine:
             user_instruction=user_instruction,
             active_skills=active_skills
         )
+        
+        # 初始化 token usage（如果是新的请求）
+        self.last_token_usage = TokenUsage()
         
         # 请求日志
         system_len = len(messages[0]["content"])
@@ -243,6 +317,20 @@ class LLMEngine:
                                 break
                             try:
                                 chunk = json.loads(data)
+                                
+                                # 捕获 usage 信息（在最后一个 chunk 中）
+                                if "usage" in chunk:
+                                    usage = chunk["usage"]
+                                    current_usage = TokenUsage(
+                                        prompt_tokens=usage.get("prompt_tokens", 0),
+                                        completion_tokens=usage.get("completion_tokens", 0),
+                                        total_tokens=usage.get("total_tokens", 0),
+                                        prompt_cache_hit_tokens=usage.get("prompt_cache_hit_tokens", 0),
+                                        prompt_cache_miss_tokens=usage.get("prompt_cache_miss_tokens", 0)
+                                    )
+                                    current_usage.cost = self._calculate_cost(current_usage)
+                                    self.last_token_usage.add(current_usage)
+                                
                                 if "choices" in chunk and chunk["choices"]:
                                     delta = chunk["choices"][0].get("delta", {})
                                     content = delta.get("content", "")
@@ -474,6 +562,21 @@ class LLMEngine:
                                 break
                             try:
                                 chunk = json.loads(data)
+                                
+                                # 捕获 usage 信息（在最后一个 chunk 中）
+                                if "usage" in chunk:
+                                    usage = chunk["usage"]
+                                    current_usage = TokenUsage(
+                                        prompt_tokens=usage.get("prompt_tokens", 0),
+                                        completion_tokens=usage.get("completion_tokens", 0),
+                                        total_tokens=usage.get("total_tokens", 0),
+                                        prompt_cache_hit_tokens=usage.get("prompt_cache_hit_tokens", 0),
+                                        prompt_cache_miss_tokens=usage.get("prompt_cache_miss_tokens", 0)
+                                    )
+                                    current_usage.cost = self._calculate_cost(current_usage)
+                                    self.last_token_usage.add(current_usage)
+                                    self.logger.info(f"Token usage: {self.last_token_usage.total_tokens}, Cost: ￥{self.last_token_usage.cost:.6f}")
+                                
                                 if "choices" in chunk and chunk["choices"]:
                                     delta = chunk["choices"][0].get("delta", {})
                                     if delta.get("content"):
@@ -562,6 +665,21 @@ class LLMEngine:
                                 break
                             try:
                                 chunk = json.loads(data)
+                                
+                                # 捕获 usage 信息
+                                if "usage" in chunk:
+                                    usage = chunk["usage"]
+                                    current_usage = TokenUsage(
+                                        prompt_tokens=usage.get("prompt_tokens", 0),
+                                        completion_tokens=usage.get("completion_tokens", 0),
+                                        total_tokens=usage.get("total_tokens", 0),
+                                        prompt_cache_hit_tokens=usage.get("prompt_cache_hit_tokens", 0),
+                                        prompt_cache_miss_tokens=usage.get("prompt_cache_miss_tokens", 0)
+                                    )
+                                    current_usage.cost = self._calculate_cost(current_usage)
+                                    self.last_token_usage.add(current_usage)
+                                    self.logger.info(f"Token usage: {self.last_token_usage.total_tokens}, Cost: ￥{self.last_token_usage.cost:.6f}")
+                                
                                 if chunk["choices"][0]["delta"].get("content"):
                                     yield chunk["choices"][0]["delta"]["content"]
                             except json.JSONDecodeError:

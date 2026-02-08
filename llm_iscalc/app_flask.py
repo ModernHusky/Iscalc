@@ -10,6 +10,7 @@ from .llm_engine import LLMEngine
 from .command_executor import CommandExecutor
 from .solver_loop import SolverLoop, SolveEvent, EventType
 from .logger_config import configure_logging, get_phase_logger
+from .batch_tester import BatchTester
 
 # 配置日志
 configure_logging()
@@ -27,6 +28,7 @@ app = Flask(__name__,
 _config = create_config()
 
 _stop_flag = False
+_batch_tester = None  # 当前运行的批量测试器
 
 
 @app.route('/')
@@ -56,6 +58,90 @@ def stop_solving():
     global _stop_flag
     _stop_flag = True
     return jsonify({'status': 'ok', 'message': '已发送终止信号'})
+
+
+@app.route('/api/test/theories')
+def get_theories():
+    """获取所有理论文件列表"""
+    import os
+    theories_dir = _current_dir.parent / 'theories'
+    
+    if not theories_dir.exists():
+        return jsonify({'error': '理论文件目录不存在'}), 404
+    
+    # 获取所有 .thy 文件
+    theory_files = []
+    for file in sorted(theories_dir.glob('*.thy')):
+        theory_name = file.stem  # 不带扩展名的文件名
+        theory_files.append(theory_name)
+    
+    return jsonify(theory_files)
+
+
+@app.route('/api/test/run')
+def run_batch_test():
+    """运行批量测试（SSE 流式输出）"""
+    import threading
+    
+    theories = request.args.get('theories', '').strip()
+    max_workers = int(request.args.get('max_workers', '5'))
+    max_step = int(request.args.get('max_step', '10'))
+    
+    if not theories:
+        return jsonify({'error': '理论列表不能为空'}), 400
+    
+    theory_list = [t.strip() for t in theories.split(',') if t.strip()]
+    
+    def generate():
+        """生成 SSE 事件流"""
+        global _batch_tester
+        
+        # 创建批量测试器
+        _batch_tester = BatchTester(theory_list, max_workers=max_workers, max_step=max_step)
+        
+        # 在独立线程中运行测试
+        test_thread = threading.Thread(target=_batch_tester.run_tests)
+        test_thread.start()
+        
+        # 从事件队列中读取事件并发送
+        try:
+            while True:
+                try:
+                    # 等待事件（超时 1 秒）
+                    event = _batch_tester.event_queue.get(timeout=1)
+                    
+                    # 发送 SSE 事件
+                    event_type = event['type']
+                    event_data = json.dumps(event['data'], ensure_ascii=False)
+                    yield f"event: {event_type}\ndata: {event_data}\n\n"
+                    
+                    # 如果是测试完成或错误，退出循环
+                    if event_type in ['test_complete', 'error']:
+                        break
+                
+                except Exception as e:
+                    # 队列超时，检查线程是否还在运行
+                    if not test_thread.is_alive():
+                        break
+        
+        finally:
+            # 等待测试线程结束
+            test_thread.join(timeout=5)
+            _batch_tester = None
+    
+    return Response(generate(), mimetype='text/event-stream')
+
+
+@app.route('/api/test/stop', methods=['POST'])
+def stop_batch_test():
+    """停止批量测试"""
+    global _batch_tester
+    
+    if _batch_tester:
+        _batch_tester.stop()
+        return jsonify({'status': 'ok', 'message': '已发送停止信号'})
+    else:
+        return jsonify({'status': 'ok', 'message': '没有正在运行的测试'})
 
 
 @app.route('/api/solve')

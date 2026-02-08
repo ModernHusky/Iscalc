@@ -6,6 +6,19 @@
 import os
 from dataclasses import dataclass, field
 from typing import Optional
+from pathlib import Path
+
+# Import the .env file from project root
+try:
+    from dotenv import load_dotenv
+    project_root = Path(__file__).parent.parent
+    root_env_path = project_root / '.env'
+    if root_env_path.exists():
+        load_dotenv(dotenv_path=root_env_path)
+    else:
+        load_dotenv()  # 尝试从当前工作目录加载
+except ImportError:
+    pass
 
 
 @dataclass
@@ -16,7 +29,7 @@ class LLMConfig:
     # api_base: str = "https://open.bigmodel.cn/api/paas/v4/"  # 注意：只需要 base URL，不包括具体 endpoint
     # model: str = "GLM-4.7"  # 使用 Plus 版本以获得更强的数学推理能力
     # DeepSeek API 配置（备用）
-    api_key: str = "sk-58fe61d83d944b91ba997b3d397289fd"
+    api_key: str = field(default_factory=lambda: os.getenv("API_KEY", ""))
     api_base: str = "https://api.deepseek.com/v1"
     model: str = "deepseek-chat"
     temperature: float = 0.1

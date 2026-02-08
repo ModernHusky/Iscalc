@@ -15,6 +15,7 @@ from .llm_engine import LLMEngine, LLMResponse
 from .command_executor import CommandExecutor, ExecutionResult
 from .error_handler import ErrorHandler
 from .config import SolverConfig
+from .models import TokenUsage, PromptComponent, RoundLog
 
 
 class EventType(Enum):
@@ -51,6 +52,8 @@ class SolveResult:
     steps: List[Dict[str, Any]]
     error: Optional[str] = None
     iterations: int = 0
+    total_token_usage: TokenUsage = field(default_factory=TokenUsage)
+    round_logs: List[RoundLog] = field(default_factory=list)
 
 
 class SolverLoop:
@@ -433,7 +436,9 @@ class SolverLoop:
                 final_expression=expression,
                 latex_solution="",
                 steps=[],
-                error=init_result.error
+                error=init_result.error,
+                total_token_usage=TokenUsage(),
+                round_logs=[]
             )
         
         self.logger.info(f"✅ Initialized. Result: {init_result.result}")
@@ -451,6 +456,10 @@ class SolverLoop:
         expression_history = [init_result.result]
         loop_retry_count = 0  # 循环重试计数
         max_loop_retries = 3  # 最大重试次数
+        
+        # Token 统计
+        total_token_usage = TokenUsage()
+        round_logs: List[RoundLog] = []
         
         # 动态技能状态
         active_skills: List[str] = []
@@ -508,7 +517,9 @@ class SolverLoop:
                         latex_solution=self._format_solution_path(steps),
                         steps=steps,
                         error="检测到表达式循环，重试失败",
-                        iterations=iteration
+                        iterations=iteration,
+                        total_token_usage=total_token_usage,
+                        round_logs=round_logs
                     )
                 
                 # 通知LLM循环并要求重新思考
@@ -1324,6 +1335,22 @@ class SolverLoop:
             self.logger.execution("执行命令: %s", command)
             exec_result = self.executor.execute(command)
             
+            # 收集 Token 信息
+            token_usage = self.llm.last_token_usage or TokenUsage()
+            total_token_usage.add(token_usage)
+            
+            # 创建轮次日志
+            round_log = RoundLog(
+                round=iteration,
+                prompt_text=self.llm.last_prompt_text,
+                response_text=full_response,
+                state_before=current_expr or "",
+                state_after=exec_result.result if exec_result.success else current_expr or "",
+                token_usage=token_usage,
+                prompt_components=self.llm.last_prompt_components.copy()
+            )
+            round_logs.append(round_log)
+            
             step_record = {
                 "step": iteration,
                 "command": command,
@@ -1425,7 +1452,9 @@ class SolverLoop:
             final_expression=final_expr,
             latex_solution=self._format_solution_path(steps),
             steps=steps,
-            iterations=iteration
+            iterations=iteration,
+            total_token_usage=total_token_usage,
+            round_logs=round_logs
         )
     
     def _detect_loop(self, expression_history: List[str]) -> bool:
