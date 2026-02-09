@@ -85,7 +85,7 @@ def run_batch_test():
     
     theories = request.args.get('theories', '').strip()
     max_workers = int(request.args.get('max_workers', '5'))
-    max_step = int(request.args.get('max_step', '10'))
+    max_step = 25
     
     if not theories:
         return jsonify({'error': '理论列表不能为空'}), 400
