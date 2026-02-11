@@ -129,14 +129,25 @@ class CommandExecutor:
                 # 检查是否为等式（Op类型且name为'='）
                 if self._is_equality(parsed_expr):
                     # 等式 -> prove
-                    prove_action = ProveAction(parsed_expr, cond_list)
+                    prove_action = ProveAction(parsed_expr, cond_list, attrs=[])
                     self.state = initial_state.process_action(prove_action)
                 else:
                     # 非等式 -> calculate
                     calc_action = CalculateAction(parsed_expr, cond_list)
                     self.state = initial_state.process_action(calc_action)
             
-            self.initial_expression = expression
+            # 规范化 initial_expression：根据实际状态添加前缀
+            if expr_lower.startswith("prove ") or expr_lower.startswith("calculate "):
+                # 已有前缀，保持原样
+                self.initial_expression = expression
+            else:
+                # 无前缀：根据实际创建的 Action 类型添加前缀
+                parsed_expr = parser.parse_expr(expression)
+                if self._is_equality(parsed_expr):
+                    self.initial_expression = f"prove {expression}"
+                else:
+                    self.initial_expression = f"calculate {expression}"
+            
             current_expr = self._get_current_expr()
             self._previous_expr_str = str(current_expr) if current_expr else expression
             self.history = []
@@ -389,8 +400,9 @@ class CommandExecutor:
         Returns:
             如果表达式是等式（操作符为'='）返回True，否则False
         """
-        # 检查是否为Op类型且操作符为'='
-        if hasattr(expr, 'ty') and expr.ty == 'op':
-            return getattr(expr, 'name', '') == '='
+        # 检查是否为Op类型（integral.expr.Op）
+        # Op对象有 op 属性（字符串）表示操作符
+        if hasattr(expr, 'op'):
+            return expr.op == '='
         return False
 

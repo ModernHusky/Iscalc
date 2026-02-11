@@ -31,7 +31,6 @@ class SkillMetadata:
     applicable_types: List[str] = field(default_factory=list)
     match_rules: List[str] = field(default_factory=list)  # 正则表达式匹配规则
     path: str = ""  # SKILL.md 文件路径
-    skill_dir: str = ""  # 技能目录路径（用于定位第三层资源）
 
 
 @dataclass
@@ -42,20 +41,10 @@ class SkillContent:
     Token 开销约 200-1000。
     """
     metadata: SkillMetadata
-    full_content: str  # SKILL.md 的 Markdown 正文
+    full_content: str
 
 
-@dataclass
-class SkillExtendedResource:
-    """扩展资源（第三层 - 按需加载）
-    
-    包含 references/ 或 scripts/ 目录下的额外文件。
-    只在核心指令引用时加载。
-    """
-    name: str  # 资源名称（如 "ADVANCED.md"）
-    resource_type: str  # "reference" | "script"
-    path: str  # 完整路径
-    content: Optional[str] = None  # 只在加载后填充
+
 
 
 
@@ -269,8 +258,7 @@ class SkillLoader:
                 description=data.get('description', ''),
                 keywords=data.get('keywords', []),
                 applicable_types=data.get('applicable_types', []),
-                match_rules=data.get('match_rules', []),
-                skill_dir=os.path.dirname(skill_file)  # 设置技能目录用于定位第三层资源
+                match_rules=data.get('match_rules', [])
             )
         except Exception as e:
             self.logger.warning("解析技能文件失败: %s - %s", skill_file, str(e))
@@ -319,90 +307,7 @@ class SkillLoader:
             self.logger.error_phase("加载技能内容失败: %s - %s", skill_name, str(e))
             return None
     
-    # ============ 第三层：扩展资源 ============
-    
-    def list_skill_resources(self, skill_name: str) -> List[SkillExtendedResource]:
-        """列出技能的扩展资源（第三层）
-        
-        扫描技能目录下的 references/ 和 scripts/ 子目录，
-        返回可用资源的列表（不读取内容）。
-        
-        Args:
-            skill_name: 技能名称
-            
-        Returns:
-            扩展资源列表
-        """
-        if skill_name not in self._skill_cache:
-            self.discover_skills()
-        
-        metadata = self._skill_cache.get(skill_name)
-        if not metadata or not metadata.skill_dir:
-            return []
-        
-        resources = []
-        skill_dir = metadata.skill_dir
-        
-        # 扫描 references/ 目录
-        references_dir = os.path.join(skill_dir, "references")
-        if os.path.exists(references_dir):
-            for filename in os.listdir(references_dir):
-                filepath = os.path.join(references_dir, filename)
-                if os.path.isfile(filepath):
-                    resources.append(SkillExtendedResource(
-                        name=filename,
-                        resource_type="reference",
-                        path=filepath
-                    ))
-        
-        # 扫描 scripts/ 目录
-        scripts_dir = os.path.join(skill_dir, "scripts")
-        if os.path.exists(scripts_dir):
-            for filename in os.listdir(scripts_dir):
-                filepath = os.path.join(scripts_dir, filename)
-                if os.path.isfile(filepath):
-                    resources.append(SkillExtendedResource(
-                        name=filename,
-                        resource_type="script",
-                        path=filepath
-                    ))
-        
-        if resources:
-            self.logger.info("   技能 %s 有 %d 个扩展资源", skill_name, len(resources))
-        
-        return resources
-    
-    def load_skill_resource(self, skill_name: str, resource_name: str) -> Optional[SkillExtendedResource]:
-        """加载技能的扩展资源内容（第三层）
-        
-        按需读取 references/ 或 scripts/ 下的文件内容。
-        
-        Args:
-            skill_name: 技能名称
-            resource_name: 资源文件名（如 "ADVANCED.md" 或 "helper.py"）
-            
-        Returns:
-            填充了 content 的 SkillExtendedResource，或 None
-        """
-        resources = self.list_skill_resources(skill_name)
-        
-        for resource in resources:
-            if resource.name == resource_name:
-                try:
-                    with open(resource.path, 'r', encoding='utf-8-sig') as f:
-                        resource.content = f.read()
-                    
-                    self.logger.skill_load("加载扩展资源: %s/%s (%d 字节)", 
-                                          skill_name, resource_name, len(resource.content))
-                    return resource
-                except Exception as e:
-                    self.logger.error_phase("加载扩展资源失败: %s/%s - %s", 
-                                           skill_name, resource_name, str(e))
-                    return None
-        
-        self.logger.warning("扩展资源不存在: %s/%s", skill_name, resource_name)
-        return None
-    
+
     def get_skills_summary(self) -> str:
         """获取所有技能的摘要（第一层）
         
@@ -440,11 +345,8 @@ class SkillLoader:
                 for rule_config in skill.match_rules:
                     try:
                         pattern = rule_config
-                        # 如果配置是字典形式（新格式），提取 regex 和 flags
                         if isinstance(rule_config, dict):
                             pattern = rule_config.get('regex', '')
-                            # 处理 flags (简单起见这里暂不处理 flags 字符串转换，通常 re.IGNORECASE 硬编码在下面)
-                            # 如果需要支持 flags 列表，需解析字符串如 "re.DOTALL"
                         
                         if not isinstance(pattern, str):
                             continue
@@ -453,7 +355,7 @@ class SkillLoader:
                             is_match = True
                             break
                     except re.error as e:
-                        print(f"Warning: Invalid regex in skill {skill.name}: {pattern}, error: {e}")
+                        print(f"Warning: Invalid regex in skill {skill.name}: {rule_config}, error: {e}")
             
             # 2. 如果没有 match_rules，则视为普通技能，不自动激活（或者可以添加其他逻辑）
             # 目前策略是：只有定义了 match_rules 的才会基于表达式自动激活
@@ -537,15 +439,12 @@ class SkillLoader:
         """获取指定技能的完整指令
         
         按需加载第二层内容。
-        并注入第三层所需的环境信息（如技能根目录 path）。
         """
         lines = []
         for name in skill_names:
             content = self.load_skill_content(name)
             if content:
-                skill_dir = os.path.dirname(content.metadata.path)
                 lines.append(f"\n## 技能: {name}\n")
-                lines.append(f"> Skill Directory: {skill_dir}\n")  # Enable access to Level 3 resources
                 lines.append(content.full_content)
                 lines.append("\n---\n")
         
@@ -836,7 +735,7 @@ def _ensure_skills_loaded():
 # 如需旧接口，请显式调用 _ensure_skills_loaded()。
 
 
-def detect_skill_mentions(text: str, loaded_skills: List[str] = None) -> List[Dict[str, str]]:
+def detect_skill_mentions(text: str, loaded_skills: Optional[List[str]] = None) -> List[Dict[str, str]]:
     """从文本中检测提到的技能名称
     
     扫描 LLM 的 thinking 内容，检测是否提到了某个技能名称。

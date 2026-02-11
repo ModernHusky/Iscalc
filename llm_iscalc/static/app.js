@@ -1191,7 +1191,18 @@ solveBtn.addEventListener('click', async () => {
     const firstWord = expression.split(' ')[0].toLowerCase();
 
     if (!commandKeywords.includes(firstWord)) {
-        initCmd = `calculate ${expression}`;
+        // 检查是否为等式：包含等号 '='
+        // 简单检测：如果表达式中包含 '=' 且不是以 '<' 或 '>' 结尾（排除 <= 和 >=）
+        const hasEquality = expression.includes('=') &&
+            !expression.includes('<=') &&
+            !expression.includes('>=') &&
+            !expression.includes('!=');
+
+        if (hasEquality) {
+            initCmd = `prove ${expression}`;
+        } else {
+            initCmd = `calculate ${expression}`;
+        }
     }
 
     if (conditions) {
