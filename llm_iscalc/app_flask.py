@@ -470,28 +470,25 @@ def solve_expression():
                         if is_final_match:
                             state['thinking']['is_final'] = is_final_match.group(1) == 'true'
 
-                        # 策略3：如果thinking字段仍为空，显示原始内容
-                        if not state['thinking']['thinking']:
-                            # 续写场景：新 JSON 尚未形成（如只输出了 { 或纯文本）
-                            # 显示旧思考 + 当前续写内容（过滤尾部的孤立 {}）
-                            display_text_raw = clean_content.rstrip().rstrip('{')
+                        # 策略3：如果没有找到 "thinking" 字段（如 Search-o1 的纯文本前缀），直接显示原始内容
+                        if thinking_start == -1:
+                            display_text_raw = clean_content.rstrip().rstrip('{').strip()
                             if _pre_skill_thinking:
-                                if display_text_raw.strip():
-                                    state['thinking']['thinking'] = _pre_skill_thinking + "\n\n" + display_text_raw.strip()
+                                if display_text_raw:
+                                    state['thinking']['thinking'] = _pre_skill_thinking + "\n\n" + display_text_raw
                                 else:
                                     state['thinking']['thinking'] = _pre_skill_thinking
                             else:
-                                # 非续写场景：原有逻辑
-                                is_valid_json_structure = search_content.strip().startswith('{') and '"thinking"' in search_content
-                                is_incomplete_json_fragment = False
                                 stripped = clean_content.strip()
-                                if len(stripped) < 50:
-                                    if stripped.endswith('{') or stripped == '{':
-                                        is_incomplete_json_fragment = True
-                                if not is_valid_json_structure and not clean_content.startswith('[DEBUG') and not is_incomplete_json_fragment:
+                                is_incomplete_json_fragment = len(stripped) < 5 and (stripped.endswith('{') or stripped == '{')
+                                if not clean_content.startswith('[DEBUG') and not is_incomplete_json_fragment:
                                     state['thinking']['thinking'] = clean_content
 
-                    except Exception:
+                    except Exception as e:
+                        import traceback
+                        print(f"DEBUG EXCEPTION in parse_response: {e}")
+                        traceback.print_exc()
+                        print(f"CONTENT WAS: {repr(content)}")
                         pass
 
                     # ── 日志独立积累（不受 UI state 覆盖影响）──

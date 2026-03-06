@@ -1215,10 +1215,12 @@ solveBtn.addEventListener('click', async () => {
 
     try {
         // 使用 EventSource 进行流式输出
+        const generateLogCheckbox = document.getElementById('generate-log-checkbox');
         const params = new URLSearchParams({
             expression: expression,
             conditions: conditions,
-            instruction: instructionInput ? instructionInput.value.trim() : ''
+            instruction: instructionInput ? instructionInput.value.trim() : '',
+            generate_log: generateLogCheckbox ? generateLogCheckbox.checked : false
         });
 
         eventSource = new EventSource(`/api/solve?${params.toString()}`);
