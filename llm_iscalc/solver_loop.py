@@ -663,6 +663,8 @@ class SolverLoop:
                     display_text = ""
                     raw_text = ""  # 维护原始文本用于 LLM 上下文（保留标记）
                     is_first_generation = True
+                    last_continuation_text = ""  # 追踪最后一轮续写输出，供 parse_response 使用
+                    pre_skill_display = ""  # 追踪续写前的 display_text 快照
                     
                     while skill_round < max_skill_rounds:
                         # 开始一轮生成（第一轮或继续生成）
@@ -854,8 +856,12 @@ class SolverLoop:
 
                             self.logger.info("   🔄 继续生成...")
 
+                            # 保存续写前的 display_text 快照（旧思考 + 技能标记）
+                            pre_skill_display = display_text
+
                             # 继续生成（使用 assistant prefix 模式，技能内容已注入 system prompt）
                             continuation_text = ""
+                            last_continuation_text = ""  # 重置，准备追踪本轮续写
                             async for chunk in self.llm.continue_generation_v2(
                                 base_messages,
                                 raw_text,
@@ -866,27 +872,18 @@ class SolverLoop:
                                 raw_text += chunk
 
                                 # 实时发送流式更新
+                                # 核心：发送 continuation_text（单 JSON），旧思考通过 metadata 传递
+                                # 这样 app_flask.py 的 parser 始终只处理单 JSON，无需多 JSON 拼接解析
                                 if callback:
-                                    # 🔧 清理尾部不完整的 JSON 碎片（如 "对于\n{"）
-                                    # 这些通常是 Beta API 返回的不完整续写内容
-                                    display_for_ui = display_text
-                                    # 检测尾部是否有不完整的 JSON 开头
-                                    import re as re_mod
-                                    # 模式：技能加载确认后跟极少量文字和 {
-                                    tail_fragment = re_mod.search(r'(\[✓\s*已加载技能:\s*[^\]]+\]\s*.{0,30}\{?\s*)$', display_for_ui)
-                                    if tail_fragment:
-                                        # 只保留到技能加载确认
-                                        match_start = tail_fragment.start()
-                                        # 找到 ] 的位置
-                                        bracket_end = display_for_ui.find(']', match_start)
-                                        if bracket_end != -1:
-                                            display_for_ui = display_for_ui[:bracket_end + 1]
-                                    
                                     await callback(SolveEvent(
                                         type=EventType.THINKING,
-                                        content=display_for_ui,
+                                        content=continuation_text,
                                         step=iteration,
-                                        metadata={"streaming": True, "skill_round": skill_round}
+                                        metadata={
+                                            "streaming": True,
+                                            "skill_round": skill_round,
+                                            "pre_skill_display": pre_skill_display
+                                        }
                                     ))
 
                                 # 实时检测新的技能标记
@@ -921,6 +918,7 @@ class SolverLoop:
                             
                             # 日志：记录续写结果
                             self.logger.info("   ✅ 续写完成: %d 字符", len(continuation_text))
+                            last_continuation_text = continuation_text  # 保存最后一轮续写结果
 
                         except Exception as e:
                             self.logger.warning("技能加载失败: %s - %s", requested_skill, str(e))
@@ -928,19 +926,26 @@ class SolverLoop:
                             loaded_skill_refs.add(requested_skill)
                     
                     # 循环结束：可能是达到最大轮次或没有更多技能
-                    full_response = display_text
+                    # 核心修复：如果有续写输出，只把续写部分传给 parse_response
+                    # 这避免了 parse_response 扫描整个多 JSON 拼接的 display_text，
+                    # 从而防止策略3从旧 thinking 中误匹配 rewrite/substitute 等词作为命令
+                    full_response = last_continuation_text if last_continuation_text else display_text
                     
                     if skill_round >= max_skill_rounds:
                         self.logger.warning("⚠ 达到最大技能加载轮次 (%d)", max_skill_rounds)
                         full_response += f"\n\n[系统提示: 已达到最大技能加载轮次 {max_skill_rounds}]"
                     
-                    # 发送最终响应
+                    # 发送最终响应（含 pre_skill_display 供前端正确显示旧思考）
                     if callback:
                         await callback(SolveEvent(
                             type=EventType.THINKING,
                             content=full_response,
                             step=iteration,
-                            metadata={"streaming": False, "skill_rounds": skill_round}
+                            metadata={
+                                "streaming": False,
+                                "skill_rounds": skill_round,
+                                "pre_skill_display": pre_skill_display if last_continuation_text else ""
+                            }
                         ))
                 
                 llm_response = self.llm.parse_response(full_response)
@@ -954,6 +959,7 @@ class SolverLoop:
                     last_skill_name = list(loaded_skill_names)[-1]
                     
                     # 重建 messages 并调用回退模式
+                    # 🔧 用 display_text（完整上下文）而非 full_response（可能只有 "{"）
                     base_messages = self.llm._build_messages(
                         expression=current_expr,
                         history=self.executor.get_history(),
@@ -964,26 +970,32 @@ class SolverLoop:
                         active_skills=active_skills
                     )
                     
-                    # 添加当前输出作为助手消息
+                    # 添加当前输出作为助手消息（用 display_text 保留完整上下文）
                     base_messages.append({
                         "role": "assistant",
-                        "content": full_response
+                        "content": display_text
                     })
                     
                     # 调用回退模式继续生成
-                    continuation_text = ""
+                    fallback_text = ""
+                    # 确定旧思考前缀（用于前端显示）
+                    fallback_pre_skill = pre_skill_display if last_continuation_text else display_text
                     async for chunk in self.llm._continue_fallback(base_messages, last_skill_name):
-                        continuation_text += chunk
+                        fallback_text += chunk
                         if callback:
                             await callback(SolveEvent(
                                 type=EventType.THINKING,
-                                content=full_response + "\n\n" + continuation_text,
+                                content=fallback_text,
                                 step=iteration,
-                                metadata={"streaming": True, "continuation": True}
+                                metadata={
+                                    "streaming": True,
+                                    "continuation": True,
+                                    "pre_skill_display": fallback_pre_skill
+                                }
                             ))
                     
-                    # 更新 full_response 并重新解析
-                    full_response = full_response + "\n\n" + continuation_text
+                    # parse_response 只传回退文本（干净单 JSON）
+                    full_response = fallback_text
                     llm_response = self.llm.parse_response(full_response)
                     self.logger.info("✅ 续写完成，命令: %s", llm_response.command[:50] if llm_response.command else "无")
 

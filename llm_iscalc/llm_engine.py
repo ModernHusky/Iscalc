@@ -744,7 +744,7 @@ class LLMEngine:
         # 🔧 预处理：过滤掉技能加载相关标记，防止干扰命令解析
         # 这些标记是系统内部使用的，不应该被当作命令内容
         response_clean = re.sub(r'\[✓\s*已加载(?:技能)?:\s*[^\]]+\]', '', response)
-        response_clean = re.sub(r'\[✓\s*\w+技能已加载\]', '', response_clean)  # 另一种格式
+        response_clean = re.sub(r'\[✓[^\]]*技能已加载\]', '', response_clean)  # [✓xxx技能已加载] 格式
         # 过滤原始的 <load_skill>...</load_skill> 标记
         response_clean = re.sub(r'<<\s*[a-zA-Z_-]+\s*>>', '', response_clean)  # <<skill-name>>
         response_clean = re.sub(r'<load_skill>[^<]*</load_skill>', '', response_clean)  # <load_skill>xxx</load_skill>
