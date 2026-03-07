@@ -46,6 +46,7 @@ class SolverConfig:
     max_consecutive_errors: int = 3    # 最大连续错误次数
     timeout_seconds: float = 300.0    # 超时时间（秒）
     loop_detection_window: int = 5    # 循环检测窗口大小
+    max_loop_retries: int = 0    # 检测到循环后的自动重试次数（0=禁用重试）
     use_tool_calling: bool = False  # Search-o1 风格：流式生成 + 动态技能加载
     auto_load_mentioned_skills: bool = False  # 默认关闭：只在显式 <|load_skill|> / read_skill 时加载
 

@@ -777,6 +777,8 @@ let currentFields = {}; // 当前卡片的各个字段元素
 let lastThinkingValue = ''; // 记录上一次的 thinking 值
 let hasContent = false; // 标记是否已有内容
 let lastStep = -1; // 记录上一次的步骤号
+let lastPlanScopeKey = ''; // 记录上一次关联的计划节点
+let lastOuterTaskKey = ''; // 记录上一次外层任务节点
 
 // 清空思考历史
 clearThinkingBtn.addEventListener('click', () => {
@@ -786,12 +788,15 @@ clearThinkingBtn.addEventListener('click', () => {
     lastThinkingValue = '';
     hasContent = false;
     lastStep = -1; // 重置步骤号
+    lastPlanScopeKey = '';
+    lastOuterTaskKey = '';
     scrollManagers.thinking.reset(); // 重置滚动状态
     thinkingOutput.innerHTML = '<div class="text-gray-400 text-center py-8 text-xs">AI 思考过程将在这里显示...</div>';
 });
 
 // 字段定义配置
 const FIELD_CONFIG = {
+    'plan_context': { icon: '🎯', label: '当前任务' },
     'thinking': { icon: '🧠', label: '分析' },
     'command': { icon: '⚡', label: '命令' },
     'explanation': { icon: '📝', label: '解释' },
@@ -923,6 +928,39 @@ function updateField(fieldName, content) {
     smartScroll(thinkingOutput);
 }
 
+function getPlanScopeKey(planContext) {
+    if (!planContext || !planContext.outer) return '';
+    const outer = planContext.outer;
+    const inner = planContext.inner || {};
+    return `${outer.global_id || outer.llm_step || 0}:${inner.sub_id || inner.llm_step || 0}`;
+}
+
+function getOuterTaskKey(planContext) {
+    if (!planContext || !planContext.outer) return '';
+    const outer = planContext.outer;
+    return String(outer.global_id || outer.llm_step || '');
+}
+
+function formatPlanContext(planContext) {
+    if (!planContext || !planContext.outer) return '';
+
+    const outer = planContext.outer;
+    const inner = planContext.inner;
+    let summary = `外层任务 Step ${outer.global_id || outer.llm_step || '?'}: ${outer.desc || '当前步骤'}`;
+
+    if (inner && inner.desc) {
+        summary += ` | 子任务 ${inner.sub_id || inner.llm_step || '?'}: ${inner.desc}`;
+    } else if (outer.pending_children > 0) {
+        summary += ` | 子任务剩余 ${outer.pending_children}`;
+    }
+
+    if (planContext.remaining_outer_steps !== undefined) {
+        summary += ` | 待完成外层步骤 ${planContext.remaining_outer_steps}`;
+    }
+
+    return summary;
+}
+
 // 从结构化对象更新思考内容（系统层面解决方案）
 function updateThinkingFromObject(thinkingObj) {
     console.log('=== 更新思考对象 ===');
@@ -933,35 +971,67 @@ function updateThinkingFromObject(thinkingObj) {
     const explanation = thinkingObj.explanation || '';
     const isFinal = thinkingObj.is_final; // Don't default to false yet, to distinguish undefined
     const step = thinkingObj.step || 0;
+    const planContext = thinkingObj.plan_context || null;
+    const planScopeKey = getPlanScopeKey(planContext);
+    const outerTaskKey = getOuterTaskKey(planContext);
+    const planSummary = formatPlanContext(planContext);
 
     // 检查步骤号
     if (step < 1) return;
 
-    const hasAnyContent = thinking || command || explanation || (isFinal !== undefined);
+    const hasAnyContent = thinking || command || explanation || planSummary || (isFinal !== undefined);
 
-    console.log('提取字段:', { thinking: thinking.substring(0, 50), command, explanation: explanation.substring(0, 50), isFinal, step });
-    console.log('当前状态:', { lastStep, currentCard: !!currentCard });
+    console.log('提取字段:', {
+        thinking: thinking.substring(0, 50),
+        command,
+        explanation: explanation.substring(0, 50),
+        isFinal,
+        step,
+        planScopeKey,
+        outerTaskKey
+    });
+    console.log('当前状态:', { lastStep, lastPlanScopeKey, lastOuterTaskKey, currentCard: !!currentCard });
 
-    // 判断是否需要创建新卡片
-    // 如果步骤变化，尝试创建新卡片
-    if (step !== lastStep) {
-        // 只有当有实质内容时才创建卡片，避免空白卡片
+        // 判断是否需要创建新卡片
+    // 优先按外层任务切分：外层任务变化时必须新建卡片并保留旧卡片
+    // 无计划上下文时，退化为按 step(thinking_group) 切分
+    let needNewCard = false;
+    if (!currentCard) {
+        needNewCard = true;
+    } else if (outerTaskKey) {
+        needNewCard = outerTaskKey !== lastOuterTaskKey;
+    } else {
+        needNewCard = step !== lastStep;
+    }
+
+    if (needNewCard) {
         if (hasAnyContent) {
-            createNewCard(); // createNewCard doesn't take step as argument
+            createNewCard();
             lastStep = step;
-            console.log('✓ 新卡片已创建，lastStep更新为:', lastStep);
+            lastPlanScopeKey = planScopeKey;
+            lastOuterTaskKey = outerTaskKey;
+            console.log('✓ 新卡片已创建，状态更新为:', { lastStep, lastPlanScopeKey, lastOuterTaskKey });
         } else {
             console.log('→ 步骤变化但无实质内容，等待内容');
-            return; // 等待内容
+            return;
         }
     } else {
+        lastStep = step;
+        // 同一思考组内，仅更新计划上下文追踪（不创建新卡片）
+        if (planScopeKey) {
+            lastPlanScopeKey = planScopeKey;
+        }
+        if (outerTaskKey) {
+            lastOuterTaskKey = outerTaskKey;
+        }
         console.log('→ 同一步骤，更新当前卡片');
     }
 
-    // 在当前卡片内更新字段（流式更新）
-    // 始终调用 updateField，即使内容为空，以确保字段存在（如果卡片已创建）
-    // 但此时 updateField 会更新已存在的卡片
     if (currentCard) {
+        if (planSummary) {
+            updateField('plan_context', planSummary);
+            hasContent = true;
+        }
         if (thinking) {
             updateField('thinking', thinking);
             lastThinkingValue = thinking;
@@ -1133,6 +1203,8 @@ clearBtn.addEventListener('click', () => {
     lastThinkingValue = '';
     hasContent = false;
     lastStep = -1; // 重置步骤号
+    lastPlanScopeKey = '';
+    lastOuterTaskKey = '';
 
     // 重置所有滚动状态
     Object.values(scrollManagers).forEach(manager => manager.reset());
@@ -1168,6 +1240,8 @@ solveBtn.addEventListener('click', async () => {
     lastThinkingValue = '';
     hasContent = false;
     lastStep = -1; // 重置步骤号
+    lastPlanScopeKey = '';
+    lastOuterTaskKey = '';
     loadedSkillsThisSession.clear(); // Search-o1 风格：重置技能加载通知记录
 
     // 重置所有滚动状态
@@ -1182,6 +1256,12 @@ solveBtn.addEventListener('click', async () => {
     thinkingOutput.innerHTML = '';
     errorOutput.textContent = '';
     stdCommandList.innerHTML = ''; // Clear sidebar commands
+
+    // 清空计划视图
+    const planSection = document.getElementById('plan-section');
+    if (planSection) planSection.classList.add('hidden');
+    const planOutput = document.getElementById('plan-output');
+    if (planOutput) planOutput.innerHTML = '';
 
     const conditions = conditionsInput.value.trim();
 
@@ -1291,6 +1371,14 @@ solveBtn.addEventListener('click', async () => {
                 }
                 smartScroll(errorOutput);
             }
+            if (data.plan_events && data.plan_events.length > 0) {
+                // 不管有多少事件，直接取最后最新的 display_plan 覆盖全渲染
+                renderPlan(data.display_plan);
+            } else if (data.display_plan && document.getElementById('plan-section').classList.contains('hidden')) {
+                // 仅当 section 隐藏且收到 plan 数据时初始化渲染
+                renderPlan(data.display_plan);
+            }
+
             if (data.thinking !== undefined && data.thinking) {
                 console.log('思考内容:', data.thinking);
                 // 现在thinking是一个对象，包含thinking, command, explanation, is_final
@@ -1370,34 +1458,6 @@ function updateSolveButton(solving) {
     }
 }
 
-// 键盘快捷键
-
-// Helper: Add command to sidebar
-function addCommandToSidebar(text) {
-    const div = document.createElement('div');
-    div.className = 'group relative bg-gray-50 hover:bg-indigo-50 border border-gray-200 rounded p-2 cursor-pointer transition-all';
-    div.onclick = function () { copyCommand(this, text); };
-
-    div.innerHTML = `
-        <code class="text-xs text-indigo-700 font-mono font-bold block">${text}</code>
-        <span class="copy-hint absolute right-2 top-1.5 text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">点击复制</span>
-    `;
-
-    stdCommandList.appendChild(div);
-    // Auto scroll list
-    stdCommandList.scrollTop = stdCommandList.scrollHeight;
-
-    return div;
-}
-
-// Helper: Update existing sidebar item
-function updateCommandSidebarItem(element, text) {
-    const code = element.querySelector('code');
-    if (code) code.textContent = text;
-    // Update onclick handler with new text
-    element.onclick = function () { copyCommand(this, text); };
-}
-
 
 // 键盘快捷键
 document.addEventListener('keydown', (e) => {
@@ -1470,3 +1530,87 @@ window.addEventListener('load', async () => {
         console.error('Failed to fetch config:', error);
     }
 });
+
+// ====== Plan-and-Execute 渲染 ======
+// 渲染完整的计划流，其中每个 item 已包含后端计算好的状态 (pending/active/completed) 及其全局序号 global_id
+function renderPlan(planArr) {
+    const planSection = document.getElementById('plan-section');
+    const planOutput = document.getElementById('plan-output');
+    if (!planArr || !Array.isArray(planArr) || !planSection || !planOutput) return;
+
+    planSection.classList.remove('hidden');
+    planOutput.innerHTML = '';
+
+    planArr.forEach((item, index) => {
+        const globalNum = item.global_id || (index + 1);
+        const desc = item.desc || "未知步骤";
+        const status = item.status; // 'pending', 'active', 'completed'
+
+        const stepDiv = document.createElement('div');
+        stepDiv.className = `flex flex-col gap-2 plan-step-container w-full`;
+
+        // 渲染父级步骤
+        const parentDiv = document.createElement('div');
+        parentDiv.className = `flex items-start gap-3 plan-step plan-step-${globalNum}`;
+
+        let iconHtml = `<div class="w-6 h-6 rounded-full bg-gray-100 border-2 border-gray-300 flex items-center justify-center text-[10px] text-gray-500 font-bold flex-shrink-0 z-10 transition-colors duration-300">${globalNum}</div>`;
+        let textClass = "text-gray-500 transition-colors duration-300";
+
+        if (status === 'active') {
+            iconHtml = `<div class="w-6 h-6 rounded-full bg-purple-100 border-2 border-purple-500 flex items-center justify-center text-[10px] text-purple-700 font-bold flex-shrink-0 z-10 transition-colors duration-300 shadow-[0_0_8px_rgba(168,85,247,0.4)]">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(168,85,247,0.8)]"></div>
+                        </div>`;
+            textClass = "text-purple-800 font-semibold transition-colors duration-300";
+        } else if (status === 'completed') {
+            iconHtml = `<div class="w-6 h-6 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center text-[10px] text-green-700 font-bold flex-shrink-0 z-10 transition-colors duration-300">✓</div>`;
+            textClass = "text-gray-400 line-through transition-colors duration-300";
+        }
+
+        parentDiv.innerHTML = `
+            ${iconHtml}
+            <div class="flex-1 pt-0.5 ${textClass}">
+                <span class="font-bold border border-current rounded px-1 py-0.5 mr-1 text-[9px] uppercase tracking-wider">Step ${globalNum}</span> 
+                <span>${desc}</span>
+            </div>
+        `;
+        stepDiv.appendChild(parentDiv);
+
+        // 如果有子步骤，则渲染子步骤
+        if (item.children && item.children.length > 0) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = "flex flex-col gap-1.5 ml-8 pl-3 border-l-2 border-gray-100";
+
+            item.children.forEach((child) => {
+                const subId = child.sub_id;
+                const subDesc = child.desc;
+                const subStatus = child.status;
+
+                const childDiv = document.createElement('div');
+                childDiv.className = `flex items-center gap-2 sub-plan-step sub-plan-step-${subId}`;
+
+                let subIcon = `<div class="w-2.5 h-2.5 rounded-full bg-gray-200 flex-shrink-0"></div>`;
+                let subTextClass = "text-sm text-gray-400";
+
+                if (subStatus === 'active') {
+                    subIcon = `<div class="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.8)] flex-shrink-0 animate-pulse"></div>`;
+                    subTextClass = "text-sm text-purple-700 font-medium";
+                } else if (subStatus === 'completed') {
+                    subIcon = `<div class="text-green-500 text-[10px] font-bold w-2.5 h-2.5 flex items-center justify-center flex-shrink-0">✓</div>`;
+                    subTextClass = "text-sm text-gray-400 line-through";
+                }
+
+                childDiv.innerHTML = `
+                    ${subIcon}
+                    <div class="flex-1 ${subTextClass}">
+                        <span>${subDesc}</span>
+                    </div>
+                `;
+                childrenContainer.appendChild(childDiv);
+            });
+            stepDiv.appendChild(childrenContainer);
+        }
+
+        planOutput.appendChild(stepDiv);
+    });
+}
+

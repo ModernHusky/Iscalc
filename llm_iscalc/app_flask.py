@@ -244,6 +244,7 @@ def solve_expression():
     expression = request.args.get('expression', '').strip()
     conditions = request.args.get('conditions', '').strip()
     instruction = request.args.get('instruction', '').strip()
+    generate_log = request.args.get('generate_log', 'false').lower() == 'true'
     
     if not expression:
         return jsonify({'error': '表达式不能为空'}), 400
@@ -270,19 +271,132 @@ def solve_expression():
                 'explanation': '',
                 'is_final': False,
                 'step': -1  # 初始值为 -1，与前端一致
-            }
+            },
+            'display_plan': [],  # [{'global_id': 1, 'llm_step': 1, 'desc': 'abc', 'status': 'completed'}, ...]
+            'plan_global_counter': 1,
+            'plan_events': []
         }
         # 收集每轮 thinking 历史，用于日志（按步骤号索引，独立于 UI state）
         step_thinking_log = {}  # {step_num: {thinking, command, explanation, is_final}}
+
+        def _make_display_plan_item(raw_item):
+            return {
+                'global_id': state['plan_global_counter'],
+                'llm_step': raw_item.get('step', -1),
+                'desc': raw_item.get('description', '未知步骤'),
+                'status': 'pending',
+                'children': []
+            }
+
+        def _append_plan_items(plan_arr):
+            for item in plan_arr:
+                state['display_plan'].append(_make_display_plan_item(item))
+                state['plan_global_counter'] += 1
+
+        def _find_parent_by_llm_step(llm_step):
+            if llm_step <= 0:
+                return None
+            return next((p for p in state['display_plan'] if p.get('llm_step') == llm_step), None)
+
+        def _get_active_parent():
+            return next((p for p in state['display_plan'] if p.get('status') == 'active'), None)
+
+        def _get_active_plan_context():
+            active_parent = _get_active_parent()
+            if not active_parent:
+                return None
+
+            active_child = next((c for c in active_parent.get('children', []) if c.get('status') == 'active'), None)
+            pending_children = sum(1 for c in active_parent.get('children', []) if c.get('status') in ('pending', 'active'))
+            remaining_outer = sum(1 for p in state['display_plan'] if p.get('status') in ('pending', 'active'))
+
+            context = {
+                'outer': {
+                    'global_id': active_parent.get('global_id'),
+                    'llm_step': active_parent.get('llm_step'),
+                    'desc': active_parent.get('desc', ''),
+                    'status': active_parent.get('status'),
+                    'pending_children': pending_children,
+                },
+                'remaining_outer_steps': remaining_outer,
+            }
+            if active_child:
+                context['inner'] = {
+                    'sub_id': active_child.get('sub_id'),
+                    'llm_step': active_child.get('llm_step'),
+                    'desc': active_child.get('desc', ''),
+                    'status': active_child.get('status'),
+                }
+            return context
+
+        def _merge_updated_plan(plan_arr, active_step_number):
+            preserved = []
+            preserved_active_step = None
+            for item in state['display_plan']:
+                if item.get('status') == 'completed':
+                    preserved.append(item)
+                elif item.get('status') == 'active' and (active_step_number <= 0 or item.get('llm_step') == active_step_number):
+                    preserved.append(item)
+                    preserved_active_step = item.get('llm_step')
+
+            state['display_plan'] = preserved
+            if state['display_plan']:
+                state['plan_global_counter'] = max(p['global_id'] for p in state['display_plan']) + 1
+            else:
+                state['plan_global_counter'] = 1
+
+            for item in plan_arr:
+                if preserved_active_step is not None and item.get('step', -1) == preserved_active_step:
+                    continue
+                state['display_plan'].append(_make_display_plan_item(item))
+                state['plan_global_counter'] += 1
+
+        def _merge_updated_sub_plan(parent_item, sub_plan_arr, active_sub_step_number):
+            if not parent_item:
+                return
+
+            preserved_children = []
+            preserved_active_sub_step = None
+            for child in parent_item.get('children', []):
+                if child.get('status') == 'completed':
+                    preserved_children.append(child)
+                elif child.get('status') == 'active' and (active_sub_step_number <= 0 or child.get('llm_step') == active_sub_step_number):
+                    preserved_children.append(child)
+                    preserved_active_sub_step = child.get('llm_step')
+
+            next_sub_id = max((child.get('sub_id', 0) for child in preserved_children), default=0) + 1
+            for item in sub_plan_arr:
+                if preserved_active_sub_step is not None and item.get('step', -1) == preserved_active_sub_step:
+                    continue
+                preserved_children.append({
+                    'sub_id': next_sub_id,
+                    'llm_step': item.get('step', -1),
+                    'desc': item.get('description', '未知子步骤'),
+                    'status': 'pending'
+                })
+                next_sub_id += 1
+
+            parent_item['children'] = preserved_children
         
         def send_update():
             """发送更新"""
+            thinking_payload = dict(state['thinking'])
+            plan_context = _get_active_plan_context()
+            if plan_context:
+                thinking_payload['plan_context'] = plan_context
+
             data = {
                 'commands': state['commands'],
                 'results': state['results'],
                 'errors': state['errors'],
-                'thinking': state['thinking']
+                'thinking': thinking_payload
             }
+            if state['display_plan']:
+                data['display_plan'] = state['display_plan']
+            if state['plan_events']:
+                data['plan_events'] = state['plan_events'].copy()
+                state['plan_events'].clear()
+
             if 'command_success' in state:
                 data['command_success'] = state['command_success']
                 del state['command_success']  # 发送后清除，避免重复发送
@@ -458,8 +572,10 @@ def solve_expression():
                         if command_match:
                             cmd_value = command_match.group(1)
                             # 过滤技能加载标记和 read_skill 命令（这些不应显示在"命令"字段）
+                            # 仅在尚未通过 COMMAND_SUCCESS 累积命令时才设置（避免覆盖已确认的成功命令）
                             if not cmd_value.startswith('<|load_skill|>') and not cmd_value.startswith('read_skill'):
-                                state['thinking']['command'] = cmd_value
+                                if not state['thinking'].get('_has_confirmed_commands'):
+                                    state['thinking']['command'] = cmd_value
                             
                         explanation_match = re.search(r'"explanation"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)', search_content, re.DOTALL)
                         if explanation_match:
@@ -573,12 +689,16 @@ def solve_expression():
                     is_really_finished = executor.is_finished()
                     current_state_name = executor.get_current_state_name()
                     
+                    has_pending_plan = any(p['status'] in ('pending', 'active') for p in state['display_plan'])
+                    
                     if is_really_finished:
                         state['results'] += "\n✓ 求解完成\n"
-                    elif current_state_name == "CALCULATE":
+                    elif current_state_name == "CALCULATE" and not has_pending_plan:
                          # 计算模式下，用户没输入done，但LLM认为完成了，通常是计算出了结果
-                         # 这种情况下显示完成，而不是告警
-                         state['results'] += "\n✓ 计算完成 (LLM判定)\n"
+                         state['results'] += "\n✓ 计算完成 (LLM判定全部计划完成)\n"
+                    elif current_state_name == "CALCULATE" and has_pending_plan:
+                         # 计划中还有没做完的，但 LLM 突然提前设定 is_final，发一下警告。
+                         state['results'] += "\n⚠ 计算终止，但发现计划并未全部完成执行。最终表达式可能不是最简形式。\n"
                     else:
                         # LLM认为完成但实际未完成 (主要针对证明模式)
                         state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
@@ -590,7 +710,15 @@ def solve_expression():
 
                 elif event.type == EventType.COMMAND_SUCCESS:
                     # 2026-02-01 架构重构：命令执行成功事件
-                    # 将成功信息发送给前端，前端负责添加到 sidebar
+                    # 同步更新 last_command，确保后续 RESULT 事件能渲染 "= expr (command)" 格式
+                    last_command = event.content
+                    # 累积成功命令到 thinking.command（换行分隔）
+                    cmd_text = event.content
+                    if state['thinking']['command']:
+                        state['thinking']['command'] += '\n' + cmd_text
+                    else:
+                        state['thinking']['command'] = cmd_text
+                    state['thinking']['_has_confirmed_commands'] = True
                     state['command_success'] = {
                         'content': event.content,
                         'step': event.step,
@@ -607,6 +735,95 @@ def solve_expression():
                         'error': event.metadata.get("error", ""),
                         'explanation': event.metadata.get("explanation", "")
                     }
+
+                elif event.type == EventType.PLAN_GENERATED:
+                    import json
+                    try:
+                        plan_arr = json.loads(event.content)
+                        _append_plan_items(plan_arr)
+                        state['plan_events'].append({'type': 'plan_full_render'})
+                    except Exception as e:
+                        print(f"Error parsing plan JSON: {e}")
+
+                elif event.type == EventType.PLAN_UPDATED:
+                    import json
+                    try:
+                        plan_arr = json.loads(event.content)
+                        active_step_number = event.metadata.get("active_step_number", 0)
+                        _merge_updated_plan(plan_arr, active_step_number)
+                        state['plan_events'].append({'type': 'plan_full_render'})
+                    except Exception as e:
+                        print(f"Error parse updated plan JSON: {e}")
+
+                elif event.type == EventType.PLAN_STEP_START:
+                    llm_step = event.metadata.get("step_number", 0)
+                    found = False
+                    for p in state['display_plan']:
+                        if p['status'] == 'active' and p.get('llm_step') != llm_step:
+                            for c in p.get('children', []):
+                                if c.get('status') in ('pending', 'active'):
+                                    c['status'] = 'completed'
+                            p['status'] = 'completed'
+                        if p['status'] == 'pending' and p['llm_step'] == llm_step:
+                            p['status'] = 'active'
+                            found = True
+                            break
+                    if not found:
+                        # Fallback：没找到对应的llm_step，将第一个 pending 设置为 active
+                        for p in state['display_plan']:
+                            if p['status'] == 'pending':
+                                p['status'] = 'active'
+                                break
+                    state['plan_events'].append({'type': 'plan_full_render'})
+
+                elif event.type == EventType.PLAN_STEP_COMPLETE:
+                    completed_step_number = event.metadata.get("step_number", 0)
+                    for p in state['display_plan']:
+                        if p['status'] == 'active' or (completed_step_number > 0 and p.get('llm_step') == completed_step_number):
+                            for c in p.get('children', []):
+                                if c.get('status') in ('pending', 'active'):
+                                    c['status'] = 'completed'
+                            p['status'] = 'completed'
+                    state['plan_events'].append({'type': 'plan_full_render'})
+
+                elif event.type == EventType.SUB_PLAN_GENERATED:
+                    import json
+                    try:
+                        sub_plan_arr = json.loads(event.content)
+                        parent_step_number = event.metadata.get("parent_step_number", 0)
+                        active_sub_step_number = event.metadata.get("active_sub_step_number", 0)
+                        active_p = _get_active_parent() or _find_parent_by_llm_step(parent_step_number)
+                        if active_p:
+                            _merge_updated_sub_plan(active_p, sub_plan_arr, active_sub_step_number)
+                            state['plan_events'].append({'type': 'plan_full_render'})
+                    except Exception as e:
+                        print(f"Error parsing sub_plan JSON: {e}")
+
+                elif event.type == EventType.SUB_PLAN_STEP_START:
+                    llm_sub_step = event.metadata.get("sub_step_number", 0)
+                    active_p = _get_active_parent()
+                    if active_p:
+                        found = False
+                        for c in active_p.get('children', []):
+                            if c['status'] == 'pending' and c['llm_step'] == llm_sub_step:
+                                c['status'] = 'active'
+                                found = True
+                                break
+                        if not found:
+                            for c in active_p.get('children', []):
+                                if c['status'] == 'pending':
+                                    c['status'] = 'active'
+                                    break
+                        state['plan_events'].append({'type': 'plan_full_render'})
+
+                elif event.type == EventType.SUB_PLAN_STEP_COMPLETE:
+                    completed_sub_step = event.metadata.get("sub_step_number", 0)
+                    active_p = _get_active_parent()
+                    if active_p:
+                        for c in active_p.get('children', []):
+                            if c['status'] == 'active' or (completed_sub_step > 0 and c.get('llm_step') == completed_sub_step):
+                                c['status'] = 'completed'
+                        state['plan_events'].append({'type': 'plan_full_render'})
 
                 # 每次状态更新都推送到队列
                 await queue.put(send_update())
@@ -662,14 +879,15 @@ def solve_expression():
             ]
 
             is_success = '✓' in state['results']
-            _write_solve_log(
-                expression=expression,
-                thinking_history=thinking_history,
-                commands=state['commands'],
-                results=state['results'],
-                errors=state['errors'],
-                is_success=is_success,
-            )
+            if generate_log:
+                _write_solve_log(
+                    expression=expression,
+                    thinking_history=thinking_history,
+                    commands=state['commands'],
+                    results=state['results'],
+                    errors=state['errors'],
+                    is_success=is_success,
+                )
 
             yield "event: complete\ndata: {}\n\n"
 
