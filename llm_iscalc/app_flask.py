@@ -244,6 +244,8 @@ def solve_expression():
     expression = request.args.get('expression', '').strip()
     conditions = request.args.get('conditions', '').strip()
     instruction = request.args.get('instruction', '').strip()
+    generate_log_str = request.args.get('generate_log', 'false').lower()
+    generate_log = generate_log_str == 'true'
     
     if not expression:
         return jsonify({'error': '表达式不能为空'}), 400
@@ -584,9 +586,26 @@ def solve_expression():
                         state['results'] += "\n⚠ LLM判断已完成，但证明尚未结束\n"
 
                 elif event.type == EventType.SKILL_LOAD:
-                    # 技能加载信息不再写入 commands 字段，仅通过前端右上角通知展示
-                    # 保留事件处理以便日后扩展（如记录日志或发送专门的 skill_load 字段）
-                    pass
+                    # 将技能加载记录到命令历史中，前端会在命令解释区显示
+                    skill_name = event.content
+                    state['commands'] += f"[步骤 {event.step}] 加载技能: {skill_name}\n"
+                    state['commands'] += f"  说明: 系统自动加载解决当前问题所需的新技能\n"
+                    
+                    # 同时记录到独立积累的 thinking_log 中，确保日志文件中也有这个步骤 
+                    s = event.step
+                    if s not in step_thinking_log:
+                        step_thinking_log[s] = {
+                            'step': s, 'thinking': '', 'command': '',
+                            'explanation': '', 'is_final': False
+                        }
+                    log_entry = step_thinking_log[s]
+                    
+                    # 若该步骤已有内容，追加；否则直接赋值
+                    if not log_entry['command']:
+                        log_entry['command'] = f"加载技能: {skill_name}"
+                        log_entry['explanation'] = f"正在加载新技能 {skill_name} 以继续求解"
+                    else:
+                        log_entry['command'] += f" | 加载技能: {skill_name}"
 
                 elif event.type == EventType.COMMAND_SUCCESS:
                     # 2026-02-01 架构重构：命令执行成功事件
@@ -662,14 +681,16 @@ def solve_expression():
             ]
 
             is_success = '✓' in state['results']
-            _write_solve_log(
-                expression=expression,
-                thinking_history=thinking_history,
-                commands=state['commands'],
-                results=state['results'],
-                errors=state['errors'],
-                is_success=is_success,
-            )
+            
+            if generate_log:
+                _write_solve_log(
+                    expression=expression,
+                    thinking_history=thinking_history,
+                    commands=state['commands'],
+                    results=state['results'],
+                    errors=state['errors'],
+                    is_success=is_success,
+                )
 
             yield "event: complete\ndata: {}\n\n"
 

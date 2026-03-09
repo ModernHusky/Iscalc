@@ -818,6 +818,13 @@ class LLMEngine:
         
         # 策略3：尝试识别常见命令模式
         common_commands = [
+            r'(subgoal\s+.+)',
+            r'(from\s+\w+\s*:)',
+            r'(define\s+.+)',
+            r'(lhs:)',
+            r'(rhs:)',
+            r'(arg:)',
+            r'(done)',
             r'(rewrite\s+.+)',
             r'(simplify(?:\s+.+)?)',
             r'(substitute\s+.+)',

@@ -34,13 +34,13 @@ integrate both sides
 - 从导数方程恢复原函数
 - 微分方程的求解过程
 
-**重要前提**：这些规则只能在 `from <name>:` 引入的 CALCULATE 状态下使用（即从一个已证明的 subgoal 开始）。
+**重要前提**：这些规则只能在 `from <id>:` 引入的 CALCULATE 状态下使用（即从一个已证明的 subgoal 开始）。
 
 ## 适用目标类型
 
 | 目标类型 | 适用性 |
 |---------|--------|
-| `from <name>:` 状态 | ✅ |
+| `from <id>:` 状态 | ✅ |
 | `lhs:` / `rhs:` 状态 | ❌ |
 | `calculate` 状态 | ❌ |
 
@@ -60,7 +60,7 @@ integrate both sides
 
 ## 注意事项
 
-- **必须使用 `from <name>:`**：不能直接在 `lhs:` 或 `rhs:` 块中使用这些规则。
+- **必须使用 `from <id>:`**：不能直接在 `lhs:` 或 `rhs:` 块中使用这些规则。
 - **语法陷阱**：`differentiate both sides with respect to a` 是**错误的**，正确写法是 `differentiate both sides at a`。
 - **无效操作**：如果提示 "Applying the rule has no effect"，检查是否正确使用了 `from:` 进入状态。
 
@@ -108,3 +108,4 @@ from 1:
     simplify
 done
 ```
+

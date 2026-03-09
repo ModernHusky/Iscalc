@@ -34,7 +34,7 @@ match_rules:
 
 5.  **`subgoal` 格式**：
     - **错误**: `subgoal converges(SUM(...))`
-    - **正确**: `subgoal 1: converges(SUM(...))` (需要 name/id 和冒号)
+    - **正确**: `subgoal 1: converges(SUM(...))` (需要数字 id 和冒号)
 
 6.  **级数收敛**：
     - 系统不支持 `apply alternating series test` 等规则。收敛性由模式匹配自动判断。
@@ -98,3 +98,4 @@ match_rules:
 2.  **状态错误**：确认当前状态，避免在错误状态下使用命令。
 3.  **规则错误**：检查参数是否精确匹配，尝试分步应用规则。
 4.  **完成检查失败**：检查表达式是否真正化简完毕，是否有未证明的条件。
+

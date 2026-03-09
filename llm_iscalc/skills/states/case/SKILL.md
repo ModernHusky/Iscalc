@@ -42,7 +42,7 @@ match_rules:
 ### 示例: 布尔条件分支 (x != 0)
 
 ```
-subgoal c1: x^4 + 2*x^2*cos(2*a) + 1 != 0
+subgoal 1: x^4 + 2*x^2*cos(2*a) + 1 != 0
 case analysis on x != 0
     case true:
     lhs:
@@ -75,3 +75,4 @@ case analysis on cos(a)
     done
 done
 ```
+

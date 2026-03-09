@@ -1,84 +1,51 @@
 ---
 name: apply-subgoal
-description: 应用已证明的子目标到当前表达式。
+description: 使用已证明的子目标替换当前表达式。典型用于多 subgoal 汇总、常数回代与围道积分最终拼接。
 match_rules:
-- (?i)apply
+- (?i)apply\s+\w+\s+on
 - (?i)subgoal
 ---
 
 # apply-subgoal
-> 应用已证明的子目标到当前表达式。
+> 使用已证明的子目标替换当前表达式。
 
-## 指令
+## 语法
 
-### 语法格式
-
-```
-apply <subgoal_name> on <expr>
+```text
+apply <subgoal_id> on <expr>
 ```
 
-### 参数说明
+- `<subgoal_id>`：子目标数字编号（只能是数字，如 `1`、`2`）。
+- `<expr>`：当前式中要替换的子表达式。
 
-- `<subgoal_name>`: 已证明的子目标名称（数字或标识符）
-- `<expr>`: 当前表达式中需要被替换的部分，必须匹配子目标左侧的模式
+## 实际匹配逻辑
 
-## 使用时机
+1. 在上下文中查找 `<subgoal_id>` 对应的等式。
+2. 尝试双向匹配：
+   - `<expr>` 匹配子目标左侧，则替换为右侧；
+   - `<expr>` 匹配子目标右侧，则替换为左侧。
+3. 检查子目标 `for ...` 条件在当前上下文是否成立。
 
-当需要使用之前证明的 subgoal 来替换或化简当前表达式中的某部分时。典型场景：
-- 多步证明中引用前置结论
-- 利用辅助引理简化计算
-- 参数化公式的实例化应用
+## 使用建议
 
-## 适用目标类型
+- 优先写精确、最小的 `<expr>`，减少匹配歧义。
+- 对复杂项先 `simplify` 再 `apply`，通常更稳定。
+- 需要链式替换时按依赖顺序连续 `apply 1 on ...`、`apply 2 on ...`。
 
-| 目标类型 | 适用性 |
-|---------|--------|
-| 任意表达式 | ✅ |
-| 等式证明 `lhs:/rhs:` | ✅ |
-| 计算流程 `calculate` | ✅ |
+## 常见报错
 
-## 工作流程
+- `lemma ... not found`：数字 id 不存在或对应子目标未证明完成（仅支持数字 id）。
+- `source expression ... not found`：`on` 后表达式与当前式不一致。
+- `Applying the rule has no effect`：子目标可用，但当前位置不匹配或条件不满足。
 
-1. **查找子目标**：在已证明的 subgoal 列表中查找指定名称
-2. **模式匹配**：将 `<expr>` 与子目标左侧进行模式匹配，提取参数绑定
-3. **条件检查**：验证当前环境是否满足子目标的前置条件（`for` 子句）
-4. **替换执行**：用子目标右侧（代入参数后）替换 `<expr>`
+## 围道积分汇总示例
 
-## 注意事项
-
-- **subgoal 必须已证明**：只能引用当前步骤之前已 `done` 的子目标。
-- **精确匹配**：`<expr>` 必须能够匹配子目标的左侧模式。
-- **与 rewrite 的区别**：`apply` 用于已证明的恒等式，`rewrite` 用于代数变换。
-
-## 示例
-
-### 示例1: 基本应用
-
-假设已证明：
-```
-subgoal 1: I(a) = pi / (2 * a) for a > 0
-```
-
-当前表达式: `... I(1) ...`
-
-```
-apply 1 on I(1)
-```
-
-结果: `... pi / 2 ...`
-
-### 示例2: 参数化应用 (来自 theories/)
-
-```
-subgoal 1: (INT x:[0,oo]. exp(-a*x^2)) = sqrt(pi)/(2*sqrt(a)) for a > 0
+```text
 lhs:
-    ...
-done
-
-subgoal 2: (INT x:[0,oo]. x^2 * exp(-x^2)) = sqrt(pi)/4
-lhs:
-    ...
-    apply 1 on INT x:[0,oo]. exp(-x^2)   # 这里 a=1
+    apply 3 on (INT x:[-oo,oo]. 1/(x^2+1))
+    apply 1 on (LIM {r -> oo}. CINT z:com(C(t,r),L(t,r)). 1/(z^2+1))
+    apply 2 on (LIM {r -> oo}. CINT z:C(t,r). 1/(z^2+1))
     simplify
-done
 ```
+
+

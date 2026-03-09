@@ -66,10 +66,10 @@ Missing wellformedness conditions:
 
 需要添加子目标：
 ```
-subgoal c1: x > 0
+subgoal 1: x > 0
 ...
 done
-subgoal c2: a != 0
+subgoal 2: a != 0
 ...
 done
 ```
@@ -110,3 +110,5 @@ lhs:
     simplify
 done     <-- 左右两边已证明相等
 ```
+
+

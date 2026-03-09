@@ -736,6 +736,15 @@ class SolverLoop:
                                         display_text = display_text[:marker_end_pos]
                                         self.logger.info("   ✂️ 截断到标记位置: %d 字符", marker_end_pos)
                                         break
+                                    else:
+                                        # 技能已经加载过，替换掉原始标记为加载确认，打破LLM在后续续写中重复输出标签的死循环
+                                        marker_str = match.group(0)
+                                        if f"[✓ 已加载技能: {skill_name}]" not in display_text:
+                                            # 使用不会出错的正则替换（注意转义）
+                                            # 注意：由于流式输出中可能存在转义，使用安全的替换方式
+                                            # 我们直接使用简单的 replace 即可，因为 marker_str 是从 raw_text 提取的精确字符串
+                                            raw_text = raw_text.replace(marker_str, f"\n[✓ 已加载技能: {skill_name}]\n", 1)
+                                            display_text = display_text.replace(marker_str, f"\n[✓ 已加载技能: {skill_name}]\n", 1)
                                 if found_new_skill:
                                     break
                             
@@ -913,6 +922,12 @@ class SolverLoop:
                                         found_new_skill = True
                                         new_skill_name = next_skill
                                         break
+                                    else:
+                                        marker_str = match.group(0)
+                                        if f"[✓ 已加载技能: {next_skill}]" not in display_text:
+                                            raw_text = raw_text.replace(marker_str, f"\n[✓ 已加载技能: {next_skill}]\n", 1)
+                                            display_text = display_text.replace(marker_str, f"\n[✓ 已加载技能: {next_skill}]\n", 1)
+                                            continuation_text = continuation_text.replace(marker_str, f"\n[✓ 已加载技能: {next_skill}]\n", 1)
                                 if found_new_skill:
                                     break
                             

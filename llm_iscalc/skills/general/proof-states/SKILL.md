@@ -32,7 +32,7 @@ match_rules:
 - `lhs:`: 对等式目标的**左边**进行计算。
 - `rhs:`: 对等式目标的**右边**进行计算。
 - `arg:`: 对不等式或收敛性目标的**参数**进行计算。
-- `from <name>:`: 从已证明的 subgoal 开始重写。
+- `from <id>:`: 从已证明的 subgoal 开始重写（`id` 只能是数字）。
 
 ### PROVE -> INDUCTION
 
@@ -66,3 +66,4 @@ match_rules:
 
 - **不能在 PROVE 状态使用 `calculate`**。应使用 `lhs:` 或 `rhs:`。
 - **不能在 CALCULATE 状态嵌套 `lhs:` 或 `arg:`**。
+
