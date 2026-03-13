@@ -48,7 +48,6 @@ done
 
 calculate INT x. exp(x) * (1 - exp(x)) * (1 + exp(x)) ^ 10
     substitute u for exp(x) + 1
-    simplify
     expand polynomial
     apply integral identity
     replace substitution
@@ -66,12 +65,11 @@ done
 
 calculate INT x. 30 * exp(-3 * x) * (1 + 3 * exp(-x)) ^ 5
     substitute u for 3 * exp(-x) + 1
-    rewrite 9*u-9 to 9*(u-1)
+    expand polynomial
     simplify
-    partial fraction decomposition
     apply integral identity
-    replace substitution
     simplify
+    replace substitution
 done
 
 prove (INT x. (27 * exp(9 * x) + exp(12 * x)) ^ (1/3)) = (exp(3 * x) + 27) ^ (4/3) / 4 + SKOLEM_CONST(C)

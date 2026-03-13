@@ -117,7 +117,6 @@ done
 
 calculate INT x. 1 / sqrt(2 + sqrt(1 + sqrt(x))) for x > 0
     substitute u for sqrt(2 + sqrt(1 + sqrt(x)))
-    simplify
     expand polynomial
     simplify
     apply integral identity

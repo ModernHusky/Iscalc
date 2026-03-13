@@ -93,7 +93,6 @@ calculate INT x. 1/sqrt(tan(x)^2+2) for x > -pi/2, x < pi/2
     rewrite 1 / sqrt((sin(x) / cos(x)) ^ 2 + 2) to cos(x)/(cos(x)*sqrt((sin(x) / cos(x)) ^ 2 + 2))
     rewrite cos(x)*sqrt((sin(x) / cos(x)) ^ 2 + 2) to sqrt(sin(x) ^ 2 + 2*cos(x)^2)
     substitute u for sin(x)
-    simplify
     apply integral identity
     replace substitution
     simplify

@@ -8,16 +8,22 @@ from integral import latex
 
 class Conditions:
     """A condition is represented by a list of boolean expressions."""
-    def __init__(self, conds: Union["Conditions", Iterable[Expr]] = None):
+    def __init__(self, conds: Union["Conditions", Iterable[Union[str, Expr]]] = None):
+        from integral import parser
         self.data: list[Expr] = list()
         if conds is None:
             pass
         elif isinstance(conds, Conditions):
             self.data.extend(conds.data)
         else:
-            conds = list(conds)
-            assert all(isinstance(cond, Expr) for cond in conds)
-            self.data.extend(conds)
+            parsed_conds = []
+            for cond in list(conds):
+                if isinstance(cond, str):
+                    parsed_conds.append(parser.parse_condition(cond))
+                else:
+                    assert isinstance(cond, Expr)
+                    parsed_conds.append(cond)
+            self.data.extend(parsed_conds)
 
     def __bool__(self):
         return bool(self.data)

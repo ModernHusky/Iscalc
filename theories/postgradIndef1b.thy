@@ -111,7 +111,6 @@ done
 calculate INT x. 1 / (exp(x)-exp(-x)) for x > 0
     rewrite 1 / (exp(x)-exp(-x)) to exp(x)/(exp(2*x)-1)
     substitute u for exp(x)
-    simplify
     substitute sec(v) for u
     rewrite sec(v)^2-1 to tan(v)^2
     simplify

@@ -240,6 +240,32 @@ class ProofObligation:
         }
         return res
 
+    @property
+    def expr(self) -> Expr:
+        branch_exprs = []
+        for branch in self.branches:
+            if not branch.exprs:
+                continue
+            if len(branch.exprs) == 1:
+                branch_exprs.append(branch.exprs[0])
+            elif len(branch.exprs) == 2:
+                branch_exprs.append(expr.Op("&&", branch.exprs[0], branch.exprs[1]))
+            else:
+                curr = expr.Op("&&", branch.exprs[0], branch.exprs[1])
+                for i in range(2, len(branch.exprs)):
+                    curr = expr.Op("&&", curr, branch.exprs[i])
+                branch_exprs.append(curr)
+        
+        if not branch_exprs:
+            return None
+        if len(branch_exprs) == 1:
+            return branch_exprs[0]
+        else:
+            curr = expr.Op("||", branch_exprs[0], branch_exprs[1])
+            for i in range(2, len(branch_exprs)):
+                curr = expr.Op("||", curr, branch_exprs[i])
+            return curr
+
 
 def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
     """Check whether an expression e is wellformed, and return
@@ -291,9 +317,11 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                         pass
                     else:
                         add_obligation(Op(">=", base, Const(0)), ctx)
-                # 其他情况，需要底数 > 0
+                # 其他情况，需要满足其一：底数 > 0 或 (指数是整数 且 指数 >= 0)
                 else:
-                    add_obligation(Op(">", base, Const(0)), ctx)
+                    branch1 = ProofObligationBranch([Op(">", base, Const(0))])
+                    branch2 = ProofObligationBranch([Fun("isInt", exp), Op(">=", exp, Const(0))])
+                    add_obligation([branch1, branch2], ctx)
         elif expr.is_fun(e):
             for arg in e.args:
                 rec(arg, ctx)
@@ -346,25 +374,28 @@ def check_wellformed(e: Expr, ctx: Context) -> list[ProofObligation]:
                 else:
                     add_obligation(Op(">=", e.args[0], Const(-1)), ctx)
                     add_obligation(Op("<=", e.args[0], Const(1)), ctx)
-            if e.func_name == 'tan':
-                tmp = normalize(Const(2) * e.args[0] / expr.pi, ctx)
-                f1 = ctx.check_condition(expr.isInt(tmp))
-                f2 = ctx.check_condition(expr.isEven(tmp))
-
-                if not f1 or f2:
-                    pass
-                else:
-                    branch1 = ProofObligationBranch([expr.isInt(tmp)], [False])
-                    branch2 = ProofObligationBranch([expr.isEven(tmp)])
-                    add_obligation([branch1, branch2], ctx)
+            if e.func_name in ('tan', 'sec'):
+                if not ctx.check_condition(Op("!=", expr.cos(e.args[0]), Const(0))):
+                    add_obligation(Op("!=", expr.cos(e.args[0]), Const(0)), ctx)
+            if e.func_name in ('cot', 'csc'):
+                if not ctx.check_condition(Op("!=", expr.sin(e.args[0]), Const(0))):
+                    add_obligation(Op("!=", expr.sin(e.args[0]), Const(0)), ctx)
             if e.func_name == 'factorial':
                 if not ctx.check_condition(expr.isInt(e.args[0])):
                     add_obligation(expr.isInt(e.args[0]), ctx)
+                if not ctx.check_condition(Op(">=", e.args[0], Const(0))):
+                    add_obligation(Op(">=", e.args[0], Const(0)), ctx)
             if e.func_name == 'binom':
-                if not ctx.check_condition(expr.isInt(e.args[0])):
-                    add_obligation(expr.isInt(e.args[0]), ctx)
+                # binom(n, m): args[0]=n, args[1]=m
+                # 条件: isInt(m), isInt(n), m >= 0, n >= m
                 if not ctx.check_condition(expr.isInt(e.args[1])):
                     add_obligation(expr.isInt(e.args[1]), ctx)
+                if not ctx.check_condition(expr.isInt(e.args[0])):
+                    add_obligation(expr.isInt(e.args[0]), ctx)
+                if not ctx.check_condition(Op(">=", e.args[1], Const(0))):
+                    add_obligation(Op(">=", e.args[1], Const(0)), ctx)
+                if not ctx.check_condition(Op(">=", e.args[0], e.args[1])):
+                    add_obligation(Op(">=", e.args[0], e.args[1]), ctx)
 
             # TODO: add checks for other functions
         elif expr.is_integral(e):
@@ -909,7 +940,7 @@ class EvaluateDefiniteIntegral(Rule):
         return e
 
 class IntegralIdentity(Rule):
-    def __init__(self, attrs: tuple[str]):
+    def __init__(self, attrs: tuple[str] = ()):
         self.name = "IntegralIdentity"
         self.attrs = attrs
 
@@ -1804,6 +1835,8 @@ class Substitution(Rule):
             raise RuleException("Substitution", f"variable {self.var_name} is already used")
 
         ctx2 = body_conds(e, ctx)
+        ctx_with_subst = Context(ctx2)
+        ctx_with_subst.add_subst(self.var_name, var_subst, e.var)
 
         # Compute g(x)'
         dfx = deriv(e.var, var_subst, ctx2)
@@ -1827,11 +1860,11 @@ class Substitution(Rule):
         nf, df = decompose_expr_factor2(var_subst)
         prod_nf, prod_df = prod(nf), prod(df)
         var_subst2 = prod_nf / prod_df if prod_df != Const(1) else prod_nf
-        body_subst2 = normalize(body, ctx2).replace(normalize(var_subst, ctx2), var_name)
+        body_subst2 = normalize(body, ctx_with_subst).replace(normalize(var_subst, ctx_with_subst), var_name)
         body_subst3 = body.replace(var_subst2, var_name)
-        body_subst4 = normalize(body, ctx2).replace(normalize(var_subst2,ctx2), var_name)
-        body_subst5 = normalize(body.replace(var_subst, var_name), ctx2)
-        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx2)
+        body_subst4 = normalize(body, ctx_with_subst).replace(normalize(var_subst2, ctx_with_subst), var_name)
+        body_subst5 = normalize(body.replace(var_subst, var_name), ctx_with_subst)
+        body_subst6 = normalize(body.replace(var_subst2, var_name), ctx_with_subst)
         if e.var not in body_subst.get_vars():
             # Substitution is able to clear all x in original integrand
             self.f = body_subst
@@ -1887,11 +1920,11 @@ class Substitution(Rule):
                     upper = limits.reduce_inf_limit(var_subst.subst(e.var, e.upper - (1/x)), e.var, ctx2)
 
             if lower.is_evaluable() and upper.is_evaluable() and expr.eval_expr(lower) > expr.eval_expr(upper):
-                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx2)
+                return normalize(Integral(self.var_name, upper, lower, Op("-", self.f)), ctx_with_subst)
             else:
-                return normalize(Integral(self.var_name, lower, upper, self.f), ctx2)
+                return normalize(Integral(self.var_name, lower, upper, self.f), ctx_with_subst)
         elif expr.is_indefinite_integral(e):
-            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx2)
+            return normalize(IndefiniteIntegral(self.var_name, self.f, e.skolem_args), ctx_with_subst)
         elif expr.is_limit(e):
             # Perhaps need to be improved when drt is not None
             if e.lim == expr.NEG_INF:
@@ -1907,10 +1940,10 @@ class Substitution(Rule):
                 right = limits.reduce_inf_limit(right.subst(e.var, e.lim - (1 / x)), e.var, ctx2)
                 right = normalize(right, ctx2)
                 if left.is_evaluable() and right.is_evaluable() and expr.eval_expr(left) == expr.eval_expr(right):
-                    return normalize(Limit(self.var_name, left, self.f, None), ctx2)
+                    return normalize(Limit(self.var_name, left, self.f, None), ctx_with_subst)
                 else:
                     return e
-            return normalize(Limit(self.var_name, lim, self.f, None), ctx2)
+            return normalize(Limit(self.var_name, lim, self.f, None), ctx_with_subst)
         else:
             raise TypeError
 
@@ -1931,7 +1964,10 @@ class SubstitutionInverse(Rule):
         expression containing the new variable.
 
     """
-    def __init__(self, old_var: str, var_subst: Expr):
+    def __init__(self, old_var: str, var_subst: Union[Expr, str]):
+        from integral import parser
+        if isinstance(var_subst, str):
+            var_subst = parser.parse_expr(var_subst)
         self.name = "SubstitutionInverse"
         self.old_var = old_var
         self.var_subst = var_subst

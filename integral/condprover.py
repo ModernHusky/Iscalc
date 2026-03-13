@@ -332,7 +332,28 @@ def init_all_conds(conds: Conditions) -> dict[Expr, list[Expr]]:
             add_condition(all_conds, x.args[0], Op("<=", x.args[0], cond.args[1]))
             add_condition(all_conds, x.args[0], Op(">=", x.args[0], -cond.args[1]))
 
-    # add simple condition transition
+        # Handle inequality symmetry: a OP b <==> b MIRROR_OP a
+        # This ensures condprover can derive m>=k from k<=m, a>b from b<a, etc.
+        if expr.is_compare(cond) and not expr.is_equals(cond) and not expr.is_not_equals(cond):
+            other = cond.args[1]  # right-hand side of the condition
+            if expr.is_less_eq(cond):
+                # a <= b  <==>  b >= a
+                mirror = Op(">=", other, x)
+            elif expr.is_less(cond):
+                # a < b  <==>  b > a
+                mirror = Op(">", other, x)
+            elif expr.is_greater_eq(cond):
+                # a >= b  <==>  b <= a
+                mirror = Op("<=", other, x)
+            elif expr.is_greater(cond):
+                # a > b  <==>  b < a
+                mirror = Op("<", other, x)
+            else:
+                mirror = None
+            if mirror is not None:
+                add_condition(all_conds, other, mirror)
+
+
     for k in all_conds:
         for x in all_conds[k]:
             if expr.is_less(x):
@@ -924,6 +945,54 @@ def _check_condition_impl(e: Expr, ctx: Context, _subst_applied: bool = False) -
             # 递归调用，标记已经应用过替换
             if check_condition(new_e, ctx, True):
                 return True
+
+    # Difference reduction: a >= b <==> a - b >= 0
+    # Handles symbolic arithmetic inequalities like 2*m+2 >= m+1
+    # (proven from m >= 0 by reducing to m+1 >= 0)
+    # Only applied when right-hand side is NOT a constant (constant case is handled above)
+    if expr.is_compare(e) and not e.args[1].is_constant():
+        from integral.poly import normalize as poly_normalize
+        lhs, rhs = e.args[0], e.args[1]
+        try:
+            diff = poly_normalize(lhs - rhs, ctx)
+            # Only recurse if diff is different from original lhs (to skip trivial no-op)
+            # Use reduced != e to prevent infinite recursion
+            if diff != lhs:
+                if expr.is_greater_eq(e) and diff != Const(0):
+                    # a >= b  <==>  a - b >= 0
+                    reduced = Op(">=", diff, Const(0))
+                    if reduced != e and check_condition(reduced, ctx, _subst_applied):
+                        return True
+                elif expr.is_greater(e):
+                    # a > b  <==>  a - b > 0
+                    reduced = Op(">", diff, Const(0))
+                    if reduced != e and check_condition(reduced, ctx, _subst_applied):
+                        return True
+                elif expr.is_less_eq(e):
+                    # a <= b  <==>  b - a >= 0
+                    reduced = Op(">=", poly_normalize(rhs - lhs, ctx), Const(0))
+                    if reduced != e and check_condition(reduced, ctx, _subst_applied):
+                        return True
+                elif expr.is_less(e):
+                    # a < b  <==>  b - a > 0
+                    reduced = Op(">", poly_normalize(rhs - lhs, ctx), Const(0))
+                    if reduced != e and check_condition(reduced, ctx, _subst_applied):
+                        return True
+        except Exception:
+            pass  # If normalization fails, fall through to saturation
+
+    # Normalize left-hand side if right-hand side is constant
+    # Enables normalization of tan(atan(x)) > 0 to x > 0 etc.
+    if expr.is_compare(e) and e.args[1].is_constant():
+        from integral.poly import normalize as poly_normalize
+        try:
+            lhs_norm = poly_normalize(e.args[0], ctx)
+            if lhs_norm != e.args[0]:
+                reduced = expr.Op(e.op, lhs_norm, e.args[1])
+                if reduced != e and check_condition(reduced, ctx, _subst_applied):
+                    return True
+        except Exception:
+            pass
 
     # a <= inf or a < inf
     if (expr.is_less(e) or expr.is_less_eq(e)) and expr.is_pos_inf(e.args[1]):

@@ -292,7 +292,6 @@ done
 
 calculate INT x. 1 / (x * sqrt(x^2 - 1)) for x > 1
     substitute t for sqrt(x^2-1)
-    simplify
     apply integral identity
     replace substitution
 done

@@ -409,7 +409,9 @@ class Context:
         # Note: no conversion to symbols for inductive hypothesis
         self.induct_hyps.append(Identity(e))
 
-    def add_condition(self, cond: Expr):
+    def add_condition(self, cond: Union[str, Expr]):
+        if isinstance(cond, str):
+            cond = parser.parse_condition(cond)
         if cond not in self.conds.data:
             self.conds.add_condition(cond)
 

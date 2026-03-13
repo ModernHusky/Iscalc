@@ -645,8 +645,8 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
 
     elif expr.is_fun(e) and e.func_name in ("sin", "cos", "tan", "cot", "csc", "sec"):
         a = e.args[0]
-        if expr.is_fun(a) and a.func_name == "arc" + e.func_name:
-            # sin(arcsin(x)) = x
+        if expr.is_fun(a) and (a.func_name == "arc" + e.func_name or a.func_name == "a" + e.func_name):
+            # sin(arcsin(x)) = x, sin(asin(x)) = x
             return to_poly(a.args[0], ctx)
         else:
             tmp = normalize(a, ctx)
@@ -655,9 +655,13 @@ def to_poly_r(e: expr.Expr, ctx: Context) -> Polynomial:
             else:
                 return singleton(expr.Fun(e.func_name, tmp))
 
-    elif expr.is_fun(e) and e.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec"):
+    elif expr.is_fun(e) and e.func_name in ("arcsin", "arccos", "arctan", "arccot", "arccsc", "arcsec",
+                                            "asin", "acos", "atan", "acot", "acsc", "asec"):
         a, = e.args
-        if e.func_name in ("arcsin", "arctan", "arccot", "arccos") and expr.is_fun(a) and e.func_name == "arc" + a.func_name:
+        base_name = e.func_name[3:] if e.func_name.startswith("arc") else e.func_name[1:]
+        
+        if base_name in ("sin", "tan", "cot", "cos") and expr.is_fun(a) and a.func_name == base_name:
+            # arcsin(sin(x)) = x, asin(sin(x)) = x
             return to_poly(a.args[0], ctx)
         else:
             return singleton(expr.Fun(e.func_name, normalize(a, ctx)))
