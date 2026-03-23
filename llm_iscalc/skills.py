@@ -319,7 +319,6 @@ class SkillLoader:
         
         lines = ["## 可用技能\n"]
         for skill in skills:
-            # 排除策略类技能，它们通常在第三层加载，不作为命令展示（或者可以展示，看设计）
             # 这里我们选择只展示描述，让LLM知道有什么能力
             lines.append(f"- **{skill.name}**: {skill.description}")
         

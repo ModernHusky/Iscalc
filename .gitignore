@@ -7,3 +7,4 @@ node_modules
 **/.ipynb_checkpoints/
 .env
 test_logs
+.idea
