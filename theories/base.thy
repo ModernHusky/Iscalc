@@ -174,9 +174,9 @@ axiom [simp] conj(-(b * i) + a) = b * i + a for a b: real
 
 axiom [simp] conj(-(b * i) - a) = b * i - a for a b: real
 
-axiom [simp] conj((b * i) - a) = -b * i - a for a b: real
+axiom [simp] conj(b * i - a) = -b * i - a for a b: real
 
-axiom [simp] conj((b * i) + a) = -b * i + a for a b: real
+axiom [simp] conj(b * i + a) = -b * i + a for a b: real
 
 axiom [simp] conj(b * i) = -b * i for b: real
 
@@ -188,9 +188,15 @@ axiom [simp] conj(-i) = i
 
 axiom [simp] conj(a) = a for a: real
 
+axiom [simp] a/i = -a*i
+
 ## Euler's formula
 
 axiom [bidirectional] exp(i*x) = cos(x) + i * sin(x) for x: real
+
+axiom [bidirectional] exp(x*i) = cos(x) + i * sin(x) for x: real
+
+axiom [bidirectional] exp(-(i*x)) = cos(x) - i * sin(x) for x: real
 
 axiom [bidirectional] exp(-(i*x)) = cos(x) - i * sin(x) for x: real
 
