@@ -41,6 +41,17 @@ def convert_to_sympy(e: Expr):
             return rec(e.args[0]) / rec(e.args[1])
         elif e.is_power():
             return rec(e.args[0]) ** rec(e.args[1])
+        elif expr.is_fun(e):
+            if e.func_name == 'i':
+                return sympy.I
+            if e.func_name == 'pi':
+                return sympy.pi
+            if e.func_name == 'sqrt' and len(e.args) == 1:
+                return sympy.sqrt(rec(e.args[0]))
+            if e.func_name == 'exp' and len(e.args) == 1:
+                return sympy.exp(rec(e.args[0]))
+            print('convert_to_sympy', e)
+            raise NotImplementedError
         else:
             print('convert_to_sympy', e)
             raise NotImplementedError
@@ -50,10 +61,16 @@ def convert_from_sympy(e) -> Expr:
     def rec(e):
         if isinstance(e, sympy.core.symbol.Symbol):
             return Var(e.name)
+        elif e == sympy.I:
+            return expr.Fun("i")
+        elif e == sympy.pi:
+            return expr.Fun("pi")
         elif isinstance(e, sympy.core.numbers.Integer):
             return Const(int(e))
         elif isinstance(e, sympy.core.numbers.Rational):
             return Const(Fraction(e.numerator, e.denominator))
+        elif isinstance(e, sympy.core.numbers.Float):
+            return Const(float(e))
         elif isinstance(e, sympy.core.add.Add):
             args = [rec(arg) for arg in e.args]
             return sum(args)

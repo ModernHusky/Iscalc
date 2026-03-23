@@ -314,23 +314,48 @@ class Monomial:
             # check if there is i multiplication
             i_count = 0
             new_factors = []
+            i_frac_sum = Fraction(0)  # 合并 i 的分数幂，如 (i,1/2)+(i,1/2)->(i,1)
             for n, e in self.factors + other.factors:
                 if expr.is_fun(n) and n.func_name == 'i':
-                    # handle the case that the exponent is a Polynomial
                     if isinstance(e, Polynomial):
                         if e.is_constant():
-                            i_count += e.get_constant()
+                            c = e.get_constant()
+                            if isinstance(c, Fraction) and c.denominator != 1:
+                                i_frac_sum += c
+                            else:
+                                i_count += int(c) if isinstance(c, Fraction) else c
                         else:
                             new_factors.append((n, e))
                     elif expr.is_const(e):
                         i_count += e.val
+                    elif isinstance(e, Fraction):
+                        i_frac_sum += e
                     else:
                         i_count += 1
                 else:
                     new_factors.append((n, e))
+            # 合并整数幂与分数幂为同一总量，再按整数/分数处理；i 的周期为 4，故 total 可对 4 取模
+            new_coeff = self.coeff * other.coeff
+            if i_frac_sum != 0:
+                if i_frac_sum.denominator == 1:
+                    i_count += i_frac_sum.numerator
+                else:
+                    total_frac = Fraction(i_count) + i_frac_sum
+                    i_count = 0
+                    # i^a 周期 4：对 total_frac 取 mod 4；[2,4) 时 i^(k/2)=-i^((k-4)/2)，故再化到 [0,2)
+                    if total_frac >= 4 or total_frac <= -4:
+                        total_frac = total_frac % 4
+                        if total_frac < 0:
+                            total_frac += 4
+                    if total_frac >= 2 and total_frac < 4:
+                        total_frac -= 2
+                        new_coeff = -new_coeff
+                    if total_frac.denominator == 1:
+                        i_count = int(total_frac.numerator)
+                    elif total_frac != 0:
+                        new_factors.append((expr.Fun('i'), total_frac))
 
             # handle i's power, including negative power
-            new_coeff = self.coeff * other.coeff
             if i_count != 0:
                 if i_count < 0:
                     # for negative power, i^(-n) = (i^n)^(-1)
@@ -793,34 +818,6 @@ def simplify_eq(e: expr.Expr, ctx: Context) -> expr.Expr:
             return eq.rhs
     return e
 
-def simplify_idiv(e: expr.Expr, ctx: Context) -> expr.Expr:
-    """化简包含虚数单位i的除法
-
-    规则：
-    - 1/i = -i
-    - a/i = -a*i (for any a)
-    - i/i = 1
-    """
-    if not expr.is_op(e) or e.op != '/':
-        return e
-
-    numerator, denominator = e.args
-
-    # 1/i = -i
-    if numerator == expr.Const(1) and isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
-        return expr.Op('*', expr.Const(-1), expr.Fun('i'))
-
-    # a/i = -a*i
-    if isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
-        return expr.Op('*', expr.Const(-1), expr.Op('*', numerator, expr.Fun('i')))
-
-    # i/i = 1
-    if isinstance(numerator, expr.Fun) and numerator.func_name == 'i' and \
-       isinstance(denominator, expr.Fun) and denominator.func_name == 'i':
-        return expr.Const(1)
-
-    return e
-
 def simplify_limit(e: expr.Expr, ctx: Context) -> expr.Expr:
     from integral import limits
     if not expr.is_limit(e):
@@ -1265,6 +1262,23 @@ def simplify_skolem(e:expr.Expr, ctx:Context):
         return expr.Integral(e.var, simplify_skolem(e.lower,ctx), simplify_skolem(e.upper,ctx), simplify_skolem(e.body,ctx))
     return e
 
+def _coefficient_of_i_pi_half(e: expr.Expr, ctx: Context):
+    """若 e = k * (i*pi/2) 且 k 为整数，返回 k；否则返回 None。用于化简 exp(k*i*pi/2)。"""
+    from integral.poly import normalize
+    i_pi_half = expr.Op("*", expr.Fun("i"), expr.Op("/", expr.Fun("pi"), expr.Const(2)))
+    try:
+        quot = normalize(expr.Op("/", e, i_pi_half), ctx)
+        if expr.is_const(quot):
+            v = quot.val
+            if isinstance(v, (int, float)) and abs(v - round(v)) < 1e-9:
+                return round(v)
+            if isinstance(v, Fraction) and v.denominator == 1:
+                return v.numerator
+    except Exception:
+        pass
+    return None
+
+
 def simplify_exp(e:expr.Expr, ctx:Context):
     if expr.is_skolem_func(e) or expr.is_const(e) or expr.is_var(e) or expr.is_inf(e):
         return e
@@ -1279,6 +1293,20 @@ def simplify_exp(e:expr.Expr, ctx:Context):
                 elif (expr.is_uminus(args[0]) and
                       args[0].args[0] == expr.Op("*", expr.Fun("i"), expr.Fun("pi"))):
                     return expr.Const(-1)
+            # exp(k*i*pi/2) 当 k 为整数时: 1, i, -1, -i
+            try:
+                coeff = _coefficient_of_i_pi_half(args[0], ctx)
+                if coeff is not None:
+                    r = int(round(coeff)) % 4
+                    if r == 0:
+                        return expr.Const(1)
+                    if r == 1:
+                        return expr.Fun("i")
+                    if r == 2:
+                        return expr.Const(-1)
+                    return expr.Op("*", expr.Const(-1), expr.Fun("i"))  # -i
+            except Exception:
+                pass
             nf, df = expr.decompose_expr_factor2(args[0])
             log_pos = None
             for i in range(len(nf)):
@@ -1390,7 +1418,6 @@ def normalize(e: expr.Expr, ctx: Context) -> expr.Expr:
             e = apply_subterm(e, function_eval, ctx)
             e = apply_subterm(e, simplify_identity, ctx)
             e = apply_subterm(e, simplify_eq, ctx)
-            e = apply_subterm(e, simplify_idiv, ctx)
             e = apply_subterm(e, simplify_integral, ctx)
             e = apply_subterm(e, simplify_power, ctx)
             e = apply_subterm(e, simplify_trig, ctx)

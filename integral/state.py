@@ -53,9 +53,10 @@ class State:
 
 class InitialState(State):
     """Initial state."""
-    def __init__(self, ctx: Context):
+    def __init__(self, ctx: Context, proof_finished: bool = False):
         self.ctx = ctx
         self.past = None
+        self._proof_finished = proof_finished
 
     def process_action(self, action: Action) -> State:
         # Start a calculation
@@ -89,7 +90,7 @@ class InitialState(State):
                 f"Action type {type(action).__name__} cannot be performed in initial state")
         
     def is_finished(self) -> bool:
-        return False
+        return self._proof_finished
 
     def __str__(self):
         return "(initial)"
@@ -158,6 +159,9 @@ class ProveState(State):
         # Done with current subgoal
         elif isinstance(action, DoneAction):
             self.goal.check_finished(stack=tuple())
+            # Return to past, preserving proof completion status
+            if isinstance(self.past, InitialState):
+                return InitialState(self.past.ctx, proof_finished=True)
             return self.past
 
         # Make local definition
@@ -235,7 +239,7 @@ class CalculateState(State):
                 msg += f"Final expression {self.calc.steps[-1].res} is not closed"
                 raise StateException("Done", msg)
             if isinstance(self.past, InitialState):
-                return self.past
+                return InitialState(self.past.ctx, proof_finished=True)
             else:
                 return self.past.process_action(action)
             

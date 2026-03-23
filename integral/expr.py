@@ -2148,7 +2148,7 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
     if not (is_op(e) and e.op == '/' and len(e.args) == 2):
         return poles
 
-    denom = e.args[1]  # 获取分母（除法的第二个参数）
+    num, denom = e.args[0], e.args[1]  # numerator, denominator
 
     # 分母必须包含变量才有极点
     if not denom.contains_var(var):
@@ -2169,6 +2169,11 @@ def find_poles(var:str, e:Expr, ctx=None) -> list[Tuple[Expr, int]]:
                     break
 
             if already_exists:
+                continue
+
+            # 若分子在同一点也为零，则为可去奇点，跳过
+            num_at_zero = normalize(num.subst(var, zero), ctx)
+            if num_at_zero == Const(0):
                 continue
 
             # 确定极点的阶数
@@ -2386,30 +2391,33 @@ def compute_residue(f: Expr, pole: Expr, order: int = 1, var: str = "z") -> Expr
 
     else:  # 高阶极点
         # 使用公式: Res(f, pole) = 1/(n-1)! * lim_{z->pole} d^(n-1)/dz^(n-1) [(z-pole)^n * f(z)]
+        # 关键：先通过 sympy.cancel 化简以约掉分子分母的公共因子，
+        # 否则 normalize 无法处理如 z^2*(z-1)^3/(z-1)^3 这类约分。
 
         try:
             # 构造 (z-pole)^order * f(z)
             pole_diff = Op("-", z, pole)
             pole_power = Op("^", pole_diff, Const(order))
-            expr_to_diff = normalize(Op("*", pole_power, f), temp_ctx)
+            expr_to_diff = Op("*", pole_power, f)
 
-            # 对表达式求 (order-1) 阶导数
-            result = expr_to_diff
+            # 用 sympy.cancel 化简（处理分子分母约分）
+            from integral.sympywrapper import convert_to_sympy, convert_from_sympy
+            sympy_expr = convert_to_sympy(expr_to_diff)
+            sympy_simplified = sympy_expr.cancel()  # type: ignore[attr-defined]
+
+            # 对化简后表达式求 (order-1) 阶导数
+            import sympy as _sympy
+            _sp = _sympy.symbols(var)
             for _ in range(order - 1):
-                result = rules.deriv(var, result, temp_ctx)
-                result = normalize(result, temp_ctx)
+                sympy_simplified = _sympy.diff(sympy_simplified, _sp)
 
-            # 代入极点值
-            result = result.subst(var, pole)
-            result = normalize(result, temp_ctx)
+            # 代入极点
+            sympy_pole = convert_to_sympy(pole)
+            val = sympy_simplified.subs(_sp, sympy_pole)
 
-            # 除以 (order-1)!
-            factorial_val = 1
-            for i in range(1, order):
-                factorial_val *= i
-
-            result = normalize(Op("/", result, Const(factorial_val)), temp_ctx)
-
+            # 除以 (order-1)! 并转换回表达式
+            import math
+            result = convert_from_sympy(val / math.factorial(order - 1))
             return result
 
         except Exception:
