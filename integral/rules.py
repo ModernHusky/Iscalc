@@ -1232,7 +1232,13 @@ class CIntegralIdentity(Rule):
                             new_start_expr = new_start_expr.replace(param_var, arg)
                             new_end_expr = new_end_expr.replace(param_var, arg)
 
-                        return CINTPath(path_def.var, new_path_expr, new_start_expr, new_end_expr)
+                        inst_for_path_var = param_map.get(path_def.var)
+                        if isinstance(inst_for_path_var, Var):
+                            new_path_param = inst_for_path_var.name
+                        else:
+                            new_path_param = path_def.var
+
+                        return CINTPath(new_path_param, new_path_expr, new_start_expr, new_end_expr)
 
         except Exception as e:
             pass
@@ -1240,25 +1246,20 @@ class CIntegralIdentity(Rule):
         return None
 
     def _convert_contour_to_integral(self, cint: CIntegral, path: CINTPath, ctx: Context) -> Integral:
-        """使用定义将围道积分转换为普通积分"""
+        """使用定义将围道积分转换为普通积分: ∫_γ f(z)dz = ∫_a^b f(γ(u)) γ'(u) du"""
         from integral.expr import Integral, Op, Deriv
 
-        # 获取路径组件
-        param_var = path.var  # t
-        path_expr = path.path_expr  # γ(t) = r*exp(i*pi*(1-t))
-        start = path.start_expr  # a = 0
-        end = path.end_expr  # b = 1
+        param_var = path.var
+        path_expr = path.path_expr
+        start = path.start_expr
+        end = path.end_expr
 
-        # 计算路径导数 γ'(t)
-        path_derivative = Deriv(param_var, path_expr)
+        # 保留 Deriv 形式
+        path_derivative = normalize(Deriv(param_var, path_expr), ctx)
 
-        # 在 f(z) 中用 γ(t) 替换 z
         integrand_at_path = cint.body.subst(cint.var, path_expr)
-
-        # 创建新的被积函数: f(γ(t)) · γ'(t)
         new_integrand = Op("*", integrand_at_path, path_derivative)
 
-        # 创建普通积分: ∫_a^b f(γ(t)) · γ'(t) dt
         return Integral(param_var, start, end, new_integrand)
 
 class ReplaceSubstitution(Rule):
@@ -1784,6 +1785,21 @@ class Substitution(Rule):
 
         # If e is a limit, intelligently decide whether to apply to limit or inner integral
         if expr.is_limit(e):
+            # Forward "substitute <u> for g(R)" on LIM {R -> ...}. (CINT z: ... f(z))
+            # uses <u> as the new limit variable. If u equals the contour dummy z, the
+            # engine would produce LIM {z -> ...} while the inner CINT still binds z — wrong
+            # and matches the common mistake of writing contour parametrization backwards.
+            if expr.is_cintegral(e.body) and self.var_name == e.body.var:
+                raise RuleException(
+                    "Substitution",
+                    "The new name '%s' is the same as the contour integration variable. "
+                    "Treating this as a limit substitution would corrupt the expression. "
+                    "Use 'apply cintegral identity' first, then "
+                    "'substitute %s for <parameterized path>' (see Jordan-lemma style proofs); "
+                    "or use inverse syntax 'substitute <expr> for %s' to replace the contour "
+                    "variable by an expression."
+                    % (self.var_name, self.var_name, self.var_name)
+                )
             # Check if substitution involves the limit variable
             var_subst_test = self.var_subst.subst(e.var, Var(e.var))
             if e.var not in var_subst_test.get_vars():
@@ -2023,8 +2039,12 @@ class SubstitutionInverse(Rule):
                 raise RuleException("SubstitutionInverse", "No integral is found in the expression. If there are functions in the expression used for abstract integration, you can first try to expand the function definitions and then perform SubstitutionInverse.")
             elif expr.is_cintegral(e):
                 return OnLocation(self, sep_cints[0][1]).eval(e, ctx)
-            else:
+            elif len(sep_ints) > 0:
                 return OnLocation(self, sep_ints[0][1]).eval(e, ctx)
+            elif len(sep_cints) > 0:
+                return OnLocation(self, sep_cints[0][1]).eval(e, ctx)
+            else:
+                raise RuleException("SubstitutionInverse", "No integral is found in the expression. If there are functions in the expression used for abstract integration, you can first try to expand the function definitions and then perform SubstitutionInverse.")
 
         if not (expr.is_integral(e) or expr.is_indefinite_integral(e) or expr.is_cintegral(e)):
             raise RuleException("SubstitutionInverse", "input is not integral")
@@ -2074,6 +2094,12 @@ class SubstitutionInverse(Rule):
                 return expr.Integral(new_var, lower, upper, new_e_body)
         elif expr.is_indefinite_integral(e):
             return expr.IndefiniteIntegral(new_var, new_e_body, skolem_args=e.skolem_args)
+        elif expr.is_cintegral(e):
+            raise RuleException(
+                "SubstitutionInverse",
+                "Inverse substitution on a contour integral is not implemented. "
+                "Apply 'cintegral identity' first to obtain a parameter integral, then substitute."
+            )
         else:
             raise AssertionError("SubstitutionInverse")
 
@@ -2353,6 +2379,15 @@ class Rewriting(Rule):
 
         # Handle single exponential function
         if expr.is_fun(e) and e.func_name == 'exp':
+            # 先尝试使用 expand_euler 展开欧拉公式
+            e_expanded = expand_euler(e, ctx)
+            if e_expanded != e:
+                # 如果展开成功，检查展开后的结果是否等于目标
+                r = Simplify()
+                r1, r2 = r.eval(e_expanded, ctx), r.eval(self.new_expr, ctx)
+                if r1 == r2:
+                    return self.new_expr
+
             if len(e.args) == 1 and expr.is_op(e.args[0]) and e.args[0].op == '*':
                 if any(expr.is_inf(arg) for arg in e.args[0].args):
                     # Check if new_expr is a limit expression
@@ -3713,7 +3748,7 @@ class ResidueTheorem(Rule):
     - Res(f,z0)是函数f在z0处的留数
 
     Args:
-        e: 输入表达式
+        e: 输入表达式（CINT 或 LIM ... CINT ...）
         ctx: 上下文
 
     Returns:
@@ -3782,7 +3817,13 @@ class ResidueTheorem(Rule):
                             new_start_expr = new_start_expr.replace(param_var, arg)
                             new_end_expr = new_end_expr.replace(param_var, arg)
 
-                        return CINTPath(path_def.var, new_path_expr, new_start_expr, new_end_expr)
+                        inst_for_path_var = param_map.get(path_def.var)
+                        if isinstance(inst_for_path_var, Var):
+                            new_path_param = inst_for_path_var.name
+                        else:
+                            new_path_param = path_def.var
+
+                        return CINTPath(new_path_param, new_path_expr, new_start_expr, new_end_expr)
 
         except Exception:
             pass
@@ -3806,7 +3847,7 @@ class ResidueTheorem(Rule):
             limit_var = e.var
             limit_value = e.lim
         else:
-            raise RuleException("ResidueTheorem", "input is not a complex integral expression.")
+            raise RuleException("ResidueTheorem", "input is not a CIntegral expression.")
 
         # 创建极限信息字典，用于传递给需要的函数
         limit_info = {}
@@ -3866,7 +3907,8 @@ class ResidueTheorem(Rule):
             pole_names = [str(pole) for pole, _, _ in poles_outside]
             raise RuleException("ResidueTheorem", f"Poles {', '.join(pole_names)} are outside the contour, cannot apply residue theorem")
 
-        # 计算每个极点的留数，并乘以其绕数，然后求和
+        # 计算每个极点的留数，并乘以其绕数，然后求和。
+        # 允许返回中间结果（2πi * Σ 形式），不强制化简为最终常数，但必须正确。
         result = Const(0)
         for pole, order, wind_num in poles:
             # 计算留数，使用从 find_poles 获取的实际阶数
@@ -3880,7 +3922,7 @@ class ResidueTheorem(Rule):
             term = normalize(Op("*", Const(wind_num), residue), temp_ctx)
             result = normalize(Op("+", result, term), temp_ctx)
 
-        # 乘以 2πi 系数
+        # 乘以 2πi 系数（中间结果亦可，不要求进一步化简为单一常数）
         result = normalize(Op("*", Op("*", Const(2), Fun("pi")), Op("*", Fun("i"), result)), temp_ctx)
 
         return result
@@ -3999,6 +4041,10 @@ def is_closed_contour(paths: List[Union[CINTPath]]) -> bool:
                 # 如果无法计算，假设不闭合
                 return False
 
+    # 没有任何有效路径 → 不是闭合围道
+    if not endpoints:
+        return False
+
     # 检查端点是否首尾相连形成回路
     for i in range(len(endpoints)):
         _, end = endpoints[i]
@@ -4071,13 +4117,22 @@ def winding_number(point: Expr, paths: List[Union[CINTPath]], ctx: Context, limi
     if limit_info is None:
         limit_info = {}
 
-    # 创建缓存键
+    def _point_contains_i(e):
+        if isinstance(e, Fun) and e.func_name == 'i':
+            return True
+        if isinstance(e, Op):
+            return any(_point_contains_i(a) for a in e.args)
+        if isinstance(e, Fun):
+            return any(_point_contains_i(a) for a in e.args)
+        return False
+
+    # 创建缓存键（含 i 的极点用 sympy 求值实虚部，不读缓存以免用到旧的错误绕数）
     paths_hash = tuple(hash(p) if isinstance(p, CINTPath) else hash(str(p)) for p in paths)
     limit_hash = tuple(sorted((k, hash(v)) for k, v in limit_info.items()))
     cache_key = (hash(point), paths_hash, limit_hash)
+    use_cache = not _point_contains_i(point)
 
-    # 检查缓存
-    if cache_key in _winding_cache:
+    if use_cache and cache_key in _winding_cache:
         return _winding_cache[cache_key]
 
     # 检查围道是否闭合，不闭合则返回0
@@ -4096,12 +4151,12 @@ def winding_number(point: Expr, paths: List[Union[CINTPath]], ctx: Context, limi
     # 所有跳变值求和后除以2得到绕数
     total_jump = sum(all_jump_values)
     winding = total_jump / 2.0
+    # 避免 round(-0.5)=0 的银行家舍入问题，统一用 +0.5 后 floor
+    import math
+    result = math.floor(winding + 0.5) if winding >= 0 else math.ceil(winding - 0.5)
 
-    # 对于闭合回路，绕数应该是整数，四舍五入
-    result = int(round(winding))
-
-    # 缓存结果
-    _winding_cache[cache_key] = result
+    if use_cache:
+        _winding_cache[cache_key] = result
 
     return result
 
@@ -4125,7 +4180,6 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
     # 1. 展开路径表达式并提取实部虚部
     path_expr = ExpandPolynomial().eval(expand_euler(path.path_expr, ctx), ctx)
     path_expr = normalize(path_expr, ctx)
-
     # 2. 提取 γ(t) 的实部和虚部（含参数 t）
     gamma_re, gamma_im = _extract_complex_parts(path_expr, ctx)
     gamma_re = normalize(gamma_re, ctx)
@@ -4137,6 +4191,18 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
     point_re, point_im = _extract_complex_parts(point, ctx)
     point_re = normalize(point_re, ctx)
     point_im = normalize(point_im, ctx)
+    # 当极点含 sqrt/exp/幂 或为复常数时，符号提取可能不完整；用 sympy 作后备保证绕数正确
+    use_sympy = (point_re is None or point_im is None or
+                 _expr_contains_func(point, ('sqrt', 'exp')) or _expr_contains_power_rational(point))
+    if use_sympy:
+        try:
+            sp_point = sympywrapper.convert_to_sympy(point)
+            re_s, im_s = sp_point.as_real_imag()
+            point_re = normalize(sympywrapper.convert_from_sympy(re_s), ctx)
+            point_im = normalize(sympywrapper.convert_from_sympy(im_s), ctx)
+        except Exception:
+            if point_re is None or point_im is None:
+                return []
     if point_re is None or point_im is None:
         return []
 
@@ -4153,8 +4219,8 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
     start_expr = path.start_expr
     end_expr = path.end_expr
 
-    # 6. 寻找跳跃点：符号求解 diff_re = 0 且验证 Re(γ(sol)) = 0 的点
-    jump_points = find_jump_points(diff_re, path.var, start_expr, end_expr, ctx)
+    # 6. 寻找跳跃点：符号求解 diff_re = 0 且验证 diff_im ≠ 0 的点（排除边界点）
+    jump_points = find_jump_points(diff_re, diff_im, path.var, start_expr, end_expr, ctx, limit_info=limit_info)
 
     # 收集所有跳变值
     jump_values = []
@@ -4221,8 +4287,8 @@ def compute_jump_values(path: Union[CINTPath], point: Expr, ctx: Context, limit_
         res_re = normalize(res_re, ctx) if res_re else Const(0)
         res_im = normalize(res_im, ctx) if res_im else Const(0)
 
-        # 获取路径方向
-        direction = get_contour_direction(path, ctx, start_expr, end_expr, limit_info)
+        # 获取路径在当前跳变点处的局部切向方向
+        direction = _get_local_tangent_direction(path, jump_pt, ctx, limit_info)
 
         # 比较res的虚部和极点的虚部
         res_im_val = normalize(res_im, ctx)
@@ -4283,10 +4349,17 @@ def compute_cauchy_index(path: Union[CINTPath], point: Expr, ctx: Context) -> fl
 
 
 
-def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: Context) -> list[float]:
+# 极限变量趋于无穷时用于代入的常数：足够大以近似 r->oo，又不宜过大以免 1/(r*sqrt(2)) 被化简为 0 导致 arccos 退化为 pi/2、跳跃点验证失败
+_LIMIT_LARGE_CONST = 1000
+
+
+def find_jump_points(diff_re: Expr, diff_im: Expr, var: str, t_start: Expr, t_end: Expr, ctx: Context, limit_info: dict = None) -> list:
     """寻找跳跃点：符号求解分母为零的点
 
     跳跃点定义：diff_re = 0 且 diff_im ≠ 0 的孤立点
+
+    当 limit_info 存在且含 r->oo 时，会先将 diff_re 中的 r 代为一大常数再求解，
+    以便正确得到上半平面圆弧 r*exp(i*pi*(1-t)) 上的跳跃点（否则 Re(γ(t)-z0)=0 的解依赖 r，符号解常失败）。
 
     验证方法：
     1. 求解 diff_re = 0 得到候选点 sol
@@ -4297,12 +4370,11 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
 
     Args:
         diff_re: 分母表达式 Re(γ(t)-z₀)
-        diff_im: 分子表达式 Im(γ(t)-z₀)
-        path_expr: 原始路径参数方程 γ(t)
         var: 参数变量名
         t_start: 参数起始值
         t_end: 参数结束值
         ctx: 上下文
+        limit_info: 极限信息，如 {'r': POS_INF}，用于 r->oo 时先代入大常数再求跳跃点
 
     Returns:
         跳跃点列表
@@ -4310,55 +4382,118 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
     from integral.solve import solve_equation
     from integral.poly import normalize
 
+    if limit_info is None:
+        limit_info = {}
+
     jump_points = []
 
-    # 验证函数：将 sol 带入 diff_re 并验证是否为0
-    def verify_jump_point(sol_val: Expr) -> bool:
-        """验证 sol 处 Re(γ(t) - z0) 是否为0
-
-        策略：优先符号判断，失败则数值验证兜底
-        """
+    # 验证时若存在 limit_info，先将极限变量代为大常数再判断是否为 0（用于 r->oo 的围道）
+    def verify_jump_point(sol_val: Expr, diff_re_to_verify: Expr = None) -> bool:
+        diff_work = diff_re_to_verify if diff_re_to_verify is not None else diff_re
         try:
-            # 1. 将 sol 带入 diff_re
-            diff_re_at_sol = diff_re.subst(var, sol_val)
-
-            # 2. 展开欧拉公式（如果有）
+            diff_re_at_sol = diff_work.subst(var, sol_val)
+            for limit_var_name, limit_val in limit_info.items():
+                if limit_val == POS_INF and diff_re_at_sol.contains_var(limit_var_name):
+                    diff_re_at_sol = diff_re_at_sol.subst(limit_var_name, Const(_LIMIT_LARGE_CONST))
             diff_re_expanded = expand_euler(diff_re_at_sol, ctx)
-
-            # 3. normalize 化简
             diff_re_normalized = normalize(diff_re_expanded, ctx)
-
-            # 4. 符号判断是否为0
             if diff_re_normalized == Const(0):
-                return True
-
-            # 5. 符号判断失败，尝试数值验证兜底
+                # 边界点检查：diff_im ≠ 0 才算跳变。diff_im = 0 意味着路径经过该点本身，
+                # 不是有效的绕数跳变（排除在轮廓边界上的极点）。
+                diff_im_at_sol = diff_im.subst(var, sol_val)
+                diff_im_expanded = expand_euler(diff_im_at_sol, ctx)
+                diff_im_normalized = normalize(diff_im_expanded, ctx)
+                if diff_im_normalized == Const(0):
+                    return False  # 路径经过极点，跳过
+                try:
+                    import math
+                    from decimal import Decimal
+                    diff_im_with_pi = diff_im_normalized.subst('pi', Const(Decimal(str(math.pi))))
+                    im_val = expr.eval_expr(diff_im_with_pi)
+                    return abs(im_val) >= 1e-6  # diff_im ≠ 0 才算有效
+                except Exception:
+                    return True  # 无法数值评估时保守返回 True
             import math
             from decimal import Decimal
             diff_with_pi = diff_re_normalized.subst('pi', Const(Decimal(str(math.pi))))
             val = expr.eval_expr(diff_with_pi)
             return abs(val) < 1e-6
-        except:
+        except Exception:
             return False
 
-    # 1. 符号求解 diff_re = 0
+    # 当存在 r->oo 等极限时，先用代入大常数后的 diff_re 求解，以便得到正确的跳跃点
+    diff_re_for_solve = diff_re
+    if limit_info:
+        for limit_var_name, limit_val in limit_info.items():
+            if limit_val == POS_INF and diff_re.contains_var(limit_var_name):
+                diff_re_for_solve = diff_re.subst(limit_var_name, Const(_LIMIT_LARGE_CONST))
+                break
+
+    # 1. 符号求解 diff_re = 0（使用可能已代入大常数的表达式）
     symbolic_solved = False
     try:
-        # solve_equation(f, a, x, ctx) 求解 f = a
-        solutions = solve_equation(diff_re, Const(0), var, ctx)
+        solutions = solve_equation(diff_re_for_solve, Const(0), var, ctx)
         if solutions:
-            # 筛选在区间内的解
+            # 筛选在区间内的解（用数值判断，因 Expr.__le__ 按 size 比较会误判）
+            t_min_val = float(expr.eval_expr(t_start))
+            t_max_val = float(expr.eval_expr(t_end))
+            t_lo, t_hi = min(t_min_val, t_max_val), max(t_min_val, t_max_val)
+
+            # 对于 cos(t)=c，cos 在 [0, 2π] 有两个零点：arccos(c) 和 2π-arccos(c)
+            # 补充第二解：
+            #   1. 若 sol 是 arccos(something)，则 second_sol = 2*pi - sol
+            #   2. 若 sol 是 m*pi/n 形式（Op 类型，如 pi/3、5*pi/3），则 second_sol = 2*pi - sol
+            all_solutions = list(solutions)
+
+            def _contains_pi(e: Expr) -> bool:
+                if expr.is_fun(e) and e.func_name == "pi":
+                    return True
+                if expr.is_op(e):
+                    return any(_contains_pi(a) for a in e.args)
+                return False
+
+            def _try_supplement_second(sol: Expr):
+                if expr.is_fun(sol) and sol.func_name == "arccos" and len(sol.args) == 1:
+                    two_pi = Op("*", Const(2), Fun("pi"))
+                    return Op("-", two_pi, sol)
+                if _contains_pi(sol):
+                    # sol 包含 pi，构造 second_sol = 2*pi - sol
+                    two_pi = Op("*", Const(2), Fun("pi"))
+                    return Op("-", two_pi, sol)
+                return None
+
             for sol in solutions:
+                sol = normalize(sol, ctx)
+                second_sol = _try_supplement_second(sol)
+                if second_sol is not None:
+                    second_sol = normalize(second_sol, ctx)
+                    # 避免重复添加
+                    existing_vals = []
+                    for existing in all_solutions:
+                        try:
+                            existing_vals.append(float(expr.eval_expr(existing)))
+                        except:
+                            pass
+                    try:
+                        second_val = float(expr.eval_expr(second_sol))
+                        if not any(abs(second_val - ev) < 0.01 for ev in existing_vals):
+                            all_solutions.append(second_sol)
+                    except:
+                        pass
+
+            for sol in all_solutions:
                 try:
-                    # 检查是否在区间内（包含边界）
-                    # 支持双向区间：[a,b]或[b,a]
                     sol = normalize(sol, ctx)
-                    in_interval = (t_start <= sol <= t_end) or (t_end <= sol <= t_start)
+                    sol_val = float(expr.eval_expr(sol))
+                    in_interval = t_lo - 0.01 <= sol_val <= t_hi + 0.01
                     if in_interval:
-                        # 使用新的验证方法：将 sol 带入路径参数方程验证实部是否为0
-                        if verify_jump_point(sol):
-                            jump_points.append(sol)
-                            symbolic_solved = True
+                        # 使用新的验证方法：将 sol 带入路径参数方程验证实部是否为0（limit 时用已代入大常数的表达式）
+                        if verify_jump_point(sol, diff_re_for_solve):
+                            # 避免重复
+                            existing_vals = [float(expr.eval_expr(jp)) if isinstance(jp, Expr) else jp for jp in jump_points]
+                            if not any(abs(sol_val - ev) < 0.01 for ev in existing_vals):
+                                jump_points.append(sol)
+                                symbolic_solved = True
                 except:
                     continue
     except:
@@ -4392,10 +4527,10 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
 
         # 对每个测试点进行验证
         for t_test in test_points:
-            # 使用新的验证方法（传入 Const 类型）
+            # 使用新的验证方法（传入 Const 类型，limit 时用已代入大常数的表达式）
             from fractions import Fraction
             t_test_expr = Const(Fraction(t_test).limit_denominator(10000))
-            if verify_jump_point(t_test_expr):
+            if verify_jump_point(t_test_expr, diff_re_for_solve):
                 # 避免重复添加（将 Expr 类型的 jump_points 转为 float 比较）
                 existing_floats = [float(expr.eval_expr(jp)) if isinstance(jp, Expr) else jp for jp in jump_points]
                 if not any(abs(t_test - existing) < 0.01 for existing in existing_floats):
@@ -4412,14 +4547,10 @@ def find_jump_points(diff_re: Expr, var: str, t_start: Expr, t_end: Expr, ctx: C
 def expand_euler(e: Expr, ctx: Context) -> Expr:
     """递归展开 exp(±i*θ) 为 cos(θ) ± i*sin(θ)
 
-    增强版本，支持任意形式的虚数指数：
-    - exp(i) → cos(1) + i*sin(1)
-    - exp(i*t) → cos(t) + i*sin(t)
-    - exp(-i*t) → cos(t) - i*sin(t)
-    - exp(i*π/2) → cos(π/2) + i*sin(π/2)
-    - exp(i*π*(1-t)) → cos(π*(1-t)) + i*sin(π*(1-t))
-    - exp(k*i*t) → cos(k*t) + i*sin(k*t)
-    - exp((i*a)/b) → cos(a/b) + i*sin(a/b)
+    支持任意形式的虚数指数：
+    - exp(i*π/k) → cos(π/k) + i*sin(π/k)，k 为任意整数
+    - exp(-i*π/k) → cos(π/k) - i*sin(π/k)
+    - exp(i*θ) → cos(θ) + i*sin(θ)，θ 为任意表达式
     - exp(a + i*b) → exp(a) * [cos(b) + i*sin(b)]
     """
     if isinstance(e, Fun) and e.func_name == 'exp' and len(e.args) == 1:
@@ -4444,13 +4575,12 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
             """将嵌套的乘法表达式扁平化为因子列表"""
             if isinstance(expr, Op) and expr.op == '*':
                 result = []
-                for arg in expr.args:
-                    result.extend(flatten_mult(arg))
+                for sub in expr.args:
+                    result.extend(flatten_mult(sub))
                 return result
-            else:
-                return [expr]
+            return [expr]
 
-        # 提取实部和虚部的辅助函数（简化版，专门用于exp参数）
+        # 提取实部和虚部的辅助函数
         def extract_parts(expr: Expr) -> tuple[Expr, Expr]:
             """提取 a + i*b 形式中的 a 和 b"""
             # 处理纯虚数：i, -i, i*theta, -i*theta, (i*a)/b 等
@@ -4486,11 +4616,6 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
 
             # 乘法或除法：检查是否是 i*theta 或 theta*i 或 (i*theta)/b 等形式
             if contains_i(expr):
-                # 尝试提取 theta（从 i*theta 形式）
-                # 使用更通用的方法：将表达式视为 i * (expr/i)
-                # 这里我们直接检查表达式结构
-
-                # 对于乘法：需要扁平化以处理嵌套的乘法
                 if isinstance(expr, Op) and expr.op == '*':
                     # 扁平化乘法表达式
                     factors = flatten_mult(expr)
@@ -4530,16 +4655,13 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
         # 根据实部和虚部生成展开式
         if real_part != Const(0) and imag_part != Const(0):
             # exp(a + i*b) = exp(a) * [cos(b) + i*sin(b)]
-            exp_real = Fun('exp', real_part)
             euler_part = Op('+', Fun('cos', imag_part),
                           Op('*', Fun('i'), Fun('sin', imag_part)))
-            return Op('*', exp_real, euler_part)
+            return Op('*', Fun('exp', real_part), euler_part)
         elif imag_part != Const(0):
             # 纯虚数指数：exp(i*θ) = cos(θ) + i*sin(θ)
             return Op('+', Fun('cos', imag_part),
                         Op('*', Fun('i'), Fun('sin', imag_part)))
-        # 如果只有实部（理论上不应该到这里，因为前面检查了contains_i）
-        # 保持原样
 
     # 递归处理子表达式
     if isinstance(e, Op):
@@ -4547,6 +4669,33 @@ def expand_euler(e: Expr, ctx: Context) -> Expr:
     elif isinstance(e, Fun):
         return Fun(e.func_name, *[expand_euler(a, ctx) for a in e.args])
     return e
+
+
+def _expr_contains_func(e: Expr, func_names: tuple) -> bool:
+    """判断表达式是否包含给定名称的函数（如 sqrt, exp），用于决定是否用 sympy 提取复数的实虚部。"""
+    if isinstance(e, Fun) and e.func_name in func_names:
+        return True
+    if isinstance(e, Op):
+        return any(_expr_contains_func(a, func_names) for a in e.args)
+    if isinstance(e, Fun):
+        return any(_expr_contains_func(a, func_names) for a in e.args)
+    return False
+
+
+def _expr_contains_power_rational(e: Expr) -> bool:
+    """判断是否包含非整数次幂（如 3^(1/2)），这类形式在符号提取实虚部时可能失效。"""
+    if isinstance(e, Op) and e.op == '^' and len(e.args) == 2:
+        exp = e.args[1]
+        if is_const(exp) and isinstance(exp.val, (Fraction, float)) and not isinstance(exp.val, int):
+            return True
+        if isinstance(exp, Op) and exp.op == '/' and len(exp.args) == 2:
+            return True
+    if isinstance(e, Op):
+        return any(_expr_contains_power_rational(a) for a in e.args)
+    if isinstance(e, Fun):
+        return any(_expr_contains_power_rational(a) for a in e.args)
+    return False
+
 
 def _extract_complex_parts(z: Expr, ctx: Context) -> tuple[Expr, Expr]:
     """提取复数的实部和虚部
@@ -4855,6 +5004,57 @@ def get_contour_direction(path: CINTPath, ctx: Context, start: Expr, end: Expr, 
 
     return "L->R"
 
+def _get_local_tangent_direction(path: CINTPath, jump_pt: Expr, ctx: Context, limit_info: dict = None) -> str:
+    """获取路径在跳变点处的局部切向方向
+
+    通过计算 γ'(t₀) 的实部符号来确定穿越方向：
+    - Re(γ'(t₀)) < 0：向右穿越竖线 → R->L
+    - Re(γ'(t₀)) > 0：向左穿越竖线 → L->R
+
+    Args:
+        path: CINTPath 参数化路径
+        jump_pt: 跳变点 t₀
+        ctx: 上下文
+        limit_info: 极限信息字典
+
+    Returns:
+        局部穿越方向 "L->R" 或 "R->L"
+    """
+    if limit_info is None:
+        limit_info = {}
+
+    try:
+        import sympy as _sympy
+        # 使用 expand_euler 将 exp(i*t) 展开为 cos+sin 形式
+        euler_exp = expand_euler(path.path_expr, ctx)
+        # 提取实部 gamma_re(t)
+        gamma_re, _ = _extract_complex_parts(euler_exp, ctx)
+        gamma_re = normalize(gamma_re, ctx)
+        # 将 gamma_re 转换为 sympy（expand_euler 保证不含 exp，可用 sympify 解析）
+        t_sym = _sympy.Symbol(path.var, real=True)
+        sp_gamma_re = _sympy.sympify(str(gamma_re)).subs(_sympy.Symbol(path.var), t_sym)
+        # 求导得到 Re(γ'(t)) = d/dt[gamma_re]
+        sp_deriv_re = _sympy.diff(sp_gamma_re, t_sym)
+        # 将跳变点转换为 sympy 并处理 arccos -> acos
+        sp_jump_pt = _sympy.sympify(str(jump_pt))
+        sp_jump_pt = sp_jump_pt.replace(_sympy.Function('arccos'), _sympy.acos)
+        # 替换极限值（如有）
+        for var_name, var_limit in limit_info.items():
+            sp_jump_pt = sp_jump_pt.subs(_sympy.Symbol(var_name), _sympy.sympify(str(var_limit)))
+        # 代入跳变点得到 Re(γ'(t₀))
+        re_deriv_val = sp_deriv_re.subs(t_sym, sp_jump_pt)
+        # 使用 sp.N() 进行数值比较
+        try:
+            re_deriv_num = complex(re_deriv_val)
+            return "R->L" if re_deriv_num.real < 0 else "L->R"
+        except (TypeError, ValueError):
+            re_deriv_num = _sympy.N(re_deriv_val)
+            return "R->L" if re_deriv_num < 0 else "L->R"
+    except Exception:
+        # 降级：使用全局方向
+        return get_contour_direction(path, ctx, path.start_expr, path.end_expr, limit_info)
+
+
 def compute_jump_value(im_diff: Expr, direction: str, ctx: Context) -> float:
     """根据虚部差值和路径方向计算跳变值
 
@@ -4864,7 +5064,7 @@ def compute_jump_value(im_diff: Expr, direction: str, ctx: Context) -> float:
         ctx: 上下文
 
     Returns:
-        跳变值：1 或 -1
+        跳变值：0.5 或 -0.5
     """
     # 判断im_diff的符号（im_diff > 0 表示res虚部 > 极点虚部）
     try:
@@ -4879,12 +5079,15 @@ def compute_jump_value(im_diff: Expr, direction: str, ctx: Context) -> float:
         if isinstance(val, complex):
             val = val.real
 
-        # 根据方向和虚部比较结果确定跳变值
+        # 根据方向和虚部比较结果确定跳变值（±1，公式 w = -sum/2 隐含除以2）
+        # 逆时针圆围绕 z₀：Re(γ-z₀)=0 时 Im(γ-z₀)>0 的两个跳点各贡献 -1
+        # 对于 L->R 方向（左向右穿过竖线）：im_diff>0 时贡献 -1（f 从 +∞ 降到 -∞）
+        # 对于 R->L 方向（右向左穿过竖线）：im_diff>0 时贡献 +1（f 从 -∞ 升到 +∞）
         if direction == "R->L":
-            # R->L方向：res虚部>极点虚部 -> 1，否则 -> -1
+            # R->L方向：im_diff>0 -> +1，否则 -> -1
             return 1.0 if val > 0 else -1.0
         else:  # L->R
-            # L->R方向：res虚部>极点虚部 -> -1，否则 -> 1
+            # L->R方向：im_diff>0 -> -1，否则 -> +1
             return -1.0 if val > 0 else 1.0
     except:
         # 如果无法判断，返回0
