@@ -11,6 +11,23 @@ from typing import Optional
 SKILL_LOAD_BEGIN = "<|load_skill|>"
 SKILL_LOAD_END = "<|end_load_skill|>"
 
+# ============ 动作执行特殊标记（ReAct 风格） ============
+# LLM 可以在 thinking 中使用这些标记来立即执行命令并获取反馈
+EXECUTE_BEGIN = "<|execute|>"
+EXECUTE_END = "<|end_execute|>"
+
+# ============ 计划与步骤标记（Plan-and-Execute 风格） ============
+PLAN_BEGIN = "<|plan|>"
+PLAN_END = "<|end_plan|>"
+PLAN_STEP_BEGIN = "<|step|>"
+PLAN_STEP_END = "<|end_step|>"
+
+# ============ 层次化子计划标记 ============
+SUB_PLAN_BEGIN = "<|sub_plan|>"
+SUB_PLAN_END = "<|end_sub_plan|>"
+SUB_STEP_BEGIN = "<|sub_step|>"
+SUB_STEP_END = "<|end_sub_step|>"
+
 from .skills import get_skills_categorized_xml
 
 
@@ -51,8 +68,6 @@ BASE_PROMPT = """
 - 右极限: LIM {x -> a+}. f(x)
 
 ### 求和与求导
-- 求和: SUM(n, a, b, f(n))  例如: SUM(n, 0, oo, 1/n^2)
-- 求导: D x. f(x)  例如: D x. x^2
 
 ### 求值
 - 代入求值: [f(x)]_x=a,b  表示 f(b) - f(a)
@@ -111,7 +126,6 @@ BASE_PROMPT = """
 **注意：绝对不要把 `<|load_skill|>` 放在 JSON 的字段中！必须在 JSON 代码块之前的纯文本中进行技能加载。**
 """
 
-
 # ============ 策略指南（已迁移至 Skills） ============
 
 ERROR_RECOVERY_GUIDE = """
@@ -143,37 +157,65 @@ SUBGOAL_DEFINE_GUIDE = """
 # ============ 技能选择策略指南 ============
 
 SKILL_SELECTION_GUIDE = """
-## 🧠 技能系统（单轮次边思考边加载模式）
+## 🧠 层次化双层 Plan-and-Execute 系统
 
-**核心机制**：你可以在**同一个思考过程中**加载技能并继续推理，无需等待下一轮。
+**核心机制**：这允许你在**同一个思考连贯过程中**制定宏观外层计划，并在执行每一项外层任务时，进一步制定和执行具体的**内层子计划**！你的任务是一次性解决整个问题（规划宏观路径，再逐步拆解攻克）。
 
-### 工作流程（单轮次完成）
+### 工作流程：层次化双层执行
 
 1. **纯文本分析**：在纯文本区域自由思考，识别当前表达式类型。
 2. **加载技能**：在纯文本中输出 `<|load_skill|>技能名<|end_load_skill|>`。
 3. **立即参考**：技能加载后（看到技能已加载的系统提示），继续在纯文本中根据技能内容推理。
 4. **输出命令（JSON代码块）**：在得出最终结论后，在回答的最后面单独输出 JSON 格式命令。
 
-### ⭐ 关键示例（边思考边加载）
+#### 阶段一：初遇问题，深入分析后制定外层宏观计划
+当看到表达式时，你**必须先用自然语言深入分析问题**：
+- 这个表达式的结构是什么？（类型、特征、难点）
+- 有哪些可能的求解/证明方向？
+- 哪个方向最合适？为什么？
 
-**正确示范**：
-```
-分析当前表达式：这是一个广义积分 INT x:[0,oo]. 1/(1+exp(a*x))，包含无穷上限，
-我需要了解如何处理这类积分。让我查阅积分策略技能：
+分析完成后，再输出宏观步骤数组（使用 `<|plan|>` 标记）：
+<|plan|>
+[
+  {"step": 1, "description": "将广义积分转换为极限形式"},
+  {"step": 2, "description": "换元处理"},
+  {"step": 3, "description": "部分分式分解，化简并求值"}
+]
+<|end_plan|>
 
+#### 阶段二：攻克具体步骤，制定子计划并执行
+使用 `<|step|>` 标记宣示你正在攻击哪个外层步骤。
+紧接着，针对当前这一个步骤，制定其所需的具体操作 **内层子计划** （使用 `<|sub_plan|>` 标记）。
+随后，使用 `<|sub_step|>` 逐一执行这个子计划中的项。
+
+<|step|>1<|end_step|>
+思考第一步如何实现...我们需要先加载积分策略技能，然后应用极限转换。
+<|sub_plan|>
+[
+  {"step": 1, "description": "加载 strategy-integral 技能"},
+  {"step": 2, "description": "执行 improper integral to limit 创建极限变量"}
+]
+<|end_sub_plan|>
+
+<|sub_step|>1<|end_sub_step|>
 <|load_skill|>strategy-integral<|end_load_skill|>
-[✓strategy-integral技能已加载]
+[✓ 技能已加载]
 
-参考加载的技能文档，对于广义积分（improper integral），需要先将无穷替换为变量 t，
-然后取极限。技能文档中的命令是：`improper integral to limit creating t`
+<|sub_step|>2<|end_sub_step|>
+<|execute|>improper integral to limit creating t<|end_execute|>
+[✓ 执行结果: LIM {t -> oo}. INT ...]
 
-{"thinking": "这是广义积分，需要先替换无穷为变量 t，再取极限", 
- "command": "improper integral to limit creating t", 
- "explanation": "将积分上限的无穷替换为变量 t，转化为极限形式", 
- "is_final": false}
-```
+<|step|>2<|end_step|>
+进入宏观第二步，思考子计划...
+<|sub_plan|>
+[
+  {"step": 1, "description": "使用 substitute 换元"}
+]
+<|end_sub_plan|>
 
-### 必须遵守的规则
+<|sub_step|>1<|end_sub_step|>
+<|execute|>substitute u for exp(a*x)<|end_execute|>
+[✓ 执行结果: ...]
 
 - ✅ **在同一思考过程中完成**：加载技能后立即参考并输出命令
 - ✅ **技能已加载标记后继续思考**：看到 `[✓xxx技能已加载]` 后，立即参考技能内容
@@ -181,14 +223,10 @@ SKILL_SELECTION_GUIDE = """
 - ❌ **禁止中途停止**：加载技能后必须继续推理直到输出 JSON 命令
 - ❌ **禁止直接使用未经加载的命令**：即使你在其他文档（如 state-calculate）的提示中看到了某个命令（如 substitute, apply integral identity），你也**必须先使用 `<|load_skill|>` 加载该命令的专属技能文档**，仔细阅读其详细语法和约束后，才能生成该命令。**绝对禁止**仅凭简略提示或记忆就直接输出命令！
 
-### 常用技能对照
-
-| 问题类型 | 推荐技能 | 关键命令示例 |
-|---------|---------|-------------|
-| 广义积分 | `strategy-integral` | `improper integral to limit creating t` |
-| 分部积分 | `integrate-by-parts` | `integrate by parts, u = ..., v = ...` |
-| 换元积分 | `substitute` | `substitute u=..., u_range=...` |
-| 极限问题 | `strategy-limit` | `rewrite to limit at ...` |
+### 规则
+1. **严格分层**：无论是 `<|plan|>` 还是 `<|sub_plan|>`，制定或修改时绝不能包含 `<|execute|>`。先计划，再执行。
+2. **无限次动作**：每次 `execute` 获取到结果后，只要不能达到最终目的，请【立刻开启下一项 `<|sub_step|>`】或【进入下一个宏观 `<|step|>`】。你拥有在这个回合持续行动到底的权利！
+3. **不能提前结束**：除非你确定外层计划的所有步骤、以及最后一个子计划全部彻底运行成功，**否则绝不能直接输出 JSON 结束（不能输出 `"is_final": true` 或 false）**。必须不断用 `<|execute|>` 和 `sub_step` 推进直到完成证明或化简任务。
 """
 
 
